@@ -47,13 +47,28 @@ HOOK_DEFINE_TRAMPOLINE(MoonGetHook) {
         SMOAP_LOG_INFO("MoonGetHook: stage_ptr=%p", stage);
         const char* obj = smoap::game::shine_info_layout::objectId(info);
         SMOAP_LOG_INFO("MoonGetHook: obj_ptr=%p", obj);
+        const char* scen = smoap::game::shine_info_layout::scenObjId(info);
+        SMOAP_LOG_INFO("MoonGetHook: scen_ptr=%p", scen);
         const int uid = smoap::game::shine_info_layout::shineId(info);
         SMOAP_LOG_INFO("MoonGetHook: uid=%d", uid);
 
         const bool stage_ok = stringSane(stage);
         const bool obj_ok = stringSane(obj);
+        const bool scen_ok = stringSane(scen);
+        SMOAP_LOG_INFO("MoonGetHook: probe stage=%s obj=%s scen=%s uid=%d",
+                       stage_ok ? stage : "<bad>",
+                       obj_ok ? obj : "<bad>",
+                       scen_ok ? scen : "<bad>",
+                       uid);
+        // The canonical moon identifier SMO emits is ObjId — a placement-file
+        // reference like "obj214". This was confirmed end-to-end against
+        // MoonFlow's ShineInfo schema (https://github.com/Amethyst-szs/MoonFlow):
+        // display names are looked up by ("ScenarioName_" + ObjId) in the
+        // per-stage MSBT, but ObjId alone is the stable identity. scenObjId
+        // (offset 0x130) is just "ScenarioName_objN" — redundant. Keep the
+        // probe log above for diagnostics, but report ObjId.
         if (stage_ok && obj_ok) {
-            SMOAP_LOG_INFO("MoonGetHook: stage=%s obj=%s uid=%d", stage, obj, uid);
+            SMOAP_LOG_INFO("MoonGetHook: reporting stage=%s id=%s uid=%d", stage, obj, uid);
             smoap::ap::reportMoonChecked(stage, obj, uid);
         } else {
             SMOAP_LOG_WARN("MoonGetHook: insane string ptrs stage_ok=%d obj_ok=%d — "

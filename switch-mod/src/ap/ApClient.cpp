@@ -360,7 +360,18 @@ void ApClient::pumpOnce() {
     Check c;
     while (st.outbound_checks.peek(c)) {
         const std::string line = encodeCheck(c);
-        if (nn::socket::Send(socket_fd_, line.data(), line.size(), 0) < 0) return;
+        SMOAP_LOG_INFO("[pump] peek check kind=%d stage=%s obj=%s (line=%u bytes)",
+                       static_cast<int>(c.kind),
+                       c.stage_name[0] ? c.stage_name : "<empty>",
+                       c.object_id[0] ? c.object_id : "<empty>",
+                       static_cast<unsigned>(line.size()));
+        const int n = nn::socket::Send(socket_fd_, line.data(), line.size(), 0);
+        if (n < 0) {
+            SMOAP_LOG_WARN("[pump] check Send returned %d; leaving in queue for retry", n);
+            return;
+        }
+        SMOAP_LOG_INFO("[pump] check Send returned %d (sent %u bytes)", n,
+                       static_cast<unsigned>(line.size()));
         st.outbound_checks.popDiscard();
     }
     StatusEvent e;

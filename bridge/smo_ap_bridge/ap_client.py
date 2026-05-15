@@ -236,7 +236,10 @@ class SmoApBridgeContext:
             log.warning("no AP id for location %r (kind=%s)", loc_name, kind)
             return
         if loc_id in self._ctx.locations_checked:
+            log.info("check %r (id=%d) already in locations_checked; skipping LocationChecks send",
+                     loc_name, loc_id)
             return
+        log.info("forwarding LocationCheck %r (id=%d) to AP", loc_name, loc_id)
         await self._ctx.send_msgs([{"cmd": "LocationChecks", "locations": [loc_id]}])
         self._ctx.locations_checked.add(loc_id)
 

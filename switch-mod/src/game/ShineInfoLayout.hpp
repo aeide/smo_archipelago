@@ -35,6 +35,7 @@ namespace shine_info_layout {
 
 inline constexpr std::size_t kStageNameOffset = 0x000;
 inline constexpr std::size_t kObjectIdOffset  = 0x098;
+inline constexpr std::size_t kScenObjIdOffset = 0x130;
 inline constexpr std::size_t kShineIdOffset   = 0x1C8;
 
 // sead::FixedSafeString's mStringTop is at +0x08 from its base.
@@ -53,6 +54,10 @@ inline const char* stageName(const void* shine_info) {
 
 inline const char* objectId(const void* shine_info) {
     return readSafeString(shine_info, kObjectIdOffset);
+}
+
+inline const char* scenObjId(const void* shine_info) {
+    return readSafeString(shine_info, kScenObjIdOffset);
 }
 
 inline int shineId(const void* shine_info) {
