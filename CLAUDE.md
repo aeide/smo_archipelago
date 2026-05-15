@@ -128,6 +128,12 @@ The user's HOS increments a "title failed to launch" counter for SMO every time 
 The flow:
 
 ```pwsh
+# 0. ONE-TIME (after fresh clone or `git pull` that touched apworld/data/items.json):
+#    Generate switch-mod/src/ap/capture_table.h. The file is gitignored — the
+#    build will fail with "../ap/capture_table.h: No such file or directory"
+#    on the first compile of CaptureGate.cpp until you run this.
+python C:\Users\maxwe\SMOArchipelago\scripts\sync_capture_table.py
+
 # 1. Build (~10s)
 cd C:\Users\maxwe\SMOArchipelago\switch-mod
 $env:DEVKITPRO = "C:/devkitPro"
@@ -138,6 +144,10 @@ $env:DEVKITPRO = "C:/devkitPro"
 & "C:/Program Files/CMake/bin/cmake.exe" --build build
 # Post-build hook auto-deploys subsdk9+npdm+ap_config.json into
 # %APPDATA%/Ryujinx/mods/contents/0100000000010000/smo-archipelago/
+#
+# Note: if Ninja isn't installed, swap `-G Ninja` for
+#   `-G "Unix Makefiles" -DCMAKE_MAKE_PROGRAM=C:/devkitPro/msys2/usr/bin/make.exe`
+# Same build product; verified end-to-end.
 
 # 2. Boot SMO in Ryujinx. User does this manually:
 #    cd C:\Users\maxwe\Documents\ryujinx-1.3.3 && .\Ryujinx.exe
