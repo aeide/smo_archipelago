@@ -482,7 +482,7 @@
             "Sand Peace"
         ],
         "region": "Sand Kingdom",
-        "requires": "{SandPeace()} and {OptAll(|Roll| and |Wall Jump|)}"
+        "requires": "{SandPeace()}"
     },
     {
         "name": "Sand: Sand Kingdom Timer Challenge 2",
@@ -500,7 +500,7 @@
             "Sand Peace"
         ],
         "region": "Sand Kingdom",
-        "requires": "{SandPeace()} and {OptAll(|Jaxi| or (|Long Jump| and |Roll|))}"
+        "requires": "{SandPeace()}"
     },
     {
         "name": "Sand: Found in the Sand! Good Dog!",
@@ -765,7 +765,7 @@
             "Sand Kingdom"
         ],
         "region": "Sand Kingdom",
-        "requires": "{IntoTheLake()} and {MazeSkip()} and ((|Sand Kingdom Power Moon:16| OR ( |Sand Kingdom Multi-Moon| AND |Sand Kingdom Power Moon:13| ) OR ( |Sand Kingdom Multi-Moon:2| AND |Sand Kingdom Power Moon:10| )))"
+        "requires": "{IntoTheLake()} and {MazeSkip()}"
     },
     {
         "name": "Lake: Broodals Over the Lake",
@@ -882,7 +882,7 @@
             "Lake Kingdom"
         ],
         "region": "Lake Kingdom",
-        "requires": "{OptOne(|Dash (2D)|)}"
+        "requires": ""
     },
     {
         "name": "Lake: Lake Fishing",
@@ -983,7 +983,7 @@
             "post-metro"
         ],
         "region": "Post-Metro",
-        "requires": "((|Metro Kingdom Power Moon:75| OR ( |Metro Kingdom Multi-Moon| AND |Metro Kingdom Power Moon:17| ) OR ( |Metro Kingdom Multi-Moon:2| AND |Metro Kingdom Power Moon:14| ))) and {SnowSeasidePeace()}"
+        "requires": "{SnowSeasidePeace()}"
     },
     {
         "name": "Lake: Found with Lake Kingdom Art",
@@ -1186,7 +1186,7 @@
             "Wooded Kingdom"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{OptOne(Uproot)} or {OptAll((|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault| or |Wall Jump|)}"
+        "requires": "{OptOne(Uproot)}"
     },
     {
         "name": "Wooded: Stretching Your Legs",
@@ -1308,7 +1308,7 @@
             "Wooded Kingdom"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{OptAll(|Wall Jump| and |Swim|)}"
+        "requires": ""
     },
     {
         "name": "Wooded: Flooding Pipeway Ceiling Secret",
@@ -1316,7 +1316,7 @@
             "Wooded Kingdom"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{OptAll(|Swim| and |Wall Jump| and ((|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault| or (|Dive| and |Cap Jump|)))}"
+        "requires": ""
     },
     {
         "name": "Wooded: Wandering in the Fog",
@@ -1440,7 +1440,7 @@
             "Lost Kingdom"
         ],
         "region": "Lost Kingdom",
-        "requires": "{OptAll(|Tropical Wiggler| or (|Cap Jump| and |Dive|) or (|Wall Jump| and |Glydon|))}"
+        "requires": "{OptAll(|Tropical Wiggler| or |Glydon|)}"
     },
     {
         "name": "Lost: Over the Fuzzies, Above the Swamp",
@@ -1540,7 +1540,7 @@
             "Lost Kingdom"
         ],
         "region": "Lost Kingdom",
-        "requires": "{OptAll(|Tropical Wiggler| or |Dive|)}"
+        "requires": "{OptOne(Tropical Wiggler)}"
     },
     {
         "name": "Lost: Twist 'n' Turn-Up Treasure",
@@ -2252,7 +2252,7 @@
             "post-metro"
         ],
         "region": "Snow Kingdom",
-        "requires": "{SnowPeace()} and {OptAll(|Swim| or |Cap Jump|)}"
+        "requires": "{SnowPeace()}"
     },
     {
         "name": "Snow: Dashing Above and Beyond!",
@@ -2262,7 +2262,7 @@
             "post-metro"
         ],
         "region": "Snow Kingdom",
-        "requires": "{SnowPeace()} and {OptAll(|Swim| or |Cap Jump|)}"
+        "requires": "{SnowPeace()}"
     },
     {
         "name": "Snow: Jump 'n' Swim in the Freezing Water",
@@ -2403,7 +2403,7 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": "{OptAll(|Gushen| or (|Wall Jump| and |Triple Jump| and |Cap Jump| and |Dive|))}"
+        "requires": "{OptOne(Gushen)}"
     },
     {
         "name": "Seaside: Ride the Jetstream",
@@ -2412,7 +2412,7 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": "{OptAll(|Gushen| or (|Wall Jump| and |Triple Jump| and |Cap Jump| and |Dive|))}"
+        "requires": "{OptOne(Gushen)}"
     },
     {
         "name": "Seaside: Ocean-Bottom Maze: Treasure",
@@ -2603,7 +2603,7 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": "{OptAll(|Swim| and |Quick Swim|)} and {SeasidePeace()}"
+        "requires": "{SeasidePeace()}"
     },
     {
         "name": "Seaside: Found on the Beach! Good Dog!",
@@ -2796,7 +2796,7 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": "{OptAll(|Wall Jump| and |Cap Jump| and |Dive|)} and {OptOne(Gushen)}"
+        "requires": "{OptOne(Gushen)}"
     },
     {
         "name": "Seaside: Found with Seaside Kingdom Art",
@@ -3713,7 +3713,7 @@
             "Moon Kingdom"
         ],
         "region": "Moon Kingdom",
-        "requires": "{OptOne(|Long Jump|)}"
+        "requires": ""
     },
     {
         "name": "Moon: Taking Notes: On the Moon's Surface",
@@ -3722,7 +3722,7 @@
             "Moon Kingdom"
         ],
         "region": "Moon Kingdom",
-        "requires": "{OptOne(|Long Jump|)}"
+        "requires": ""
     },
     {
         "name": "Moon: Under the Bowser Statue",
@@ -3860,7 +3860,7 @@
             "Capture"
         ],
         "region": "Sand Kingdom",
-        "requires": "( ({OptAll(|Bullet Bill| AND |Knucklotec's Fist|)}) OR (((( ( |Sand Kingdom Power Moon:16| OR ( |Sand Kingdom Multi-Moon| AND |Sand Kingdom Power Moon:13| ) OR ( |Sand Kingdom Multi-Moon:2| AND |Sand Kingdom Power Moon:10| ) ) AND ( |Lake Kingdom Power Moon:8| OR ( |Lake Kingdom Multi-Moon| AND |Lake Kingdom Power Moon:5| ) ) ))) and {LakePeace()}))"
+        "requires": "{OptAll(|Bullet Bill| AND |Knucklotec's Fist|)}"
     },
     {
         "name": "Capture: Glydon",
@@ -3868,7 +3868,7 @@
             "Capture"
         ],
         "region": "Sand Kingdom",
-        "requires": "( ({OptAll(|Bullet Bill| AND |Knucklotec's Fist|)}) OR (((( ( |Sand Kingdom Power Moon:16| OR ( |Sand Kingdom Multi-Moon| AND |Sand Kingdom Power Moon:13| ) OR ( |Sand Kingdom Multi-Moon:2| AND |Sand Kingdom Power Moon:10| ) ) AND ( |Lake Kingdom Power Moon:8| OR ( |Lake Kingdom Multi-Moon| AND |Lake Kingdom Power Moon:5| ) ) AND |Sherm| AND |Uproot| ))) and {IntoTheLake()} and {MazeSkip()}) OR (((( ( |Sand Kingdom Power Moon:16| OR ( |Sand Kingdom Multi-Moon| AND |Sand Kingdom Power Moon:13| ) OR ( |Sand Kingdom Multi-Moon:2| AND |Sand Kingdom Power Moon:10| ) ) AND ( |Lake Kingdom Power Moon:8| OR ( |Lake Kingdom Multi-Moon| AND |Lake Kingdom Power Moon:5| ) ) AND ( |Wooded Kingdom Power Moon:16| OR ( |Wooded Kingdom Multi-Moon| AND |Wooded Kingdom Power Moon:13| ) OR ( |Wooded Kingdom Multi-Moon:2| AND |Wooded Kingdom Power Moon:10| ) ) ))) and {IntoTheLake()} and {MazeSkip()} and {OptOne(Wall Jump)}) )"
+        "requires": "{OptAll(|Bullet Bill| AND |Knucklotec's Fist|)}"
     },
     {
         "name": "Capture: Lakitu",
@@ -3876,7 +3876,7 @@
             "Capture"
         ],
         "region": "Sand Kingdom",
-        "requires": "( ({OptAll(|Bullet Bill| AND |Knucklotec's Fist|)}) OR ((( ( |Sand Kingdom Power Moon:16| OR ( |Sand Kingdom Multi-Moon| AND |Sand Kingdom Power Moon:13| ) OR ( |Sand Kingdom Multi-Moon:2| AND |Sand Kingdom Power Moon:10| ) ) AND ( |Wooded Kingdom Power Moon:16| OR ( |Wooded Kingdom Multi-Moon| AND |Wooded Kingdom Power Moon:13| ) OR ( |Wooded Kingdom Multi-Moon:2| AND |Wooded Kingdom Power Moon:10| ) ) ) ))) or ( ( |Bullet Bill| AND |Knucklotec's Fist| ) OR (((( ( |Sand Kingdom Power Moon:16| OR ( |Sand Kingdom Multi-Moon| AND |Sand Kingdom Power Moon:13| ) OR ( |Sand Kingdom Multi-Moon:2| AND |Sand Kingdom Power Moon:10| ) ) AND ( |Wooded Kingdom Power Moon:16| OR ( |Wooded Kingdom Multi-Moon| AND |Wooded Kingdom Power Moon:13| ) OR ( |Wooded Kingdom Multi-Moon:2| AND |Wooded Kingdom Power Moon:10| ) ) ))) and (|Uproot| or ( ( ( |Ground Pound Jump| and |Ground Pound| ) or |Backward Somersault| or |Side Somersault| or ( |Wall Jump| and |Dive| ) or |Triple Jump| ) and ( |Long Jump| or |Triple Jump| or |Backward Somersault| or |Side Somersault| ) and |Cap Jump| and |Dive| ))) )"
+        "requires": "{OptAll(|Bullet Bill| AND |Knucklotec's Fist|)}"
     },
     {
         "name": "Capture: Zipper",

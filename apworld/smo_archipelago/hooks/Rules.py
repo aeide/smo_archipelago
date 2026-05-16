@@ -101,7 +101,7 @@ def SeasidePeace(world: World, multiworld: MultiWorld, state: CollectionState, p
 def SnowSeasidePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do snow or seaside Peace"""
     if is_option_enabled(multiworld, player, "capturesanity"):
-        return "((|Ty-foo| and |Shiverian Racer| and (|Seaside Kingdom Power Moon:10| OR (|Seaside Kingdom Multi-Moon| AND |Seaside Kingdom Power Moon:7|))) or (|Gushen| and (|Snow Kingdom Power Moon:10| OR (|Snow Kingdom Multi-Moon| AND |Snow Kingdom Power Moon:7|))))"
+        return "(|Ty-foo| and |Shiverian Racer|) or |Gushen|"
     return True
 
 def PostEarlyLuncheon(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -152,7 +152,7 @@ def RegionalCap(world: World, multiworld: MultiWorld, state: CollectionState, pl
 
 def RegionalCascade(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in cascade"""
-    return "|Cascade Kingdom Power Moon:5| OR ( |Cascade Kingdom Multi-Moon| AND |Cascade Kingdom Power Moon:2| )"
+    return True
 
 def RegionalSand(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in sand"""
