@@ -277,6 +277,14 @@
         "filler": true
     },
     {
+        "name": "T-Rex",
+        "category": [
+            "Capture"
+        ],
+        "count": 1,
+        "progression": true
+    },
+    {
         "name": "Bullet Bill",
         "category": [
             "Capture"

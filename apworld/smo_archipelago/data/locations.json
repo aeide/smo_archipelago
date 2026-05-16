@@ -181,7 +181,7 @@
             "Cascade Kingdom"
         ],
         "region": "Cascade Kingdom",
-        "requires": []
+        "requires": "{OptOne(T-Rex)}"
     },
     {
         "name": "Cascade: Dinosaur Nest: Running Wild!",
@@ -189,7 +189,7 @@
             "Cascade Kingdom"
         ],
         "region": "Cascade Kingdom",
-        "requires": []
+        "requires": "{OptOne(T-Rex)}"
     },
     {
         "name": "Cascade: Nice Shot with the Chain Chomp!",
@@ -715,7 +715,7 @@
             "Sand Kingdom"
         ],
         "region": "Sand Kingdom",
-        "requires": "{BulletBillMaze()}"
+        "requires": "{OptOne(Bullet Bill)}"
     },
     {
         "name": "Sand: The Bullet Bill Maze: Side Path",
@@ -723,7 +723,7 @@
             "Sand Kingdom"
         ],
         "region": "Sand Kingdom",
-        "requires": "{BulletBillMaze()}"
+        "requires": "{OptOne(Bullet Bill)}"
     },
     {
         "name": "Sand: Jaxi Driver",
@@ -1128,7 +1128,7 @@
             "Wooded Kingdom"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{MazeSkip()}"
+        "requires": "{OptOne(Uproot)}"
     },
     {
         "name": "Wooded: The Nut that Grew on the Tall Fence",
@@ -1242,7 +1242,7 @@
             "Wooded Kingdom"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{OptOne(Hold/Throw)}"
+        "requires": "{OptOne(T-Rex)}"
     },
     {
         "name": "Wooded: The Hard Rock in Deep Woods",
@@ -1250,7 +1250,7 @@
             "Wooded Kingdom"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{OptOne(Hold/Throw)}"
+        "requires": "{OptOne(T-Rex)}"
     },
     {
         "name": "Wooded: A Treasure Made from Coins",
@@ -1593,7 +1593,7 @@
             "Metro Kingdom"
         ],
         "region": "Metro Kingdom",
-        "requires": []
+        "requires": "{OptOne(Sherm)}"
     },
     {
         "name": "Metro: Drummer on Board!",
@@ -1917,7 +1917,7 @@
             "Metro Kingdom"
         ],
         "region": "Metro Kingdom",
-        "requires": "{OptOne(Taxi)}"
+        "requires": "{OptAll(|Taxi| AND |Sherm|)}"
     },
     {
         "name": "Metro: Sharpshooting Under Siege",
@@ -1925,7 +1925,7 @@
             "Metro Kingdom"
         ],
         "region": "Metro Kingdom",
-        "requires": "{OptOne(Taxi)}"
+        "requires": "{OptAll(|Taxi| AND |Sherm|)}"
     },
     {
         "name": "Metro: Inside the Rotating Maze",
@@ -2832,7 +2832,7 @@
             "post-metro"
         ],
         "region": "Luncheon Kingdom",
-        "requires": "{Meat()}"
+        "requires": "{OptAll(|Lava Bubble| AND |Meat|)}"
     },
     {
         "name": "Luncheon: Climb Up the Cascading Magma",
@@ -3489,7 +3489,7 @@
             "Bowser's Kingdom"
         ],
         "region": "Bowser's Kingdom",
-        "requires": []
+        "requires": "{OptOne(Pokio)}"
     },
     {
         "name": "Bowser's: Poking the Turret Wall",
@@ -3498,7 +3498,7 @@
             "Bowser's Kingdom"
         ],
         "region": "Bowser's Kingdom",
-        "requires": []
+        "requires": "{OptOne(Pokio)}"
     },
     {
         "name": "Bowser's: Poking Your Nose by the Great Gate",
@@ -3507,7 +3507,7 @@
             "Bowser's Kingdom"
         ],
         "region": "Bowser's Kingdom",
-        "requires": []
+        "requires": "{OptOne(Pokio)}"
     },
     {
         "name": "Bowser's: Jizo All in a Row",
@@ -3804,6 +3804,14 @@
             "Capture"
         ],
         "region": "Sand Kingdom",
+        "requires": []
+    },
+    {
+        "name": "Capture: T-Rex",
+        "category": [
+            "Capture"
+        ],
+        "region": "Cascade Kingdom",
         "requires": []
     },
     {
