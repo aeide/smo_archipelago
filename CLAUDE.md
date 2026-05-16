@@ -8,7 +8,8 @@ This repository is open-source and built on a careful line: **functional identif
 
 **Must NEVER be committed (already gitignored — keep it that way):**
 - `bridge/smo_ap_bridge/data/shine_map.json` — full extracted (stage, obj_id) → display-name table. Generated per-machine by `scripts/extract_shine_map.py`. ~775 verbatim Nintendo USen strings.
-- `bridge/smo_ap_bridge/data/shine_map_review.json` — diagnostic that includes the same strings.
+- `bridge/smo_ap_bridge/data/capture_map.json` — `hack_name → english_name` table. ~52 verbatim Nintendo USen strings.
+- `bridge/smo_ap_bridge/data/shine_map_review.json` and `capture_map_review.json` — diagnostics that include the same strings.
 - `.romfs-cache/` — extracted RomFS (~5 GB of Nintendo assets).
 - `scripts/.extract-venv/` — local Python 3.12 venv (not IP, but big and machine-specific).
 - `docs/main-*.nso`, `*.nsp`, `*.nca`, `*.byml`, `*.szs`, `*.msbt` — any raw Nintendo binary.
@@ -78,7 +79,12 @@ The PC bridge owns AP-protocol complexity (websocket + deflate + TLS + reconnect
 - **M5**: web tracker — **CODE COMPLETE** (Flask + SSE, served on :8000)
 - **M5.5**: AP server live integration — **DONE 2026-05-15.** Forked apworld zipped to `vendor/Archipelago/custom_worlds/smo_archipelago.apworld` via `scripts/install_apworld.py`. Seed generation via `scripts/ap_generate.py` (thin wrapper that pre-sets `ModuleUpdate.update_ran = True` to suppress AP's auto-pip on world-specific deps). MultiServer wrapper at `scripts/ap_server.py`. Bridge ↔ local AP loopback validated end-to-end: `>> check Cap: Frog-Jumping Above the Fog` → bridge translates → `LocationChecks` to AP → AP sends `ReceivedItems` → bridge forwards `ItemMsg` to fake-Switch (all under 1s per round-trip). Bridge fix in `ap_client.py::_populate_datapackage_from_ctx` hydrates `self._dp` from CommonContext's `location_names`/`item_names` on `Connected` (CommonContext satisfies its own lookup from Archipelago's shipped `network_data_package.json` and never relays a `DataPackage` packet that our `on_package` could catch). Regression test `bridge/tests/test_ap_loopback.py` skips unless `SMOAP_LIVE_AP=1`; 43 existing tests still green. Test seed at `bridge/test_seeds/smo_loopback.yaml` (gitignored output at `bridge/test_seeds/out/`).
 - **M5.7**: Ryujinx E2E — **DONE 2026-05-15.** First real moon traversed the whole stack: Mario collects "Our First Power Moon" in Ryujinx → `MoonGetHook` fires with `stage=WaterfallWorldHomeStage, obj=obj214` → `[pump] Send 102 bytes` → bridge resolves via `shine_map.json` → `LocationCheck id=14481151511` to AP → AP records check, places "Snow Kingdom Power Moon" item → `ReceivedItems` echoed → bridge forwards `ItemMsg` to mod (mod's inbound ring receives it; M6 application still stubbed). Three real bugs surfaced + fixed: (a) mod's `BRIDGE_HOST` was baked at the stale M3-era LAN IP (rebuilt with `-DBRIDGE_HOST=127.0.0.1` for Ryujinx-on-same-host); (b) `shine_map.json` seed entries used aspirational `MoonOurFirst`-style symbolic names but `ShineInfo::objectId` actually emits the placement-file ref `obj214` — confirmed via MoonFlow's public `ShineInfo` schema, replaced with 1 verified entry; (c) `ap_client.report_check` silently returned on `locations_checked` dedup, which combined with persistent `AP_*.apsave` from the M5.5 smoke test masked working pipeline as "moon arrived but nothing happened" — added explicit forwarding-vs-skip log lines. Diagnostic logging shipped permanently: `MoonGetHook` probe (`obj`/`scen`/`uid`), `ApClient::pumpOnce` `[pump]` traces, `ap_client.report_check` forwarding-distinction lines. These were load-bearing observability — every issue would have been silent without them.
-- **M5.8**: full moon-data extraction — **DONE 2026-05-15.** Single command `python scripts/extract_shine_map.py --nsp <SMO_1.0.0.nsp>` produces a complete 775-entry `shine_map.json`. Self-bootstraps a Python 3.12 venv with `oead` (no 3.13 wheel available); auto-extracts romfs via `hactool` (PFS0 → program NCA → RomFS, ~5 GB cached at `.romfs-cache/`); walks `SystemData/ShineInfo.szs` (17 BYML kingdom shine lists) and joins against per-stage MSBT in `LocalizedData/USen/MessageData/StageMessage.szs` under `ScenarioName_<ObjId>` keys. Shipped MSBT parser is a ~150-line in-tree reader because `pymsyt` only knows BotW's control codes and chokes on SMO's. Cross-validates 100% (436/436) of apworld moons; emitted file covers all 775 SMO moons including 339 not currently in apworld (story moons, Dark/Darker Side, racing cups — emitted so future apworld expansion picks them up automatically). `shine_map.json` and `shine_map_review.json` are gitignored — Nintendo IP, regenerate per machine. Five new tests in `bridge/tests/test_shine_map_extraction.py` validate schema/count/dedup/anchor (auto-skip when file absent). Also fixed 10 apworld typos in `apworld/.../locations.json` (e.g. `"Cafe?"` → `"Café?"`, `"By the Falls"` → `"by the Falls"`). Full workflow in `docs/extract-moon-data.md`.
+- **M5.8**: full moon + capture data extraction — **DONE 2026-05-15.** Single command `python scripts/extract_shine_map.py --nsp <SMO_1.0.0.nsp>` produces a complete 775-entry `shine_map.json` AND 52-entry `capture_map.json`. Self-bootstraps a Python 3.12 venv with `oead` (no 3.13 wheel available); auto-extracts romfs via `hactool` (PFS0 → program NCA → RomFS, ~5 GB cached at `.romfs-cache/`).
+  - **Moons**: walks `SystemData/ShineInfo.szs` (17 BYML kingdom shine lists) and joins against per-stage MSBT in `LocalizedData/USen/MessageData/StageMessage.szs` under `ScenarioName_<ObjId>` keys. The MSBT must be the per-shine StageName MSBT (sub-stages like `PushBlockExStage` own their own messages), and kingdom assignment must come from the HomeStage BYML container (sub-stage names don't match `CapWorld*` etc.).
+  - **Captures**: walks `SystemData/HackObjList.szs` (130 internal `HackName` strings) and joins against `LocalizedData/USen/MessageData/SystemMessage.szs/HackList.msbt` where the label *is* the internal name and the value is the English form. A small `CAPTURE_NAME_ALIASES` table handles 6 cases where the apworld deliberately diverged from Nintendo (collapsed multi-piece variants like `Picture Match Part (Mario)` → `Picture Match Part`, prefix renames like `Cheep Cheep (Snow Kingdom)` → `Snow Cheep Cheep`, casing like `Bowser statue` → `Bowser Statue`). Investigation showed no public repo publishes the Japanese-internal → English mapping (only the internal names appear in lunakit / OdysseyDecomp as code identifiers), so extraction is the only safe path.
+  - **MSBT parser**: shipped as a ~150-line in-tree reader because `pymsyt` only knows BotW's control codes and chokes on SMO's control code 6.
+  - **Cross-validation**: 100% (436/436 moons + 42/42 captures) of apworld entries resolve. Emitted files cover the full 775 + 52 SMO entries — extras (339 out-of-apworld-scope moons, 8 out-of-scope captures) emitted so future apworld expansion picks them up automatically.
+  - **IP discipline**: all 4 generated files (`shine_map.json`, `shine_map_review.json`, `capture_map.json`, `capture_map_review.json`) are gitignored. Nine tests in `bridge/tests/test_shine_map_extraction.py` validate schema/count/dedup/anchors for both maps (auto-skip when files absent). Also fixed 10 apworld typos in `apworld/.../locations.json` (e.g. `"Cafe?"` → `"Café?"`, `"By the Falls"` → `"by the Falls"`). Full workflow in `docs/extract-moon-data.md`.
 - **M6**: item application (received items → GameDataHolder writes) — also lands snapshot enumerate bodies (`enumerateOwnedShines` / `enumerateOwnedCaptures`); same GameDataHolder traversal as `grantShine`
 - **M7**: capture lock + goal detection
 - **M8**: apworld extensions + in-game ImGui + polish
@@ -95,7 +101,7 @@ C:\Users\maxwe\SMOArchipelago\
   apworld/                       Forked manual_smo_mp3 → smo_archipelago
     smo_archipelago/             Full package; only `data/game.json` creator field changed
     README.md
-  bridge/                        Python bridge — 48 tests pass (+1 live-AP skipped)
+  bridge/                        Python bridge — 52 tests pass (+1 live-AP skipped)
     smo_ap_bridge/
       __main__.py
       config.py                  TOML loader, CLI overrides, env var SMOAP_PASSWORD / SMOAP_AP_PATH
@@ -106,7 +112,7 @@ C:\Users\maxwe\SMOArchipelago\
       state.py                   Thread-safe state mirror for tracker + replay
       tracker_web.py             Flask app on :8000, /api/snapshot
       logging_setup.py
-    tests/                       48 passing (test_ap_loopback.py + extract tests auto-skip when prereq absent)
+    tests/                       52 passing (test_ap_loopback.py + extract tests auto-skip when prereq absent)
     pyproject.toml
     requirements.txt
     config.example.toml
@@ -127,13 +133,13 @@ C:\Users\maxwe\SMOArchipelago\
     bridge_smoke_test.py         Fake-Switch end-to-end test
     sync_capture_table.py        items.json → capture_table.h (use this; ps1 also exists)
     sync_capture_table.ps1
-    extract_shine_map.py         M5.8: NSP → romfs → shine_map.json (self-bootstrapping)
+    extract_shine_map.py         M5.8: NSP → romfs → shine_map.json + capture_map.json (self-bootstrapping)
     .extract-venv/               Auto-created Python 3.12 venv with oead (gitignored)
   docs/
     architecture.md              Three-tier diagram, threading, responsibilities
     wire-protocol.md             14 message types with examples
     build-windows.md             Toolchain install
-    extract-moon-data.md         M5.8: how to generate shine_map.json from your dump
+    extract-moon-data.md         M5.8: how to generate shine_map.json + capture_map.json from your dump
     install-switch.md            SD card layout, troubleshooting
   vendor/                        For submodules (Archipelago goes here)
   third_party/                   Local clones — gitignored
@@ -315,24 +321,29 @@ python C:\Users\maxwe\SMOArchipelago\scripts\bridge_smoke_test.py
 
 The build also needs `set_source_files_properties(... PROPERTIES COMPILE_FLAGS "-fpermissive")` on lunakit's vendored sources because devkitA64 GCC 15 rejects const-T `std::construct_at` in lunakit's `typed_storage.hpp`. Already wired in our CMakeLists.
 
-## Moon data extraction (M5.8)
+## Game data extraction (M5.8)
 
-Done — see `docs/extract-moon-data.md`. One command after `git clone`:
+Done — see `docs/extract-moon-data.md`. One command after `git clone` produces both the moon map and the capture map:
 
 ```pwsh
 python scripts/extract_shine_map.py --nsp <SMO_1.0.0.nsp>
 ```
 
-Self-bootstraps a Python 3.12 venv with `oead` (no 3.13 wheel exists), runs `hactool` (PFS0 → program NCA → RomFS, ~5 GB cache at `.romfs-cache/`), walks the 17 `ShineList_<HomeStage>.byml` files in `SystemData/ShineInfo.szs`, joins each `ObjId` against the per-stage MSBT in `LocalizedData/USen/MessageData/StageMessage.szs` under key `ScenarioName_<ObjId>`. Output: 775 entries to `bridge/smo_ap_bridge/data/shine_map.json` (gitignored — Nintendo IP).
+Self-bootstraps a Python 3.12 venv with `oead` (no 3.13 wheel exists), runs `hactool` to extract RomFS (~5 GB cache at `.romfs-cache/`), then:
 
-Ground-truth lookup convention discovered during build:
-- The MSBT lookup is in the **per-shine StageName MSBT**, NOT the HomeStage MSBT — sub-stages like `PushBlockExStage` carry their own `ScenarioName_<obj>` entries that don't appear in `CapWorldHomeStage.msbt`.
-- The kingdom assignment is determined by **which BYML the shine came from** (HomeStage), not by the per-shine StageName prefix — those don't match for `*ExStage`/`*Zone` sub-stages.
-- The standard `pymsyt` MSBT tool only knows BotW's control-code set and chokes on SMO's control code 6. We ship a ~150-line in-tree MSBT reader in `scripts/extract_shine_map.py` that generically skips all `0x0E…/0x0F…` sequences — enough for plain-text moon names.
+- **Moons**: walks the 17 `ShineList_<HomeStage>.byml` files in `SystemData/ShineInfo.szs`, joins each `ObjId` against the per-stage MSBT in `LocalizedData/USen/MessageData/StageMessage.szs` under key `ScenarioName_<ObjId>`. 775 entries → `bridge/smo_ap_bridge/data/shine_map.json` (gitignored).
+- **Captures**: walks `SystemData/HackObjList.szs` (130 internal `HackName` strings), joins against `SystemMessage.szs/HackList.msbt` where the label *is* the internal name and the value is the English string. 52 deduped entries → `bridge/smo_ap_bridge/data/capture_map.json` (gitignored).
 
-Cross-validation against `apworld/smo_archipelago/data/locations.json` is 100% (436/436 apworld moons resolved). 339 extracted moons are out-of-scope of the apworld (story moons, Dark/Darker Side, racing cups, etc.) — emitted into `shine_map.json` so the bridge can resolve them if a future apworld adds them.
+Ground-truth conventions discovered during build:
+- Moon MSBT lookup is in the **per-shine StageName MSBT**, NOT the HomeStage MSBT — sub-stages like `PushBlockExStage` carry their own `ScenarioName_<obj>` entries.
+- Moon kingdom assignment comes from **which BYML the shine came from** (HomeStage), not by the per-shine StageName prefix — those don't match for `*ExStage`/`*Zone` sub-stages.
+- Capture lookup is direct: HackList.msbt label is the internal name, value is the English. No key construction needed.
+- `pymsyt` only knows BotW's control-code set and chokes on SMO's control code 6. We ship a ~150-line in-tree MSBT reader in `scripts/extract_shine_map.py` that generically skips all `0x0E…/0x0F…` sequences.
+- The Japanese-internal → English capture mapping is **NOT publicly published anywhere** — lunakit/OdysseyDecomp use the internal names as code identifiers but never alongside English equivalents. Per the user's IP-safety stance, captures must be extracted at user-runtime (same as moons), not hand-coded.
 
-Apworld typo fixes were checked in alongside the extractor (10 entries with `Cafe`/`Café`, `By/by`, missing `!`, etc., now matching Nintendo's USen MSBT).
+Cross-validation: 100% of both apworld moons (436/436) and apworld captures (42/42) resolve. Out-of-apworld-scope SMO entries (339 moons, 8 captures) are emitted anyway so future apworld expansion picks them up automatically.
+
+A small `CAPTURE_NAME_ALIASES` table in the extractor handles 6 cases where the apworld deliberately diverged from Nintendo's strings (collapsed multi-piece variants, prefix renames, casing). Apworld typo fixes from M5.8 stage 1 (10 moon-name corrections in `apworld/.../locations.json`) are also checked in.
 
 ## Known unknowns / risks
 

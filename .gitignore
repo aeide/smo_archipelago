@@ -27,10 +27,12 @@ docs/main-*.nso
 docs/symbols-*.json
 docs/ghidra/
 
-# Moon data extracted from SMO romfs — copyrighted Nintendo content, must
+# Game data extracted from SMO romfs — copyrighted Nintendo content, must
 # regenerate on each user's machine. See docs/extract-moon-data.md.
 bridge/smo_ap_bridge/data/shine_map.json
 bridge/smo_ap_bridge/data/shine_map_review.json
+bridge/smo_ap_bridge/data/capture_map.json
+bridge/smo_ap_bridge/data/capture_map_review.json
 .romfs-cache/
 scripts/.extract-venv/
 

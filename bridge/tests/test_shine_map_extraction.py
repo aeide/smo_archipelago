@@ -1,8 +1,8 @@
-"""Validate a locally-extracted shine_map.json (gitignored, so often absent).
+"""Validate locally-extracted shine_map.json + capture_map.json (gitignored).
 
-These tests are skipped when shine_map.json hasn't been generated yet (fresh
-clone, CI without a SMO dump). After running `python scripts/extract_shine_map.py`
-they confirm the file's schema, count, and the M5.7 anchor entry.
+These tests are skipped when the file hasn't been generated yet (fresh clone,
+CI without a SMO dump). After running `python scripts/extract_shine_map.py`
+they confirm schema, count, anchor entries, and apworld coverage.
 """
 
 from __future__ import annotations
@@ -12,9 +12,11 @@ from pathlib import Path
 
 import pytest
 
-from smo_ap_bridge.maps import MoonResolution, ShineMap
+from smo_ap_bridge.maps import CaptureMap, MoonResolution, ShineMap
 
-SHINE_MAP_PATH = Path(__file__).resolve().parent.parent / "smo_ap_bridge" / "data" / "shine_map.json"
+DATA_DIR = Path(__file__).resolve().parent.parent / "smo_ap_bridge" / "data"
+SHINE_MAP_PATH = DATA_DIR / "shine_map.json"
+CAPTURE_MAP_PATH = DATA_DIR / "capture_map.json"
 
 
 def _entries() -> list[dict]:
@@ -71,3 +73,50 @@ def test_extracted_kingdom_set_known() -> None:
     actual = {e["kingdom"] for e in _entries()}
     extra = actual - known
     assert not extra, f"unexpected kingdoms in extraction: {extra}"
+
+
+# -- capture_map.json --
+
+
+def _capture_entries() -> list[dict]:
+    if not CAPTURE_MAP_PATH.exists():
+        pytest.skip(f"{CAPTURE_MAP_PATH} not generated; run scripts/extract_shine_map.py")
+    return json.loads(CAPTURE_MAP_PATH.read_text(encoding="utf-8"))
+
+
+CAPTURE_REQUIRED_KEYS = {"hack_name", "cap"}
+
+
+def test_capture_map_schema() -> None:
+    for i, e in enumerate(_capture_entries()):
+        missing = CAPTURE_REQUIRED_KEYS - set(e)
+        assert not missing, f"capture entry {i} missing keys {missing}: {e}"
+        assert isinstance(e["hack_name"], str) and e["hack_name"]
+        assert isinstance(e["cap"], str) and e["cap"]
+
+
+def test_capture_map_alias_table_semantics() -> None:
+    """Spot-check one example per alias-table case so the extractor's
+    CAPTURE_NAME_ALIASES semantics stay tested. Kept intentionally small to
+    avoid bulk transcription of the Nintendo internal-name -> English table.
+    """
+    m = CaptureMap(CAPTURE_MAP_PATH)
+    # canonical Japanese internal -> apworld English (most-known anchor)
+    assert m.resolve("Kuribo") == "Goomba"
+    # alias case: variant collapse (multiple Nintendo entries -> one apworld)
+    assert m.resolve("FukuwaraiFacePartsKuribo") == "Picture Match Part"
+    # alias case: casing override
+    assert m.resolve("StatueKoopa") == "Bowser Statue"
+
+
+def test_capture_map_every_entry_resolves_to_a_string() -> None:
+    """Structural — no Nintendo strings asserted, just shape."""
+    m = CaptureMap(CAPTURE_MAP_PATH)
+    for e in _capture_entries():
+        assert m.resolve(e["hack_name"]) == e["cap"]
+
+
+def test_capture_map_no_duplicate_hack_keys() -> None:
+    keys = [e["hack_name"] for e in _capture_entries()]
+    dups = {k for k in keys if keys.count(k) > 1}
+    assert not dups, f"duplicate hack_name keys: {dups}"

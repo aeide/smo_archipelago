@@ -1,4 +1,4 @@
-"""Generate bridge/smo_ap_bridge/data/shine_map.json from a SMO 1.0.0 dump.
+"""Generate shine_map.json + capture_map.json from a SMO 1.0.0 dump.
 
 ONE COMMAND from a fresh checkout (Nintendo IP, so each user runs locally):
 
@@ -7,8 +7,11 @@ ONE COMMAND from a fresh checkout (Nintendo IP, so each user runs locally):
 On first run the script:
   1. Bootstraps a side venv at scripts/.extract-venv (Python 3.12 + oead).
   2. Runs hactool to extract the NSP -> RomFS (~5 GB, into a gitignored cache).
-  3. Walks SystemData/ShineInfo.szs + LocalizedData/USen/MessageData/StageMessage.szs.
-  4. Writes shine_map.json (gitignored) + shine_map_review.json (gitignored).
+  3. Walks SystemData/ShineInfo.szs + LocalizedData/USen/MessageData/StageMessage.szs
+     (moon names) AND SystemData/HackObjList.szs + .../SystemMessage/HackList.msbt
+     (capture names).
+  4. Writes shine_map.json + capture_map.json + their *_review.json companions
+     (all gitignored).
 
 Subsequent runs skip 1-2 if the venv and RomFS cache already exist (~5 s total).
 
@@ -37,7 +40,10 @@ DEFAULT_HACTOOL_FALLBACK = Path(r"C:\Users\maxwe\Desktop\Switch\hactool.exe")
 DEFAULT_ROMFS_CACHE = REPO_ROOT / ".romfs-cache"
 DEFAULT_OUT = REPO_ROOT / "bridge" / "smo_ap_bridge" / "data" / "shine_map.json"
 DEFAULT_REVIEW = REPO_ROOT / "bridge" / "smo_ap_bridge" / "data" / "shine_map_review.json"
+DEFAULT_CAP_OUT = REPO_ROOT / "bridge" / "smo_ap_bridge" / "data" / "capture_map.json"
+DEFAULT_CAP_REVIEW = REPO_ROOT / "bridge" / "smo_ap_bridge" / "data" / "capture_map_review.json"
 APWORLD_LOCATIONS = REPO_ROOT / "apworld" / "smo_archipelago" / "data" / "locations.json"
+APWORLD_ITEMS = REPO_ROOT / "apworld" / "smo_archipelago" / "data" / "items.json"
 
 
 # -------- self-bootstrap: ensure we're in the 3.12 venv with oead ----------
@@ -343,6 +349,113 @@ def load_apworld_moon_names() -> set[str]:
             if isinstance(e.get("name"), str) and e["name"].startswith(prefixes)}
 
 
+def load_apworld_capture_names() -> set[str]:
+    items = json.loads(APWORLD_ITEMS.read_text(encoding="utf-8"))
+    return {it["name"] for it in items if "Capture" in (it.get("category") or [])}
+
+
+# -------- captures: HackObjList.byml + HackList.msbt ----------------------
+
+# Nintendo MSBT name -> apworld capture name. Used when the apworld
+# deliberately diverged from Nintendo's English string — either by collapsing
+# multiple Nintendo variants into one randomizable item (Picture Match Part,
+# Puzzle Part) or by renaming for clarity (Snow Cheep Cheep). Without these
+# the cross-validator reports false-positive misses.
+CAPTURE_NAME_ALIASES: dict[str, str] = {
+    # Nintendo lowercases this in HackList.msbt (apparent pause-menu
+    # sub-label convention); apworld uses title case for AP chat readability.
+    "Bowser statue":                "Bowser Statue",
+    # apworld preferred prefix form over Nintendo's parenthetical
+    "Cheep Cheep (Snow Kingdom)":   "Snow Cheep Cheep",
+    # apworld collapses Nintendo's per-piece variants into one randomizable
+    "Picture Match Part (Mario)":   "Picture Match Part",
+    "Picture Match Part (Goomba)":  "Picture Match Part",
+    # apworld collapses Nintendo's per-kingdom variants into one randomizable
+    "Puzzle Part (Lake Kingdom)":   "Puzzle Part",
+    "Puzzle Part (Metro Kingdom)":  "Puzzle Part",
+}
+
+def walk_hack_obj_list(romfs: Path) -> list[str]:
+    """Return every `HackName` string in SystemData/HackObjList.byml."""
+    sarc = oead.Sarc(oead.yaz0.decompress(
+        (romfs / "SystemData" / "HackObjList.szs").read_bytes()))
+    files = list(sarc.get_files())
+    if not files:
+        return []
+    doc = oead.byml.from_binary(bytes(files[0].data))
+    out: list[str] = []
+    for entry in doc:
+        if "HackName" in entry:
+            out.append(str(entry["HackName"]))
+    return out
+
+
+def load_hack_msbt(romfs: Path) -> dict[str, str]:
+    """Return {internal_hack_name: english_display_name} from HackList.msbt."""
+    sarc = oead.Sarc(oead.yaz0.decompress(
+        (romfs / "LocalizedData" / "USen" / "MessageData" / "SystemMessage.szs").read_bytes()))
+    for f in sarc.get_files():
+        if f.name == "HackList.msbt":
+            return parse_msbt(bytes(f.data))
+    return {}
+
+
+def extract_captures(romfs: Path) -> tuple[list[dict], dict]:
+    """Build {hack_name -> apworld cap name} entries + a review report.
+
+    Pass-through model: bridge defaults to identity for unmapped hack names.
+    We only emit entries whose internal -> English mapping actually differs
+    OR whose English form appears in the apworld (so the bridge has a
+    canonical match for any hack the AP server might ship as an item).
+    """
+    hack_names = walk_hack_obj_list(romfs)
+    hack_msbt = load_hack_msbt(romfs)
+    apworld_caps = load_apworld_capture_names()
+
+    review = {
+        "stats": {},
+        "no_msbt": [],
+        "msbt_match_apworld": 0,
+        "msbt_no_apworld": [],
+        "apworld_unhit": [],
+    }
+    seen_hack: set[str] = set()
+    seen_apworld: set[str] = set()
+    out: list[dict] = []
+
+    for hack in hack_names:
+        if hack in seen_hack:
+            continue
+        seen_hack.add(hack)
+        english = hack_msbt.get(hack)
+        if english is None:
+            review["no_msbt"].append(hack)
+            continue
+        # Apply apworld alias normalization (Cheep Cheep (Snow Kingdom) -> Snow Cheep Cheep, etc.)
+        cap_name = CAPTURE_NAME_ALIASES.get(english, english)
+        if cap_name in apworld_caps:
+            seen_apworld.add(cap_name)
+            review["msbt_match_apworld"] += 1
+        else:
+            review["msbt_no_apworld"].append({"hack_name": hack, "english": english})
+        # Always emit -- bridge identity-fallbacks handle the unmapped case
+        # but a committed mapping makes resolution explicit.
+        out.append({"hack_name": hack, "cap": cap_name})
+
+    review["apworld_unhit"] = sorted(apworld_caps - seen_apworld)
+    review["stats"] = {
+        "raw_hacks": len(hack_names),
+        "unique_hacks": len(seen_hack),
+        "emitted": len(out),
+        "no_msbt": len(review["no_msbt"]),
+        "apworld_caps": len(apworld_caps),
+        "apworld_matched": review["msbt_match_apworld"],
+        "apworld_unhit": len(review["apworld_unhit"]),
+        "out_of_apworld_scope": len(review["msbt_no_apworld"]),
+    }
+    return out, review
+
+
 # -------- main pipeline ---------------------------------------------------
 
 def extract(romfs: Path) -> tuple[list[ResolvedShine], ReviewReport]:
@@ -449,6 +562,10 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"output shine_map.json (default: {DEFAULT_OUT})")
     ap.add_argument("--review", type=Path, default=DEFAULT_REVIEW,
                     help=f"output mismatch report (default: {DEFAULT_REVIEW})")
+    ap.add_argument("--cap-out", type=Path, default=DEFAULT_CAP_OUT,
+                    help=f"output capture_map.json (default: {DEFAULT_CAP_OUT})")
+    ap.add_argument("--cap-review", type=Path, default=DEFAULT_CAP_REVIEW,
+                    help=f"output capture review (default: {DEFAULT_CAP_REVIEW})")
     ap.add_argument("--romfs", type=Path, default=None,
                     help="skip NSP extract; use pre-extracted RomFS directory")
     args = ap.parse_args(argv)
@@ -469,6 +586,7 @@ def main(argv: list[str] | None = None) -> int:
     write_outputs(resolved, review, args.out, args.review)
 
     s = review.stats
+    print(f"== moons ==")
     print(f"raw shines:           {s['raw_shines']}")
     print(f"resolved entries:     {s['resolved']}  -> {args.out}")
     print(f"  msbt misses:        {s['msbt_misses']}")
@@ -478,6 +596,23 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  name mismatches:    {s['name_mismatches']} (out-of-apworld-scope; still emitted)")
     print(f"  apworld unhit:      {s['apworld_unhit']}")
     print(f"review report:        {args.review}")
+
+    cap_entries, cap_review = extract_captures(romfs)
+    args.cap_out.parent.mkdir(parents=True, exist_ok=True)
+    args.cap_out.write_text(json.dumps(cap_entries, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    args.cap_review.write_text(json.dumps(cap_review, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    cs = cap_review["stats"]
+    print()
+    print(f"== captures ==")
+    print(f"raw HackObjList:      {cs['raw_hacks']}")
+    print(f"emitted entries:      {cs['emitted']}  -> {args.cap_out}")
+    print(f"  no MSBT match:      {cs['no_msbt']}")
+    print(f"apworld captures:     {cs['apworld_caps']}")
+    print(f"  apworld matched:    {cs['apworld_matched']}")
+    print(f"  apworld unhit:      {cs['apworld_unhit']}")
+    print(f"  out-of-scope hacks: {cs['out_of_apworld_scope']} (still emitted)")
+    print(f"review report:        {args.cap_review}")
     return 0
 
 

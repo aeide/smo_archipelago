@@ -1,10 +1,16 @@
-# Extracting moon data (`shine_map.json`) from your SMO 1.0.0 dump
+# Extracting game data (`shine_map.json` + `capture_map.json`) from your SMO 1.0.0 dump
 
-The bridge needs a `(stage_name, object_id) → (kingdom, shine_id)` table for
-every moon in the game so `MoonGetHook` fires can be translated into
-Archipelago `LocationCheck` messages. The data lives inside SMO's romfs and
-is copyrighted — we can't ship it, so each user generates it locally on
-first run.
+The bridge needs two lookup tables to translate raw SMO identifiers into
+Archipelago messages:
+
+- **`shine_map.json`** — `(stage_name, object_id) → (kingdom, shine_id)` for
+  every moon, so `MoonGetHook` fires become `LocationCheck` calls.
+- **`capture_map.json`** — `hack_name → english_cap_name` for every capture,
+  so the Switch's internal `Kuribo` becomes the apworld's `Goomba`.
+
+Both live inside SMO's romfs and are copyrighted Nintendo content — we can't
+ship them, so each user generates them locally on first run. The same one
+command produces both.
 
 ## One command
 
@@ -16,13 +22,15 @@ python scripts/extract_shine_map.py --nsp <path-to-SMO_1.0.0.nsp>
 
 That writes:
 
-- `bridge/smo_ap_bridge/data/shine_map.json` — the live lookup table (775 entries on 1.0.0).
-- `bridge/smo_ap_bridge/data/shine_map_review.json` — diagnostic report.
+- `bridge/smo_ap_bridge/data/shine_map.json` — the moon lookup table (775 entries on 1.0.0).
+- `bridge/smo_ap_bridge/data/shine_map_review.json` — moon diagnostic report.
+- `bridge/smo_ap_bridge/data/capture_map.json` — capture lookup (52 entries: 42 apworld + 8 out-of-scope, deduped).
+- `bridge/smo_ap_bridge/data/capture_map_review.json` — capture diagnostic report.
 - `.romfs-cache/` — extracted RomFS (~5 GB; reused on subsequent runs).
 - `scripts/.extract-venv/` — Python 3.12 venv with `oead` (created once).
 
-Both output files are gitignored. Re-running the script is fast (~5 s) since
-the romfs and venv caches survive.
+All four output files are gitignored. Re-running the script is fast (~5 s)
+since the romfs and venv caches survive.
 
 ## Prereqs
 
@@ -59,18 +67,26 @@ python scripts/extract_shine_map.py --romfs <path-to-romfs-root>
 2. **Romfs extract** (first run only, ~2 min): runs `hactool` twice — first
    to crack the NSP into PFS0 contents, then to extract RomFS from the
    largest NCA (the program NCA). Output lands in `.romfs-cache/`.
-3. **Walk shine lists**: opens `SystemData/ShineInfo.szs` (Yaz0+SARC of
-   17 BYML files, one `ShineList_<HomeStage>.byml` per kingdom). Each entry
-   has `StageName`, `ObjId`, `UniqueId`, plus flags (`IsGrand`, `IsMoonRock`).
-4. **Parse MSBT messages**: opens
-   `LocalizedData/USen/MessageData/StageMessage.szs` (~201 `<StageName>.msbt`
-   files). Each shine's display name is keyed `ScenarioName_<ObjId>` in the
-   per-stage MSBT (NOT the HomeStage MSBT — sub-stages like `PushBlockExStage`
-   own their own messages).
-5. **Cross-validate against apworld**: every extracted `<Kingdom>: <Name>`
-   should appear in `apworld/smo_archipelago/data/locations.json`. Mismatches
-   are logged in the review file; misses are still emitted (the bridge
-   handles unknown moons gracefully).
+3. **Moons** — walks `SystemData/ShineInfo.szs` (Yaz0+SARC of 17 BYML files,
+   one `ShineList_<HomeStage>.byml` per kingdom), then joins each shine's
+   `ObjId` against the per-stage MSBT in
+   `LocalizedData/USen/MessageData/StageMessage.szs` under key
+   `ScenarioName_<ObjId>`. The MSBT must be the per-shine `StageName` MSBT,
+   not the HomeStage MSBT — sub-stages like `PushBlockExStage` own their
+   own messages.
+4. **Captures** — walks `SystemData/HackObjList.szs` (~130 `HackName`
+   strings, the internal SMO names like `Kuribo`), then joins against
+   `LocalizedData/USen/MessageData/SystemMessage.szs/HackList.msbt` where
+   the label *is* the internal name and the value is the English display
+   name (`Kuribo → Goomba`). A small alias table in the script handles
+   cases where the apworld deliberately diverged from Nintendo (e.g.
+   apworld collapses Nintendo's per-piece `Picture Match Part (Mario)` /
+   `Picture Match Part (Goomba)` etc. into one randomizable item).
+5. **Cross-validate against apworld**: every extracted moon name should
+   appear in `apworld/.../locations.json`; every extracted capture name
+   should appear in `apworld/.../items.json` (Capture category). Mismatches
+   are logged in the review files; misses are still emitted (the bridge
+   handles unknowns gracefully).
 
 The MSBT parser is in-tree (no `pymsyt` — that tool only knows BotW's control
 codes and chokes on SMO's). Moon names are plain text, so generically
@@ -79,6 +95,7 @@ stripping all `0x0E…` / `0x0F…` control sequences is enough.
 ## Expected output
 
 ```
+== moons ==
 raw shines:           775
 resolved entries:     775  -> bridge/smo_ap_bridge/data/shine_map.json
   msbt misses:        0
@@ -87,15 +104,32 @@ resolved entries:     775  -> bridge/smo_ap_bridge/data/shine_map.json
 apworld moons:        436
   name mismatches:    339 (out-of-apworld-scope; still emitted)
   apworld unhit:      0
-review report:        bridge/smo_ap_bridge/data/shine_map_review.json
+
+== captures ==
+raw HackObjList:      130
+emitted entries:      52  -> bridge/smo_ap_bridge/data/capture_map.json
+  no MSBT match:      77
+apworld captures:     42
+  apworld matched:    44
+  apworld unhit:      0
+  out-of-scope hacks: 8 (still emitted)
 ```
 
-- `apworld unhit: 0` is the success criterion — every moon the apworld asks
-  about can be resolved live by the bridge.
-- `name mismatches: 339` is expected: SMO has 775 moons, the apworld
-  randomizes 436. The other 339 are story moons, racing-cup moons, Peach
-  cameos, Dark/Darker Side, etc. — they're emitted into `shine_map.json`
-  so the bridge can resolve them if a future apworld revision adds them.
+- **`apworld unhit: 0`** for both is the success criterion: every moon /
+  capture the apworld asks about can be resolved live.
+- **Moons `name mismatches: 339`** is expected — SMO has 775 moons but the
+  apworld randomizes 436. The other 339 are story moons, racing-cup moons,
+  Peach cameos, Dark/Darker Side, etc.
+- **Captures `no MSBT match: 77`** is expected — `HackObjList.byml` includes
+  many internal/debug objects (`PukupukuRebuild`, `Bee`, `BigStatuePossessed`,
+  …) that have no user-facing display name.
+- **Captures `out-of-scope hacks: 8`** is expected — Frog, Yoshi, T-Rex,
+  Chain Chomp variants, Spark Pylon, and Tostarena letters: SMO captures
+  the apworld doesn't randomize.
+- **Captures `apworld matched: 44 > 42`** because the alias table maps two
+  Nintendo per-kingdom variants (e.g. `Puzzle Part (Lake Kingdom)` and
+  `Puzzle Part (Metro Kingdom)`) onto the single apworld `Puzzle Part`
+  entry.
 
 ## Troubleshooting
 
@@ -130,6 +164,10 @@ cd bridge
 .\.venv\Scripts\python -m pytest tests/test_shine_map_extraction.py -v
 ```
 
-Five tests check the schema, count, dedup, and the M5.7 anchor entry
-(`WaterfallWorldHomeStage / obj214 → "Cascade: Our First Power Moon"`).
-They auto-skip when `shine_map.json` is missing (fresh checkout / CI).
+Nine tests check schema, count, dedup, and a small set of anchor lookups for
+both maps. The capture tests deliberately use only 3 spot-check name pairs
+to avoid bulk transcription of Nintendo's internal→English table; the bulk
+of capture validation is structural (every emitted hack resolves, no
+duplicates) rather than name-by-name.
+
+They auto-skip when the corresponding map file is missing (fresh checkout / CI).
