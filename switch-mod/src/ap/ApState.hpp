@@ -193,6 +193,29 @@ public:
     bool goal_sent = false;
     bool synthetic_grant_this_frame = false;
 
+    // M7: set immediately before we invoke PlayerHackKeeper::forceKillHack
+    // from the deferred-kill tick. Defense-in-depth — today nothing observes
+    // the kill, but if a future hook lands on the post-cancel path it can
+    // check this flag and skip outbound reporting so we don't echo a
+    // synthetic "Mario un-captured" event back to AP.
+    bool synthetic_uncapture_this_frame = false;
+
+    // M7 deferred kill — CaptureStartHook's deny branch sets these instead of
+    // calling forceKillHack inline; smoap::hooks::tickPendingUncapture()
+    // drains them from drawMain ~1s later. The delay serves two purposes:
+    //   (1) cancel/forceKillHack appears to be a no-op when invoked from
+    //       inside startHack — playtest 2026-05-16 showed cancelHack ran
+    //       cleanly but Mario stayed captured. By the time the hack demo has
+    //       run its course, the keeper is in a state where teardown sticks.
+    //   (2) it's funnier UX — the player runs around as the captured enemy
+    //       for a beat before being yanked back to Mario.
+    // Both fields touched only from the frame thread (CaptureStartHook fires
+    // inline from game code during frame processing, drawMain runs there
+    // too). Atomic for paranoid cross-frame visibility / consistency with
+    // the surrounding state fields.
+    std::atomic<void*> pending_kill_keeper{nullptr};
+    std::atomic<std::int64_t> pending_kill_at_ms{0};
+
     // M6 phase A — AP-credit counters surfaced via shine-counter hooks.
     // These are NOT shine flag flips: collecting a moon locally still drives
     // SMO's own shine table; AP-granted moons accumulate here and the

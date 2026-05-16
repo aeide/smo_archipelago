@@ -59,6 +59,23 @@ inline constexpr const char* kGameDataFileSetGotShine =
 inline constexpr const char* kPlayerHackKeeperStartHack =
     "_ZN16PlayerHackKeeper9startHackEPN2al9HitSensorES2_PNS0_9LiveActorE";
 
+// PlayerHackKeeper::forceKillHack()
+// Source: MonsterDruide1/OdysseyDecomp src/Player/PlayerHackKeeper.h
+// Used by M7 to abort an in-progress capture when AP hasn't unlocked it.
+// Called from CaptureStartHook callback right after Orig has populated the
+// keeper, so we can read the cap name (getCurrentHackName) and decide to
+// cancel without ever needing to know the name pre-startHack.
+//
+// We chose forceKillHack over cancelHack: playtested 2026-05-16, cancelHack
+// returned cleanly (no crash) but did NOT release Mario — likely because the
+// hack state machine hasn't fully entered the dive-in demo at the moment
+// startHack returns, and cancelHack is a soft "player wants out" path that
+// is a no-op in that window. forceKillHack is the hardest teardown, used
+// internally for kingdom transitions / boss-defeat resets. Body is also
+// not decompiled but the name + caller pattern suggests it's the right tool.
+inline constexpr const char* kPlayerHackKeeperForceKillHack =
+    "_ZN16PlayerHackKeeper13forceKillHackEv";
+
 // --- Scenario flag set ---
 // GameDataFile::setMainScenarioNo(s32)  (s32 = int on aarch64)
 // Source: MonsterDruide1/OdysseyDecomp src/System/GameDataFile.h:456
