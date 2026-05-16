@@ -202,6 +202,14 @@ def _random_combos(n: int, seed: int = 42) -> list[tuple[str, dict[str, bool]]]:
     return cases
 
 
+# Scenarios known to be mathematically infeasible: skipping enough moons leaves
+# fewer locations than the apworld's required progression items (Power Moons
+# and captures), so AP's Fill stage raises FillError. These are tracked as
+# xfail(strict=True) so any future apworld change that auto-shrinks the
+# item pool below the location count will surface as an xpass.
+INFEASIBLE_SCENARIOS = {"all_new_off"}
+
+
 def _build_scenarios() -> list[tuple[str, dict[str, bool]]]:
     fast = os.environ.get("SMOAP_GEN_TEST_FAST") == "1"
     if fast:
@@ -221,11 +229,25 @@ def _build_scenarios() -> list[tuple[str, dict[str, bool]]]:
     ]
 
 
+def _params(scenarios: list[tuple[str, dict[str, bool]]]) -> list:
+    """Wrap each scenario in pytest.param with xfail markers as needed."""
+    params = []
+    for name, overrides in scenarios:
+        marks = []
+        if name in INFEASIBLE_SCENARIOS:
+            marks.append(pytest.mark.xfail(
+                strict=True,
+                reason="too many locations skipped to fit the apworld's "
+                       "progression item pool (FillError)",
+            ))
+        params.append(pytest.param(name, overrides, id=name, marks=marks))
+    return params
+
+
 SCENARIOS = _build_scenarios()
-SCENARIO_IDS = [name for name, _ in SCENARIOS]
 
 
-@pytest.mark.parametrize("scenario_name,overrides", SCENARIOS, ids=SCENARIO_IDS)
+@pytest.mark.parametrize("scenario_name,overrides", _params(SCENARIOS))
 def test_smo_generation_solo(_apworld_zip_built, scenario_name, overrides):
     """SMO alone — confirm each option combination yields a generatable seed."""
     with tempfile.TemporaryDirectory(prefix=f"smo_gen_{scenario_name}_") as td:
@@ -235,7 +257,7 @@ def test_smo_generation_solo(_apworld_zip_built, scenario_name, overrides):
         _assert_gen_ok(result, f"solo/{scenario_name}")
 
 
-@pytest.mark.parametrize("scenario_name,overrides", SCENARIOS, ids=SCENARIO_IDS)
+@pytest.mark.parametrize("scenario_name,overrides", _params(SCENARIOS))
 def test_smo_generation_with_random_partner(_apworld_zip_built, scenario_name, overrides):
     """SMO + one randomly chosen partner world — confirms multi-world fill works."""
     # Deterministic partner per-scenario so failures reproduce.
