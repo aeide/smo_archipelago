@@ -20,8 +20,15 @@ from .protocol import ItemKind, ItemRef
 
 log = logging.getLogger(__name__)
 
-# Match e.g. "Cap: Frog-Jumping Above the Fog" -> kingdom="Cap", shine_id="Frog-Jumping Above the Fog"
+# Locations use ": " separator: "Cap: Frog-Jumping Above the Fog" ->
+#   kingdom="Cap", shine_id="Frog-Jumping Above the Fog".
 _LOC_PREFIX_RE = re.compile(r"^([A-Za-z' ]+):\s*(.+)$")
+
+# Items use " Kingdom " (space-separated, no colon):
+#   "Cap Kingdom Power Moon" -> kingdom="Cap",     shine_id="Power Moon"
+#   "Cascade Kingdom Multi-Moon" -> kingdom="Cascade", shine_id="Multi-Moon"
+# Non-greedy head captures multi-word kingdom names like "Dark Side".
+_ITEM_MOON_KINGDOM_RE = re.compile(r"^(.+?) Kingdom (Power Moon|Multi-Moon)$")
 
 
 @dataclass
@@ -99,8 +106,14 @@ class DataPackage:
             # Capture items are bare enemy names (e.g. "Goomba", "Paragoomba").
             return ClassifiedItem(ItemKind.CAPTURE, name, cap=name)
         if "moon" in cats or "genericmoon" in cats or "specificmoon" in cats:
-            kingdom, shine_id = self._split_kingdom_prefix(name)
-            return ClassifiedItem(ItemKind.MOON, name, kingdom=kingdom, shine_id=shine_id)
+            # Items use " Kingdom " separator, not ": " (that's location form).
+            m = _ITEM_MOON_KINGDOM_RE.match(name)
+            if m:
+                return ClassifiedItem(ItemKind.MOON, name,
+                                      kingdom=m.group(1).strip(),
+                                      shine_id=m.group(2))
+            # No kingdom prefix — truly generic "Power Moon" credit.
+            return ClassifiedItem(ItemKind.MOON, name, kingdom=None, shine_id=name)
         if "kingdom" in cats or "kingdom unlock" in cats:
             return ClassifiedItem(ItemKind.KINGDOM, name, kingdom=self._strip_prefix(name, ("Kingdom: ", "Unlock: ")))
         if "shop" in cats:

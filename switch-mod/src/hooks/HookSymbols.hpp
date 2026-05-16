@@ -95,6 +95,29 @@ inline constexpr const char* kPlayerHitPointDataKill =
     "_ZN18PlayerHitPointData4killEv";
 
 // =============================================================================
+// M6 — moon counter HUD substitution (phase A).
+// =============================================================================
+//
+// Goal: surface AP-credit counts in the in-game moon counter without flipping
+// any actual shine flags. We hook the two getters SMO uses for HUD/menu
+// rendering and return orig() + our AP-credit total.
+//
+// Provenance: forward-declared in lunakit-vendor/src/game/GameData/
+// GameDataFunction.h:129,131 (cited from OdysseyDecomp). Mangled via
+// aarch64-none-elf-g++ -c on a minimal forward-decl TU (see scripts/check_
+// nso_symbols.py for the full symbol list verified against main.nso).
+
+// GameDataFunction::getCurrentShineNum(GameDataHolderAccessor)
+// Returns total moon count across all kingdoms (HUD top-left "x/N").
+inline constexpr const char* kGameDataFunctionGetCurrentShineNum =
+    "_ZN16GameDataFunction18getCurrentShineNumE22GameDataHolderAccessor";
+
+// GameDataFunction::getGotShineNum(GameDataHolderAccessor, s32 worldId)
+// Returns moon count for a specific kingdom (kingdom menu / shine list).
+inline constexpr const char* kGameDataFunctionGetGotShineNum =
+    "_ZN16GameDataFunction14getGotShineNumE22GameDataHolderAccessori";
+
+// =============================================================================
 // Legacy / aliasing — kept so existing call sites don't break.
 // =============================================================================
 inline constexpr const char* kSeadGameSystemCtor       = kGameSystemInit;

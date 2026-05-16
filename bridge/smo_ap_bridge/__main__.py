@@ -43,6 +43,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="Force-disable web tracker")
     p.add_argument("--log-level", default=None,
                    help="DEBUG | INFO | WARNING | ERROR")
+    p.add_argument("--repl", action="store_true", default=False,
+                   help="Enable interactive command REPL on stdin (M6 playtest "
+                        "iteration; lets you inject items directly without an AP server)")
     p.add_argument("--version", action="version", version=__version__)
     return p.parse_args(argv)
 
@@ -187,11 +190,41 @@ async def run(args: argparse.Namespace) -> int:
         log.error("failed to start AP client: %s", e)
         log.error("(bridge will keep the Switch TCP server up; install Archipelago to enable AP)")
 
+    shutdown = asyncio.Event()
+    serve_task = asyncio.create_task(sw.serve_forever(), name="switch-serve")
+    repl_task: asyncio.Task | None = None
+    if args.repl:
+        from .repl import run_repl
+        repl_task = asyncio.create_task(
+            run_repl(sw.send_item, dp, state, shutdown), name="repl"
+        )
+
     try:
-        await sw.serve_forever()
+        if repl_task is None:
+            await serve_task
+        else:
+            # Race: whichever finishes first wins. Normally REPL `quit` sets
+            # shutdown; alternatively Ctrl-C raises in the main task.
+            done, _ = await asyncio.wait(
+                {serve_task, repl_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            # Surface any task exception immediately.
+            for t in done:
+                exc = t.exception()
+                if exc is not None and not isinstance(exc, asyncio.CancelledError):
+                    raise exc
     except (KeyboardInterrupt, asyncio.CancelledError):
         log.info("shutdown requested")
     finally:
+        shutdown.set()
+        for t in (serve_task, repl_task):
+            if t is not None and not t.done():
+                t.cancel()
+                try:
+                    await t
+                except (asyncio.CancelledError, Exception):
+                    pass
         await ap.stop()
         await sw.stop()
     return 0

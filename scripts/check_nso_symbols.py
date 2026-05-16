@@ -14,6 +14,7 @@ from pathlib import Path
 import lz4.block
 
 SYMBOLS = [
+    # M0-M4 hooks (verified 2026-05-15).
     "_ZNK16HakoniwaSequence8drawMainEv",
     "_ZN10GameSystem4initEv",
     "_ZN2al5Scene7endInitERKNS_13ActorInitInfoE",
@@ -22,6 +23,18 @@ SYMBOLS = [
     "_ZN12GameDataFile17setMainScenarioNoEi",
     "_ZN12GameDataFile14initializeDataEv",
     "_ZN16DemoPeachWedding14makeActorAliveEv",
+    # M6: shine-counter hooks (HUD substitution for AP credit display).
+    "_ZN16GameDataFunction18getCurrentShineNumE22GameDataHolderAccessor",
+    "_ZN16GameDataFunction14getGotShineNumE22GameDataHolderAccessori",
+    # M6: capture grant + idempotency.
+    "_ZN16GameDataFunction17addHackDictionaryE20GameDataHolderWriterPKc",
+    "_ZN16GameDataFunction23isExistInHackDictionaryE22GameDataHolderAccessorPKc",
+    # M6: kingdom unlock + idempotency.
+    "_ZN16GameDataFunction11unlockWorldE20GameDataHolderWriteri",
+    "_ZN16GameDataFunction15isUnlockedWorldE22GameDataHolderAccessori",
+    # M6: snapshot enumerate support.
+    "_ZN16GameDataFunction10isGotShineE22GameDataHolderAccessorPK9ShineInfo",
+    "_ZN16GameDataFunction15getGameDataFileE20GameDataHolderWriter",
 ]
 
 

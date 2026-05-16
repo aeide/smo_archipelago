@@ -87,9 +87,10 @@ The PC bridge owns AP-protocol complexity (websocket + deflate + TLS + reconnect
   - **MSBT parser**: shipped as a ~150-line in-tree reader because `pymsyt` only knows BotW's control codes and chokes on SMO's control code 6.
   - **Cross-validation**: 100% (436/436 moons + 42/42 captures) of apworld entries resolve. Emitted files cover the full 775 + 52 SMO entries — extras (339 out-of-apworld-scope moons, 8 out-of-scope captures) emitted so future apworld expansion picks them up automatically.
   - **IP discipline**: all 4 generated files (`shine_map.json`, `shine_map_review.json`, `capture_map.json`, `capture_map_review.json`) are gitignored. Nine tests in `bridge/tests/test_shine_map_extraction.py` validate schema/count/dedup/anchors for both maps (auto-skip when files absent). Also fixed 10 apworld typos in `apworld/.../locations.json` (e.g. `"Cafe?"` → `"Café?"`, `"By the Falls"` → `"by the Falls"`). Full workflow in `docs/extract-moon-data.md`.
-- **M6**: item application (received items → GameDataHolder writes) — also lands snapshot enumerate bodies (`enumerateOwnedShines` / `enumerateOwnedCaptures`); same GameDataHolder traversal as `grantShine`
+- **M6 phase A**: AP-credit moon counter HUD substitution — **DONE 2026-05-15.** Two new trampoline hooks (`ShineNumGetHook` on `GameDataFunction::getCurrentShineNum`, `ShineNumByWorldGetHook` on `getGotShineNum`) drop `orig` and return AP-credit-only counts. `ApState` gains `ap_moons_unkingdomed` (truly-generic "Power Moon" credits) + `ap_moons_kingdom[17]` (kingdom-tagged credits, indexed by `kingdomBitFor`). `applyOnFrame` moon arm rewritten to bump credit counters with rich logging (`[m6-moon]` lines); Multi-Moon items grant +3, single-moon +1, kingdom-less generic credits go to `ap_moons_unkingdomed` and only show in the global counter. setGotShine runs untouched so the shine list correctly reflects local pickups — only the visible counter is AP-gated. Validated in Ryujinx (2026-05-15): local moon collection → HUD stays 0, Odyssey ship rejects the moon ("doesn't count"); REPL `grant Cascade Kingdom Power Moon` → HUD ticks to 1, Mario can hand it to the Odyssey; `grant Snow Kingdom Power Moon` rejected by the Cascade Odyssey (kingdom-specific routing works); pre-existing save moons disappear from the visible counter (orig is fully suppressed). `getGotShineNum` hook resolves and fires when explicitly invoked but **never fires during normal Cascade play** — SMO's natural per-kingdom counter reads shine flags directly; the global `getCurrentShineNum` does most of the work for HUD + Odyssey gating. Two new symbols mangled via `aarch64-none-elf-g++ -c` from OdysseyDecomp forward-decls and added to `scripts/check_nso_symbols.py`. Also fixed a latent classifier bug: items use ` Kingdom ` separator (space), not `:` (location form), so `"Cascade Kingdom Power Moon"` was silently routing to `kingdom=None` — fix in `datapackage.py` with new `_ITEM_MOON_KINGDOM_RE`. Bridge `--repl` mode added for dev-test injection without an AP server (commands route through `DataPackage.classify_item` so wire fidelity matches real AP items). M6 phase B (captures) + phase C (kingdom unlock via `unlockWorld` + snapshot enumerate bodies) are the obvious continuations.
+- **M6 phase B/C** (deferred): the original M6 single-shot plan. Captures via `addHackDictionary`, kingdom unlocks via `unlockWorld`, snapshot enumerate bodies (`enumerateOwnedShines` / `enumerateOwnedCaptures`). Symbols already in `scripts/check_nso_symbols.py`. Phase A's REPL-injection flow is the test loop for these.
 - **M7**: capture lock + goal detection
-- **M8**: apworld extensions + in-game ImGui + polish
+- **M8**: apworld extensions + in-game ImGui + polish (incl. dedicated AP-credit HUD overlay — see "What's definitely NOT done")
 
 ## Repository layout
 
@@ -358,3 +359,23 @@ A small `CAPTURE_NAME_ALIASES` table in the extractor handles 6 cases where the 
 
 - On-screen status overlay — deferred to M8 per user Q&A; M3 ships heartbeat-to-lm-log instead (web tracker is the canonical source of truth)
 - HELLO `cap_table_hash` field is empty — populated in M4 once we hash the generated `capture_table.h`
+- **AP-credit HUD overlay (M8)**: M6 phase A hooks `getCurrentShineNum`/`getGotShineNum` to return AP-credit-only counts (not orig+credit). The natural HUD shows our AP count — visually weird: a locally collected moon does NOT bump the counter even though the shine appears in the shine list. A dedicated ImGui-style AP overlay (à la lunakit devgui) belongs in M8 to surface AP credit info in a clearer, separate UI element. Hooks lying about the natural counter is a stopgap.
+- **`getGotShineNum` doesn't fire in normal gameplay**: M6 phase A playtest showed the per-kingdom counter hook never fires when Mario plays in Cascade. SMO's natural per-kingdom counter reads from a different code path. The hook is harmless (returns AP credit when called); if a future code path does call it the credit lands correctly. Kingdom-progression gating via moon counts is therefore an open question — phase B / M6.x may need to land `unlockWorld` for explicit AP-gated kingdom unlocks rather than relying on moon-count substitution.
+
+## M6 phase-A playtest loop
+
+Bridge has a `--repl` mode for direct item injection (no AP server required):
+
+```pwsh
+bridge/.venv/Scripts/python -m smo_ap_bridge --config bridge/config.local.toml --repl
+# Then at the prompt:
+#   smo-ap-bridge> grant Cascade Kingdom Power Moon
+#   smo-ap-bridge> grant Power Moon
+#   smo-ap-bridge> grant Cascade Kingdom Multi-Moon
+#   smo-ap-bridge> capture Goomba
+#   smo-ap-bridge> kingdom Sand
+#   smo-ap-bridge> status
+#   smo-ap-bridge> help
+```
+
+Items route through `DataPackage.classify_item` so wire fidelity matches real AP-issued items. `from=repl` on the mod side distinguishes them from AP grants in log lines.

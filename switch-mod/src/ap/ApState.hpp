@@ -141,6 +141,22 @@ public:
     bool goal_sent = false;
     bool synthetic_grant_this_frame = false;
 
+    // M6 phase A — AP-credit counters surfaced via shine-counter hooks.
+    // These are NOT shine flag flips: collecting a moon locally still drives
+    // SMO's own shine table; AP-granted moons accumulate here and the
+    // ShineNumGetHook / ShineNumByWorldGetHook add them on top of orig() so
+    // the HUD reflects total credit. Reading these from the hook trampoline
+    // (game thread) and writing from applyOnFrame (also game thread) — atomic
+    // for paranoid cross-frame visibility only, no contention.
+    //
+    // kingdomBitFor() in KingdomUnlock.cpp returns 0..16 for known kingdoms;
+    // ap_moons_kingdom[bit] is the per-kingdom credit count. "Power Moon"
+    // (genericmoon, kingdom unknown) accumulates in ap_moons_unkingdomed and
+    // is added only to getCurrentShineNum (global), never to a specific
+    // kingdom's getGotShineNum.
+    std::atomic<int> ap_moons_unkingdomed{0};
+    std::atomic<int> ap_moons_kingdom[17] = {};
+
     // DeathLink debounce. Set by the frame thread when PlayerHitPointData::kill
     // fires; cleared by the socket worker after the death message ships. A
     // second kill() within the same death event short-circuits.

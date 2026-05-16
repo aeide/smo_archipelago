@@ -21,6 +21,26 @@ ApState& ApState::instance() {
     return s;
 }
 
+// M6 phase A: classify a moon item's grant amount.
+// "X Kingdom Multi-Moon" in the AP item pool represents one in-game Multi-Moon
+// (3 power moons). All other moon items count as 1. Match on the shine_id
+// suffix to keep this robust across "Multi-Moon", "Cap Kingdom Multi-Moon",
+// etc. — the bridge passes only the kingdom-stripped tail in shine_id.
+static int moonGrantAmount(const Item& item) {
+    const char* s = item.shine_id.c_str();
+    // Search for "Multi-Moon" substring (case-sensitive, deliberate — the
+    // apworld emits exactly this casing).
+    const char* needle = "Multi-Moon";
+    while (*s) {
+        const char* a = s;
+        const char* b = needle;
+        while (*a && *b && *a == *b) { ++a; ++b; }
+        if (*b == '\0') return 3;
+        ++s;
+    }
+    return 1;
+}
+
 void ApState::applyOnFrame() {
     Item item;
     while (inbound.pop(item)) {
@@ -31,31 +51,73 @@ void ApState::applyOnFrame() {
         copyCheckField(synth.cap, item.cap.c_str());
         synth.slot = item.slot;
         const std::uint64_t h = hashCheck(synth);
+        (void)h;  // M6 phase A: moon arm no longer dedupes via hash.
 
         switch (item.kind) {
-            case ItemKind::Moon:
-                if (!item.kingdom.empty() && !item.shine_id.empty()) {
-                    synthetic_grant_this_frame = true;
-                    smoap::game::grantShine(item.kingdom, item.shine_id);
-                    synthetic_grant_this_frame = false;
-                    locations_checked.tryInsert(h);  // suppress matching outbound check
+            case ItemKind::Moon: {
+                const int amount = moonGrantAmount(item);
+                if (item.kingdom.empty()) {
+                    // Truly generic "Power Moon" — only contributes to global.
+                    const int prev = ap_moons_unkingdomed.fetch_add(amount,
+                        std::memory_order_relaxed);
+                    SMOAP_LOG_INFO(
+                        "[m6-moon] credit unkingdomed +%d (was %d, now %d) "
+                        "shine_id='%s' from=%s",
+                        amount, prev, prev + amount,
+                        item.shine_id.c_str(), item.from.c_str());
+                } else {
+                    const std::uint8_t bit = smoap::game::kingdomBitFor(item.kingdom);
+                    if (bit < 17) {
+                        const int prev = ap_moons_kingdom[bit].fetch_add(amount,
+                            std::memory_order_relaxed);
+                        SMOAP_LOG_INFO(
+                            "[m6-moon] credit kingdom=%s(bit=%u) +%d "
+                            "(was %d, now %d) shine_id='%s' from=%s",
+                            item.kingdom.c_str(), bit, amount, prev,
+                            prev + amount, item.shine_id.c_str(),
+                            item.from.c_str());
+                    } else {
+                        // Unknown kingdom name — fall back to unkingdomed so
+                        // the credit isn't silently dropped. Loud so we can
+                        // patch kKingdoms / the bridge classifier.
+                        const int prev = ap_moons_unkingdomed.fetch_add(amount,
+                            std::memory_order_relaxed);
+                        SMOAP_LOG_WARN(
+                            "[m6-moon] UNKNOWN kingdom '%s' (bit=%u) — "
+                            "credited to unkingdomed +%d (was %d, now %d) "
+                            "shine_id='%s'",
+                            item.kingdom.c_str(), bit, amount, prev,
+                            prev + amount, item.shine_id.c_str());
+                    }
                 }
                 break;
+            }
             case ItemKind::Capture:
                 if (!item.cap.empty()) {
                     const std::uint8_t bit = smoap::game::captureBitFor(item.cap);
                     if (bit < captures_unlocked.size()) captures_unlocked.set(bit);
+                    SMOAP_LOG_INFO("[m6-capture] local-bit only (phase B "
+                                   "lands hack-dictionary write): cap='%s' "
+                                   "bit=%u from=%s",
+                                   item.cap.c_str(), bit, item.from.c_str());
                 }
                 break;
             case ItemKind::Kingdom:
                 if (!item.kingdom.empty()) {
                     const std::uint8_t bit = smoap::game::kingdomBitFor(item.kingdom);
                     if (bit < 32) received_kingdom_mask |= (1u << bit);
+                    SMOAP_LOG_INFO("[m6-kingdom] local-bit only (phase C "
+                                   "lands unlockWorld write): kingdom='%s' "
+                                   "bit=%u from=%s",
+                                   item.kingdom.c_str(), bit, item.from.c_str());
                 }
                 break;
             case ItemKind::Shop:
             case ItemKind::Other:
-                // M4 / M8: shop items don't grant in-game state directly; UI-only.
+                SMOAP_LOG_DEBUG("[m6-other] item kind=%u name='%s' from=%s "
+                                "(no in-game effect)",
+                                static_cast<unsigned>(item.kind),
+                                item.name.c_str(), item.from.c_str());
                 break;
         }
     }

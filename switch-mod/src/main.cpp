@@ -37,6 +37,9 @@ void installScenarioFlagHook();
 void installSaveLoadHook();
 void installEndingHook();
 void installDeathHook();
+// M6 phase A: shine-counter HUD substitution for AP credit display.
+void installShineNumGetHook();
+void installShineNumByWorldGetHook();
 }  // namespace smoap::hooks
 
 namespace {
@@ -121,6 +124,10 @@ extern "C" void exl_main(void* /*x0*/, void* /*x1*/) {
     smoap::hooks::installSaveLoadHook();
     smoap::hooks::installEndingHook();
     smoap::hooks::installDeathHook();
+
+    SMOAP_LOG_INFO("installing 2 M6-phase-A shine-counter hooks");
+    smoap::hooks::installShineNumGetHook();
+    smoap::hooks::installShineNumByWorldGetHook();
 
     SMOAP_LOG_INFO("=== exl_main END (waiting for GameSystem::init to fire) ===");
 }
