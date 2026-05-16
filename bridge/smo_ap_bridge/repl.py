@@ -4,7 +4,6 @@ Designed for fast M6 playtest iteration: no AP server required, no save-load
 gymnastics. Boot the bridge with `--repl`, launch the mod, then type:
 
     grant Cascade Kingdom Power Moon
-    grant Power Moon
     grant Cascade Kingdom Multi-Moon
     capture Goomba
     kingdom Sand
@@ -36,9 +35,8 @@ log = logging.getLogger(__name__)
 
 HELP_TEXT = """\
 Commands:
-  grant <item name>      send a moon item (kingdom-specific or generic).
+  grant <item name>      send a kingdom-specific moon item.
                          Examples:
-                           grant Power Moon
                            grant Cascade Kingdom Power Moon
                            grant Cascade Kingdom Multi-Moon
   capture <name>         send a capture-unlock item.   e.g. capture Goomba

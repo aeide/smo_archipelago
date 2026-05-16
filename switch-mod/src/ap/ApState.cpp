@@ -56,38 +56,22 @@ void ApState::applyOnFrame() {
         switch (item.kind) {
             case ItemKind::Moon: {
                 const int amount = moonGrantAmount(item);
-                if (item.kingdom[0] == '\0') {
-                    // Truly generic "Power Moon" — only contributes to global.
-                    const int prev = ap_moons_unkingdomed.fetch_add(amount,
+                const std::uint8_t bit = item.kingdom[0]
+                    ? smoap::game::kingdomBitFor(item.kingdom)
+                    : 0xFFu;
+                if (bit < 17) {
+                    const int prev = ap_moons_kingdom[bit].fetch_add(amount,
                         std::memory_order_relaxed);
                     SMOAP_LOG_INFO(
-                        "[m6-moon] credit unkingdomed +%d (was %d, now %d) "
-                        "shine_id='%s' from=%s",
-                        amount, prev, prev + amount,
-                        item.shine_id, item.from);
+                        "[m6-moon] credit kingdom=%s(bit=%u) +%d "
+                        "(was %d, now %d) shine_id='%s' from=%s",
+                        item.kingdom, bit, amount, prev,
+                        prev + amount, item.shine_id, item.from);
                 } else {
-                    const std::uint8_t bit = smoap::game::kingdomBitFor(item.kingdom);
-                    if (bit < 17) {
-                        const int prev = ap_moons_kingdom[bit].fetch_add(amount,
-                            std::memory_order_relaxed);
-                        SMOAP_LOG_INFO(
-                            "[m6-moon] credit kingdom=%s(bit=%u) +%d "
-                            "(was %d, now %d) shine_id='%s' from=%s",
-                            item.kingdom, bit, amount, prev,
-                            prev + amount, item.shine_id, item.from);
-                    } else {
-                        // Unknown kingdom name — fall back to unkingdomed so
-                        // the credit isn't silently dropped. Loud so we can
-                        // patch kKingdoms / the bridge classifier.
-                        const int prev = ap_moons_unkingdomed.fetch_add(amount,
-                            std::memory_order_relaxed);
-                        SMOAP_LOG_WARN(
-                            "[m6-moon] UNKNOWN kingdom '%s' (bit=%u) — "
-                            "credited to unkingdomed +%d (was %d, now %d) "
-                            "shine_id='%s'",
-                            item.kingdom, bit, amount, prev,
-                            prev + amount, item.shine_id);
-                    }
+                    SMOAP_LOG_WARN(
+                        "[m6-moon] DROPPED moon item: kingdom='%s' (bit=%u) "
+                        "not a known kingdom — shine_id='%s' from=%s",
+                        item.kingdom, bit, item.shine_id, item.from);
                 }
                 break;
             }

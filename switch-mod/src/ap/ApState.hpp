@@ -175,11 +175,7 @@ public:
     // for paranoid cross-frame visibility only, no contention.
     //
     // kingdomBitFor() in KingdomUnlock.cpp returns 0..16 for known kingdoms;
-    // ap_moons_kingdom[bit] is the per-kingdom credit count. "Power Moon"
-    // (genericmoon, kingdom unknown) accumulates in ap_moons_unkingdomed and
-    // is added only to getCurrentShineNum (global), never to a specific
-    // kingdom's getGotShineNum.
-    std::atomic<int> ap_moons_unkingdomed{0};
+    // ap_moons_kingdom[bit] is the per-kingdom credit count.
     std::atomic<int> ap_moons_kingdom[17] = {};
 
     // M6 phase B — GameDataHolder pointer cache.

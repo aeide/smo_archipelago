@@ -3823,14 +3823,6 @@
         "requires": []
     },
     {
-        "name": "Action: Jaxi",
-        "category": [
-            "Action"
-        ],
-        "region": "Sand Kingdom",
-        "requires": []
-    },
-    {
         "name": "Capture: Moe-Eye",
         "category": [
             "Capture"
@@ -3980,14 +3972,6 @@
             "Capture"
         ],
         "region": "Lost Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Action: Scooter",
-        "category": [
-            "Action"
-        ],
-        "region": "Metro Kingdom",
         "requires": []
     },
     {

@@ -12,12 +12,10 @@ from ..Locations import ManualLocation
 from ..Data import game_table, item_table, location_table, region_table
 
 # These helper methods allow you to determine if an option has been set, or what its value is, for any player in the multiworld
-from ..Helpers import is_option_enabled, get_option_value
+from ..Helpers import is_option_enabled
 
 # calling logging.info("message") anywhere below in this file will output the message to both console and log file
 import logging
-
-from worlds.generic.Rules import set_rule
 
 ########################################################################################
 ## Order of method calls when the world generates:
@@ -44,8 +42,6 @@ def after_create_regions(world: World, multiworld: MultiWorld, player: int):
     capturesanity = is_option_enabled(multiworld, player, "capturesanity")
     coin_shops = is_option_enabled(multiworld, player, "coin_shops")
     regional_shops = is_option_enabled(multiworld, player, "regional_shops")
-    action_rando = is_option_enabled(multiworld, player, "action_rando")
-    generic_moons = is_option_enabled(multiworld, player, "generic_moons")
     include_post_metro_moons = is_option_enabled(multiworld, player, "include_post_metro_moons")
 
 
@@ -57,8 +53,6 @@ def after_create_regions(world: World, multiworld: MultiWorld, player: int):
         elif "Coin" in location.get("category", []) and not coin_shops:
             locationNamesToRemove.append(location["name"])
         elif "Regional" in location.get("category", []) and not regional_shops:
-            locationNamesToRemove.append(location["name"])
-        elif "Action" in location.get("category", []) and not action_rando:
             locationNamesToRemove.append(location["name"])
         elif "post-metro" in location.get("category", []) and not include_post_metro_moons:
             locationNamesToRemove.append(location["name"])
@@ -82,26 +76,6 @@ def before_create_items_starting(item_pool: list, world: World, multiworld: Mult
 
 # The item pool after starting items are processed but before filler is added, in case you want to see the raw item pool at that stage
 def before_create_items_filler(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
-
-    generic_moons = is_option_enabled(multiworld, player, "generic_moons")
-    generic_moon_count = get_option_value(multiworld, player, "generic_moon_count")
-
-    # Use this hook to remove items from the item pool
-    itemNamesToRemove = [] # List of item names
-
-    if generic_moons:
-        for i in range(463-generic_moon_count):
-            itemNamesToRemove.append("Power Moon")
-
-    # Add your code here to calculate which items to remove.
-    #
-    # Because multiple copies of an item can exist, you need to add an item name
-    # to the list multiple times if you want to remove multiple copies of it.
-
-    for itemName in itemNamesToRemove:
-        item = next(i for i in item_pool if i.name == itemName)
-        item_pool.remove(item)
-
     return item_pool
 
     # Some other useful hook options:
@@ -122,76 +96,6 @@ def before_set_rules(world: World, multiworld: MultiWorld, player: int):
 
 # Called after rules for accessing regions and locations are created, in case you want to see or modify that information.
 def after_set_rules(world: World, multiworld: MultiWorld, player: int):
-    capturesanity = get_option_value(multiworld, player, "capturesanity") or False
-    action_rando = get_option_value(multiworld, player, "action_rando") or False
-
-    def ground_pound_and_jump(state: CollectionState):
-        if action_rando:
-            return state.has_all(["Ground Pound", "Ground Pound Jump"], player)
-        return True
-    
-    def wall_jump_and_dive(state: CollectionState):
-        if action_rando:
-            return state.has_all(["Wall Jump", "Dive"], player)
-        return True
-
-    def lake_entrance(state: CollectionState):
-        if capturesanity and action_rando:
-            return state.has("Uproot", player, 1) or ( ( (state.has_any(["Backward Somersault","Side Somersault"], player)) or ground_pound_and_jump(state) or wall_jump_and_dive(state) ) and state.has_all(["Cap Jump","Dive"], player) and  state.has_any(["Backward Somersault","Side Somersault","Long Jump","Triple Jump"], player))
-        return True
-
-    def wooded_entrance(state: CollectionState):
-        if capturesanity and action_rando:
-            return ( ( state.has_any(["Triple Jump", "Backward Somersault", "Side Somersault"],player) or ground_pound_and_jump(state) ) and state.has_all(["Wall Jump","Cap Jump"], player) and state.has_any(["Dive","Goomba"],player) ) or state.has_all(["Zipper","Swim"],player)
-        elif action_rando and not capturesanity:
-            return ( ( state.has_any(["Triple Jump", "Backward Somersault", "Side Somersault"],player) or ground_pound_and_jump(state) ) and state.has_all(["Wall Jump","Cap Jump"],player) ) or state.has("Swim",player,1)
-        return True
-    
-    def metro_entrance(state: CollectionState):
-        if capturesanity and action_rando:
-            return state.has_any(["Wall Jump", "Tropical Wiggler"],player)
-        return True    
-
-    def snow_entrance(state: CollectionState):
-        if capturesanity and action_rando:
-            return state.has_any(["Swim", "Gushen", "Cheep Cheep"],player)
-        return True
-    
-    def ruined_entrance(state: CollectionState):
-        if capturesanity and action_rando:
-            return state.has("Lava Bubble",player,1) or state.has_all(["Dive","Cap Jump"],player)
-        return True
-
-    if action_rando and capturesanity:
-        # apply rule to entrances
-        for exit_obj in multiworld.get_region("Lake Kingdom", player).entrances:
-            set_rule(exit_obj, lake_entrance)
-        for exit_obj in multiworld.get_region("Wooded Kingdom", player).entrances:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), wooded_entrance)
-        for exit_obj in multiworld.get_region("Metro Kingdom", player).entrances:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), metro_entrance)
-        for exit_obj in multiworld.get_region("Snow Kingdom", player).entrances:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), snow_entrance)
-        for exit_obj in multiworld.get_region("Ruined Kingdom", player).entrances:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), ruined_entrance)
-        # apply rule to exits
-        for exit_obj in multiworld.get_region("Lake Kingdom", player).exits:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), lake_entrance)
-        for exit_obj in multiworld.get_region("Wooded Kingdom", player).exits:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), wooded_entrance)
-        for exit_obj in multiworld.get_region("Metro Kingdom", player).exits:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), metro_entrance)
-        for exit_obj in multiworld.get_region("Snow Kingdom", player).exits:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), snow_entrance)
-        for exit_obj in multiworld.get_region("Ruined Kingdom", player).exits:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), ruined_entrance)
-    elif action_rando and not capturesanity:
-        # apply rule to entrances
-        for exit_obj in multiworld.get_region("Wooded Kingdom", player).entrances:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), wooded_entrance)
-        # apply rule to exits
-        for exit_obj in multiworld.get_region("Wooded Kingdom", player).exits:
-            set_rule(multiworld.get_entrance(exit_obj.name, player), wooded_entrance)
 
     def Example_Rule(state: CollectionState) -> bool:
         # Calculated rules take a CollectionState object and return a boolean

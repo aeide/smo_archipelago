@@ -100,20 +100,18 @@ class DataPackage:
 
     def classify_item(self, name: str) -> ClassifiedItem:
         cats = [c.lower() for c in self._item_categories.get(name, [])]
-        # Upstream uses "Moon", "Capture", "Action", "Coin", "Shop", "Regional",
-        # plus moon-subtype tags like "genericmoon", "specificmoon", "post-metro".
+        # Upstream uses "Moon", "Capture", "Coin", "Shop", "Regional", "post-metro".
         if "capture" in cats:
             # Capture items are bare enemy names (e.g. "Goomba", "Paragoomba").
             return ClassifiedItem(ItemKind.CAPTURE, name, cap=name)
-        if "moon" in cats or "genericmoon" in cats or "specificmoon" in cats:
+        if "moon" in cats:
             # Items use " Kingdom " separator, not ": " (that's location form).
             m = _ITEM_MOON_KINGDOM_RE.match(name)
             if m:
                 return ClassifiedItem(ItemKind.MOON, name,
                                       kingdom=m.group(1).strip(),
                                       shine_id=m.group(2))
-            # No kingdom prefix — truly generic "Power Moon" credit.
-            return ClassifiedItem(ItemKind.MOON, name, kingdom=None, shine_id=name)
+            return ClassifiedItem(ItemKind.OTHER, name)
         if "kingdom" in cats or "kingdom unlock" in cats:
             return ClassifiedItem(ItemKind.KINGDOM, name, kingdom=self._strip_prefix(name, ("Kingdom: ", "Unlock: ")))
         if "shop" in cats:

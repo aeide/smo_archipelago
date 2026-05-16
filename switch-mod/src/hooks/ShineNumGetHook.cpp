@@ -42,10 +42,7 @@ int sumAllKingdomCredits() {
 HOOK_DEFINE_TRAMPOLINE(ShineNumGetHook) {
     static int Callback(GameDataHolderAccessor accessor) {
         const int orig = Orig(accessor);  // called for diagnostics + side effects
-        auto& s = smoap::ap::ApState::instance();
-        const int unkingdomed = s.ap_moons_unkingdomed.load(std::memory_order_relaxed);
-        const int kingdomed = sumAllKingdomCredits();
-        const int ap_total = unkingdomed + kingdomed;
+        const int ap_total = sumAllKingdomCredits();
 
         // Throttle: log first few calls (proves the hook is firing at all)
         // and any time the returned value OR the orig-vs-ap delta changes
@@ -59,9 +56,8 @@ HOOK_DEFINE_TRAMPOLINE(ShineNumGetHook) {
         const bool orig_changed = (orig != s_last_orig);
         if (first_calls || ret_changed || orig_changed) {
             SMOAP_LOG_INFO("[m6-hook] getCurrentShineNum: smo_natural=%d "
-                           "ap (unk=%d + kingdomed=%d) = %d returned "
-                           "(call#%d%s%s)",
-                           orig, unkingdomed, kingdomed, ap_total,
+                           "ap=%d returned (call#%d%s%s)",
+                           orig, ap_total,
                            s_call_count + 1,
                            ret_changed && !first_calls ? " ap-changed" : "",
                            orig_changed && !first_calls ? " natural-changed" : "");

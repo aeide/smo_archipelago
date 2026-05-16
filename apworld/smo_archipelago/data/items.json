@@ -18,8 +18,7 @@
         "name": "Cap Kingdom Power Moon",
         "count": 11,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "filler": true
     },
@@ -27,8 +26,7 @@
         "name": "Cascade Kingdom Power Moon",
         "count": 19,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -36,8 +34,7 @@
         "name": "Cascade Kingdom Multi-Moon",
         "count": 1,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -45,8 +42,7 @@
         "name": "Sand Kingdom Power Moon",
         "count": 60,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -54,8 +50,7 @@
         "name": "Sand Kingdom Multi-Moon",
         "count": 2,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -63,8 +58,7 @@
         "name": "Lake Kingdom Power Moon",
         "count": 26,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -72,8 +66,7 @@
         "name": "Lake Kingdom Multi-Moon",
         "count": 1,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -81,8 +74,7 @@
         "name": "Wooded Kingdom Power Moon",
         "count": 48,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -90,8 +82,7 @@
         "name": "Wooded Kingdom Multi-Moon",
         "count": 2,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -99,8 +90,7 @@
         "name": "Cloud Kingdom Power Moon",
         "count": 1,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "filler": true
     },
@@ -108,8 +98,7 @@
         "name": "Lost Kingdom Power Moon",
         "count": 21,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -117,8 +106,7 @@
         "name": "Metro Kingdom Power Moon",
         "count": 51,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -126,8 +114,7 @@
         "name": "Metro Kingdom Multi-Moon",
         "count": 2,
         "category": [
-            "Moon",
-            "specificmoon"
+            "Moon"
         ],
         "progression": true
     },
@@ -136,7 +123,6 @@
         "count": 33,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -146,7 +132,6 @@
         "count": 1,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -156,7 +141,6 @@
         "count": 49,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -166,7 +150,6 @@
         "count": 1,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -176,7 +159,6 @@
         "count": 47,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -186,7 +168,6 @@
         "count": 2,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -196,7 +177,6 @@
         "count": 3,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -206,7 +186,6 @@
         "count": 1,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -216,7 +195,6 @@
         "count": 37,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -226,7 +204,6 @@
         "count": 1,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "progression": true
@@ -236,7 +213,6 @@
         "count": 14,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "filler": true
@@ -246,7 +222,6 @@
         "count": 1,
         "category": [
             "Moon",
-            "specificmoon",
             "post-metro"
         ],
         "filler": true
@@ -607,174 +582,6 @@
         "category": [
             "Capture",
             "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Long Jump",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Roll",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Ground Pound",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Dive",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Ground Pound Jump",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Upward Throw",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "useful": true
-    },
-    {
-        "name": "Downward Throw",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "useful": true
-    },
-    {
-        "name": "Spin Throw",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "useful": true
-    },
-    {
-        "name": "Cap Jump",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Homing Cap Throw",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "useful": true
-    },
-    {
-        "name": "Backward Somersault",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Side Somersault",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Triple Jump",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Wall Jump",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Hold/Throw",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Swim",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Quick Swim",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Spin",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "filler": true
-    },
-    {
-        "name": "Dash (2D)",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Jaxi",
-        "category": [
-            "Action"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Motor scooter",
-        "category": [
-            "Action"
         ],
         "count": 1,
         "progression": true

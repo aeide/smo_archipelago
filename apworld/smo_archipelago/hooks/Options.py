@@ -45,29 +45,9 @@ class RegionalShops(Toggle):
     """Shuffles all clothing, souvenirs, and stickers that can be purchased with regional coins."""
     display_name = "Regional Shops"
 
-class ActionRando(Toggle):
-    """Shuffle all Basic Actions (as listed in the Action Guide) into the pool. 
-    You start with the "Capture" and "Enter Pipe" and "Cap Throw and Hold" actions. 
-    There are 2 locations for getting on Jaxi and the Motor scooter."""
-    display_name = "Action Rando"
-
-class GenericMoons(Toggle):
-    """If enabled, there will be several Power Moon items, and you need 124 to beat the game, and specific amounts to leave each kingdom.
-    If disabled, there will be several different kinds of Power Moons, and you need specific types of Power Moons to leave each kingdom."""
-    display_name = "Generic Moons"
-
-class GenericMoonCount(Range):
-    """If Generic Moons are turned on, this will adjust the amount of Power Moon items. 
-    If you're playing with Action Rando and no additional locations, 
-    or if you're removing Post-Peace moon locations, decrease this amount."""
-    display_name = "Generic Moon Count"
-    range_start = 124
-    range_end = 463
-    default = 410
-
 class IncludePostMetroMoons(DefaultOnToggle):
     """Turning this off will remove every location and item that isn't relevant before Metro Kingdom. Mostly for the Festival goal.
-    If you're doing generic moons, make sure to lower the count WAY down. This removes roughly 200 locations, depending on your settings."""
+    This removes roughly 200 locations, depending on your settings."""
     display_name = "Include Post-Metro Moons"
 
 # This is called before any manual options are defined, in case you want to define your own with a clean slate or let Manual define over them
@@ -76,9 +56,6 @@ def before_options_defined(options: dict) -> dict:
     options["capturesanity"] = Capturesanity
     options["coin_shops"] = CoinShops
     options["regional_shops"] = RegionalShops
-    options["action_rando"] = ActionRando
-    options["generic_moons"] = GenericMoons
-    options["generic_moon_count"] = GenericMoonCount
     options["include_post_metro_moons"] = IncludePostMetroMoons
     return options
 

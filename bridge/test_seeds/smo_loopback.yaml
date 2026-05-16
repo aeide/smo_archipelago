@@ -19,5 +19,3 @@ Manual_SMO_archipelago:
   capturesanity: true
   coin_shops: true
   regional_shops: true
-  action_rando: false
-  generic_moons: false

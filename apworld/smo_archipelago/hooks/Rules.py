@@ -7,20 +7,14 @@ import re
 
 def BulletBillSkip(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do certain jumps without a bullet bill (or with a bullet bill)"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Bullet Bill| or (|Dive| and |Cap Jump| and |Long Jump|)"
     return True
 
 def BulletBillSmallSkip(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do certain small jumps without a bullet bill (or with a bullet bill)"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Bullet Bill| or (|Dive| and |Cap Jump|)"
     return True
 
 def BulletBillMaze(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do the bullet bill maze without a bullet bill (or with a bullet bill)"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Bullet Bill| or (|Dive| and (|Wall Jump| or |Triple Jump|))"
     return True
 
 def SandPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -31,55 +25,34 @@ def SandPeace(world: World, multiworld: MultiWorld, state: CollectionState, play
 
 def IntoTheLake(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player enter the lake kingdom lake"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "((|Triple Jump| or (|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault|) and |Wall Jump| and |Cap Jump| and (|Dive| or |Goomba|)) or (|Zipper| and |Swim|)"
-    elif is_option_enabled(multiworld, player, "action_rando") and not is_option_enabled(multiworld, player, "capturesanity"):
-        return "((|Triple Jump| or (|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault|) and |Wall Jump|) or |Swim|"
     return True
 
 def LakePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do lake peace"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "(((|Triple Jump| or (|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault|) and |Wall Jump| and |Cap Jump| and (|Dive| or |Goomba|)) or (|Zipper| and |Swim|)) and (|Swim| or |Cheep Cheep|)"
-    if is_option_enabled(multiworld, player, "action_rando") and not is_option_enabled(multiworld, player, "capturesanity"):
-        return "((|Triple Jump| or (|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault|) and |Wall Jump|) or |Swim|"
     return True
 
 def SwimOrCheepCheep(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """swim or cheep cheep"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Swim| or |Cheep Cheep|"
     return True
 
 def SwimOrCapJump(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """swim or cap jump"""
-    action_rando = is_option_enabled(multiworld, player, "action_rando")
-    if action_rando:
-        return "|Cap Jump| or |Swim|"
     return True
 
 def CheepCheepOrGroundPound(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """cheep cheep or ground pound"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Ground Pound| or |Cheep Cheep|"
     return True
 
 def MazeSkip(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get past the maze in wooded kingdom"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Uproot| or ( ( ( |Ground Pound Jump| and |Ground Pound| ) or |Backward Somersault| or |Side Somersault| or ( |Wall Jump| and |Dive| ) or |Triple Jump| ) and ( |Long Jump| or |Triple Jump| or |Backward Somersault| or |Side Somersault| ) and |Cap Jump| and |Dive| )"
     return True
 
 def WoodedPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get world peace in wooded kingdom"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Uproot| and |Sherm|"
     return True
 
 def ShermOrLongJump(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do sherm or long jump"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Sherm| or |Long Jump|"
     return True
 
 def PostNightMetro(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -91,38 +64,26 @@ def PostNightMetro(world: World, multiworld: MultiWorld, state: CollectionState,
 
 def PostTrumpeter(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get the trumpeter in metro kingdom"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Sherm| and (|Long Jump| or |Pole| or |Roll| or |Ground Pound Jump| or |Dive| or |Triple Jump|)"
-    if not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Sherm|"
     return True
 
 def MetroPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get metro peace"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Sherm| and |Manhole| and (|Long Jump| or |Pole| or |Roll| or |Ground Pound Jump| or |Dive| or |Triple Jump|)"
-    if not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Sherm| and |Manhole|"
     return True
 
 def FromTheTopOfTheTower(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player jump frm the top of metro tower"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "(|Long Jump| or (|Pole| and |Motor scooter|) or |Roll| or |Ground Pound Jump| or |Dive| or |Triple Jump|)"
-    if is_option_enabled(multiworld, player, "action_rando") and not is_option_enabled(multiworld, player, "capturesanity"):
-        return "(|Long Jump| or |Motor scooter| or |Roll| or |Ground Pound Jump| or |Dive| or |Triple Jump|)"
     return True
 
 def WallJumpOrPole(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do wall jump or pole"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Wall Jump| or |Pole|"
     return True
 
 def TyfooOrScaleATallWall(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do tyfoo or scale a tall wall"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Ty-foo| or ((|Triple Jump| or (|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault|) and |Wall Jump| and |Cap Jump| and |Dive|)"
     return True
 
 def SnowPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -140,57 +101,41 @@ def SeasidePeace(world: World, multiworld: MultiWorld, state: CollectionState, p
 def SnowSeasidePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do snow or seaside Peace"""
     if is_option_enabled(multiworld, player, "capturesanity"):
-        return "((|Ty-foo| and |Shiverian Racer| and (|Power Moon:95| or (|Seaside Kingdom Power Moon:10| OR (|Seaside Kingdom Multi-Moon| AND |Seaside Kingdom Power Moon:7|))) or (|Gushen| and (|Snow Kingdom Power Moon:10| OR (|Snow Kingdom Multi-Moon| AND |Snow Kingdom Power Moon:7|)))))"
+        return "((|Ty-foo| and |Shiverian Racer| and (|Seaside Kingdom Power Moon:10| OR (|Seaside Kingdom Multi-Moon| AND |Seaside Kingdom Power Moon:7|))) or (|Gushen| and (|Snow Kingdom Power Moon:10| OR (|Snow Kingdom Multi-Moon| AND |Snow Kingdom Power Moon:7|))))"
     return True
 
 def PostEarlyLuncheon(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get more moons in luncheon than the very first ones"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Lava Bubble| or (|Dive| and |Cap Jump|)"
     return True
 
 def ClimbToTheMeat(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player climb to the meat"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Volbonan| or (|Dive| and |Wall Jump| and (|Triple Jump| or |Ground Pound Jump| or |Backward Somersault| or |Side Somersault|))"
     return True
 
 def LuncheonPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get snow peace"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Hammer Bro| and |Meat| and |Lava Bubble| and (|Volbonan| or (|Dive| and |Wall Jump| and (|Triple Jump| or |Ground Pound Jump| or |Backward Somersault| or |Side Somersault|)))"
-    elif not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Hammer Bro| and |Meat| and |Lava Bubble|"
     return True
 
 def JumpHigh(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player jump high"""
-    if is_option_enabled(multiworld, player, "action_rando"):
-        return "(|Ground Pound Jump| and |Ground Pound|) or |Backward Somersault| or |Side Somersault| or |Triple Jump|"
     return True
 
 def ScaleAWall(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player scale a wall"""
-    if is_option_enabled(multiworld, player, "action_rando"):
-        return "|Triple Jump| or (|Wall Jump| and |Dive|) or (|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault|"
     return True
 
 def ScaleAWallNoTripleJump(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player scale a wall without triple jump"""
-    if is_option_enabled(multiworld, player, "action_rando"):
-        return "(|Wall Jump| and |Dive|) or (|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault|"
     return True
 
 def NiceFrame(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player knock down the nice frame (and get the other nearby moon)"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Lakitu| or |Long Jump| or |Roll|"
     return True
 
 def ParabonesSkip(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player skip the parabones (or use it)"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Parabones| or (|Long Jump| and |Cap Jump| and |Dive|)"
     return True
 
 def BowserPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -207,55 +152,35 @@ def RegionalCap(world: World, multiworld: MultiWorld, state: CollectionState, pl
 
 def RegionalCascade(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in cascade"""
-    return "|Power Moon:5| or (|Cascade Kingdom Power Moon:5| OR ( |Cascade Kingdom Multi-Moon| AND |Cascade Kingdom Power Moon:2| ))"
+    return "|Cascade Kingdom Power Moon:5| OR ( |Cascade Kingdom Multi-Moon| AND |Cascade Kingdom Power Moon:2| )"
 
 def RegionalSand(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in sand"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Jaxi| and |Bullet Bill| and |Knucklotec's Fist| and |Mini Rocket| and |Goomba|"
-    elif not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Bullet Bill| and |Knucklotec's Fist| and |Mini Rocket| and |Goomba|"
-    elif is_option_enabled(multiworld, player, "action_rando") and not is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Jaxi|"
     return True
 
 def RegionalLake(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in lake"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Swim| and |Zipper| and (|Cheep Cheep| or |Swim|) and (((|Triple Jump| or (|Ground Pound| and |Ground Pound Jump|) or |Backward Somersault| or |Side Somersault|) and |Wall Jump| and |Cap Jump| and (|Dive| or |Goomba|)) or (|Zipper| and |Swim|))"
-    elif is_option_enabled(multiworld, player, "action_rando") and not is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Swim|"
-    elif not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Zipper|"
     return True
 
 def RegionalWooded(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in wooded"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Hold/Throw| and |Sherm| and |Uproot| and |Boulder|"
-    elif is_option_enabled(multiworld, player, "action_rando") and not is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Hold/Throw|"
-    elif not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Sherm| and |Uproot| and |Boulder|"
     return True
 
 def RegionalLost(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in lost"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Wall Jump| and |Glydon| and |Tropical Wiggler|"
-    elif is_option_enabled(multiworld, player, "action_rando") and not is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Glydon| and |Tropical Wiggler|"
-    elif not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Wall Jump|"
     return True
 
 def RegionalMetro(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in metro"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "((|Long Jump| and |Dive| and |Cap Jump|) or (|Pole| and |Wall Jump|)) and (|Long Jump| or |Pole| or |Roll| or |Ground Pound Jump| or |Dive| or |Triple Jump|) and |Manhole| and |Mini Rocket|"
-    elif is_option_enabled(multiworld, player, "action_rando") and not is_option_enabled(multiworld, player, "capturesanity"):
-        return "((|Long Jump| and |Dive| and |Cap Jump|) or |Wall Jump|)"
-    elif not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Manhole| and |Mini Rocket|"
     return True
 
@@ -267,9 +192,7 @@ def RegionalSnow(world: World, multiworld: MultiWorld, state: CollectionState, p
 
 def RegionalSeaside(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in snow"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Gushen| and (|Cheep Cheep| or |Swim|)"
-    elif not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Gushen|"
     return True
 
@@ -281,9 +204,7 @@ def RegionalLuncheon(world: World, multiworld: MultiWorld, state: CollectionStat
 
 def RegionalBowser(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in bowser"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Pokio| and (|Lakitu| or |Long Jump| or |Roll|)"
-    elif not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Pokio|"
     return True
 
@@ -295,9 +216,7 @@ def RegionalMoon(world: World, multiworld: MultiWorld, state: CollectionState, p
 
 def Meat(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get meat moon"""
-    if is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Hammer Bro| and |Meat| and (|Volbonan| or (|Dive| and |Wall Jump| and (|Triple Jump| or |Ground Pound Jump| or |Backward Somersault| or |Side Somersault|)))"
-    elif not is_option_enabled(multiworld, player, "action_rando") and is_option_enabled(multiworld, player, "capturesanity"):
+    if is_option_enabled(multiworld, player, "capturesanity"):
         return "|Hammer Bro| and |Meat|"
     return True
 
