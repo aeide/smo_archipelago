@@ -11,39 +11,39 @@
         "starting": true
     },
     "Sand Kingdom": {
-        "requires": "|Cascade Kingdom Power Moon:5| OR ( |Cascade Kingdom Multi-Moon| AND |Cascade Kingdom Power Moon:2| )",
+        "requires": "",
         "connects_to": [
             "Cap Kingdom",
             "Post-Sand"
         ]
     },
     "Post-Sand": {
-        "requires": "|Sand Kingdom Power Moon:16| OR ( |Sand Kingdom Multi-Moon| AND |Sand Kingdom Power Moon:13| ) OR ( |Sand Kingdom Multi-Moon:2| AND |Sand Kingdom Power Moon:10| )",
+        "requires": "{SandPeace()}",
         "connects_to": [
             "Lake Kingdom",
             "Wooded Kingdom"
         ]
     },
     "Lake Kingdom": {
-        "requires": "|Wooded Kingdom Power Moon:16| OR ( |Wooded Kingdom Multi-Moon| AND |Wooded Kingdom Power Moon:13| ) OR ( |Wooded Kingdom Multi-Moon:2| AND |Wooded Kingdom Power Moon:10| )",
+        "requires": "",
         "connects_to": [
             "Post-Lake"
         ]
     },
     "Post-Lake": {
-        "requires": "|Lake Kingdom Power Moon:8| OR ( |Lake Kingdom Multi-Moon| AND |Lake Kingdom Power Moon:5| )",
+        "requires": "{LakePeace()}",
         "connects_to": [
             "Lost Kingdom"
         ]
     },
     "Wooded Kingdom": {
-        "requires": "|Lake Kingdom Power Moon:8| OR ( |Lake Kingdom Multi-Moon| AND |Lake Kingdom Power Moon:5| )",
+        "requires": "",
         "connects_to": [
             "Post-Wooded"
         ]
     },
     "Post-Wooded": {
-        "requires": "|Wooded Kingdom Power Moon:16| OR ( |Wooded Kingdom Multi-Moon| AND |Wooded Kingdom Power Moon:13| ) OR ( |Wooded Kingdom Multi-Moon:2| AND |Wooded Kingdom Power Moon:10| )",
+        "requires": "{WoodedPeace()}",
         "connects_to": [
             "Lost Kingdom"
         ]
@@ -53,13 +53,13 @@
         "connects_to": []
     },
     "Lost Kingdom": {
-        "requires": "{OptOne(|Ground Pound|)}",
+        "requires": "",
         "connects_to": [
             "Night Metro"
         ]
     },
     "Night Metro": {
-        "requires": "|Lost Kingdom Power Moon:10|",
+        "requires": "",
         "connects_to": [
             "Cloud Kingdom",
             "Metro Kingdom"
@@ -72,7 +72,7 @@
         ]
     },
     "Post-Metro": {
-        "requires": "( |Metro Kingdom Power Moon:20| OR ( |Metro Kingdom Multi-Moon| AND |Metro Kingdom Power Moon:17| ) OR ( |Metro Kingdom Multi-Moon:2| AND |Metro Kingdom Power Moon:14| ) ) and {OptOne(Sherm)}",
+        "requires": "{MetroPeace()}",
         "connects_to": [
             "Snow Kingdom",
             "Seaside Kingdom"
@@ -85,7 +85,7 @@
         ]
     },
     "Post-Snow": {
-        "requires": "|Snow Kingdom Power Moon:10| OR ( |Snow Kingdom Multi-Moon| AND |Snow Kingdom Power Moon:7| )",
+        "requires": "{SnowPeace()}",
         "connects_to": [
             "Very Early Luncheon"
         ]
@@ -97,7 +97,7 @@
         ]
     },
     "Post-Seaside": {
-        "requires": "|Seaside Kingdom Power Moon:10| OR ( |Seaside Kingdom Multi-Moon| AND |Seaside Kingdom Power Moon:7| )",
+        "requires": "{SeasidePeace()}",
         "connects_to": [
             "Very Early Luncheon"
         ]
@@ -115,7 +115,7 @@
         ]
     },
     "Ruined Kingdom": {
-        "requires": "|Luncheon Kingdom Power Moon:18| OR ( |Luncheon Kingdom Multi-Moon| AND |Luncheon Kingdom Power Moon:15| ) OR ( |Luncheon Kingdom Multi-Moon:2| AND |Luncheon Kingdom Power Moon:12| )",
+        "requires": "{LuncheonPeace()}",
         "connects_to": [
             "Pokino"
         ]
@@ -127,13 +127,13 @@
         ]
     },
     "Bowser's Kingdom": {
-        "requires": "|Ruined Kingdom Power Moon:3| OR |Ruined Kingdom Multi-Moon|",
+        "requires": "",
         "connects_to": [
             "Moon Kingdom"
         ]
     },
     "Moon Kingdom": {
-        "requires": "( |Bowser's Kingdom Power Moon:8| OR ( |Bowser's Kingdom Multi-Moon| AND |Bowser's Kingdom Power Moon:5| ) ) and {OptOne(|Pokio|)}",
+        "requires": "{BowserPeace()}",
         "connects_to": []
     }
 }
