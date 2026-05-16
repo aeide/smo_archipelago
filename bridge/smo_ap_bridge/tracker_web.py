@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import logging
 import threading
+from typing import Callable
 
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request
 
 from .state import BridgeState
 
@@ -105,7 +106,10 @@ _TEMPLATE = """<!doctype html>
 """
 
 
-def make_app(state: BridgeState) -> Flask:
+def make_app(
+    state: BridgeState,
+    inject_deathlink: Callable[[str, str], None] | None = None,
+) -> Flask:
     app = Flask("smo_ap_bridge.tracker_web")
 
     @app.get("/")
@@ -116,11 +120,34 @@ def make_app(state: BridgeState) -> Flask:
     def snapshot():  # noqa: D401
         return jsonify(state.snapshot())
 
+    @app.post("/api/test/inject-deathlink")
+    def inject():  # noqa: D401
+        # Debug-only: bypass AP entirely and synthesize a kill message direct
+        # to the Switch socket. Useful when validating the Switch-side inbound
+        # apply path without a second player slot or a real AP bounce. Body is
+        # JSON-optional: {"source": "...", "cause": "..."} (both default empty).
+        if inject_deathlink is None:
+            return jsonify({"error": "inject_deathlink not wired"}), 503
+        body = request.get_json(silent=True) or {}
+        source = str(body.get("source") or "TestRig")
+        cause = str(body.get("cause") or "manual injection")
+        try:
+            inject_deathlink(source, cause)
+        except Exception as e:  # noqa: BLE001
+            log.exception("inject_deathlink failed")
+            return jsonify({"error": str(e)}), 500
+        return jsonify({"ok": True, "source": source, "cause": cause})
+
     return app
 
 
-def serve_in_thread(state: BridgeState, host: str, port: int) -> threading.Thread:
-    app = make_app(state)
+def serve_in_thread(
+    state: BridgeState,
+    host: str,
+    port: int,
+    inject_deathlink: Callable[[str, str], None] | None = None,
+) -> threading.Thread:
+    app = make_app(state, inject_deathlink=inject_deathlink)
     # use_reloader=False is critical when running off the main thread.
     t = threading.Thread(
         target=lambda: app.run(host=host, port=port, debug=False, use_reloader=False),

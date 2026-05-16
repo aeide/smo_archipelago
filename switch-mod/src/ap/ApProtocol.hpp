@@ -133,6 +133,10 @@ struct HelloAck {
     std::string seed;
     std::string slot;
     std::string cap_table_hash;
+    // Bridge-owned DeathLink toggle. Mod ships the inbound apply path
+    // unconditionally; this flag gates whether we act on inbound kill messages
+    // so the user enables DeathLink in bridge config without rebuilding.
+    bool deathlink_enabled = false;
     std::string err;
 };
 

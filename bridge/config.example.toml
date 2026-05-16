@@ -29,3 +29,11 @@ web_port = 8000
 # Path to local Archipelago checkout. Empty = look in vendor/Archipelago,
 # then fall back to the SMOAP_AP_PATH env var.
 archipelago_path = ""
+
+[deathlink]
+# When true: the bridge adds the "DeathLink" tag on AP connect, forwards
+# Switch deaths to AP as Bounce, and forwards inbound DeathLink bounces from
+# AP to the Switch mod (which actually kills Mario, debounced and loop-safe).
+# Communicated to the mod in the hello_ack handshake so toggling doesn't
+# require a Switch rebuild.
+enabled = false

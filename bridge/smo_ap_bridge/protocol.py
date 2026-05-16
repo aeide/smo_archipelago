@@ -153,6 +153,11 @@ class HelloAckMsg:
     seed: str = ""
     slot: str = ""
     cap_table_hash: str = ""
+    # Bridge-owned DeathLink toggle. The Switch mod ships the apply path
+    # unconditionally but only acts on inbound kill messages when this flag is
+    # set here, so the user enables/disables DeathLink in bridge config rather
+    # than rebuilding the mod. Older Switch builds (M4-era) ignore the field.
+    deathlink_enabled: bool = False
     err: str | None = None
 
 

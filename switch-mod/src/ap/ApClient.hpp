@@ -58,7 +58,16 @@ private:
     // them in), so the snapshot currently emits begin + _meta + end only,
     // which the bridge processes as an empty diff (no AP traffic).
     void sendSnapshot();
-    bool readOneLine(std::string& out);
+    // Read from socket into read_buf_. Returns false on socket close/error.
+    // Does NOT extract lines — popLine pulls one at a time off read_buf_.
+    bool recvIntoBuf();
+    // Pop the next complete \n-terminated line from read_buf_ into `out`.
+    // Returns false if no complete line is buffered. Decoupling this from
+    // recv is critical: when the bridge sends N messages in one TCP push,
+    // we must drain ALL of them before going back to Select (which only
+    // checks the socket, not the buffer). Pre-split implementation conflated
+    // these and silently held messages for indefinite time.
+    bool popLine(std::string& out);
     void handleLine(const std::string& line);
 
     BridgeTarget target_{};

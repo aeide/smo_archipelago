@@ -180,13 +180,23 @@ void ApClient::threadMain() {
             continue;
         }
         if (sel > 0 && FD_ISSET(socket_fd_, &rfds)) {
-            std::string line;
-            if (!readOneLine(line)) {
+            if (!recvIntoBuf()) {
                 SMOAP_LOG_WARN("recv error or peer closed; reconnecting");
                 disconnect();
                 continue;
             }
-            if (!line.empty()) handleLine(line);
+        }
+
+        // Drain ALL complete lines from read_buf_ each iteration. When the
+        // bridge sends N messages in a single TCP push (e.g. hello_ack +
+        // checked_replay + ap_state at handshake time, or a kill arriving
+        // right after a queued item), Select only fires once on the socket;
+        // we must walk the buffer to completion or the trailing messages
+        // wait indefinitely for the next socket event before being parsed.
+        // Also drains leftover lines on iterations where Select timed out.
+        std::string line;
+        while (popLine(line)) {
+            handleLine(line);
         }
 
         pumpOnce();
@@ -394,21 +404,23 @@ void ApClient::pumpOnce() {
     }
 }
 
-bool ApClient::readOneLine(std::string& out) {
-    out.clear();
+bool ApClient::recvIntoBuf() {
     char chunk[1024];
     const int n = nn::socket::Recv(socket_fd_, chunk, sizeof(chunk), 0);
     if (n <= 0) return false;
     read_buf_.append(chunk, static_cast<std::size_t>(n));
+    return true;
+}
 
+bool ApClient::popLine(std::string& out) {
     const auto nl = read_buf_.find('\n');
     if (nl == std::string::npos) {
-        // Cap runaway lines.
+        // Cap runaway lines so a malformed peer can't grow the buffer forever.
         if (read_buf_.size() > kMaxLineBytes) {
             SMOAP_LOG_WARN("read_buf overflow without newline; resyncing");
             read_buf_.clear();
         }
-        return true;  // success but no complete line yet
+        return false;
     }
     out.assign(read_buf_, 0, nl);
     read_buf_.erase(0, nl + 1);
@@ -425,11 +437,14 @@ void ApClient::handleLine(const std::string& line) {
         return;
     }
     if (m.t == "hello_ack") {
-        ApState::instance().conn.store(ConnState::Ready);
-        SMOAP_LOG_INFO("hello_ack: ok=%d seed=%s slot=%s",
+        auto& st = ApState::instance();
+        st.conn.store(ConnState::Ready);
+        st.deathlink_enabled.store(m.hello_ack.deathlink_enabled, std::memory_order_relaxed);
+        SMOAP_LOG_INFO("hello_ack: ok=%d seed=%s slot=%s deathlink_enabled=%d",
                        m.hello_ack.ok ? 1 : 0,
                        m.hello_ack.seed.c_str(),
-                       m.hello_ack.slot.c_str());
+                       m.hello_ack.slot.c_str(),
+                       m.hello_ack.deathlink_enabled ? 1 : 0);
     } else if (m.t == "checked_replay") {
         for (const auto& ref : m.checked_replay.ids) {
             Check synth{};
@@ -454,11 +469,14 @@ void ApClient::handleLine(const std::string& line) {
         SMOAP_LOG_WARN("bridge err code=%s ctx=%s",
                        m.err.code.c_str(), m.err.ctx.c_str());
     } else if (m.t == "kill") {
-        // M4: log only. Actual Mario-kill on inbound DeathLink lands in M6
-        // alongside the moon-grant / state-write machinery (we need an
-        // accessor for PlayerActorHakoniwa* first).
-        SMOAP_LOG_INFO("kill (DeathLink in) source=%s cause=%s",
+        // Inbound DeathLink. Collapse to a single pending-bit; multiple
+        // bounces between frames overwrite each other (producer-side debounce).
+        // The frame thread's maybeApplyInboundKill handles the
+        // "Mario already dying" / "too soon since last kill" / "deathlink
+        // disabled in hello_ack" / "no cached PlayerHitPointData yet" gates.
+        SMOAP_LOG_INFO("[deathlink in] queued source=%s cause=%s",
                        m.kill.source.c_str(), m.kill.cause.c_str());
+        ApState::instance().inbound_kill_pending.store(true, std::memory_order_release);
     } else {
         SMOAP_LOG_WARN("unknown message t=%s", m.t.c_str());
     }

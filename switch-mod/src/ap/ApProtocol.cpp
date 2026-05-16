@@ -190,12 +190,13 @@ namespace {
 bool parseHelloAck(Reader& r, HelloAck& out) {
     std::string_view key;
     while (r.nextField(key)) {
-        if      (key == "ok")             { if (!r.nextBool(out.ok)) return false; }
-        else if (key == "seed")           { if (!readIntoString(r, out.seed)) return false; }
-        else if (key == "slot")           { if (!readIntoString(r, out.slot)) return false; }
-        else if (key == "cap_table_hash") { if (!readIntoString(r, out.cap_table_hash)) return false; }
-        else if (key == "err")            { if (!readIntoString(r, out.err)) return false; }
-        else                              { return false; }  // unknown field
+        if      (key == "ok")                { if (!r.nextBool(out.ok)) return false; }
+        else if (key == "seed")              { if (!readIntoString(r, out.seed)) return false; }
+        else if (key == "slot")              { if (!readIntoString(r, out.slot)) return false; }
+        else if (key == "cap_table_hash")    { if (!readIntoString(r, out.cap_table_hash)) return false; }
+        else if (key == "deathlink_enabled") { if (!r.nextBool(out.deathlink_enabled)) return false; }
+        else if (key == "err")               { if (!readIntoString(r, out.err)) return false; }
+        else                                 { return false; }  // unknown field
     }
     return true;
 }

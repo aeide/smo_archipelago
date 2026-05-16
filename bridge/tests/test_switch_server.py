@@ -53,6 +53,8 @@ async def test_hello_handshake_and_replay():
         assert kinds == ["hello_ack", "checked_replay", "item", "ap_state"]
         assert msgs[0]["seed"] == "TEST"
         assert msgs[0]["slot"] == "Mario"
+        # SwitchServer constructed without deathlink_enabled -> defaults False.
+        assert msgs[0]["deathlink_enabled"] is False
         assert len(msgs[1]["ids"]) == 1
         assert msgs[1]["ids"][0]["shine_id"] == "DinoNest"
         assert msgs[2]["cap"] == "Frog"
@@ -136,6 +138,37 @@ async def test_death_message_dispatches_to_handler():
         await writer.drain()
         await asyncio.sleep(0.1)
         assert deaths_received == [42_000]
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_hello_ack_advertises_deathlink_enabled():
+    """When bridge config has DeathLink on, hello_ack must tell the mod so it
+    will act on inbound kill messages. (Outbound is bridge-gated separately,
+    so this flag exists purely for the inbound apply path.)"""
+    state = BridgeState()
+
+    async def on_check(_): ...
+    async def on_goal(): ...
+
+    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal, deathlink_enabled=True)
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg(mod_ver="0.1.0", smo_ver="1.0.0")))
+        await writer.drain()
+        msgs = await _drain_messages(reader, n=3, timeout=2.0)
+        assert msgs[0]["t"] == "hello_ack"
+        assert msgs[0]["deathlink_enabled"] is True
     finally:
         writer.close()
         try:

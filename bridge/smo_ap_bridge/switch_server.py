@@ -41,6 +41,7 @@ class SwitchServer:
         on_check: CheckHandler,
         on_goal: GoalHandler,
         on_death: DeathHandler | None = None,
+        deathlink_enabled: bool = False,
     ):
         self._host = host
         self._port = port
@@ -48,6 +49,7 @@ class SwitchServer:
         self._on_check = on_check
         self._on_goal = on_goal
         self._on_death = on_death
+        self._deathlink_enabled = deathlink_enabled
         self._writer: asyncio.StreamWriter | None = None
         self._writer_lock = asyncio.Lock()
         self._server: asyncio.AbstractServer | None = None
@@ -221,6 +223,7 @@ class SwitchServer:
             seed=self._state.seed,
             slot=self._state.slot,
             cap_table_hash=msg.get("cap_table_hash", ""),
+            deathlink_enabled=self._deathlink_enabled,
         ))
         self._state.set_switch_conn("ready")
 

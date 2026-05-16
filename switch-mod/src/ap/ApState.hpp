@@ -114,6 +114,12 @@ struct StatusEvent {
     std::int64_t ts_ms = 0;  // populated when death = true
 };
 
+// Inbound DeathLink debounce. Covers BOTH "Mario is currently in his death
+// animation" and "two kills landed too close together". A single timestamp
+// stamped on every observed death (organic or synthetic) is enough — if the
+// last death was within this window, swallow.
+inline constexpr std::int64_t kInboundKillDebounceMs = 15 * 1000;
+
 class ApState {
 public:
     static ApState& instance();
@@ -140,14 +146,50 @@ public:
     // second kill() within the same death event short-circuits.
     std::atomic<bool> death_pending_send{false};
 
+    // ---- Inbound DeathLink (bridge -> mod) ----------------------------------
+    //
+    // Bridge sets deathlink_enabled in hello_ack so the user toggles DeathLink
+    // in bridge config without rebuilding the mod. When false, inbound kill
+    // messages are queued (in case the flag flips later) but never applied.
+    std::atomic<bool> deathlink_enabled{false};
+
+    // PlayerHitPointData* captured on every DeathHook fire so the frame thread
+    // can call DeathHook::Orig with it later when applying an inbound kill.
+    // Stored as void* to avoid leaking the game header into ApState.hpp.
+    std::atomic<void*> player_hp_cache{nullptr};
+
+    // Monotonic timestamp (ms) of the last observed death — organic OR our
+    // own synthetic kill. The single source of truth for both "Mario currently
+    // dead" and "too soon since last inbound kill" checks.
+    std::atomic<std::int64_t> last_observed_death_ms{0};
+
+    // Inbound queue collapsed to a single bit: closely-spaced bounces overwrite
+    // each other → automatic producer-side debounce. Socket worker sets, frame
+    // thread drains via exchange(false).
+    std::atomic<bool> inbound_kill_pending{false};
+
+    // Set by the frame thread immediately before invoking DeathHook::Orig on
+    // a synthetic kill. Defense-in-depth: DeathHook's trampoline Orig already
+    // bypasses our Callback, but a future hook anywhere downstream of
+    // PlayerHitPointData::kill could re-enter — this flag lets the death path
+    // recognize "we caused this" and short-circuit outbound reporting.
+    bool synthetic_death_this_frame = false;
+
     // Apply queued inbound items to the game (frame thread).
     void applyOnFrame();
 
     // Hash a Check message body for dedupe purposes.
     static std::uint64_t hashCheck(const Check&);
 
+    // Monotonic milliseconds. Backed by nn::os::GetSystemTick; safe to call
+    // from either thread.
+    static std::int64_t nowMs();
+
 private:
     ApState() = default;
+
+    // Drain inbound_kill_pending; called from applyOnFrame.
+    void maybeApplyInboundKill();
 };
 
 }  // namespace smoap::ap

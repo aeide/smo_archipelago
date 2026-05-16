@@ -16,6 +16,7 @@ from .ap_client import SmoApBridgeContext
 from .config import Config
 from .datapackage import DataPackage
 from .maps import CaptureMap, ShineMap
+from .protocol import KillMsg
 from .state import BridgeState
 from .switch_server import SwitchServer
 from .tracker_web import serve_in_thread
@@ -132,11 +133,29 @@ async def run(args: argparse.Namespace) -> int:
         on_check=on_check,
         on_goal=on_goal,
         on_death=on_death,
+        deathlink_enabled=cfg.deathlink.enabled,
     )
     await sw.start()
 
     if web_tracker:
-        serve_in_thread(state, host="0.0.0.0", port=cfg.bridge.web_port)
+        # Cross-thread bridge from Flask (worker thread) to asyncio loop:
+        # POST /api/test/inject-deathlink wakes this closure, which schedules
+        # send_kill on the running event loop without blocking the request.
+        loop = asyncio.get_running_loop()
+
+        def inject_deathlink(source: str, cause: str) -> None:
+            log.info("DEBUG injecting fake inbound DeathLink source=%r cause=%r", source, cause)
+            asyncio.run_coroutine_threadsafe(
+                sw.send_kill(KillMsg(source=source, cause=cause)),
+                loop,
+            )
+
+        serve_in_thread(
+            state,
+            host="0.0.0.0",
+            port=cfg.bridge.web_port,
+            inject_deathlink=inject_deathlink,
+        )
 
     shine_map_path = _resolve_map_path(cfg.bridge.shine_map_path, "shine_map.json")
     capture_map_path = _resolve_map_path(cfg.bridge.capture_map_path, "capture_map.json")
