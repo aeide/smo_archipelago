@@ -104,7 +104,7 @@ C:\Users\maxwe\SMOArchipelago\
   apworld/                       Forked manual_smo_mp3 → smo_archipelago
     smo_archipelago/             Full package; only `data/game.json` creator field changed
     README.md
-  bridge/                        Python bridge — 53 tests pass (+1 live-AP skipped)
+  bridge/                        Python bridge — 72 tests pass (+1 live-AP skipped)
     smo_ap_bridge/
       __main__.py
       config.py                  TOML loader, CLI overrides, env var SMOAP_PASSWORD / SMOAP_AP_PATH
@@ -115,7 +115,7 @@ C:\Users\maxwe\SMOArchipelago\
       state.py                   Thread-safe state mirror for tracker + replay
       tracker_web.py             Flask app on :8000, /api/snapshot, /api/test/inject-deathlink (debug)
       logging_setup.py
-    tests/                       53 passing (test_ap_loopback.py + extract tests auto-skip when prereq absent)
+    tests/                       72 passing (test_ap_loopback.py + extract tests auto-skip when prereq absent)
     pyproject.toml
     requirements.txt
     config.example.toml
@@ -228,7 +228,7 @@ Critical bug we hit twice. `lunakit-vendor/src/lib/nx/kernel/svc.h` and `lib/nx/
 
 ```pwsh
 cd C:\Users\maxwe\Documents\smo_archipelago\bridge
-.\.venv\Scripts\python -m pytest                            # 53 tests pass (1 skipped: live-AP)
+.\.venv\Scripts\python -m pytest                            # 72 tests pass (1 skipped: live-AP)
 .\.venv\Scripts\python -m smo_ap_bridge --no-web-tracker    # without web tracker
 .\.venv\Scripts\python -m smo_ap_bridge --config config.local.toml --web-tracker  # full
 ```
