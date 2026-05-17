@@ -7,9 +7,10 @@ runnable standalone from inside the Archipelago checkout:
     python vendor/Archipelago/Launcher.py "SMO Client" \\
         --connect localhost:38281 --name Mario
 
-Three concurrent tasks share the event loop:
+Three pieces share the event loop:
   - `server_loop(ctx)` — AP websocket (inherited from CommonClient).
-  - `SwitchServer.serve_forever()` — asyncio TCP on 17777 for the Switch mod.
+  - The Switch TCP listener (started by `SwitchServer.start()` on port 17777;
+    asyncio dispatches `_handle_client` per inbound connection).
   - `ctx.ui.async_run()` — Kivy main loop (when gui_enabled).
 
 All three terminate when `ctx.exit_event` fires (Kivy close, /exit, Ctrl-C).
@@ -228,9 +229,13 @@ async def main(args: argparse.Namespace) -> None:
 
     # ----- Async tasks
     state.set_ap_conn("connecting")
+    # start() returns once the listening socket is bound; asyncio drives
+    # _handle_client in the background per-connection. No separate
+    # serve_forever task needed (and having one creates a shutdown race:
+    # cancelling it triggers Server.__aexit__ -> wait_closed(), which on
+    # Python 3.12+ blocks until every active client connection drops).
     await sw.start()
     ctx.server_task = asyncio.create_task(server_loop(ctx), name="ap-server-loop")
-    switch_task = asyncio.create_task(sw.serve_forever(), name="switch-serve")
 
     if gui_enabled:
         ctx.run_gui()
@@ -241,11 +246,10 @@ async def main(args: argparse.Namespace) -> None:
     except (KeyboardInterrupt, asyncio.CancelledError):
         log.info("shutdown requested")
     finally:
-        switch_task.cancel()
-        try:
-            await switch_task
-        except (asyncio.CancelledError, Exception):
-            pass
+        # sw.stop() closes the active Switch writer first (so wait_closed
+        # can return) and then closes the listener. Order matters: do this
+        # before ctx.shutdown() so any tasks still in flight on the asyncio
+        # loop have a chance to wind down cleanly.
         await sw.stop()
         await ctx.shutdown()
 

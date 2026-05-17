@@ -71,16 +71,29 @@ class SwitchServer:
         log.info("switch server listening on %s", addrs)
 
     async def stop(self) -> None:
-        if self._server:
+        # Close the active Switch connection FIRST. Python 3.12+'s
+        # Server.wait_closed() waits for both the listener and every active
+        # client task to finish; _handle_client is parked in reader.read()
+        # so the connection task never returns on its own — the listener
+        # closing doesn't kick connected clients. Without this teardown,
+        # a clean window-close hangs forever whenever the Switch (or
+        # Ryujinx) is still connected.
+        async with self._writer_lock:
+            w = self._writer
+            self._writer = None
+        if w is not None:
+            try:
+                w.close()
+                await w.wait_closed()
+            except Exception:
+                pass
+        if self._server is not None:
             self._server.close()
-            await self._server.wait_closed()
-
-    async def serve_forever(self) -> None:
-        if self._server is None:
-            await self.start()
-        assert self._server is not None
-        async with self._server:
-            await self._server.serve_forever()
+            try:
+                await self._server.wait_closed()
+            except Exception:
+                pass
+            self._server = None
 
     # ---- broadcast: bridge -> switch ----
 

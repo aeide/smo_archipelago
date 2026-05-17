@@ -283,6 +283,47 @@ async def test_hello_replays_shine_palette():
         await sw.stop()
 
 
+@pytest.mark.asyncio
+async def test_stop_returns_promptly_with_active_switch_connection():
+    """Regression for the GUI-close hang: when the user shuts down the
+    client (e.g. by clicking the Kivy window's X) while the Switch is
+    still connected, sw.stop() must return without blocking.
+
+    Python 3.12+'s Server.wait_closed() waits for both the listener AND
+    every active client task — _handle_client is parked in reader.read()
+    forever — so stop() has to close the active client writer first."""
+    state = BridgeState()
+
+    async def on_check(_): ...
+    async def on_goal(): ...
+
+    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal)
+    await sw.start()
+    port = sw._server.sockets[0].getsockname()[1]
+
+    # Connect a fake Switch and wait until _handle_client has accepted +
+    # captured the writer (otherwise stop() may run before the server has
+    # registered the connection at all).
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        for _ in range(50):
+            if sw._writer is not None:
+                break
+            await asyncio.sleep(0.01)
+        assert sw._writer is not None, "server never registered the connection"
+
+        # The actual regression: this should not hang. Cap at 2s — the
+        # bug exhibited as an indefinite block, so even a few hundred ms
+        # of slack here is plenty of headroom over the expected ~10ms.
+        await asyncio.wait_for(sw.stop(), timeout=2.0)
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+
+
 async def _drain_messages(reader: asyncio.StreamReader, n: int, timeout: float) -> list[dict]:
     """Read until we've parsed n full JSON lines or timeout expires."""
     buf = bytearray()
