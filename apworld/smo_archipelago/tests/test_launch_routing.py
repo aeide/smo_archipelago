@@ -12,7 +12,6 @@ Archipelago-free (see conftest.py's docstring).
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -70,25 +69,31 @@ def spy() -> list:
 
 
 @pytest.fixture
-def isolated_setup_state(monkeypatch, tmp_path) -> Path:
-    """Redirect %APPDATA% so each test gets a clean is_setup_complete()
-    answer without touching the developer's real wizard state."""
-    appdata = tmp_path / "AppData"
-    appdata.mkdir()
-    monkeypatch.setenv("APPDATA", str(appdata))
-    yield appdata
+def setup_state(monkeypatch):
+    """Return a setter that controls what `is_setup_complete()` reports
+    inside the launch-routing code path, without touching APPDATA env or
+    filesystem.
 
+    Earlier versions of these tests built sentinel files under a tmp
+    APPDATA dir. That coupled the routing tests to (a) APPDATA env-var
+    plumbing and (b) test-runner cwd/state, and produced an intermittent
+    "passes in isolation, fails in suite" flake whose root cause was
+    never pinned down (likely env-var ordering between tests on Windows).
+    Direct patching of the boolean is the structural fix: the routing
+    test only cares about the True/False decision is_setup_complete
+    returns, NOT how it computes that boolean from paths.
+    `test_is_setup_complete.py` has dedicated coverage for the path
+    resolution itself."""
+    import worlds.smo.client.setup_state as ss
 
-def _make_setup_complete(appdata_root: Path) -> None:
-    """Create the four sentinel files `is_setup_complete()` checks for."""
-    data = appdata_root / "SMOArchipelago" / "data"
-    build = appdata_root / "SMOArchipelago" / "build" / "cmake"
-    data.mkdir(parents=True, exist_ok=True)
-    build.mkdir(parents=True, exist_ok=True)
-    for name in ("shine_map.json", "capture_map.json"):
-        (data / name).touch()
-    for name in ("subsdk9", "main.npdm"):
-        (build / name).touch()
+    def set_complete(value: bool) -> None:
+        monkeypatch.setattr(ss, "is_setup_complete", lambda: value)
+        # __init__.py does `from .client.setup_state import is_setup_complete`
+        # at function-call time inside launch_smo_client, so patching the
+        # module attribute is enough — no rebinding of an already-imported
+        # symbol needed.
+
+    return set_complete
 
 
 def _write_smoap(tmp_path: Path) -> Path:
@@ -99,13 +104,12 @@ def _write_smoap(tmp_path: Path) -> Path:
     return p
 
 
-def test_pre_setup_click_routes_via_launch(
-    spy, isolated_setup_state, tmp_path,
-) -> None:
+def test_pre_setup_click_routes_via_launch(spy, setup_state, tmp_path) -> None:
     """When the user double-clicks a .smoap and setup hasn't run yet, the
     wizard must dispatch through `launch_or_subprocess` (which inlines
     when Kivy isn't already running). The bare `launch_subprocess` route
     breaks Kivy bootstrap in the frozen Archipelago installer."""
+    setup_state(False)
     smoap = _write_smoap(tmp_path)
 
     smo_mod.launch_smo_client(str(smoap))
@@ -117,13 +121,11 @@ def test_pre_setup_click_routes_via_launch(
     assert args == (str(smoap),)
 
 
-def test_post_setup_click_routes_via_launch(
-    spy, isolated_setup_state, tmp_path,
-) -> None:
+def test_post_setup_click_routes_via_launch(spy, setup_state, tmp_path) -> None:
     """Once setup is complete, the same double-click should still go
     through `launch_or_subprocess` — with the .smoap expanded to SMOClient
     CLI args."""
-    _make_setup_complete(isolated_setup_state)
+    setup_state(True)
     smoap = _write_smoap(tmp_path)
 
     smo_mod.launch_smo_client(str(smoap))
@@ -137,7 +139,7 @@ def test_post_setup_click_routes_via_launch(
 
 
 def test_wizard_done_launch_button_handoff_runs_after_kivy_shutdown(
-    spy, isolated_setup_state, tmp_path,
+    spy, setup_state, tmp_path,
 ) -> None:
     """The wizard's "Launch SMOClient" button must NOT spawn from inside
     its own Kivy app — instead, `run_setup_wizard` returns True and the
@@ -145,7 +147,7 @@ def test_wizard_done_launch_button_handoff_runs_after_kivy_shutdown(
     that handoff: pretend the wizard ran and returned True, then confirm
     `_run_setup_wizard_with_smoap` recursively dispatches SMOClient via
     `launch_or_subprocess`."""
-    _make_setup_complete(isolated_setup_state)
+    setup_state(True)
     smoap = _write_smoap(tmp_path)
 
     import worlds.smo._setup.wizard as wiz_mod
