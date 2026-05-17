@@ -148,14 +148,41 @@ async def main(args: argparse.Namespace) -> None:
     state = BridgeState()
     state.slot = cfg.ap.slot
 
+    # DataPackage loads items.json + locations.json category metadata so
+    # `classify_item("Cascade Kingdom Power Moon")` returns MOON instead of
+    # OTHER. Filesystem path works for loose-source dev; for the Launcher
+    # case the apworld is loaded from a .apworld zip whose internal paths
+    # don't resolve via Path.exists(), so we fall back to package-based
+    # loading via importlib.resources.
     apworld_data = _resolve_apworld_data()
-    if not apworld_data.exists():
-        log.warning("apworld data dir %s missing; classification will be best-effort",
-                    apworld_data)
-    dp = DataPackage(apworld_data_dir=apworld_data if apworld_data.exists() else None)
+    if apworld_data.exists():
+        dp = DataPackage(apworld_data_dir=apworld_data)
+    else:
+        # __package__ is "worlds.smo_archipelago.client" (zip) or
+        # "smo_archipelago.client" (loose); the parent is the apworld root
+        # that holds data/items.json + data/locations.json.
+        apworld_pkg = (__package__ or "client").rsplit(".", 1)[0] or "smo_archipelago"
+        log.info(
+            "apworld data dir %s not on filesystem; loading from package %r",
+            apworld_data, apworld_pkg,
+        )
+        dp = DataPackage(apworld_package=apworld_pkg)
 
-    shine_map = ShineMap(_resolve_map_path(cfg.bridge.shine_map_path, "shine_map.json"))
-    capture_map = CaptureMap(_resolve_map_path(cfg.bridge.capture_map_path, "capture_map.json"))
+    # Shine + Capture maps: same loose/zip split as DataPackage above.
+    # The zip-shipped versions are loaded via importlib.resources; the
+    # filesystem path takes precedence when present (and honors any
+    # host.yaml override via cfg.bridge.shine_map_path).
+    apworld_pkg = (__package__ or "client").rsplit(".", 1)[0] or "smo_archipelago"
+    shine_fs = _resolve_map_path(cfg.bridge.shine_map_path, "shine_map.json")
+    if shine_fs is not None:
+        shine_map = ShineMap(shine_fs)
+    else:
+        shine_map = ShineMap.from_package(apworld_pkg, "shine_map.json")
+    capture_fs = _resolve_map_path(cfg.bridge.capture_map_path, "capture_map.json")
+    if capture_fs is not None:
+        capture_map = CaptureMap(capture_fs)
+    else:
+        capture_map = CaptureMap.from_package(apworld_pkg, "capture_map.json")
 
     # ----- Context
     server_addr = f"{cfg.ap.host}:{cfg.ap.port}" if cfg.ap.host else None

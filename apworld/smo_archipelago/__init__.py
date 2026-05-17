@@ -5,10 +5,19 @@ import json
 import typing
 from typing import Callable, Optional
 
+import webbrowser
+
 import Utils
 import settings
 from worlds.generic.Rules import forbid_items_for_player
-from worlds.LauncherComponents import Component, SuffixIdentifier, components, Type, launch_subprocess
+from worlds.LauncherComponents import (
+    Component,
+    SuffixIdentifier,
+    components,
+    Type,
+    icon_paths,
+    launch_subprocess,
+)
 
 from .Data import item_table, location_table, region_table, category_table, meta_table
 from .Game import game_name, filler_item_name, starting_items
@@ -442,26 +451,111 @@ class ManualWorld(World):
 # Non-world client methods
 ###
 
-def launch_client(*args):
-    """Archipelago Launcher entry point for the SMO Client.
+def launch_smo_client(*args):
+    """Archipelago Launcher entry point for the SMO Client (real Switch).
 
-    The "SMO Client" button in the Launcher subprocesses into this; we then
-    pull the heavyweight client modules (which import Archipelago's
-    CommonClient AND, lazily, Kivy) only inside the subprocess so generation
-    on headless hosts never sees Kivy imports.
+    Subprocesses into client/main.py — which imports CommonClient AND,
+    lazily, Kivy. Doing the import inside this function (rather than at
+    module top) keeps generation on headless hosts from pulling Kivy.
     """
     from .client.main import launch
     launch_subprocess(launch, name="SMOClient", args=args)
 
 
-# Single canonical client button: SMO Client. Routes by game_name so the
-# Launcher's slot-file double-click flow finds this Component for any
-# .archipelago slot whose game is "Manual_SMO_archipelago". The earlier
-# "Manual Client" registration is gone — that was the upstream Manual
-# framework's generic honor-system UI, and it never talked to the Switch.
-components.append(Component(
-    "SMO Client",
-    func=launch_client,
-    component_type=Type.CLIENT,
-    game_name=game_name,
-))
+def launch_manual_client(*args):
+    """Archipelago Launcher entry point for the upstream Manual Client.
+
+    Kept as a fallback: the honor-system checklist UI shipped by the Manual
+    framework. Works for any Manual_* world (not just ours). Useful when
+    the SMO Client itself can't start (Switch not available, debugging the
+    Kivy GUI, etc.) — the seed is still playable via this generic UI.
+    """
+    from .ManualClient import launch as Main
+    launch_subprocess(Main, name="Manual client", args=args)
+
+
+class VersionedComponent(Component):
+    """Component subclass that tracks a date-stamp version so multiple
+    installed Manual apworlds can negotiate which one's `launch_client`
+    callback wins. Same pattern as upstream ManualForArchipelago."""
+
+    def __init__(self, display_name, script_name=None, func=None, version=0,
+                 file_identifier=None, icon='icon'):
+        super().__init__(
+            display_name=display_name,
+            script_name=script_name,
+            func=func,
+            component_type=Type.CLIENT,
+            file_identifier=file_identifier,
+            icon=icon,
+        )
+        self.version = version
+
+
+def add_client_to_launcher() -> None:
+    """Register every launcher button + icon side-effect this apworld owns.
+
+    Three components land in the Launcher:
+      - "SMO Client" (Type.CLIENT, ours) — the real Switch-talking client.
+        Routes by game_name so double-clicking a .archipelago slot opens it.
+      - "Manual Client" (Type.CLIENT, upstream Manual fallback) — the
+        honor-system checklist. SuffixIdentifier handles .apmanual files.
+        Versioned so multiple Manual apworlds don't clobber each other.
+      - "Manual Discord Server" (Type.ADJUSTER) — opens the Manual Discord
+        in the browser. Matches upstream Manual.
+
+    Idempotent: re-importing this module (e.g. when multiple Manual
+    apworlds coexist in custom_worlds/) won't create duplicates and will
+    keep the most-recent versioned Manual Client wired.
+    """
+    version = 2026_05_16  # YYYYMMDD
+
+    # Side effect: register the Manual icon so VersionedComponent(icon="manual")
+    # doesn't render a missing-icon glyph. Falls back silently when the asset
+    # file isn't present (we don't ship one — upstream Manual does).
+    if "manual" not in icon_paths:
+        icon_paths["manual"] = Utils.user_path('data', 'manual.png')
+
+    smo_found = False
+    manual_found = False
+    discord_found = False
+    for c in components:
+        if c.display_name == "SMO Client":
+            smo_found = True
+        elif c.display_name == "Manual Client":
+            manual_found = True
+            if getattr(c, "version", 0) < version:
+                c.version = version
+                c.func = launch_manual_client
+                c.icon = "manual"
+        elif c.display_name == "Manual Discord Server":
+            discord_found = True
+
+    if not smo_found:
+        components.append(Component(
+            "SMO Client",
+            func=launch_smo_client,
+            component_type=Type.CLIENT,
+            file_identifier=SuffixIdentifier('.apmanual'),
+            game_name=game_name,
+        ))
+    if not manual_found:
+        components.append(VersionedComponent(
+            "Manual Client",
+            "ManualClient",
+            func=launch_manual_client,
+            version=version,
+            file_identifier=SuffixIdentifier('.apmanual'),
+            icon="manual",
+        ))
+    if not discord_found:
+        components.append(Component(
+            "Manual Discord Server",
+            "ManualDiscord",
+            func=lambda: webbrowser.open("https://discord.gg/hm4rQnTzQ5"),
+            icon="discord",
+            component_type=Type.ADJUSTER,
+        ))
+
+
+add_client_to_launcher()

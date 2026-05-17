@@ -54,7 +54,29 @@ class ClassifiedItem:
 class DataPackage:
     """Wraps the AP datapackage plus apworld category info."""
 
-    def __init__(self, apworld_data_dir: Path | None = None):
+    def __init__(
+        self,
+        apworld_data_dir: Path | None = None,
+        *,
+        apworld_package: str | None = None,
+    ):
+        """Load the apworld's items.json + locations.json categories.
+
+        Two sources, tried in order. If both are None, nothing is loaded
+        (best-effort fallback — every item then classifies as OTHER).
+
+          apworld_data_dir: filesystem path to the apworld's `data/`
+            directory. Used for the loose-source dev path and unit tests.
+
+          apworld_package: import path of the apworld package (e.g.
+            "worlds.smo_archipelago" when running from the .apworld zip,
+            "smo_archipelago" from a loose source on sys.path). Loaded via
+            importlib.resources so it works whether the package is on the
+            filesystem OR inside a zip — that's what the Launcher-spawned
+            client needs because the apworld zip in custom_worlds/ isn't a
+            real directory and `Path.exists()` returns False on virtual zip
+            paths.
+        """
         self.item_id_to_name: dict[int, str] = {}
         self.location_id_to_name: dict[int, str] = {}
         self.item_name_to_id: dict[str, int] = {}
@@ -66,6 +88,8 @@ class DataPackage:
 
         if apworld_data_dir is not None:
             self._load_apworld(apworld_data_dir)
+        elif apworld_package is not None:
+            self._load_apworld_from_package(apworld_package)
 
     def _load_apworld(self, data_dir: Path) -> None:
         items_path = data_dir / "items.json"
@@ -80,6 +104,37 @@ class DataPackage:
                 name = entry.get("name")
                 if name:
                     self._location_categories[name] = entry.get("category", []) or []
+
+    def _load_apworld_from_package(self, package: str) -> None:
+        """Load items.json + locations.json via importlib.resources.
+
+        Works for both loose-source (filesystem) and zipped apworld
+        installations. The package argument is the import name of the
+        apworld root package (e.g. "worlds.smo_archipelago").
+        """
+        from importlib.resources import files
+        try:
+            data_root = files(package).joinpath("data")
+        except (ModuleNotFoundError, AttributeError):
+            log.warning("apworld package %r not importable; categories empty", package)
+            return
+        for filename, target in (
+            ("items.json", self._item_categories),
+            ("locations.json", self._location_categories),
+        ):
+            try:
+                text = data_root.joinpath(filename).read_text(encoding="utf-8")
+            except (FileNotFoundError, OSError):
+                log.warning("apworld %s missing from package %r", filename, package)
+                continue
+            for entry in json.loads(text):
+                name = entry.get("name")
+                if name:
+                    target[name] = entry.get("category", []) or []
+        log.info(
+            "DataPackage loaded from package %r: %d items, %d locations",
+            package, len(self._item_categories), len(self._location_categories),
+        )
 
     # ---- Wired up at runtime when the AP server sends DataPackage ----
 

@@ -18,11 +18,16 @@ from __future__ import annotations
 import time
 import typing
 
+# IMPORTANT: kvui MUST be imported before any kivy.* module. kvui asserts
+# `"kivy" not in sys.modules` at module top (for frozen-build compatibility),
+# so any prior `from kivy.X import Y` here would trip the assert and prevent
+# the GUI from starting. Same reason Wargroove imports kvui first.
+from kvui import GameManager
+
 from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
-from kvui import GameManager
 
 if typing.TYPE_CHECKING:  # pragma: no cover
     from .context import SMOContext

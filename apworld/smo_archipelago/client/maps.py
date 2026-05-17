@@ -53,10 +53,29 @@ class ShineMap:
         if path is not None and path.exists():
             self.load(path)
 
+    @classmethod
+    def from_package(cls, package: str, filename: str = "shine_map.json") -> "ShineMap":
+        """Load via importlib.resources so it works for both loose-source
+        and zipped apworld installs. Used by the Launcher-spawned client
+        because the apworld zip's internal paths don't resolve via
+        Path.exists()."""
+        m = cls()
+        from importlib.resources import files
+        try:
+            text = files(package).joinpath("client", "data", filename).read_text(encoding="utf-8")
+        except (ModuleNotFoundError, FileNotFoundError, OSError):
+            log.warning("ShineMap: %s missing from package %r", filename, package)
+            return m
+        m._load_text(text, source=f"{package}:client/data/{filename}")
+        return m
+
     def load(self, path: Path) -> None:
-        entries = json.loads(path.read_text(encoding="utf-8"))
+        self._load_text(path.read_text(encoding="utf-8"), source=str(path))
+
+    def _load_text(self, text: str, *, source: str) -> None:
+        entries = json.loads(text)
         if not isinstance(entries, list):
-            raise ValueError(f"{path}: expected a JSON list")
+            raise ValueError(f"{source}: expected a JSON list")
         for e in entries:
             stage = e.get("stage_name")
             obj = e.get("object_id")
@@ -70,7 +89,7 @@ class ShineMap:
             if isinstance(uid, int):
                 self._by_uid[uid] = res
                 self._uid_by_location[(kingdom, shine)] = uid
-        log.info("ShineMap loaded %d entries from %s", len(self._by_pair), path)
+        log.info("ShineMap loaded %d entries from %s", len(self._by_pair), source)
 
     def resolve(
         self,
@@ -127,10 +146,27 @@ class CaptureMap:
         if path is not None and path.exists():
             self.load(path)
 
+    @classmethod
+    def from_package(cls, package: str, filename: str = "capture_map.json") -> "CaptureMap":
+        """Load via importlib.resources so it works for both loose-source
+        and zipped apworld installs (see ShineMap.from_package)."""
+        m = cls()
+        from importlib.resources import files
+        try:
+            text = files(package).joinpath("client", "data", filename).read_text(encoding="utf-8")
+        except (ModuleNotFoundError, FileNotFoundError, OSError):
+            log.warning("CaptureMap: %s missing from package %r", filename, package)
+            return m
+        m._load_text(text, source=f"{package}:client/data/{filename}")
+        return m
+
     def load(self, path: Path) -> None:
-        entries = json.loads(path.read_text(encoding="utf-8"))
+        self._load_text(path.read_text(encoding="utf-8"), source=str(path))
+
+    def _load_text(self, text: str, *, source: str) -> None:
+        entries = json.loads(text)
         if not isinstance(entries, list):
-            raise ValueError(f"{path}: expected a JSON list")
+            raise ValueError(f"{source}: expected a JSON list")
         for e in entries:
             hack = e.get("hack_name")
             cap = e.get("cap")
@@ -142,7 +178,7 @@ class CaptureMap:
                 self._reverse.setdefault(cap, hack)
         log.info("CaptureMap loaded %d entries from %s "
                  "(%d unique caps in reverse map)",
-                 len(self._table), path, len(self._reverse))
+                 len(self._table), source, len(self._reverse))
 
     def resolve(self, hack_name: str | None) -> str | None:
         if not hack_name:
