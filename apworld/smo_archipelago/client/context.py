@@ -179,6 +179,13 @@ class SMOContext(CommonContext):
         # None means "no pending request" (either nothing requested yet, or
         # already promoted to a real connection).
         self._pending_ap_address: str | None = None
+        # Seed's games list from the last RoomInfo we received. Stashed by
+        # prepare_data_package (CommonContext calls it with the games set
+        # from RoomInfo before server_auth). Used by server_auth to
+        # short-circuit when the multiworld doesn't include SMO at all —
+        # the AP server would reject our Connect with InvalidGame anyway,
+        # but the proactive check gives a clearer error.
+        self._roominfo_games: set[str] | None = None
 
     # ----------------------------------------------------------- AP overrides
 
@@ -252,11 +259,60 @@ class SMOContext(CommonContext):
         log.info("Switch connected; promoting deferred AP connect to %s", address)
         await super().connect(address)
 
+    async def prepare_data_package(self, relevant_games, remote_data_package_checksums):
+        """Stash the seed's games list so server_auth can validate against it.
+
+        CommonClient's RoomInfo handler calls this with `set(args["games"])`
+        right before server_auth — it's the only place we get a clean view
+        of which games the seed actually contains. We hold onto the set so
+        the next server_auth can refuse cleanly when SMO isn't one of them.
+        """
+        self._roominfo_games = set(relevant_games)
+        return await super().prepare_data_package(relevant_games, remote_data_package_checksums)
+
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
             log.warning("AP server requested a password but none configured")
+        # Proactive game-name guard. The AP server itself rejects mismatched
+        # game/slot combos with ConnectionRefused([InvalidGame]) — but the
+        # server's error message is generic and only fires after the auth
+        # round-trip. If RoomInfo already told us this multiworld doesn't
+        # include SMO at all, short-circuit with a clearer message. Slot
+        # name typos that DO hit a real SMO slot still go through; the
+        # InvalidGame / InvalidSlot overrides below handle those.
+        if self._roominfo_games is not None and GAME_NAME not in self._roominfo_games:
+            self.disconnected_intentionally = True
+            present = ", ".join(sorted(self._roominfo_games)) or "(none)"
+            raise Exception(
+                f"This multiworld does not include {GAME_NAME!r}. "
+                f"Games present: {present}. "
+                "SMO Client only works with seeds that contain a "
+                f"{GAME_NAME!r} slot — verify the server address."
+            )
         await self.get_username()
         await self.send_connect()
+
+    def event_invalid_game(self):
+        """Override CommonContext's generic 'Invalid Game' message with one
+        that names SMO + the slot we tried, so the user knows which knob to
+        turn. Reached when the slot name we sent (`self.auth`) DOES exist in
+        the seed but belongs to a different game."""
+        raise Exception(
+            f"AP server rejected our Connect: a slot named {self.auth!r} "
+            f"exists in this multiworld but is for a different game than "
+            f"{GAME_NAME!r}. Verify your slot name matches the SMO slot in "
+            "your YAML (slot names are case-sensitive)."
+        )
+
+    def event_invalid_slot(self):
+        """Override CommonContext's generic 'Invalid Slot' message with one
+        that names the slot we tried. Reached when no slot by that name
+        exists in the seed at all."""
+        raise Exception(
+            f"AP server rejected our Connect: no slot named {self.auth!r} "
+            "exists in this multiworld. Verify your name matches the SMO "
+            "slot in your YAML."
+        )
 
     def on_package(self, cmd: str, args: dict) -> None:
         """Schedule SMO-specific package handling.
