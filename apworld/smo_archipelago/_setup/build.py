@@ -39,6 +39,41 @@ _BUNDLED_SCRIPTS = _SETUP_ROOT / "scripts"
 # process lifetime.
 _extracted_bundled_root: Path | None = None
 
+
+def _python_invoker() -> list[str]:
+    """Return the command prefix that invokes a Python script via subprocess.
+
+    Under AP's official Windows installer, `sys.executable` is
+    `ArchipelagoLauncher.exe` — a PyInstaller-bundled launcher that
+    argparse-parses its own argv. Spawning `[sys.executable, "-u",
+    "script.py", "--nsp", ...]` doesn't run Python on script.py; it
+    re-invokes the launcher with those args, which fails with
+    "unrecognized arguments: -u --nsp ...". (Reproduced in the
+    diagnostic build's extract.log.)
+
+    Fall back to the `py` launcher (`py -3.12`), which the wizard's
+    prereq check has already confirmed exists and works. We prefer 3.12
+    over the system default because the extractor's bootstrap re-execs
+    into a 3.12 venv anyway — invoking with 3.12 from the start means
+    the os.execv is a no-op when oead is already installed.
+
+    On a dev source checkout, `sys.executable` IS a Python interp and
+    we use it directly so the script runs under the same venv the
+    developer set up for the rest of SMOClient.
+    """
+    exe_name = Path(sys.executable).stem.lower()
+    if exe_name in ("python", "python3", "py", "pythonw"):
+        return [sys.executable]
+    # Frozen-launcher path: probe alternatives in preference order.
+    if shutil.which("py"):
+        return ["py", "-3.12"]
+    for candidate in ("python3.12", "python3", "python"):
+        if shutil.which(candidate):
+            return [candidate]
+    # Last-resort: return sys.executable so the resulting error at
+    # least shows what we tried (better than spawning nothing at all).
+    return [sys.executable]
+
 # Progress-line callback type: receives one rstripped line of stdout/stderr
 # from the child process per call. None means "process finished" — wizard
 # uses it to flip the spinner off.
@@ -253,7 +288,7 @@ def run_sync_capture_table(on_line: ProgressFn | None = None) -> BuildResult:
     """
     script = bundled_script("sync_capture_table.py")
     return _stream_subprocess(
-        [sys.executable, str(script)],
+        [*_python_invoker(), str(script)],
         on_line=on_line,
     )
 
@@ -287,7 +322,7 @@ def run_extract_maps(
     script = bundled_script("extract_shine_map.py")
     out_dir = data_dir()
     args = [
-        sys.executable, "-u", str(script),
+        *_python_invoker(), "-u", str(script),
         "--nsp", str(nsp_path),
         "--out", str(out_dir / "shine_map.json"),
         "--review", str(out_dir / "shine_map_review.json"),
