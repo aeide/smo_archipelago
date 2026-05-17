@@ -37,25 +37,36 @@ import worlds  # noqa: F401,E402  (triggers custom_worlds discovery)
 import worlds.smo as smo_mod  # noqa: E402
 
 
-@pytest.fixture
-def spy() -> tuple[list, list]:
-    """Drop-in replacements for both routing primitives. Each call records
-    `(name, func.__name__, args)` into its respective list.
+def test_launch_subprocess_not_imported() -> None:
+    """`launch_subprocess` (multiprocessing.Process variant) must not be
+    importable on `worlds.smo` — its presence on the namespace tempts
+    future contributors to call it directly, reintroducing the frozen-Kivy
+    crash. `launch_or_subprocess` (AP's `launch` helper) is the only
+    sanctioned route."""
+    assert not hasattr(smo_mod, "launch_subprocess"), (
+        "launch_subprocess must not be imported into worlds.smo — use "
+        "launch_or_subprocess (the `launch` helper) instead so file-association "
+        "invocations stay inline."
+    )
+    assert hasattr(smo_mod, "launch_or_subprocess"), (
+        "launch_or_subprocess must be imported; without it, the routing decoration "
+        "for inline-vs-subprocess can't dispatch."
+    )
 
-    Returns `(inline_or_via_kivy_spawn_calls, multiprocessing_spawn_calls)`.
-    """
+
+@pytest.fixture
+def spy() -> list:
+    """Replace `launch_or_subprocess` with a recorder. The bare
+    `launch_subprocess` import was removed in the .apmanual cleanup
+    (v0.1.x) — `test_launch_subprocess_not_imported` is the regression
+    test that keeps it out."""
     via_launch: list[tuple] = []
-    via_subprocess: list[tuple] = []
 
     def fake_launch(func, name=None, args=()):
         via_launch.append((name, func.__name__, args))
 
-    def fake_launch_subprocess(func, name=None, args=()):
-        via_subprocess.append((name, func.__name__, args))
-
-    with patch.object(smo_mod, "launch_or_subprocess", fake_launch), \
-         patch.object(smo_mod, "launch_subprocess", fake_launch_subprocess):
-        yield via_launch, via_subprocess
+    with patch.object(smo_mod, "launch_or_subprocess", fake_launch):
+        yield via_launch
 
 
 @pytest.fixture
@@ -88,47 +99,37 @@ def _write_smoap(tmp_path: Path) -> Path:
     return p
 
 
-def test_pre_setup_click_routes_via_launch_not_subprocess(
+def test_pre_setup_click_routes_via_launch(
     spy, isolated_setup_state, tmp_path,
 ) -> None:
     """When the user double-clicks a .smoap and setup hasn't run yet, the
-    wizard must dispatch through `launch_or_subprocess`. If anything
-    routes through bare `launch_subprocess`, Kivy bootstrap fails in the
-    frozen Archipelago installer (v0.1.1-alpha regression)."""
-    via_launch, via_subprocess = spy
+    wizard must dispatch through `launch_or_subprocess` (which inlines
+    when Kivy isn't already running). The bare `launch_subprocess` route
+    breaks Kivy bootstrap in the frozen Archipelago installer."""
     smoap = _write_smoap(tmp_path)
 
     smo_mod.launch_smo_client(str(smoap))
 
-    assert via_subprocess == [], (
-        f"launch_subprocess must not be called on the file-association path; "
-        f"got {via_subprocess}"
-    )
-    assert len(via_launch) == 1
-    name, func_name, args = via_launch[0]
+    assert len(spy) == 1
+    name, func_name, args = spy[0]
     assert name == "SMOSetup"
     assert func_name == "_run_setup_wizard_with_smoap"
     assert args == (str(smoap),)
 
 
-def test_post_setup_click_routes_via_launch_not_subprocess(
+def test_post_setup_click_routes_via_launch(
     spy, isolated_setup_state, tmp_path,
 ) -> None:
     """Once setup is complete, the same double-click should still go
     through `launch_or_subprocess` — with the .smoap expanded to SMOClient
     CLI args."""
     _make_setup_complete(isolated_setup_state)
-    via_launch, via_subprocess = spy
     smoap = _write_smoap(tmp_path)
 
     smo_mod.launch_smo_client(str(smoap))
 
-    assert via_subprocess == [], (
-        f"launch_subprocess must not be called on the post-setup file-association "
-        f"path; got {via_subprocess}"
-    )
-    assert len(via_launch) == 1
-    name, func_name, args = via_launch[0]
+    assert len(spy) == 1
+    name, func_name, args = spy[0]
     assert name == "SMOClient"
     assert func_name == "launch"
     # SmoapFile(slot_name="Mario") → ["--name", "Mario"]
@@ -145,20 +146,16 @@ def test_wizard_done_launch_button_handoff_runs_after_kivy_shutdown(
     `_run_setup_wizard_with_smoap` recursively dispatches SMOClient via
     `launch_or_subprocess`."""
     _make_setup_complete(isolated_setup_state)
-    via_launch, via_subprocess = spy
     smoap = _write_smoap(tmp_path)
 
     import worlds.smo._setup.wizard as wiz_mod
     with patch.object(wiz_mod, "run_setup_wizard", lambda _p: True):
         smo_mod._run_setup_wizard_with_smoap(str(smoap))
 
-    assert via_subprocess == [], (
-        f"wizard handoff must not call launch_subprocess; got {via_subprocess}"
-    )
     # Expect exactly one inline-launch for SMOClient (the recursive
     # launch_smo_client invocation goes through the post-setup path).
-    assert len(via_launch) == 1
-    name, func_name, args = via_launch[0]
+    assert len(spy) == 1
+    name, func_name, args = spy[0]
     assert name == "SMOClient"
     assert func_name == "launch"
     assert args == ("--name", "Mario")

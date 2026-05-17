@@ -1,12 +1,7 @@
-from base64 import b64encode
 import logging
-import os
-import json
 import typing
 from pathlib import Path
 from typing import Callable, Optional
-
-import webbrowser
 
 import Utils
 import settings
@@ -16,9 +11,7 @@ from worlds.LauncherComponents import (
     SuffixIdentifier,
     components,
     Type,
-    icon_paths,
     launch as launch_or_subprocess,
-    launch_subprocess,
 )
 
 from .Data import item_table, location_table, region_table, category_table, meta_table
@@ -375,25 +368,17 @@ class ManualWorld(World):
         return slot_data
 
     def generate_output(self, output_directory: str):
-        # 1) Legacy .apmanual — kept for backward-compat with users still on
-        #    the upstream Manual Client (the "Manual Client" Component button
-        #    in the Launcher). New SMOClient users open the .smoap file
-        #    written below instead.
-        data = self.client_data()
-        base = self.multiworld.get_out_file_name_base(self.player)
-        with open(os.path.join(output_directory, f"{base}.apmanual"), 'wb') as f:
-            f.write(b64encode(bytes(json.dumps(data), 'utf-8')))
-
-        # 2) .smoap — the new entry point. Per-player metadata that the
-        #    Launcher routes to launch_smo_client when double-clicked,
-        #    triggering either the first-run wizard or a pre-filled
-        #    SMOClient launch. See _setup/smoap_file.py for the schema.
+        # `.smoap` is the only per-player artifact this apworld ships. It's
+        # the entry point the Launcher routes to launch_smo_client when
+        # double-clicked, triggering either the first-run wizard or a
+        # pre-filled SMOClient launch. See _setup/smoap_file.py for schema.
         #
-        #    server_address is intentionally empty: the generator doesn't
-        #    know where the user will host (could be local, archipelago.gg,
-        #    a friend's box, ...). SMOClient prompts via the GUI Connect
-        #    bar when it's empty; the user can manually set it post-gen by
-        #    editing the file if they want a perpetual default.
+        # server_address is intentionally empty: the generator doesn't know
+        # where the user will host (could be local, archipelago.gg, a
+        # friend's box, ...). SMOClient prompts via the GUI Connect bar
+        # when it's empty; the user can manually set it post-gen by editing
+        # the file if they want a perpetual default.
+        base = self.multiworld.get_out_file_name_base(self.player)
         from ._setup.smoap_file import SmoapFile
         smoap = SmoapFile(
             slot_name=self.multiworld.get_player_name(self.player),
@@ -462,18 +447,6 @@ class ManualWorld(World):
             real_pool = self.multiworld.get_items()
             self.item_counts[player] = {i.name: real_pool.count(i) for i in real_pool if i.player == player}
         return self.item_counts.get(player)
-
-    def client_data(self):
-        return {
-            "game": self.game,
-            'player_name': self.multiworld.get_player_name(self.player),
-            'player_id': self.player,
-            'items': self.item_name_to_item,
-            'locations': self.location_name_to_location,
-            # todo: extract connections out of multiworld.get_regions() instead, in case hooks have modified the regions.
-            'regions': region_table,
-            'categories': category_table
-        }
 
 ###
 # Non-world client methods
@@ -592,104 +565,27 @@ def _run_setup_wizard_no_smoap() -> None:
     run_setup_wizard(None)
 
 
-def launch_manual_client(*args):
-    """Archipelago Launcher entry point for the upstream Manual Client.
-
-    Kept as a fallback: the honor-system checklist UI shipped by the Manual
-    framework. Works for any Manual_* world (not just ours). Useful when
-    the SMO Client itself can't start (Switch not available, debugging the
-    Kivy GUI, etc.) — the seed is still playable via this generic UI.
-    """
-    from .ManualClient import launch as Main
-    launch_subprocess(Main, name="Manual client", args=args)
-
-
-class VersionedComponent(Component):
-    """Component subclass that tracks a date-stamp version so multiple
-    installed Manual apworlds can negotiate which one's `launch_client`
-    callback wins. Same pattern as upstream ManualForArchipelago."""
-
-    def __init__(self, display_name, script_name=None, func=None, version=0,
-                 file_identifier=None, icon='icon'):
-        super().__init__(
-            display_name=display_name,
-            script_name=script_name,
-            func=func,
-            component_type=Type.CLIENT,
-            file_identifier=file_identifier,
-            icon=icon,
-        )
-        self.version = version
-
-
 def add_client_to_launcher() -> None:
-    """Register every launcher button + icon side-effect this apworld owns.
+    """Register the "SMO Client" Component with the Archipelago Launcher.
 
-    Three components land in the Launcher:
-      - "SMO Client" (Type.CLIENT, ours) — the real Switch-talking client.
-        Routes by game_name so double-clicking a .archipelago slot opens it.
-      - "Manual Client" (Type.CLIENT, upstream Manual fallback) — the
-        honor-system checklist. SuffixIdentifier handles .apmanual files.
-        Versioned so multiple Manual apworlds don't clobber each other.
-      - "Manual Discord Server" (Type.ADJUSTER) — opens the Manual Discord
-        in the browser. Matches upstream Manual.
+    Idempotent: re-importing this module (e.g. AP's apworld autodiscover
+    can call us more than once across reloads) won't create duplicates.
 
-    Idempotent: re-importing this module (e.g. when multiple Manual
-    apworlds coexist in custom_worlds/) won't create duplicates and will
-    keep the most-recent versioned Manual Client wired.
-    """
-    version = 2026_05_16  # YYYYMMDD
-
-    # Side effect: register the Manual icon so VersionedComponent(icon="manual")
-    # doesn't render a missing-icon glyph. Falls back silently when the asset
-    # file isn't present (we don't ship one — upstream Manual does).
-    if "manual" not in icon_paths:
-        icon_paths["manual"] = Utils.user_path('data', 'manual.png')
-
-    smo_found = False
-    manual_found = False
-    discord_found = False
+    Previously also registered "Manual Client" (.apmanual fallback) and
+    "Manual Discord Server" components inherited from the upstream Manual
+    framework — both removed because the shipped client is no longer
+    Manual-based and the .apmanual file just confused users (cf. the v0.1.1
+    bug report about two files in the per-player zip)."""
     for c in components:
         if c.display_name == "SMO Client":
-            smo_found = True
-        elif c.display_name == "Manual Client":
-            manual_found = True
-            if getattr(c, "version", 0) < version:
-                c.version = version
-                c.func = launch_manual_client
-                c.icon = "manual"
-        elif c.display_name == "Manual Discord Server":
-            discord_found = True
-
-    if not smo_found:
-        components.append(Component(
-            "SMO Client",
-            func=launch_smo_client,
-            component_type=Type.CLIENT,
-            # `.smoap` is the new entry point: per-player metadata generated
-            # by ManualWorld.generate_output above. Double-clicking it routes
-            # here. `.apmanual` is the legacy upstream-Manual extension which
-            # the "Manual Client" Component below still owns.
-            file_identifier=SuffixIdentifier('.smoap'),
-            game_name=game_name,
-        ))
-    if not manual_found:
-        components.append(VersionedComponent(
-            "Manual Client",
-            "ManualClient",
-            func=launch_manual_client,
-            version=version,
-            file_identifier=SuffixIdentifier('.apmanual'),
-            icon="manual",
-        ))
-    if not discord_found:
-        components.append(Component(
-            "Manual Discord Server",
-            "ManualDiscord",
-            func=lambda: webbrowser.open("https://discord.gg/hm4rQnTzQ5"),
-            icon="discord",
-            component_type=Type.ADJUSTER,
-        ))
+            return
+    components.append(Component(
+        "SMO Client",
+        func=launch_smo_client,
+        component_type=Type.CLIENT,
+        file_identifier=SuffixIdentifier('.smoap'),
+        game_name=game_name,
+    ))
 
 
 add_client_to_launcher()
