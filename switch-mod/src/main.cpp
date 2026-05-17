@@ -65,6 +65,9 @@ void installCappyMessengerSymbols();
 void installShineAppearanceHook();
 // M7 Path A: world-map kingdom-select intercept + AP-moon-count gate.
 void installWorldMapSelectHook();
+// M7 phase A (capture lock): drain ApState::pending_kill_keeper if its
+// deadline elapsed. Called once per frame from DrawMainHook.
+void tickPendingUncapture();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
@@ -154,6 +157,7 @@ HOOK_DEFINE_TRAMPOLINE(DrawMainHook) {
             st.game_data_holder_cache.store(gdh, std::memory_order_relaxed);
         }
         smoap::ap::ApState::instance().applyOnFrame();
+        smoap::hooks::tickPendingUncapture();
         smoap::ui::drawHudFrame();
         // Pump the Cappy-speech queue. Reads the freshly-cached scene; no-op
         // when null (boot scene) or when SMO is already showing a CapMessage.

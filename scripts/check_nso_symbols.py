@@ -20,6 +20,11 @@ SYMBOLS = [
     "_ZN2al5Scene7endInitERKNS_13ActorInitInfoE",
     "_ZN12GameDataFile11setGotShineEPK9ShineInfo",
     "_ZN16PlayerHackKeeper9startHackEPN2al9HitSensorES2_PNS0_9LiveActorE",
+    # M7: capture lock deny path — forceKillHack runs immediately after
+    # startHack when AP hasn't unlocked the capture. (cancelHack was tried
+    # first but proved to be a no-op when called from within the startHack
+    # callback — see HookSymbols.hpp for the rationale.)
+    "_ZN16PlayerHackKeeper13forceKillHackEv",
     "_ZN12GameDataFile17setMainScenarioNoEi",
     "_ZN12GameDataFile14initializeDataEv",
     "_ZN16DemoPeachWedding14makeActorAliveEv",

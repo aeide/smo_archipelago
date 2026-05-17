@@ -14,7 +14,7 @@
 #include "lib/nx/nx.h"          // Result, R_FAILED
 #include "nn/ro.h"              // nn::ro::LookupSymbol
 #include "../ap/ApState.hpp"
-#include "../ap/capture_table.h"  // kCaptureNames
+#include "../ap/capture_table.h"  // kCaptureNames, kCaptureHackNames
 #include "../hooks/HookSymbols.hpp"
 #include "../util/Log.hpp"
 
@@ -39,10 +39,24 @@ IsExistInHackDictionaryFn s_isExistInHackDictionary = nullptr;
 
 std::uint8_t captureBitFor(const char* cap_name) {
     if (!cap_name) return 0xff;
-    // kCaptureNames holds std::string_views (not necessarily NUL-terminated
-    // in general; here they back literal strings, so they are, but rely on
-    // length+memcmp for correctness regardless).
+    // Called from two paths with two name spaces:
+    //   - ApState applyOnFrame passes item.cap (apworld English name from items.json)
+    //   - CaptureStartHook passes getCurrentHackName() (SMO-internal hack_name)
+    // Search kCaptureHackNames first because that's the hot path (every
+    // capture attempt). Identity entries make this redundant for the ~36
+    // 1:1 caps; for the ~6 diverged caps (TRex/T-Rex, Wanwan/Chain Chomp,
+    // ElectricWire/Spark Pylon, KuriboWing/Paragoomba, ...) only this
+    // table matches. Then fall back to kCaptureNames for the apworld path.
+    //
+    // string_views back literal strings (NUL-terminated) but we rely on
+    // length+memcmp for correctness regardless. const char* signature is
+    // M6.1 allocator-hardening — std::string in this TU would NULL-deref
+    // libstdc++ on the worker recv path.
     const std::size_t n = std::strlen(cap_name);
+    for (std::uint8_t i = 0; i < kCaptureHackNames.size(); ++i) {
+        const auto& sv = kCaptureHackNames[i];
+        if (sv.size() == n && std::memcmp(cap_name, sv.data(), n) == 0) return i;
+    }
     for (std::uint8_t i = 0; i < kCaptureNames.size(); ++i) {
         const auto& sv = kCaptureNames[i];
         if (sv.size() == n && std::memcmp(cap_name, sv.data(), n) == 0) return i;
