@@ -94,15 +94,12 @@ def _smo_yaml(overrides: dict[str, bool], slot_name: str = "Mario") -> str:
         "accessibility": "minimal",
         "goal": "World Peace",
         "death_link": False,
-        "filler_traps": 0,
-        # The four pre-existing toggles always specified for parity with the
-        # loopback seed (capturesanity etc. default OFF, so they need an
-        # explicit true to be exercised at all).
+        # Toggles always specified for parity with the loopback seed
+        # (capturesanity defaults OFF, so it needs an explicit true to
+        # be exercised at all).
         "include_post_peace_moons": True,
         "include_post_metro_moons": True,
         "capturesanity": True,
-        "coin_shops": True,
-        "regional_shops": True,
     }
     base.update(overrides)
     body = "\n".join(f"  {k}: {str(v).lower() if isinstance(v, bool) else v}"

@@ -255,7 +255,6 @@ class SwitchServer:
                 kingdom=msg.get("kingdom"),
                 shine_id=msg.get("shine_id"),
                 cap=msg.get("cap"),
-                slot=msg.get("slot"),
                 stage_name=msg.get("stage_name"),
                 object_id=msg.get("object_id"),
                 shine_uid=msg.get("shine_uid"),
@@ -293,7 +292,6 @@ class SwitchServer:
                 kingdom=evt.item.kingdom,
                 shine_id=evt.item.shine_id,
                 cap=evt.item.cap,
-                slot=evt.item.slot,
                 name=evt.item.name,
                 from_=evt.sender,
                 # M6 phase B: hack_name was resolved bridge-side when the item

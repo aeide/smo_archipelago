@@ -132,14 +132,6 @@ class Capturesanity(Toggle):
     Captures found in Cap or Cascade on the first visit are considered to be given for free and will not grant checks."""
     display_name = "Capturesanity"
 
-class CoinShops(Toggle):
-    """Shuffles all clothing that can be purchased with regular coins. Shop Moons are always shuffled."""
-    display_name = "Coin Shops"
-
-class RegionalShops(Toggle):
-    """Shuffles all clothing, souvenirs, and stickers that can be purchased with regional coins."""
-    display_name = "Regional Shops"
-
 class IncludePostMetroMoons(DefaultOnToggle):
     """Turning this off will remove every location and item that isn't relevant before Metro Kingdom. Mostly for the Festival goal.
     This removes roughly 200 locations, depending on your settings."""
@@ -149,8 +141,6 @@ class IncludePostMetroMoons(DefaultOnToggle):
 def before_options_defined(options: dict) -> dict:
     options["include_post_peace_moons"] = IncludePostPeaceMoons
     options["capturesanity"] = Capturesanity
-    options["coin_shops"] = CoinShops
-    options["regional_shops"] = RegionalShops
     options["include_post_metro_moons"] = IncludePostMetroMoons
     # Per-kingdom Peace toggles
     options["include_cap_peace_moons"] = IncludeCapPeaceMoons

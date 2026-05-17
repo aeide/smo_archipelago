@@ -86,7 +86,6 @@ TEST(itemkind_to_wire) {
     EXPECT_EQ_S(toWire(ItemKind::Moon),    "moon");
     EXPECT_EQ_S(toWire(ItemKind::Capture), "capture");
     EXPECT_EQ_S(toWire(ItemKind::Kingdom), "kingdom");
-    EXPECT_EQ_S(toWire(ItemKind::Shop),    "shop");
     EXPECT_EQ_S(toWire(ItemKind::Other),   "other");
 }
 
@@ -94,10 +93,10 @@ TEST(itemkind_from_wire) {
     EXPECT(fromWire("moon")    == ItemKind::Moon);
     EXPECT(fromWire("capture") == ItemKind::Capture);
     EXPECT(fromWire("kingdom") == ItemKind::Kingdom);
-    EXPECT(fromWire("shop")    == ItemKind::Shop);
     EXPECT(fromWire("other")   == ItemKind::Other);
     EXPECT(fromWire("garbage") == ItemKind::Other);
     EXPECT(fromWire("")        == ItemKind::Other);
+    EXPECT(fromWire("shop")    == ItemKind::Other);  // retired kind
 }
 
 // --------------------------------------------------------------------------
@@ -122,11 +121,6 @@ TEST(encode_check_capture) {
         R"({"t":"check","kind":"capture","cap":"Goomba"})" "\n");
 }
 
-TEST(encode_check_shop_with_slot) {
-    Check c{.kind=ItemKind::Shop, .kingdom="Cap", .slot=3};
-    EXPECT_EQ_S(wire([&](auto& b){ encodeCheck(b, c); }),
-        R"({"t":"check","kind":"shop","kingdom":"Cap","slot":3})" "\n");
-}
 
 TEST(encode_check_skips_empty_fields) {
     Check c{.kind=ItemKind::Other};
@@ -320,7 +314,6 @@ TEST(decode_item_moon) {
     EXPECT_EQ_S(m.item.kingdom, "Sand");
     EXPECT_EQ_S(m.item.shine_id, "PoolUnderwater");
     EXPECT_EQ_S(m.item.from, "Bob");
-    EXPECT_EQ_I(m.item.slot, -1);  // absent -> sentinel
 }
 
 TEST(decode_item_capture_self) {

@@ -89,7 +89,6 @@ void ApState::applyOnFrame() {
         copyCheckField(synth.kingdom, item.kingdom);
         copyCheckField(synth.shine_id, item.shine_id);
         copyCheckField(synth.cap, item.cap);
-        synth.slot = item.slot;
         const std::uint64_t h = hashCheck(synth);
         (void)h;  // M6 phase A: moon arm no longer dedupes via hash.
 
@@ -141,7 +140,6 @@ void ApState::applyOnFrame() {
                                    item.kingdom, bit, item.from);
                 }
                 break;
-            case ItemKind::Shop:
             case ItemKind::Other:
                 SMOAP_LOG_DEBUG("[m6-other] item kind=%u name='%s' from=%s "
                                 "(no in-game effect)",
@@ -153,8 +151,8 @@ void ApState::applyOnFrame() {
         // Cappy speech — fires after the in-game effect lands so the user
         // sees the text alongside the visible change (e.g. capture unlock +
         // "Got Frog from Alice!" same frame). Filter rules in CappyMessenger
-        // drop self-grants, REPL-injected items, bulk replays, and Other/
-        // Shop kinds. Actual dispatch is per-frame in DrawMainHook -> tryPump.
+        // drop self-grants, REPL-injected items, bulk replays, and Other
+        // kinds. Actual dispatch is per-frame in DrawMainHook -> tryPump.
         smoap::ui::CappyMessenger::instance().enqueue(item, local_slot,
                                                       suppress_cappy);
 
@@ -255,8 +253,6 @@ std::uint64_t ApState::hashCheck(const Check& c) {
     mix(c.kingdom);
     mix(c.shine_id);
     mix(c.cap);
-    h ^= static_cast<std::uint64_t>(c.slot + 1);  // -1 -> 0
-    h *= 0x100000001b3ULL;
     // M4: fold the new raw fields so {stage_name, object_id} hashes uniquely.
     mix(c.stage_name);
     mix(c.object_id);

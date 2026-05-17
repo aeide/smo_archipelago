@@ -115,10 +115,6 @@ def _shorten_item_name(item: ClassifiedItem) -> str:
     if item.kind == ItemKind.KINGDOM:
         k = _short_kingdom(item.kingdom) or item.name
         return f"{k} Kingdom"
-    if item.kind == ItemKind.SHOP:
-        k = _short_kingdom(item.kingdom)
-        body = item.shine_id or item.name
-        return f"{k} {body}" if k else body
     return item.name
 
 

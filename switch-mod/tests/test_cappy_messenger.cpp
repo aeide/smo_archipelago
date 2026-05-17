@@ -99,10 +99,6 @@ TEST(filter_other_kind_hides) {
     EXPECT(!shouldShowCappyMsg(ItemKind::Other, "Alice", "Bob", false));
 }
 
-TEST(filter_shop_kind_hides) {
-    EXPECT(!shouldShowCappyMsg(ItemKind::Shop, "Alice", "Bob", false));
-}
-
 TEST(filter_pre_handshake_treats_as_other) {
     // local_slot is empty (pre-handshake state) — any non-empty `from` is
     // treated as not-self, so messages fire. Mirrors the prior ToastQueue

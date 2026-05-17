@@ -68,7 +68,6 @@ class SMOClientCommandProcessor(ClientCommandProcessor):
             kingdom=msg.kingdom,
             shine_id=msg.shine_id,
             cap=msg.cap,
-            slot=msg.slot,
             name=msg.name,
             hack_name=msg.hack_name,
             # M-color: carry the wire classification onto the persisted
@@ -342,7 +341,6 @@ class SMOContext(CommonContext):
                         kingdom=ref.kingdom,
                         shine_id=ref.shine_id,
                         cap=ref.cap,
-                        slot=ref.slot,
                         name=ref.name,
                         from_=sender_name,
                         hack_name=ref.hack_name,
@@ -378,7 +376,7 @@ class SMOContext(CommonContext):
         AP returns one NetworkItem per scouted location; flags is the
         ItemClassification.as_flag() bits (progression=1, useful=2, trap=4).
         Resolution: location_id -> (kingdom, shine_id) via datapackage,
-        then -> shine_uid via the inverse ShineMap. Captures/shops/kingdoms
+        then -> shine_uid via the inverse ShineMap. Captures/kingdoms
         in the same batch are skipped (no in-world shine to color).
         """
         locations = args.get("locations") or []
@@ -436,7 +434,6 @@ class SMOContext(CommonContext):
         kingdom: str | None = None,
         shine_id: str | None = None,
         cap: str | None = None,
-        slot: int | None = None,
         stage_name: str | None = None,
         object_id: str | None = None,
         shine_uid: int | None = None,
@@ -466,7 +463,7 @@ class SMOContext(CommonContext):
         elif kind == "capture" and hack_name:
             cap = self.capture_map.resolve(hack_name) or hack_name
 
-        loc_name = self._reconstruct_location_name(kind, kingdom, shine_id, cap, slot)
+        loc_name = self._reconstruct_location_name(kind, kingdom, shine_id, cap)
         loc_id = self.dp.location_name_to_id.get(loc_name)
         if loc_id is None:
             log.warning("no AP id for location %r (kind=%s)", loc_name, kind)
@@ -580,21 +577,15 @@ class SMOContext(CommonContext):
         kingdom: str | None,
         shine_id: str | None,
         cap: str | None,
-        slot: int | None,
         name: str | None = None,
     ) -> str:
         if kind == "moon" and kingdom and shine_id:
             return f"{kingdom}: {shine_id}"
         if kind == "capture" and cap:
             return f"Capture: {cap}"
-        if kind == "shop":
-            if name:
-                return f"Shop: {name}"
-            if shine_id:
-                return f"Shop: {shine_id}"
         if name:
             return name
-        return f"{kingdom or ''}: {shine_id or cap or slot or ''}".strip(": ")
+        return f"{kingdom or ''}: {shine_id or cap or ''}".strip(": ")
 
 
 def _flatten_print_json(data: list) -> str:

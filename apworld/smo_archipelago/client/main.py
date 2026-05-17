@@ -213,7 +213,6 @@ async def main(args: argparse.Namespace) -> None:
             kingdom=msg.get("kingdom"),
             shine_id=msg.get("shine_id"),
             cap=msg.get("cap"),
-            slot=msg.get("slot"),
             stage_name=msg.get("stage_name"),
             object_id=msg.get("object_id"),
             shine_uid=msg.get("shine_uid"),

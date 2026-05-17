@@ -20,7 +20,7 @@
 // rs::isActiveCapMessage returning false (no overlap window).
 //
 // Filter rules match the prior ToastQueue contract: skip self-grants, skip
-// REPL/bridge-injected items, skip Shop/Other kinds, suppress on bulk replays.
+// REPL/bridge-injected items, skip Other kinds, suppress on bulk replays.
 // Host tests in switch-mod/tests/test_cappy_messenger.cpp exercise these
 // rules without linking the game-side machinery.
 
@@ -149,7 +149,7 @@ private:
 //   - skip when suppress = true (bulk-replay burst)
 //   - skip when from is null/empty (REPL / bridge-injected items)
 //   - skip when from equals local_slot (self-grants)
-//   - skip Shop/Other (no in-game effect worth surfacing)
+//   - skip Other (no in-game effect worth surfacing)
 //
 // `from` is taken as a C-string (Item::from is a fixed char[] post-M6.1).
 bool shouldShowCappyMsg(smoap::ap::ItemKind kind,

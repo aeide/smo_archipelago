@@ -5,7 +5,7 @@ A real Archipelago client for **Super Mario Odyssey** on a modded Nintendo Switc
 Today the SMO Archipelago experience is a *Manual* client ([empathy-mp3/SMO-manual-AP](https://github.com/empathy-mp3/SMO-manual-AP)) — an honor-system checklist where players tick boxes by hand. This project replaces the honor system with an in-game module that:
 
 - Detects moons / captures / scenario events on Switch and reports them as AP location checks.
-- Receives AP items (moons, captures, kingdoms, shop unlocks) and applies them to the live game.
+- Receives AP items (moons, captures, kingdoms) and applies them to the live game.
 - Enforces capture locks (cannot possess Frog/Yoshi/T-Rex/etc. until the AP item is received).
 - Surfaces progress through a Kivy tracker tab and an in-game ImGui overlay (later).
 
@@ -28,7 +28,7 @@ Earlier revisions of this project shipped the client as a standalone `python -m 
 | --- | --- |
 | `apworld/smo_archipelago/` | Forked apworld + SMOClient. Generates seeds AND ships the Launcher button. |
 | `apworld/smo_archipelago/client/` | Python client. Subclasses CommonContext, hosts the SwitchServer. |
-| `apworld/smo_archipelago/tests/` | Unit + integration tests (113 pass, 55 skipped — live-AP gated). |
+| `apworld/smo_archipelago/tests/` | Unit + integration tests (120 pass, 11 skipped — live-AP / extraction gated). |
 | `switch-mod/` | exlaunch C++ module. Hooks SMO; produces `subsdk9` ELF. |
 | `docs/` | Architecture, wire protocol, build, install, symbol catalog. |
 | `scripts/` | install_apworld, ap_generate, ap_server, switch_smoke_test, sync_capture_table, extract_shine_map. |

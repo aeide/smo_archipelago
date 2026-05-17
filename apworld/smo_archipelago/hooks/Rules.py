@@ -232,60 +232,6 @@ def Lighthouse(world: World, multiworld: MultiWorld, state: CollectionState, pla
         return "|Gushen| or |Cheep Cheep|"
     return True
 
-def Sombrero(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """clothes"""
-    if is_option_enabled(multiworld, player, "regional_shops"):
-        return "|Sombrero| and |Poncho|"
-    return True
-
-def Explorer(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """clothes"""
-    if is_option_enabled(multiworld, player, "regional_shops"):
-        return "|Explorer Hat| and |Explorer Outfit|"
-    return True
-
-def Builder(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """clothes"""
-    if is_option_enabled(multiworld, player, "regional_shops"):
-        return "|Builder Helmet| and |Builder Outfit|"
-    return True
-
-def Snowsuit(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """clothes"""
-    if is_option_enabled(multiworld, player, "regional_shops"):
-        return "|Snow Hood| and |Snow Suit|"
-    return True
-
-def Resort(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """clothes"""
-    if is_option_enabled(multiworld, player, "regional_shops"):
-        return "|Resort Hat| and |Resort Outfit|"
-    return True
-
-def Chef(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """clothes"""
-    if is_option_enabled(multiworld, player, "regional_shops"):
-        return "|Chef Hat| and |Chef Suit|"
-    return True
-
-def Samurai(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """clothes"""
-    if is_option_enabled(multiworld, player, "regional_shops"):
-        return "|Samurai Helmet| and |Samurai Armor|"
-    return True
-
-def Boxers(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """clothes"""
-    if is_option_enabled(multiworld, player, "coin_shops"):
-        return "|Boxer Shorts|"
-    return True
-
-def Swimwear(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """clothes"""
-    if is_option_enabled(multiworld, player, "regional_shops") and is_option_enabled(multiworld, player, "coin_shops"):
-        return "(|Swim Goggles| and |Swimwear|) or |Boxer Shorts|"
-    return True
-
 def ItemValue(world: World, multiworld: MultiWorld, state: CollectionState, player: int, args: str):
     """When passed a string with this format: 'valueName:int',
     this function will check if the player has collect at least 'int' valueName worth of items\n

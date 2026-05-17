@@ -20,7 +20,6 @@ enum class ItemKind : std::uint8_t {
     Moon = 0,
     Capture = 1,
     Kingdom = 2,
-    Shop = 3,
     Other = 4,
 };
 
@@ -89,11 +88,10 @@ inline void copyFixedFieldN(char (&dst)[N], const char* src, std::size_t n) {
 
 struct Check {
     ItemKind kind = ItemKind::Moon;
-    // legacy resolved fields (still used by inbound items / shop / kingdom)
+    // legacy resolved fields (still used by inbound items / kingdom)
     char kingdom[kCheckFieldCap] = {};
     char shine_id[kCheckFieldCap] = {};
     char cap[kCheckFieldCap] = {};
-    int slot = -1;  // -1 means absent
     // M4 raw identifiers — bridge resolves these via shine_map.json / capture_map.json
     char stage_name[kCheckFieldCap] = {};  // moons: ShineInfo::stageName
     char object_id[kCheckFieldCap] = {};   // moons: ShineInfo::objectId
@@ -199,7 +197,6 @@ struct ItemRef {
     char shine_id[kMediumFieldCap] = {};
     char cap[kCheckFieldCap] = {};
     char name[kMediumFieldCap] = {};
-    int slot = -1;
     // AP classification (progression/useful/trap/filler), empty if absent.
     // Carried on full ItemMsgs but NOT on checked_replay (bridge strips).
     // Fixed buffer per the M6.1 allocator-safety contract.
@@ -224,7 +221,6 @@ struct Item {
     char shine_id[kMediumFieldCap] = {};
     char cap[kCheckFieldCap] = {};
     char name[kMediumFieldCap] = {};
-    int slot = -1;
     char from[kCheckFieldCap] = {};
     // M6 phase B: populated by the bridge for capture items via the reverse
     // CaptureMap (cap_name -> hack_name). Mod feeds straight to

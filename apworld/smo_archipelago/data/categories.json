@@ -20,9 +20,6 @@
     "Cactus": {
         "hidden": true
     },
-    "Sombrero": {
-        "hidden": true
-    },
     "Mini Rocket": {
         "hidden": true
     },
@@ -33,9 +30,6 @@
         "hidden": true
     },
     "Puzzle Part": {
-        "hidden": true
-    },
-    "Swimwear": {
         "hidden": true
     },
     "Sherm": {
@@ -53,9 +47,6 @@
     "Tree": {
         "hidden": true
     },
-    "Explorer": {
-        "hidden": true
-    },
     "Picture Match Part": {
         "hidden": true
     },
@@ -68,9 +59,6 @@
     "RC Car": {
         "hidden": true
     },
-    "Builder": {
-        "hidden": true
-    },
     "Taxi": {
         "hidden": true
     },
@@ -80,19 +68,10 @@
     "Shiverian Racer": {
         "hidden": true
     },
-    "Snowsuit": {
-        "hidden": true
-    },
     "Bowser": {
         "hidden": true
     },
     "Gushen": {
-        "hidden": true
-    },
-    "Lighthouse": {
-        "hidden": true
-    },
-    "Resort": {
         "hidden": true
     },
     "Hammer Bro": {
@@ -102,9 +81,6 @@
         "hidden": true
     },
     "Lava Bubble": {
-        "hidden": true
-    },
-    "Chef": {
         "hidden": true
     },
     "Fire Bro": {
@@ -117,9 +93,6 @@
         "hidden": true
     },
     "Jizo": {
-        "hidden": true
-    },
-    "Samurai": {
         "hidden": true
     },
     "Bowser Statue": {
@@ -253,18 +226,6 @@
             "capturesanity"
         ]
     },
-    "Coin": {
-        "yaml_option": [
-            "coin_shops"
-        ],
-        "hidden": true
-    },
-    "Regional": {
-        "yaml_option": [
-            "regional_shops"
-        ],
-        "hidden": true
-    },
     "post-metro": {
         "yaml_option": [
             "include_post_metro_moons"
@@ -386,9 +347,6 @@
         "hidden": true
     },
     "Very Early Luncheon": {
-        "hidden": true
-    },
-    "Boxers": {
         "hidden": true
     }
 }

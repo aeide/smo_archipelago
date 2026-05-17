@@ -257,7 +257,7 @@ bool shouldShowCappyMsg(smoap::ap::ItemKind kind,
     if (suppress) return false;
     if (!from || from[0] == '\0') return false;
     using K = smoap::ap::ItemKind;
-    if (kind == K::Other || kind == K::Shop) return false;
+    if (kind == K::Other) return false;
     if (local_slot && local_slot[0] != '\0'
         && std::strcmp(from, local_slot) == 0) {
         return false;

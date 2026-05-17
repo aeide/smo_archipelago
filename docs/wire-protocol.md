@@ -2,9 +2,9 @@
 
 Single persistent TCP connection. Each message is one line of UTF-8 JSON terminated by `\n`. Field `t` is the message type (short string). Both sides are pure event streams (no request/response pairing).
 
-> **Dev tip (M5.5):** to exercise the bridge end-to-end without a Switch, run `scripts/bridge_smoke_test.py` against a bridge connected to a local MultiServer hosting a seed of the forked apworld. See the "Loopback dev setup" recipe in [`../README.md`](../README.md) for the full sequence, or run `SMOAP_LIVE_AP=1 pytest bridge/tests/test_ap_loopback.py` for the scripted version.
+> **Dev tip (M5.5):** to exercise the SMOClient end-to-end without a Switch, run `scripts/switch_smoke_test.py` against a client connected to a local MultiServer hosting a seed of the forked apworld. See the "AP loopback" recipe in [`../CLAUDE.md`](../CLAUDE.md) for the full sequence, or run `SMOAP_LIVE_AP=1 pytest apworld/smo_archipelago/tests/test_ap_loopback.py` for the scripted version.
 
-- Default port: **17777** (configurable on both sides; bridge in `config.toml`, Switch in `romfs/ap_config.json`)
+- Default port: **17777** (configurable on both sides; SMOClient via `~/.archipelago/host.yaml` under `smo_options.switch_listen_port` or the `--switch-port` CLI arg, Switch in `romfs/ap_config.json`)
 - Max line length: **8 KiB**. Longer lines are dropped and the parser resyncs to the next `\n`.
 - Canonical kingdom / capture / shine names come from `apworld/smo_archipelago/data/items.json` and `data/locations.json`. Switch holds a static lookup; bridge reads the JSON directly.
 - All ids/strings are case-sensitive. The Switch never sees raw AP ids.
@@ -20,14 +20,12 @@ Single persistent TCP connection. Each message is one line of UTF-8 JSON termina
 // should be present per kind:
 //   moon    → kingdom, shine_id  (or M4 raw: stage_name, object_id, shine_uid)
 //   capture → cap                (or M4 raw: hack_name)
-//   shop    → kingdom, slot OR name
 // Optional `seq` (int > 0, M6 phase A.5): per-Switch-session monotonic id
 // stamped on moon checks. The bridge echoes it back in `moon_label` so the
 // cutscene-label hook can correlate. Older Switch builds omit `seq`; the
 // bridge skips Channel A entirely when seq is absent.
 {"t":"check","kind":"moon","kingdom":"Cascade","shine_id":"Our First Power Moon","seq":17}
 {"t":"check","kind":"capture","cap":"Goomba"}
-{"t":"check","kind":"shop","kingdom":"Cap","slot":3}
 
 // Status hint for the tracker (no behavioral effect).
 {"t":"status","kingdom":"Metro","scenario":2,"moons_collected":47}

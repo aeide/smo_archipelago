@@ -95,7 +95,7 @@ class BridgeState:
         """
         key = (
             evt.item.kind,
-            evt.item.kingdom, evt.item.shine_id, evt.item.cap, evt.item.slot,
+            evt.item.kingdom, evt.item.shine_id, evt.item.cap,
             evt.item.stage_name, evt.item.object_id, evt.item.shine_uid,
             evt.item.hack_name,
         )

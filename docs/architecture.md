@@ -84,7 +84,7 @@ SMO frame → CaptureStartHook (HOOK_DEFINE_REPLACE if locked path)
 |---|---|---|
 | AP websocket / deflate / TLS | — | yes |
 | Datapackage / id resolution | — | yes |
-| Item classification | — | yes (Moon/Capture/Kingdom/Shop/Other) |
+| Item classification | — | yes (Moon/Capture/Kingdom/Other) |
 | Moon flag writes | yes | — |
 | Capture lock enforcement | yes | — |
 | Goal detection | yes (hook) | yes (forwards to AP) |

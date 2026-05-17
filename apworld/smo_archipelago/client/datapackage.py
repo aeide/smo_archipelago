@@ -3,7 +3,7 @@
 Two sources combine:
   1. The DataPackage the AP server sends us at runtime — definitive name <-> id.
   2. The vendored apworld's data/{items,locations,categories}.json for category info
-     AP doesn't carry. We use this to classify items into Moon/Capture/Kingdom/Shop
+     AP doesn't carry. We use this to classify items into Moon/Capture/Kingdom
      so the Switch never has to deal with raw AP ids.
 """
 
@@ -38,7 +38,6 @@ class ClassifiedItem:
     kingdom: str | None = None
     shine_id: str | None = None
     cap: str | None = None
-    slot: int | None = None
 
     def to_ref(self) -> ItemRef:
         return ItemRef(
@@ -46,7 +45,6 @@ class ClassifiedItem:
             kingdom=self.kingdom,
             shine_id=self.shine_id,
             cap=self.cap,
-            slot=self.slot,
             name=self.name if self.kind == ItemKind.OTHER else None,
         )
 
@@ -156,7 +154,7 @@ class DataPackage:
 
     def classify_item(self, name: str) -> ClassifiedItem:
         cats = [c.lower() for c in self._item_categories.get(name, [])]
-        # Upstream uses "Moon", "Capture", "Coin", "Shop", "Regional", "post-metro".
+        # Upstream uses "Moon", "Capture", "post-metro".
         if "capture" in cats:
             # Capture items are bare enemy names (e.g. "Goomba", "Paragoomba").
             return ClassifiedItem(ItemKind.CAPTURE, name, cap=name)
@@ -170,24 +168,19 @@ class DataPackage:
             return ClassifiedItem(ItemKind.OTHER, name)
         if "kingdom" in cats or "kingdom unlock" in cats:
             return ClassifiedItem(ItemKind.KINGDOM, name, kingdom=self._strip_prefix(name, ("Kingdom: ", "Unlock: ")))
-        if "shop" in cats:
-            kingdom, slot_label = self._split_kingdom_prefix(name)
-            return ClassifiedItem(ItemKind.SHOP, name, kingdom=kingdom, shine_id=slot_label)
         return ClassifiedItem(ItemKind.OTHER, name)
 
     def classify_location(self, name: str) -> ClassifiedItem:
-        # Locations have category tags like "Cap Kingdom", "Cascade Kingdom", "Capture",
-        # "Shop", etc. We classify by the prefix on the location name (e.g. "Cap: …",
-        # "Capture: …", "Cascade: …") since that's what the Switch will reconstruct.
+        # Locations have category tags like "Cap Kingdom", "Cascade Kingdom",
+        # "Capture", etc. We classify by the prefix on the location name (e.g.
+        # "Cap: …", "Capture: …", "Cascade: …") since that's what the Switch
+        # will reconstruct.
         if name.startswith("Capture: "):
             return ClassifiedItem(ItemKind.CAPTURE, name, cap=name[len("Capture: "):])
         cats = [c.lower() for c in self._location_categories.get(name, [])]
         if any("kingdom" in c for c in cats):
             kingdom, shine_id = self._split_kingdom_prefix(name)
             return ClassifiedItem(ItemKind.MOON, name, kingdom=kingdom, shine_id=shine_id)
-        if "shop" in cats:
-            kingdom, slot_label = self._split_kingdom_prefix(name)
-            return ClassifiedItem(ItemKind.SHOP, name, kingdom=kingdom, shine_id=slot_label)
         return ClassifiedItem(ItemKind.OTHER, name)
 
     @staticmethod

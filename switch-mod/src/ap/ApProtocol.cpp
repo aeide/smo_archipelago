@@ -44,7 +44,6 @@ const char* toWire(ItemKind k) {
         case ItemKind::Moon:    return "moon";
         case ItemKind::Capture: return "capture";
         case ItemKind::Kingdom: return "kingdom";
-        case ItemKind::Shop:    return "shop";
         case ItemKind::Other:   return "other";
     }
     return "other";
@@ -55,7 +54,6 @@ ItemKind fromWire(const char* s) {
     if (std::strcmp(s, "moon")    == 0) return ItemKind::Moon;
     if (std::strcmp(s, "capture") == 0) return ItemKind::Capture;
     if (std::strcmp(s, "kingdom") == 0) return ItemKind::Kingdom;
-    if (std::strcmp(s, "shop")    == 0) return ItemKind::Shop;
     return ItemKind::Other;
 }
 
@@ -86,7 +84,6 @@ void encodeCheck(LineBuffer& line, const Check& c) {
     if (c.kingdom[0])    e.key("kingdom").value(c.kingdom);
     if (c.shine_id[0])   e.key("shine_id").value(c.shine_id);
     if (c.cap[0])        e.key("cap").value(c.cap);
-    if (c.slot >= 0)     e.key("slot").value(c.slot);
     if (c.stage_name[0]) e.key("stage_name").value(c.stage_name);
     if (c.object_id[0])  e.key("object_id").value(c.object_id);
     if (c.shine_uid >= 0) e.key("shine_uid").value(c.shine_uid);
@@ -232,7 +229,6 @@ bool parseItemRefBody(Reader& r, ItemRef& out) {
         else if (key == "shine_id")       { if (!readIntoField(r, out.shine_id)) return false; }
         else if (key == "cap")            { if (!readIntoField(r, out.cap)) return false; }
         else if (key == "name")           { if (!readIntoField(r, out.name)) return false; }
-        else if (key == "slot")           { if (!readIntoInt(r, out.slot)) return false; }
         else if (key == "classification") { if (!readIntoField(r, out.classification)) return false; }
         else                              { return false; }
     }
@@ -276,7 +272,6 @@ bool parseItem(Reader& r, Item& out) {
         else if (key == "shine_id")       { if (!readIntoField(r, out.shine_id)) return false; }
         else if (key == "cap")            { if (!readIntoField(r, out.cap)) return false; }
         else if (key == "name")           { if (!readIntoField(r, out.name)) return false; }
-        else if (key == "slot")           { if (!readIntoInt(r, out.slot)) return false; }
         else if (key == "from")           { if (!readIntoField(r, out.from)) return false; }
         // M6 phase B: bridge populates hack_name for capture items (cap → hack
         // reverse lookup via CaptureMap). Mod-side passes hack_name straight

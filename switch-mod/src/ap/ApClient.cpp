@@ -503,7 +503,6 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
             // existing kCheckFieldCap shine_id field) so this is consistent.
             copyCheckField(synth.shine_id, ref.shine_id);
             copyCheckField(synth.cap, ref.cap);
-            synth.slot = ref.slot;
             ApState::instance().locations_checked.tryInsert(ApState::hashCheck(synth));
         }
         if (m.checked_replay.truncated) {

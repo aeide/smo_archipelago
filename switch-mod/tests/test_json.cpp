@@ -110,20 +110,6 @@ TEST(check_capture) {
     EXPECT(r.exitObject());
 }
 
-TEST(check_shop_slot) {
-    Buf b(R"({"t":"check","kind":"shop","kingdom":"Cap","slot":3})");
-    Reader r(b.data(), b.size());
-    EXPECT(r.enterObject());
-    std::string_view k, v;
-    EXPECT(r.nextField(k)); EXPECT_EQ_SV(k, "t");       EXPECT(r.nextString(v)); EXPECT_EQ_SV(v, "check");
-    EXPECT(r.nextField(k)); EXPECT_EQ_SV(k, "kind");    EXPECT(r.nextString(v)); EXPECT_EQ_SV(v, "shop");
-    EXPECT(r.nextField(k)); EXPECT_EQ_SV(k, "kingdom"); EXPECT(r.nextString(v)); EXPECT_EQ_SV(v, "Cap");
-    std::int64_t slot = 0;
-    EXPECT(r.nextField(k)); EXPECT_EQ_SV(k, "slot");    EXPECT(r.nextInt(slot)); EXPECT_EQ_I(slot, 3);
-    EXPECT(!r.nextField(k));
-    EXPECT(r.exitObject());
-}
-
 TEST(status) {
     Buf b(R"({"t":"status","kingdom":"Metro","scenario":2,"moons_collected":47})");
     Reader r(b.data(), b.size());

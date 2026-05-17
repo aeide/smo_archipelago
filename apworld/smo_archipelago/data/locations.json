@@ -706,7 +706,7 @@
             "Sand Kingdom"
         ],
         "region": "Sand Kingdom",
-        "requires": "{Sombrero()}"
+        "requires": []
     },
     {
         "name": "Sand: The Invisible Maze",
@@ -967,7 +967,7 @@
             "Lake Peace"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {Swimwear()}"
+        "requires": "{IntoTheLake()}"
     },
     {
         "name": "Lake: Unzip the Chasm",
@@ -1322,7 +1322,7 @@
             "Deep Woods"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{Explorer()} and {OptOne(Hold/Throw)}"
+        "requires": "{OptOne(Hold/Throw)}"
     },
     {
         "name": "Wooded: Wooded Kingdom Timer Challenge 1",
@@ -1760,7 +1760,7 @@
         "requires": []
     },
     {
-        "name": "Metro: Left at the Café?",
+        "name": "Metro: Left at the Caf\u00e9?",
         "category": [
             "Metro Kingdom"
         ],
@@ -1959,16 +1959,15 @@
             "Metro Kingdom"
         ],
         "region": "Metro Kingdom",
-        "requires": "{Builder()}"
+        "requires": []
     },
     {
         "name": "Metro: Off the Beaten Wire",
         "category": [
-            "Metro Kingdom",
-            "Builder"
+            "Metro Kingdom"
         ],
         "region": "Metro Kingdom",
-        "requires": "{Builder()}"
+        "requires": []
     },
     {
         "name": "Metro: Moon Shards Under Siege",
@@ -2275,7 +2274,7 @@
             "post-metro"
         ],
         "region": "Snow Kingdom",
-        "requires": "{SnowPeace()} and {Boxers()}"
+        "requires": "{SnowPeace()}"
     },
     {
         "name": "Snow: Shopping in Shiveria",
@@ -2363,7 +2362,7 @@
             "post-metro"
         ],
         "region": "Snow Kingdom",
-        "requires": "{Snowsuit()}"
+        "requires": []
     },
     {
         "name": "Snow: Slip Behind the Ice",
@@ -2372,7 +2371,7 @@
             "post-metro"
         ],
         "region": "Snow Kingdom",
-        "requires": "{Snowsuit()}"
+        "requires": []
     },
     {
         "name": "Snow: Spinning Above the Clouds",
@@ -2799,7 +2798,7 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": "{Resort()}"
+        "requires": []
     },
     {
         "name": "Seaside: Wading in the Cloud Sea",
@@ -3121,7 +3120,7 @@
             "Luncheon Kingdom"
         ],
         "region": "Luncheon Kingdom",
-        "requires": "{OptOne(Lava Bubble)} and {Chef()}"
+        "requires": "{OptOne(Lava Bubble)}"
     },
     {
         "name": "Luncheon: An Extreme Simmer",
@@ -3130,7 +3129,7 @@
             "Luncheon Kingdom"
         ],
         "region": "Luncheon Kingdom",
-        "requires": "{OptOne(Lava Bubble)} and {Chef()}"
+        "requires": "{OptOne(Lava Bubble)}"
     },
     {
         "name": "Luncheon: Alcove Behind the Pillars of Magma",
@@ -3169,7 +3168,7 @@
         "requires": "{Meat()} and {OptOne(Lava Bubble)}"
     },
     {
-        "name": "Luncheon: Bon Appétit, Captain Toad!",
+        "name": "Luncheon: Bon App\u00e9tit, Captain Toad!",
         "category": [
             "post-metro",
             "Luncheon Kingdom"
@@ -3663,21 +3662,19 @@
         "name": "Bowser's: Scene of Crossing the Poison Swamp",
         "category": [
             "post-metro",
-            "Bowser's Kingdom",
-            "Samurai"
+            "Bowser's Kingdom"
         ],
         "region": "Bowser's Kingdom",
-        "requires": "{Samurai()}"
+        "requires": []
     },
     {
         "name": "Bowser's: Taking Notes: In the Folding Screen",
         "category": [
             "post-metro",
-            "Bowser's Kingdom",
-            "Samurai"
+            "Bowser's Kingdom"
         ],
         "region": "Bowser's Kingdom",
-        "requires": "{Samurai()}"
+        "requires": []
     },
     {
         "name": "Bowser's: On Top of the Spinning Tower",
@@ -4238,776 +4235,6 @@
         ],
         "region": "Moon Kingdom",
         "requires": "{ParabonesSkip()} and {OptOne(Banzai Bill)}"
-    },
-    {
-        "name": "Shop: Black Top Hat",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cap Kingdom",
-        "requires": "{RegionalCap()}"
-    },
-    {
-        "name": "Shop: Black Tuxedo",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cap Kingdom",
-        "requires": "{RegionalCap()}"
-    },
-    {
-        "name": "Shop: Caveman Headwear",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cascade Kingdom",
-        "requires": "{RegionalCascade()}"
-    },
-    {
-        "name": "Shop: Caveman Outfit",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cascade Kingdom",
-        "requires": "{RegionalCascade()}"
-    },
-    {
-        "name": "Shop: Sombrero",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Sand Kingdom",
-        "requires": "{RegionalSand()}"
-    },
-    {
-        "name": "Shop: Poncho",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Sand Kingdom",
-        "requires": "{RegionalSand()}"
-    },
-    {
-        "name": "Shop: Cowboy Hat",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Sand Kingdom",
-        "requires": "{RegionalSand()}"
-    },
-    {
-        "name": "Shop: Cowboy Outfit",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Sand Kingdom",
-        "requires": "{RegionalSand()}"
-    },
-    {
-        "name": "Shop: Swim Goggles",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lake Kingdom",
-        "requires": "{RegionalLake()}"
-    },
-    {
-        "name": "Shop: Swimwear",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lake Kingdom",
-        "requires": "{RegionalLake()}"
-    },
-    {
-        "name": "Shop: Explorer Hat",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Wooded Kingdom",
-        "requires": "{RegionalWooded()}"
-    },
-    {
-        "name": "Shop: Explorer Outfit",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Wooded Kingdom",
-        "requires": "{RegionalWooded()}"
-    },
-    {
-        "name": "Shop: Scientist Visor",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Wooded Kingdom",
-        "requires": "{RegionalWooded()}"
-    },
-    {
-        "name": "Shop: Scientist Outfit",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Wooded Kingdom",
-        "requires": "{RegionalWooded()}"
-    },
-    {
-        "name": "Shop: Aviator Cap",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lost Kingdom",
-        "requires": "{RegionalLost()}"
-    },
-    {
-        "name": "Shop: Aviator Outfit",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lost Kingdom",
-        "requires": "{RegionalLost()}"
-    },
-    {
-        "name": "Shop: Builder Helmet",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Metro Kingdom",
-        "requires": "{RegionalMetro()}"
-    },
-    {
-        "name": "Shop: Builder Outfit",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Metro Kingdom",
-        "requires": "{RegionalMetro()}"
-    },
-    {
-        "name": "Shop: Golf Cap",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Metro Kingdom",
-        "requires": "{RegionalMetro()}"
-    },
-    {
-        "name": "Shop: Golf Outfit",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Metro Kingdom",
-        "requires": "{RegionalMetro()}"
-    },
-    {
-        "name": "Shop: Snow Hood",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Snow Kingdom",
-        "requires": "{RegionalSnow()}"
-    },
-    {
-        "name": "Shop: Snow Suit",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Snow Kingdom",
-        "requires": "{RegionalSnow()}"
-    },
-    {
-        "name": "Shop: Resort Hat",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Seaside Kingdom",
-        "requires": "{RegionalSeaside()}"
-    },
-    {
-        "name": "Shop: Resort Outfit",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Seaside Kingdom",
-        "requires": "{RegionalSeaside()}"
-    },
-    {
-        "name": "Shop: Sailor Hat",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Seaside Kingdom",
-        "requires": "{RegionalSeaside()}"
-    },
-    {
-        "name": "Shop: Sailor Suit",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Seaside Kingdom",
-        "requires": "{RegionalSeaside()}"
-    },
-    {
-        "name": "Shop: Chef Hat",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Luncheon Kingdom",
-        "requires": "{RegionalLuncheon()}"
-    },
-    {
-        "name": "Shop: Chef Suit",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Luncheon Kingdom",
-        "requires": "{RegionalLuncheon()}"
-    },
-    {
-        "name": "Shop: Painter's Cap",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Luncheon Kingdom",
-        "requires": "{RegionalLuncheon()}"
-    },
-    {
-        "name": "Shop: Painter's Outfit",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Luncheon Kingdom",
-        "requires": "{RegionalLuncheon()}"
-    },
-    {
-        "name": "Shop: Samurai Helmet",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Bowser's Kingdom",
-        "requires": "{RegionalBowser()}"
-    },
-    {
-        "name": "Shop: Samurai Armor",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Bowser's Kingdom",
-        "requires": "{RegionalBowser()}"
-    },
-    {
-        "name": "Shop: Happi Headband",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Bowser's Kingdom",
-        "requires": "{RegionalBowser()}"
-    },
-    {
-        "name": "Shop: Happi Outfit",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Bowser's Kingdom",
-        "requires": "{RegionalBowser()}"
-    },
-    {
-        "name": "Shop: Employee Cap",
-        "category": [
-            "Shop",
-            "Coin"
-        ],
-        "region": "Sand Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Employee Uniform",
-        "category": [
-            "Shop",
-            "Coin"
-        ],
-        "region": "Sand Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Boxer Shorts",
-        "category": [
-            "Shop",
-            "Coin"
-        ],
-        "region": "Sand Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Fashionable Cap",
-        "category": [
-            "Shop",
-            "Coin"
-        ],
-        "region": "Lake Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Fashionable Outfit",
-        "category": [
-            "Shop",
-            "Coin"
-        ],
-        "region": "Lake Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Mechanic Cap",
-        "category": [
-            "Shop",
-            "Coin"
-        ],
-        "region": "Wooded Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Mechanic Outfit",
-        "category": [
-            "Shop",
-            "Coin"
-        ],
-        "region": "Wooded Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Black Fedora",
-        "category": [
-            "Shop",
-            "Coin"
-        ],
-        "region": "Night Metro",
-        "requires": []
-    },
-    {
-        "name": "Shop: Black Suit",
-        "category": [
-            "Shop",
-            "Coin"
-        ],
-        "region": "Night Metro",
-        "requires": []
-    },
-    {
-        "name": "Shop: Pirate Hat",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Coin"
-        ],
-        "region": "Seaside Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Pirate Outfit",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Coin"
-        ],
-        "region": "Seaside Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Clown Hat",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Coin"
-        ],
-        "region": "Luncheon Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Clown Suit",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Coin"
-        ],
-        "region": "Luncheon Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Football Helmet",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Coin"
-        ],
-        "region": "Moon Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Football Uniform",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Coin"
-        ],
-        "region": "Moon Kingdom",
-        "requires": []
-    },
-    {
-        "name": "Shop: Plush Frog",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cap Kingdom",
-        "requires": "{RegionalCap()}"
-    },
-    {
-        "name": "Shop: Bonneton Tower Model",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cap Kingdom",
-        "requires": "{RegionalCap()}"
-    },
-    {
-        "name": "Shop: T-Rex Model",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cascade Kingdom",
-        "requires": "{RegionalCascade()}"
-    },
-    {
-        "name": "Shop: Triceratops Trophy",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cascade Kingdom",
-        "requires": "{RegionalCascade()}"
-    },
-    {
-        "name": "Shop: Inverted Pyramid Model",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Sand Kingdom",
-        "requires": "{RegionalSand()}"
-    },
-    {
-        "name": "Shop: Jaxi Statue",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Sand Kingdom",
-        "requires": "{RegionalSand()}"
-    },
-    {
-        "name": "Shop: Underwater Dome",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lake Kingdom",
-        "requires": "{RegionalLake()}"
-    },
-    {
-        "name": "Shop: Rubber Dorrie",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lake Kingdom",
-        "requires": "{RegionalLake()}"
-    },
-    {
-        "name": "Shop: Flowers from Steam Gardens",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Wooded Kingdom",
-        "requires": "{RegionalWooded()}"
-    },
-    {
-        "name": "Shop: Steam Gardener Watering Can",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Wooded Kingdom",
-        "requires": "{RegionalWooded()}"
-    },
-    {
-        "name": "Shop: Potted Palm Tree",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lost Kingdom",
-        "requires": "{RegionalLost()}"
-    },
-    {
-        "name": "Shop: Butterfly Mobile",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lost Kingdom",
-        "requires": "{RegionalLost()}"
-    },
-    {
-        "name": "Shop: Pauline Statue",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Metro Kingdom",
-        "requires": "{RegionalMetro()}"
-    },
-    {
-        "name": "Shop: New Donk City Hall Model",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Metro Kingdom",
-        "requires": "{RegionalMetro()}"
-    },
-    {
-        "name": "Shop: Shiverian Rug",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Snow Kingdom",
-        "requires": "{RegionalSnow()}"
-    },
-    {
-        "name": "Shop: Shiverian Nesting Dolls",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Snow Kingdom",
-        "requires": "{RegionalSnow()}"
-    },
-    {
-        "name": "Shop: Sand Jar",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Seaside Kingdom",
-        "requires": "{RegionalSeaside()}"
-    },
-    {
-        "name": "Shop: Glass Tower Model",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Seaside Kingdom",
-        "requires": "{RegionalSeaside()}"
-    },
-    {
-        "name": "Shop: Souvenir Forks",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Luncheon Kingdom",
-        "requires": "{RegionalLuncheon()}"
-    },
-    {
-        "name": "Shop: Vegetable Plate",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Luncheon Kingdom",
-        "requires": "{RegionalLuncheon()}"
-    },
-    {
-        "name": "Shop: Paper Lantern",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Bowser's Kingdom",
-        "requires": "{RegionalBowser()}"
-    },
-    {
-        "name": "Shop: Jizo Statue",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Bowser's Kingdom",
-        "requires": "{RegionalBowser()}"
-    },
-    {
-        "name": "Shop: Cap Kingdom Sticker",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cap Kingdom",
-        "requires": "{RegionalCap()}"
-    },
-    {
-        "name": "Shop: Cascade Kingdom Sticker",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Cascade Kingdom",
-        "requires": "{RegionalCascade()}"
-    },
-    {
-        "name": "Shop: Sand Kingdom Sticker",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Sand Kingdom",
-        "requires": "{RegionalSand()}"
-    },
-    {
-        "name": "Shop: Lake Kingdom Sticker",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lake Kingdom",
-        "requires": "{RegionalLake()}"
-    },
-    {
-        "name": "Shop: Wooded Kingdom Sticker",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Wooded Kingdom",
-        "requires": "{RegionalWooded()}"
-    },
-    {
-        "name": "Shop: Lost Kingdom Sticker",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Lost Kingdom",
-        "requires": "{RegionalLost()}"
-    },
-    {
-        "name": "Shop: Metro Kingdom Sticker",
-        "category": [
-            "Shop",
-            "Regional"
-        ],
-        "region": "Metro Kingdom",
-        "requires": "{RegionalMetro()}"
-    },
-    {
-        "name": "Shop: Snow Kingdom Sticker",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Snow Kingdom",
-        "requires": "{RegionalSnow()}"
-    },
-    {
-        "name": "Shop: Seaside Kingdom Sticker",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Seaside Kingdom",
-        "requires": "{RegionalSeaside()}"
-    },
-    {
-        "name": "Shop: Luncheon Kingdom Sticker",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Luncheon Kingdom",
-        "requires": "{RegionalLuncheon()}"
-    },
-    {
-        "name": "Shop: Bowser's Kingdom Sticker",
-        "category": [
-            "post-metro",
-            "Shop",
-            "Regional"
-        ],
-        "region": "Bowser's Kingdom",
-        "requires": "{RegionalBowser()}"
     },
     {
         "name": "World Peace",

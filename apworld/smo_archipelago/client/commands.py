@@ -190,7 +190,6 @@ def _classified_to_itemmsg(
         kingdom=ref.kingdom,
         shine_id=ref.shine_id,
         cap=ref.cap,
-        slot=ref.slot,
         name=ref.name or raw_name,
         from_="repl",
         classification=classification,

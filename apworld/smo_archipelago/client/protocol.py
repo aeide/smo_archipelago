@@ -23,7 +23,6 @@ class ItemKind(str, Enum):
     MOON = "moon"
     CAPTURE = "capture"
     KINGDOM = "kingdom"
-    SHOP = "shop"
     OTHER = "other"
 
 
@@ -77,7 +76,6 @@ class CheckMsg:
     kingdom: str | None = None
     shine_id: str | None = None
     cap: str | None = None
-    slot: int | None = None  # for shop slots
     # M4 raw identifiers (Switch sends, bridge resolves)
     stage_name: str | None = None   # moons: ShineInfo::stageName
     object_id: str | None = None    # moons: ShineInfo::objectId
@@ -212,7 +210,6 @@ class ItemRef:
     kingdom: str | None = None
     shine_id: str | None = None
     cap: str | None = None
-    slot: int | None = None
     name: str | None = None  # for OTHER kinds where we just have a label
     # M4 raw identifiers (preserved for dedup; not sent in CheckedReplay)
     stage_name: str | None = None
@@ -234,7 +231,6 @@ class ItemRef:
             "kingdom": self.kingdom,
             "shine_id": self.shine_id,
             "cap": self.cap,
-            "slot": self.slot,
             "name": self.name,
         })
 
@@ -259,7 +255,6 @@ class ItemMsg:
     kingdom: str | None = None
     shine_id: str | None = None
     cap: str | None = None
-    slot: int | None = None
     name: str | None = None
     from_: str = "self"
     # M6 phase B: for capture items, the bridge resolves cap -> hack_name via
