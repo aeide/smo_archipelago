@@ -188,6 +188,13 @@ async def main(args: argparse.Namespace) -> None:
         capture_map = CaptureMap.from_package(apworld_pkg, "capture_map.json")
 
     # ----- Context
+    # `server_addr` is the prefill for the GUI's Connect bar (via
+    # CommonContext.suggested_address → kvui's connect_layout). We do NOT
+    # use it to auto-dial on launch — that's gated below on an explicit
+    # `--connect`. Without that gate, every launch hammers the configured
+    # default (archipelago.gg:38281 unless TOML overrides it) before the
+    # user has touched anything, which surfaces as "Connection refused"
+    # for anyone testing against a server that isn't actually running.
     server_addr = f"{cfg.ap.host}:{cfg.ap.port}" if cfg.ap.host else None
     ctx = SMOContext(
         server_addr,
@@ -222,6 +229,10 @@ async def main(args: argparse.Namespace) -> None:
         on_death=ctx.report_death,
         deathlink_enabled=cfg.deathlink.enabled,
         compose_moon_label=ctx.compose_moon_label_for_location,
+        # SNI-style two-stage gate: SMOContext.connect() defers AP dial
+        # until the Switch is up; this callback promotes the pending
+        # request the moment HELLO arrives.
+        on_switch_ready=ctx._on_switch_ready,
     )
     ctx.switch = sw
     # M-color: ApClient → SwitchServer palette callback. Wired post-
@@ -229,14 +240,24 @@ async def main(args: argparse.Namespace) -> None:
     ctx.send_shine_scouts = sw.send_shine_scouts
 
     # ----- Async tasks
-    state.set_ap_conn("connecting")
     # start() returns once the listening socket is bound; asyncio drives
     # _handle_client in the background per-connection. No separate
     # serve_forever task needed (and having one creates a shutdown race:
     # cancelling it triggers Server.__aexit__ -> wait_closed(), which on
     # Python 3.12+ blocks until every active client connection drops).
     await sw.start()
-    ctx.server_task = asyncio.create_task(server_loop(ctx), name="ap-server-loop")
+    # AP connection is opt-in. A Launcher click (which passes no args)
+    # leaves AP disconnected — the user clicks Connect / types /connect
+    # when ready, and SMOContext.connect() then runs the SNI-style
+    # two-stage gate that defers the websocket dial until the Switch is
+    # up. The Connect bar is prefilled from server_addr via
+    # CommonContext.suggested_address so the user just has to confirm.
+    #
+    # An explicit `--connect addr` is routed through the same gate so the
+    # headless / scripted flow behaves identically — boot the Switch
+    # (real or fake) and the queued dial fires.
+    if args.connect:
+        asyncio.create_task(ctx.connect(), name="initial-connect")
 
     if gui_enabled:
         ctx.run_gui()

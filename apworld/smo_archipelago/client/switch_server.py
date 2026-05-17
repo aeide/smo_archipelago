@@ -39,6 +39,7 @@ CheckHandler = Callable[[dict], Awaitable["int | None"]]  # returns AP loc_id or
 GoalHandler = Callable[[], Awaitable[None]]
 DeathHandler = Callable[[int], Awaitable[None]]
 LabelComposer = Callable[[int], "str | None"]              # loc_id -> label text
+SwitchReadyHandler = Callable[[], Awaitable[None]]         # fired post-HELLO
 
 
 class SwitchServer:
@@ -52,6 +53,7 @@ class SwitchServer:
         on_death: DeathHandler | None = None,
         deathlink_enabled: bool = False,
         compose_moon_label: LabelComposer | None = None,
+        on_switch_ready: SwitchReadyHandler | None = None,
     ):
         self._host = host
         self._port = port
@@ -61,9 +63,16 @@ class SwitchServer:
         self._on_death = on_death
         self._deathlink_enabled = deathlink_enabled
         self._compose_label = compose_moon_label
+        self._on_switch_ready = on_switch_ready
         self._writer: asyncio.StreamWriter | None = None
         self._writer_lock = asyncio.Lock()
         self._server: asyncio.AbstractServer | None = None
+
+    def is_connected(self) -> bool:
+        """True iff a Switch is currently attached and the socket is open.
+        Used by SMOContext to gate the AP dial on Switch presence."""
+        w = self._writer
+        return w is not None and not w.is_closing()
 
     async def start(self) -> None:
         self._server = await asyncio.start_server(self._handle_client, self._host, self._port)
@@ -307,3 +316,14 @@ class SwitchServer:
         await self.send_shine_scouts(self._state.all_shine_palette())
 
         await self._send(ApStateMsg(conn=self._state.ap_conn))
+
+        # Fire the post-HELLO callback last so SMOContext can promote a
+        # pending AP-connect (SNI-style two-stage gate): the user clicked
+        # Connect earlier but the AP dial was deferred until the Switch
+        # was up. Sending the HelloAck/replay first means the new AP
+        # connection has already had its state pushed when it lands.
+        if self._on_switch_ready is not None:
+            try:
+                await self._on_switch_ready()
+            except Exception:
+                log.exception("on_switch_ready callback failed")

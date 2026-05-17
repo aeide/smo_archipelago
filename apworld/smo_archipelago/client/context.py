@@ -218,8 +218,85 @@ class SMOContext(CommonContext):
         # send_shine_scouts). None disables the wire push; LocationInfo
         # still updates BridgeState so HELLO replays carry the cache.
         self.send_shine_scouts = None
+        # SNI-style two-stage gate: when the user clicks Connect (or types
+        # /connect addr) before the Switch has HELLO'd, we stash the
+        # requested address here, log a "waiting for Switch" notice, and
+        # defer the actual websocket dial until on_switch_ready fires.
+        # None means "no pending request" (either nothing requested yet, or
+        # already promoted to a real connection).
+        self._pending_ap_address: str | None = None
 
     # ----------------------------------------------------------- AP overrides
+
+    async def connect(self, address: str | None = None) -> None:
+        """Two-stage gated connect.
+
+        Behaves like CommonContext.connect when the Switch is already up.
+        Otherwise stashes the requested address as `_pending_ap_address`,
+        logs a "waiting for Switch" line, and defers the websocket dial
+        until the Switch HELLOs (see `_on_switch_ready`).
+
+        We still set `self.server_address` synchronously so the GUI's
+        Connect bar / Connections tab show the user's chosen target.
+        """
+        if address is None:
+            address = self.server_address
+        # Mirror CommonContext.connect's semantics: the user wants this to
+        # become the live target. Persist it for the GUI prefill and clear
+        # the "user explicitly disconnected" flag so reconnect-loops behave.
+        self.server_address = address
+        self.disconnected_intentionally = False
+        if self.switch is not None and self.switch.is_connected():
+            self._pending_ap_address = None
+            await super().connect(address)
+            return
+        # Switch not up — defer the dial. If we already had an AP socket
+        # (e.g. user clicked Connect again after the Switch dropped out),
+        # tear it down first so the connection state matches what the user
+        # actually sees ("waiting for Switch" with no live AP).
+        if self.server is not None:
+            await super().disconnect(allow_autoreconnect=False)
+        self._pending_ap_address = address
+        self.state.set_ap_conn("waiting_for_switch")
+        log.info(
+            "Waiting for Switch connection to connect to the multiworld "
+            "at %s (boot Ryujinx / your Switch — the dial fires when the "
+            "mod HELLOs).", address or "(no address set)",
+        )
+
+    async def disconnect(self, allow_autoreconnect: bool = False) -> None:
+        """Clear any pending two-stage gate, then disconnect normally.
+
+        Without this clear, a /disconnect issued while waiting for the
+        Switch would leave the pending address armed — the next Switch
+        HELLO would then fire an AP dial the user thought they cancelled.
+        """
+        if self._pending_ap_address is not None:
+            log.info("cancelling pending AP connect (was waiting for Switch)")
+            self._pending_ap_address = None
+            self.state.set_ap_conn("disconnected")
+        await super().disconnect(allow_autoreconnect=allow_autoreconnect)
+
+    async def _on_switch_ready(self) -> None:
+        """SwitchServer post-HELLO callback. Promotes a pending AP connect.
+
+        No-op when:
+          - no AP connect was queued (user hasn't clicked Connect yet, or
+            already connected), or
+          - the AP socket is already up (e.g. Switch reconnected mid-session).
+        """
+        if self._pending_ap_address is None:
+            return
+        if self.server is not None:
+            # Already connected — Switch just reconnected. Clear the pending
+            # slot defensively so a future disconnect/reconnect doesn't see
+            # stale state.
+            self._pending_ap_address = None
+            return
+        address = self._pending_ap_address
+        self._pending_ap_address = None
+        log.info("Switch connected; promoting deferred AP connect to %s", address)
+        await super().connect(address)
 
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
