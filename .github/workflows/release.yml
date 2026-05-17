@@ -103,13 +103,42 @@ jobs:
           body: |
             ## SMO Archipelago ${{ github.ref_name }}
 
-            **First-time users:** download `smo.apworld`, drop it into your
-            Archipelago install's `custom_worlds/` directory, then
-            double-click your generated `.smoap` file. The setup wizard
-            walks you through the rest.
+            ### First-time users — start here
 
-            See [first-time setup](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/first-time-setup.md)
-            for prerequisites and the full flow.
+            1. Download `smo.apworld` below.
+            2. Drop it into your Archipelago install's `custom_worlds/`
+               directory.
+            3. Double-click the `.smoap` file your AP generation produced
+               (one per player). The setup wizard walks you through the
+               rest — prereq checks, moon/capture extraction from your
+               own NSP, Switch-mod build, and deploy to SD card or
+               Ryujinx.
+
+            **📖 Full walkthrough with prerequisites:**
+            [docs/first-time-setup.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/first-time-setup.md)
+
+            **🔄 Changing AP server / slot / bridge PC after setup:**
+            [docs/changing-servers.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/changing-servers.md)
+
+            ### ⚠️ Compatibility requirements
+
+            SMO Archipelago targets **Super Mario Odyssey 1.0.0** on a
+            **modded Switch running Atmosphere CFW on firmware 21.x or
+            earlier**.
+
+            - **SMO version:** must be **1.0.0**. Versions 1.1.0, 1.2.0,
+              1.3.0 will not work. If you're on a newer version, use
+              [Istador/odyssey-downgrade](https://github.com/Istador/odyssey-downgrade)
+              to drop back to 1.0.0 first.
+            - **Switch firmware:** must be **FW 21.x or earlier**.
+              **FW 22+ is NOT supported** by this project — even though
+              Atmosphere 1.11+ technically boots on FW22, the homebrew
+              lifecycle changes Nintendo shipped in FW22 break the
+              subsdk9-style mods we rely on. Stay on FW 21.x if you want
+              to use SMO Archipelago.
+            - **Ryujinx:** supported as a dev / playtest target. Same
+              SMO 1.0.0 requirement; firmware in Ryujinx tracks whatever
+              you imported.
 
             ### Verifying the download
 

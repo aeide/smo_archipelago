@@ -100,6 +100,12 @@ $env:SMOAP_LIVE_AP="1"
 
 ## First-time setup (typical user flow)
 
+> ⚠️ **Requires SMO 1.0.0** on a modded Switch running **Atmosphere on
+> firmware 21.x or earlier**. SMO 1.1.0+ won't work; downgrade with
+> [Istador/odyssey-downgrade](https://github.com/Istador/odyssey-downgrade).
+> **FW22+ is NOT supported** (homebrew lifecycle changes break our
+> subsdk9 module). Ryujinx is supported as an alternative target.
+
 The entire user-facing flow is three steps:
 
 1. **Download `smo.apworld`** from the

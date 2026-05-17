@@ -4,6 +4,21 @@ This page describes everything a brand-new SMO Archipelago player needs to
 do once on their machine. After this, joining a multiworld is just
 double-clicking your `.smoap` file.
 
+## Hard requirements
+
+Before you start, confirm all three:
+
+| Requirement | Why | What to do if you don't have it |
+|---|---|---|
+| **Super Mario Odyssey 1.0.0** | Every public SMO mod (lunakit, OdysseyDecomp, ours) targets the original 1.0.0 release. 1.1.0+ have different symbol offsets, struct layouts, and patched behaviors — our module won't load on them. | If you're on 1.1.0, 1.2.0, or 1.3.0, downgrade to 1.0.0 using [Istador/odyssey-downgrade](https://github.com/Istador/odyssey-downgrade). Follow that tool's README — it's a one-time process that removes the update overlay so the cartridge / base NSP runs as 1.0.0. |
+| **Switch firmware 21.x or earlier** | The subsdk9-style modules we rely on use a homebrew lifecycle Nintendo changed in firmware 22. **FW22 is NOT supported** by this project, even though Atmosphere 1.11+ technically boots on it. | Stay on FW 21.x. If you've already updated to FW22 or later, there is currently no downgrade path back to 21.x on a stock Switch — you'd need to wait for SMO Archipelago to add FW22 compatibility (no ETA). |
+| **Atmosphere CFW** running on the above firmware | The mod ships as an Atmosphere overlay (`exefs/subsdk9`). | Follow one of the community guides — [NH Switch Guide](https://nh-server.github.io/switch-guide/) is the canonical starting point. Make sure you're on FW 21.x BEFORE setting up Atmosphere; don't update past 21.x. |
+
+If you'd rather not deal with a real Switch, **Ryujinx** is supported as a
+development / playtest target with the same SMO 1.0.0 requirement. The
+firmware question doesn't apply in Ryujinx — whatever firmware you imported
+into Ryujinx is what it uses.
+
 ## What you'll end up with
 
 - `smo.apworld` installed in your Archipelago install's `custom_worlds/`
