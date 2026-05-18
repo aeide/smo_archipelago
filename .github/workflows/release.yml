@@ -47,12 +47,34 @@ jobs:
       - name: Build apworld zip with bundled mod + scripts
         run: python scripts/install_apworld.py --bundle-mod --bundle-scripts
 
+      # PopTracker pack — generated from the same apworld data the SMOClient
+      # uses, so users get a logic-graph tracker that auto-syncs YAML options
+      # via the AP autotracker. Independent artifact (a separate zip the user
+      # drops into PopTracker's packs/ directory). The generator is stdlib-only;
+      # no extra deps to install.
+      - name: Build PopTracker pack zip
+        run: |
+          # Strip the leading 'v' off the tag for the in-manifest version
+          # (workflow_dispatch falls back to the generator's auto-detect).
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+            python scripts/build_poptracker_pack.py --zip --version "$VERSION"
+          else
+            python scripts/build_poptracker_pack.py --zip
+          fi
+          ls -lah poptracker/build/
+
       - name: Stage release artifacts + checksum
         run: |
           mkdir release-artifacts
           cp vendor/Archipelago/custom_worlds/smo.apworld release-artifacts/
+          # The PopTracker zip filename has the version embedded; copy whatever
+          # build_poptracker_pack.py produced.
+          cp poptracker/build/smo-poptracker-v*.zip release-artifacts/
           cd release-artifacts
           sha256sum smo.apworld > smo.apworld.sha256
+          sha256sum smo-poptracker-v*.zip > smo-poptracker.sha256
           ls -lah
 
       # Audit: confirm we did NOT leak any of the Nintendo-IP files that
@@ -114,6 +136,16 @@ jobs:
                own NSP, Switch-mod build, and deploy to SD card or
                Ryujinx.
 
+            ### Optional: PopTracker pack
+
+            Download `smo-poptracker-${{ github.ref_name }}.zip` below and
+            extract it into PopTracker's `packs/` directory (Windows:
+            `%APPDATA%\PopTracker\packs\`). In PopTracker, load the pack
+            and pick the **Archipelago** variant; enter the same host/port
+            and slot name you used for SMOClient. The pack auto-syncs your
+            YAML options from the AP server's slot_data and shows live
+            reachability for all 482 location checks.
+
             **📖 Full walkthrough with prerequisites:**
             [docs/first-time-setup.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/first-time-setup.md)
 
@@ -140,8 +172,9 @@ jobs:
               SMO 1.0.0 requirement; firmware in Ryujinx tracks whatever
               you imported.
 
-            ### Verifying the download
+            ### Verifying the downloads
 
             ```
             sha256sum -c smo.apworld.sha256
+            sha256sum -c smo-poptracker.sha256
             ```

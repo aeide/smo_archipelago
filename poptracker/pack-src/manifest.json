@@ -1,0 +1,14 @@
+{
+  "name": "Spicy Meatball Overdrive",
+  "game_name": "Spicy Meatball Overdrive",
+  "package_uid": "smo_archipelago",
+  "package_version": "0.0.0",
+  "platform": "switch",
+  "min_poptracker_version": "0.32.0",
+  "variants": {
+    "ap": {
+      "display_name": "Archipelago",
+      "flags": ["ap"]
+    }
+  }
+}

@@ -43,6 +43,10 @@ apworld/smo_archipelago/tests/seeds/out/
 .romfs-cache/
 scripts/.extract-venv/
 
+# PopTracker pack build artifacts (generated from apworld data; re-run
+# scripts/build_poptracker_pack.py to regenerate).
+poptracker/build/
+
 # IDE
 .vscode/
 .idea/
