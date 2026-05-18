@@ -315,15 +315,21 @@ bool ApClient::connectOnce() {
     socket_fd_ = nn::socket::Socket(kAfInet, kSockStream, 0);
     SMOAP_LOG_INFO("[conn] Socket returned fd=%d", socket_fd_);
     if (socket_fd_ < 0) {
-        SMOAP_LOG_WARN("[conn] Socket() failed");
+        const int err = nn::socket::GetLastErrno();
+        SMOAP_LOG_WARN("[conn] Socket() failed errno=%d", err);
         socket_fd_ = -1;
         return false;
     }
 
-    sockaddr_in addr{};
-    addr.sin_family = kAfInet;
-    addr.sin_port   = nn::socket::InetHtons(target_.port);
-    if (nn::socket::InetAton(target_.host.c_str(), &addr.sin_addr) == 0) {
+    // Nintendo's `sockaddr` is 16 bytes with sa_family as a single byte at
+    // offset 1 (after a length-byte at offset 0) — NOT byte-equivalent to
+    // POSIX `sockaddr_in` (8 bytes, sin_family as u16 at offset 0). Passing
+    // sockaddr_in to nn::socket::Connect makes bsd read byte 1 (= 0 for our
+    // AF_INET=2 LE-encoded value) as the family, returns EINVAL.
+    sockaddr addr{};
+    addr.family = static_cast<u8>(kAfInet);
+    addr.port   = nn::socket::InetHtons(target_.port);
+    if (nn::socket::InetAton(target_.host.c_str(), &addr.address) == 0) {
         SMOAP_LOG_WARN("[conn] InetAton failed for %s", target_.host.c_str());
         nn::socket::Close(socket_fd_);
         socket_fd_ = -1;
@@ -331,11 +337,11 @@ bool ApClient::connectOnce() {
     }
     SMOAP_LOG_INFO("[conn] connecting to %s:%u", target_.host.c_str(), target_.port);
 
-    const Result rc = nn::socket::Connect(socket_fd_,
-                                          reinterpret_cast<const sockaddr*>(&addr),
-                                          sizeof(addr));
+    const Result rc = nn::socket::Connect(socket_fd_, &addr, sizeof(addr));
     if (R_FAILED(rc)) {
-        SMOAP_LOG_WARN("[conn] Connect FAILED rc=0x%x", rc);
+        const int err = nn::socket::GetLastErrno();
+        SMOAP_LOG_WARN("[conn] Connect FAILED rc=0x%x errno=%d (host=%s port=%u fd=%d)",
+                       rc, err, target_.host.c_str(), target_.port, socket_fd_);
         nn::socket::Close(socket_fd_);
         socket_fd_ = -1;
         return false;
