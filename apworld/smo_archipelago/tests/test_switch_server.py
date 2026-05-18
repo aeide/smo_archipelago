@@ -20,7 +20,8 @@ async def test_hello_handshake_and_replay():
     state.seed = "TEST"
     # Pre-populate state so the HELLO replay sends something interesting.
     state.add_received_item(ItemEvent(
-        item=ItemRef(kind=ItemKind.CAPTURE.value, cap="Frog"), sender="Bob"
+        item=ItemRef(kind=ItemKind.CAPTURE.value, cap="Frog"),
+        sender="Bob", cappy_from="Bob",
     ))
     state.add_checked_location(CheckEvent(
         item=ItemRef(kind=ItemKind.MOON.value, kingdom="Cascade", shine_id="DinoNest")
@@ -426,6 +427,59 @@ async def test_hello_without_outstanding_provider_replays_legacy_path():
         kinds = [m["t"] for m in msgs]
         assert "outstanding" not in kinds
         assert "item" not in kinds  # moon skipped, no captures
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_hello_replay_respects_cappy_suppression_for_self_finds():
+    """The HELLO replay path must use ItemEvent.cappy_from (not .sender)
+    for ItemMsg.from_, so a self-find item that was silent on the live
+    path stays silent across save reloads / Switch reconnects.
+
+    Pre-fix: replay used evt.sender which is the unsuppressed slot name,
+    so every save load would pop a Cappy bubble for self-finds.
+    """
+    state = BridgeState()
+    # Self-find: live path stored cappy_from="" (suppressed); sender holds
+    # the real name for logging / web tracker.
+    state.add_received_item(ItemEvent(
+        item=ItemRef(kind="capture", cap="Goomba"),
+        sender="Mario", cappy_from="",
+    ))
+    # Server-injected (e.g. /send Mario Frog): live path kept cappy_from
+    # populated so replay still surfaces a bubble.
+    state.add_received_item(ItemEvent(
+        item=ItemRef(kind="capture", cap="Frog"),
+        sender="Archipelago", cappy_from="Archipelago",
+    ))
+
+    async def on_check(_): return None
+    async def on_goal(): ...
+
+    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal)
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg()))
+        await writer.drain()
+        # hello_ack + checked_replay + item (self) + item (server) + ap_state
+        msgs = await _drain_messages(reader, n=5, timeout=2.0)
+        items = [m for m in msgs if m["t"] == "item"]
+        assert len(items) == 2
+        by_cap = {m["cap"]: m for m in items}
+        # Self-find: from_ collapsed -> "" -> Switch's Cappy filter skips it.
+        assert by_cap["Goomba"]["from"] == ""
+        # Server-injected: from_ surfaces -> Cappy fires.
+        assert by_cap["Frog"]["from"] == "Archipelago"
     finally:
         writer.close()
         try:

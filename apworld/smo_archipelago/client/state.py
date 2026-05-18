@@ -19,6 +19,11 @@ class ItemEvent:
     item: ItemRef
     sender: str = "self"  # "self" or another player's name
     received_at: float = field(default_factory=time.time)
+    # What to display in the Switch's Cappy speech bubble. "" = suppress
+    # (gameplay self-finds collapse to "" so AP→loopback doesn't pop a
+    # bubble for an item we just picked up). HELLO replay reads this
+    # field so a self-find stays silent across save loads / reconnects.
+    cappy_from: str = ""
 
 
 @dataclass

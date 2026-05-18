@@ -97,6 +97,17 @@ async def _drive(ctx: SMOContext, sender_idx: int | None) -> None:
     await ctx._handle_ap_package("ReceivedItems", {"items": [ni]})
 
 
+async def _drive_batch(
+    ctx: SMOContext, items: list[tuple[int, int | None]], *, index: int = 0
+) -> None:
+    """Drive a ReceivedItems packet with multiple items and an explicit
+    `index`. Mirrors AP's wire format — `index` is the absolute position
+    of the first item in the receiver's items_received list; `items` is
+    [(item_id, sender_idx), ...]."""
+    nis = [{"item": iid, "player": s, "flags": 0} for (iid, s) in items]
+    await ctx._handle_ap_package("ReceivedItems", {"index": index, "items": nis})
+
+
 # ---------------------------------------------------------------- scenarios
 
 
@@ -152,3 +163,83 @@ async def test_state_received_item_keeps_real_sender_for_logging():
     evts = list(ctx.state.received_items)
     assert len(evts) == 1
     assert evts[0].sender == "Mario"
+    # The Cappy-suppression decision is persisted on the ItemEvent so the
+    # HELLO replay path can re-use it without recomputing — a self-find
+    # stays silent across save loads.
+    assert evts[0].cappy_from == ""
+
+
+@pytest.mark.asyncio
+async def test_state_received_item_persists_cappy_from_for_other_player():
+    """Non-self-find ItemEvents carry the sender name on the cappy_from
+    field too, so HELLO replay surfaces a bubble (matching live UX)."""
+    ctx, _ = _make_ctx(my_slot=1)
+    await _drive(ctx, sender_idx=2)
+    evts = list(ctx.state.received_items)
+    assert len(evts) == 1
+    assert evts[0].sender == "Player2"
+    assert evts[0].cappy_from == "Player2"
+
+
+# ---------------------------------------------------------------- dedup
+
+
+@pytest.mark.asyncio
+async def test_received_items_dedups_on_full_resend():
+    """AP re-sends the full received-items history on every Connect with
+    index=0. The bridge must skip items it has already processed in this
+    session — otherwise state.received_items grows unboundedly and the
+    HELLO replay sends a fresh ItemMsg per duplicate (the Goomba-x3 bug
+    on save reload)."""
+    ctx, sw = _make_ctx(my_slot=1)
+    # First connect: AP delivers Goomba.
+    await _drive_batch(ctx, [(_ITEM_ID, 0)], index=0)
+    assert len(ctx.state.received_items) == 1
+    assert len(sw.items) == 1
+    # Bridge reconnects → AP re-sends the full history starting at index=0.
+    # No new items have arrived in the meantime.
+    await _drive_batch(ctx, [(_ITEM_ID, 0)], index=0)
+    assert len(ctx.state.received_items) == 1, (
+        "duplicate Goomba should not have been appended"
+    )
+    assert len(sw.items) == 1, "stub switch must not have received a 2nd ItemMsg"
+
+
+@pytest.mark.asyncio
+async def test_received_items_dedups_three_resends_then_processes_new_item():
+    """Pathological case: AP cycles three times (matches the user's
+    repro). After three full resends only one Goomba lives in state.
+    Then a new item arrives in a fresh batch and is processed live."""
+    ctx, sw = _make_ctx(my_slot=1)
+    await _drive_batch(ctx, [(_ITEM_ID, 0)], index=0)
+    await _drive_batch(ctx, [(_ITEM_ID, 0)], index=0)
+    await _drive_batch(ctx, [(_ITEM_ID, 0)], index=0)
+    assert len(ctx.state.received_items) == 1
+    assert len(sw.items) == 1
+
+    # Now a new Goomba arrives genuinely. AP would re-send the existing
+    # one + the new one at index=0 (the "full history" wire convention).
+    await _drive_batch(ctx, [(_ITEM_ID, 0), (_ITEM_ID, 0)], index=0)
+    assert len(ctx.state.received_items) == 2
+    assert len(sw.items) == 2
+
+
+@pytest.mark.asyncio
+async def test_received_items_processes_incremental_update():
+    """The common live path: bridge has been connected, item is awarded,
+    AP sends an incremental ReceivedItems with index = current length
+    and items = [new]. Must process normally."""
+    ctx, sw = _make_ctx(my_slot=1)
+    await _drive_batch(ctx, [(_ITEM_ID, 0)], index=0)
+    assert len(ctx.state.received_items) == 1
+
+    # Incremental: index=1, items=[B] (B is a different item — register
+    # one on the fly).
+    other_id = _ITEM_ID + 1
+    ctx.dp.item_id_to_name[other_id] = "Frog"
+    ctx.dp.item_name_to_id["Frog"] = other_id
+    ctx.dp._item_categories["Frog"] = ["capture"]
+    await _drive_batch(ctx, [(other_id, 0)], index=1)
+    assert len(ctx.state.received_items) == 2
+    assert ctx.state.received_items[1].item.cap == "Frog"
+    assert len(sw.items) == 2

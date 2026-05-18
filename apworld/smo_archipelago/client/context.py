@@ -569,7 +569,30 @@ class SMOContext(CommonContext):
             # end (debounces Multi-Moon arrivals + multi-item ReceivedItems
             # packets).
             moon_granted_this_batch = False
-            for ni in args.get("items", []):
+            # AP re-sends the full received-items history on every Connect
+            # (index=0). Without this skip the bridge would re-process and
+            # re-Cappy every item on every reconnect, and the HELLO replay
+            # loop in switch_server would then ship N duplicates of each
+            # item on every save reload (the Goomba-x3 bug).
+            items_in_batch = args.get("items", [])
+            start_index = int(args.get("index", 0) or 0)
+            already = len(self.state.received_items)
+            skip = max(0, already - start_index)
+            if skip >= len(items_in_batch):
+                if items_in_batch:
+                    log.info(
+                        "ReceivedItems: full resend with no new items "
+                        "(index=%d batch=%d already=%d) — skipping",
+                        start_index, len(items_in_batch), already,
+                    )
+                return
+            if skip:
+                log.info(
+                    "ReceivedItems: skipping %d already-processed items "
+                    "(index=%d already=%d)",
+                    skip, start_index, already,
+                )
+            for ni in items_in_batch[skip:]:
                 item_id = ni.get("item") if isinstance(ni, dict) else getattr(ni, "item", None)
                 sender_idx = ni.get("player") if isinstance(ni, dict) else getattr(ni, "player", None)
                 flags = ni.get("flags", 0) if isinstance(ni, dict) else getattr(ni, "flags", 0)
@@ -602,7 +625,9 @@ class SMOContext(CommonContext):
                     cappy_from = ""
                 else:
                     cappy_from = sender_name
-                self.state.add_received_item(ItemEvent(item=ref, sender=sender_name))
+                self.state.add_received_item(
+                    ItemEvent(item=ref, sender=sender_name, cappy_from=cappy_from)
+                )
                 # M6 phase D — Moon grants bump the per-kingdom outstanding
                 # balance. The Switch's ItemMsg path is now a no-op for
                 # moons (the per-kingdom counter is driven by OutstandingMsg

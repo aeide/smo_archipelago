@@ -387,7 +387,12 @@ class SwitchServer:
                 shine_id=evt.item.shine_id,
                 cap=evt.item.cap,
                 name=evt.item.name,
-                from_=evt.sender,
+                # Use the live-path's Cappy-suppression decision (gameplay
+                # self-finds collapse to ""). evt.sender stays populated for
+                # logging / web tracker but must NOT drive the bubble — a
+                # self-find item that was silent live would otherwise pop a
+                # bubble on every save reload / Switch reconnect.
+                from_=evt.cappy_from,
                 # M6 phase B: hack_name was resolved bridge-side when the item
                 # was first received; carry it through replay so the Switch
                 # mod can grant the capture after reconnect without needing
