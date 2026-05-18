@@ -143,12 +143,14 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
     from kivy.uix.button import Button
     from kivy.uix.checkbox import CheckBox
     from kivy.uix.filechooser import FileChooserListView
+    from kivy.uix.gridlayout import GridLayout
     from kivy.uix.label import Label
     from kivy.uix.popup import Popup
     from kivy.uix.progressbar import ProgressBar
     from kivy.uix.screenmanager import Screen, ScreenManager
     from kivy.uix.scrollview import ScrollView
     from kivy.uix.textinput import TextInput
+    from kivy.uix.widget import Widget
 
     # --------------------------- shared widgets / helpers -----------------
 
@@ -685,55 +687,77 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
         root.add_widget(_h1("Deploy target"))
         root.add_widget(_label("Where should we copy the compiled mod?"))
 
-        # Three radio rows.
+        # Three radio rows in a 4-column GridLayout so checkbox / label /
+        # input / browse-button align vertically across rows. Separate
+        # per-row BoxLayouts can't align because each row sizes its
+        # columns independently (and the custom row's extra Browse button
+        # would shrink only that row's input).
         sd_candidates = detect_sd_candidates()
         sd_default = str(sd_candidates[0]) if sd_candidates else ""
         wizard_state["sd_root"] = sd_default
         wizard_state.setdefault("custom_root", "")
 
+        grid = GridLayout(
+            cols=4,
+            size_hint_y=None,
+            spacing=8,
+            row_default_height=48,
+            row_force_default=True,
+        )
+        grid.bind(minimum_height=grid.setter("height"))
+
+        # Fixed-width checkbox column keeps the indicator next to its
+        # label instead of floating in the middle of a stretched cell.
+        _CB_W = 40
+        _LBL_W = 200
+        _BROWSE_W = 100
+
         # Ryujinx row
-        ryu_row = BoxLayout(orientation="horizontal", size_hint_y=None,
-                            height=48, spacing=8)
-        ryu_cb = CheckBox(group="target", active=(wizard_state["deploy_target"] == "ryujinx"))
-        ryu_row.add_widget(ryu_cb)
-        ryu_row.add_widget(_label("Ryujinx (emulator):", size_hint_x=0.3))
+        ryu_cb = CheckBox(group="target",
+                          active=(wizard_state["deploy_target"] == "ryujinx"),
+                          size_hint_x=None, width=_CB_W)
         ryu_input = TextInput(text=wizard_state["ryujinx_root"] or "(not detected)",
                               multiline=False)
-        ryu_row.add_widget(ryu_input)
-        root.add_widget(ryu_row)
+        grid.add_widget(ryu_cb)
+        grid.add_widget(_label("Ryujinx (emulator):",
+                               size_hint_x=None, width=_LBL_W))
+        grid.add_widget(ryu_input)
+        grid.add_widget(Widget(size_hint_x=None, width=_BROWSE_W))
 
         # SD row
-        sd_row = BoxLayout(orientation="horizontal", size_hint_y=None,
-                           height=48, spacing=8)
-        sd_cb = CheckBox(group="target", active=(wizard_state["deploy_target"] == "sd"))
-        sd_row.add_widget(sd_cb)
-        sd_row.add_widget(_label("Real Switch (SD card):", size_hint_x=0.3))
+        sd_cb = CheckBox(group="target",
+                         active=(wizard_state["deploy_target"] == "sd"),
+                         size_hint_x=None, width=_CB_W)
         sd_input = TextInput(
             text=sd_default or "(plug SD card in, then click Re-detect)",
             multiline=False,
         )
-        sd_row.add_widget(sd_input)
-        root.add_widget(sd_row)
+        grid.add_widget(sd_cb)
+        grid.add_widget(_label("Real Switch (SD card):",
+                               size_hint_x=None, width=_LBL_W))
+        grid.add_widget(sd_input)
+        grid.add_widget(Widget(size_hint_x=None, width=_BROWSE_W))
 
         # Custom-folder row — for users who want to manage the SD-card
         # sync themselves (UMS later, DBI / Goldleaf transfer, staging on
         # a network share, etc.). Writes the same atmosphere/contents/...
         # subtree the SD-card deploy produces, just under the chosen
         # folder root.
-        custom_row = BoxLayout(orientation="horizontal", size_hint_y=None,
-                               height=48, spacing=8)
         custom_cb = CheckBox(group="target",
-                              active=(wizard_state["deploy_target"] == "custom"))
-        custom_row.add_widget(custom_cb)
-        custom_row.add_widget(_label("Custom folder:", size_hint_x=0.3))
+                             active=(wizard_state["deploy_target"] == "custom"),
+                             size_hint_x=None, width=_CB_W)
         custom_input = TextInput(
             text=wizard_state["custom_root"] or "(click Browse to pick a folder)",
             multiline=False,
         )
-        custom_row.add_widget(custom_input)
-        browse_btn = Button(text="Browse...", size_hint_x=None, width=100)
-        custom_row.add_widget(browse_btn)
-        root.add_widget(custom_row)
+        browse_btn = Button(text="Browse...", size_hint_x=None, width=_BROWSE_W)
+        grid.add_widget(custom_cb)
+        grid.add_widget(_label("Custom folder:",
+                               size_hint_x=None, width=_LBL_W))
+        grid.add_widget(custom_input)
+        grid.add_widget(browse_btn)
+
+        root.add_widget(grid)
 
         def open_custom_picker(_i):
             # Tk's askdirectory is the cleanest cross-platform folder
