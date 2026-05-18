@@ -164,66 +164,31 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
     def _h1(text: str) -> Label:
         return _label(f"[size=24][b]{text}[/b][/size]", markup=True, height=48)
 
-    def _kivy_filter_to_tk_filetypes(
+    def _kivy_filter_to_ap_filetypes(
         picker_filter: tuple[str, ...] | list[str],
-    ) -> list[tuple[str, str]]:
+    ) -> tuple[tuple[str, tuple[str, ...]], ...]:
         """Translate the apworld's Kivy-style filter tuples (`("hactool*",
-        "*.exe", "*")`) into tkinter `filetypes` pairs. tkinter wants
-        `[(label, pattern), ...]` and surfaces them in the "Files of type"
-        dropdown — the first entry is selected by default. We map `*.ext`
-        → "EXT files", literal `*` / `*.*` → "All files", and other globs
-        (like `hactool*`) get the pattern as their own label."""
+        "*.exe", "*")`) into the `((label, (ext, ...)), ...)` shape
+        `Utils.open_filename` expects (extensions WITH a leading dot;
+        bare wildcards become an "Any file" group). hactool's `hactool*`
+        glob has no leading-dot meaning, so we drop it and surface
+        `(.exe, *)` instead — that matches the in-the-wild reality of
+        users dropping hactool.exe under MyTools/ or similar."""
         if not picker_filter:
-            return [("All files", "*.*")]
-        out: list[tuple[str, str]] = []
+            return (("Any file", ("",)),)
+        exts: list[str] = []
+        any_seen = False
         for pat in picker_filter:
             if pat in ("*", "*.*"):
-                out.append(("All files", "*.*"))
+                any_seen = True
             elif pat.startswith("*.") and len(pat) > 2:
-                out.append((f"{pat[2:].upper()} files", pat))
-            else:
-                out.append((pat, pat))
-        return out
-
-    def _native_open_file(
-        title: str,
-        filetypes: list[tuple[str, str]],
-        initial_dir: str | None = None,
-    ) -> str | None:
-        """Open the OS-native "open file" dialog and return the picked
-        path (or None on cancel / failure). Tk's `askopenfilename` maps to
-        the Win32 common open-file dialog on Windows, NSOpenPanel on macOS,
-        and the GTK/XDG portal on Linux — much more familiar to users than
-        Kivy's `FileChooserListView`. `-topmost` keeps the dialog above
-        the Kivy window. Returns None (not "") on cancel so callers can
-        `if path:` without ambiguity."""
-        try:
-            import tkinter
-            import tkinter.filedialog
-        except ImportError as e:
-            wizard_log(f"tkinter unavailable for native picker: {e!r}")
-            return None
-        tkroot = tkinter.Tk()
-        try:
-            tkroot.withdraw()
-            tkroot.attributes("-topmost", True)
-            kwargs: dict[str, Any] = {
-                "title": title,
-                "filetypes": filetypes,
-                "parent": tkroot,
-            }
-            if initial_dir:
-                kwargs["initialdir"] = initial_dir
-            chosen = tkinter.filedialog.askopenfilename(**kwargs)
-        except Exception as e:
-            wizard_log(f"native open-file picker failed: {e!r}")
-            chosen = ""
-        finally:
-            try:
-                tkroot.destroy()
-            except Exception:
-                pass
-        return chosen or None
+                exts.append("." + pat[2:])
+        out: list[tuple[str, tuple[str, ...]]] = []
+        if exts:
+            out.append(("Supported files", tuple(exts)))
+        if any_seen or not out:
+            out.append(("Any file", ("",)))
+        return tuple(out)
 
     def _nav_row(on_back, on_next, *, next_text="Next", next_enabled=True):
         row = BoxLayout(orientation="horizontal", size_hint_y=None, height=48, spacing=8)
@@ -321,16 +286,18 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
         next_btn_holder: dict[str, Any] = {}
 
         def open_picker_for(r: PrereqResult) -> None:
-            """Open the OS-native file dialog filtered for the given
-            prereq, persist the picked path under the prereq's key in
-            setup_state, and re-run the prereq check so the row turns
-            green. Uses the native dialog (Win32 / NSOpenPanel / XDG
-            portal) rather than Kivy's FileChooserListView — most users
-            know how to drive their OS's file picker, and recognize a
-            real Windows Explorer window faster than the Kivy one."""
-            picked = _native_open_file(
-                title=r.picker_label,
-                filetypes=_kivy_filter_to_tk_filetypes(r.picker_filter),
+            """Open the native file dialog for the given prereq via
+            `Utils.open_filename` — Archipelago's standard helper.
+            Same call as `Launcher.open_patch` / "Install APWorld",
+            so the dialog (Win32 common dialog on Windows, kdialog /
+            zenity on Linux, NSOpenPanel-via-subprocess on macOS) and
+            its title-bar phrasing match every other AP-issued file
+            picker. Persist the picked path under the prereq's key and
+            re-run the prereq check so the row turns green."""
+            from Utils import open_filename
+            picked = open_filename(
+                r.picker_label,
+                _kivy_filter_to_ap_filetypes(r.picker_filter),
             )
             if picked:
                 state = load_setup_state()
@@ -439,19 +406,17 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
         next_btn.disabled = True
 
         def on_browse(_i) -> None:
-            # Title matches the file the user sees on disk so the dialog
-            # tells them exactly what to point at; many users have the
-            # SMO NSP sitting under their Downloads or Switch-dumps
-            # folder and recognize the filename instantly.
+            # `Utils.open_filename` is the same helper Launcher.open_patch
+            # and the Install-APWorld flow use, so the dialog and its
+            # "Select ..." title-bar phrasing match every other AP-issued
+            # file picker. `suggest` pre-fills with the previous pick
+            # (handy on a Re-pick after a path typo).
+            from Utils import open_filename
             current = wizard_state.get("nsp_path")
-            initial_dir = str(current.parent) if current else None
-            picked = _native_open_file(
-                title="Location of Super Mario Odyssey.nsp",
-                filetypes=[
-                    ("Switch NSP files", "*.nsp"),
-                    ("All files", "*.*"),
-                ],
-                initial_dir=initial_dir,
+            picked = open_filename(
+                "Select Super Mario Odyssey 1.0.0 NSP",
+                (("Switch NSP", (".nsp",)),),
+                suggest=str(current) if current else "",
             )
             if picked:
                 wizard_state["nsp_path"] = Path(picked)
@@ -848,7 +813,7 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                 # Always-on-top so it isn't hidden behind the Kivy window.
                 tkroot.attributes("-topmost", True)
                 chosen = tkinter.filedialog.askdirectory(
-                    title="Pick a custom deploy folder",
+                    title="Select custom deploy folder",
                     parent=tkroot,
                 )
                 tkroot.destroy()
