@@ -142,10 +142,8 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
     from kivy.uix.boxlayout import BoxLayout
     from kivy.uix.button import Button
     from kivy.uix.checkbox import CheckBox
-    from kivy.uix.filechooser import FileChooserListView
     from kivy.uix.gridlayout import GridLayout
     from kivy.uix.label import Label
-    from kivy.uix.popup import Popup
     from kivy.uix.progressbar import ProgressBar
     from kivy.uix.screenmanager import Screen, ScreenManager
     from kivy.uix.scrollview import ScrollView
@@ -165,6 +163,32 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
 
     def _h1(text: str) -> Label:
         return _label(f"[size=24][b]{text}[/b][/size]", markup=True, height=48)
+
+    def _kivy_filter_to_ap_filetypes(
+        picker_filter: tuple[str, ...] | list[str],
+    ) -> tuple[tuple[str, tuple[str, ...]], ...]:
+        """Translate the apworld's Kivy-style filter tuples (`("hactool*",
+        "*.exe", "*")`) into the `((label, (ext, ...)), ...)` shape
+        `Utils.open_filename` expects (extensions WITH a leading dot;
+        bare wildcards become an "Any file" group). hactool's `hactool*`
+        glob has no leading-dot meaning, so we drop it and surface
+        `(.exe, *)` instead — that matches the in-the-wild reality of
+        users dropping hactool.exe under MyTools/ or similar."""
+        if not picker_filter:
+            return (("Any file", ("",)),)
+        exts: list[str] = []
+        any_seen = False
+        for pat in picker_filter:
+            if pat in ("*", "*.*"):
+                any_seen = True
+            elif pat.startswith("*.") and len(pat) > 2:
+                exts.append("." + pat[2:])
+        out: list[tuple[str, tuple[str, ...]]] = []
+        if exts:
+            out.append(("Supported files", tuple(exts)))
+        if any_seen or not out:
+            out.append(("Any file", ("",)))
+        return tuple(out)
 
     def _nav_row(on_back, on_next, *, next_text="Next", next_enabled=True):
         row = BoxLayout(orientation="horizontal", size_hint_y=None, height=48, spacing=8)
@@ -262,32 +286,24 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
         next_btn_holder: dict[str, Any] = {}
 
         def open_picker_for(r: PrereqResult) -> None:
-            """Open a Kivy file dialog filtered for the given prereq, then
-            persist the picked path under the prereq's key in setup_state
-            and re-run the prereq check so the row turns green."""
-            popup_root = BoxLayout(orientation="vertical", spacing=8, padding=8)
-            chooser = FileChooserListView(filters=list(r.picker_filter) or ["*"])
-            popup_root.add_widget(chooser)
-            btn_row = BoxLayout(orientation="horizontal", size_hint_y=None, height=40, spacing=8)
-            ok_btn = Button(text="OK")
-            cancel_btn = Button(text="Cancel")
-            btn_row.add_widget(cancel_btn)
-            btn_row.add_widget(ok_btn)
-            popup_root.add_widget(btn_row)
-            popup = Popup(title=r.picker_label, content=popup_root, size_hint=(0.9, 0.9))
-
-            def commit(_i):
-                sel = chooser.selection
-                if sel:
-                    state = load_setup_state()
-                    state[f"{r.key}_path"] = sel[0]
-                    save_setup_state(state)
-                popup.dismiss()
-                do_check()
-
-            ok_btn.bind(on_release=commit)
-            cancel_btn.bind(on_release=lambda _i: popup.dismiss())
-            popup.open()
+            """Open the native file dialog for the given prereq via
+            `Utils.open_filename` — Archipelago's standard helper.
+            Same call as `Launcher.open_patch` / "Install APWorld",
+            so the dialog (Win32 common dialog on Windows, kdialog /
+            zenity on Linux, NSOpenPanel-via-subprocess on macOS) and
+            its title-bar phrasing match every other AP-issued file
+            picker. Persist the picked path under the prereq's key and
+            re-run the prereq check so the row turns green."""
+            from Utils import open_filename
+            picked = open_filename(
+                r.picker_label,
+                _kivy_filter_to_ap_filetypes(r.picker_filter),
+            )
+            if picked:
+                state = load_setup_state()
+                state[f"{r.key}_path"] = picked
+                save_setup_state(state)
+            do_check()
 
         def render(results: list[PrereqResult]) -> None:
             rows_box.clear_widgets()
@@ -366,22 +382,48 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
             "Browse to a NSP dump of Super Mario Odyssey 1.0.0 (not a "
             "patched version — 1.0.0 only). Moon + capture names will be "
             "extracted to %APPDATA%/SMOArchipelago/data/ and never leave "
-            "your machine."
+            "your machine.",
+            height=64,
         ))
-        chooser = FileChooserListView(filters=["*.nsp"])
-        root.add_widget(chooser)
+
+        # The path display + Browse button. Display is a read-only text
+        # input so long paths can be scrolled (a Label would clip silently
+        # at the right edge for any path past the viewport width).
+        picker_row = BoxLayout(orientation="horizontal", size_hint_y=None,
+                               height=48, spacing=8)
+        path_input = TextInput(
+            text="(no file picked — click Browse...)",
+            readonly=True,
+            multiline=False,
+        )
+        picker_row.add_widget(path_input)
+        browse_btn = Button(text="Browse...", size_hint_x=None, width=120)
+        picker_row.add_widget(browse_btn)
+        root.add_widget(picker_row)
+
         nav, _, next_btn = _nav_row(lambda: goto("prereqs"),
-                                    lambda: (set_nsp(), goto("extract")))
-
-        def set_nsp() -> None:
-            sel = chooser.selection
-            if sel:
-                wizard_state["nsp_path"] = Path(sel[0])
-
-        def update_enabled(*_):
-            next_btn.disabled = not chooser.selection
-        chooser.bind(selection=update_enabled)
+                                    lambda: goto("extract"))
         next_btn.disabled = True
+
+        def on_browse(_i) -> None:
+            # `Utils.open_filename` is the same helper Launcher.open_patch
+            # and the Install-APWorld flow use, so the dialog and its
+            # "Select ..." title-bar phrasing match every other AP-issued
+            # file picker. `suggest` pre-fills with the previous pick
+            # (handy on a Re-pick after a path typo).
+            from Utils import open_filename
+            current = wizard_state.get("nsp_path")
+            picked = open_filename(
+                "Select Super Mario Odyssey 1.0.0 NSP",
+                (("Switch NSP", (".nsp",)),),
+                suggest=str(current) if current else "",
+            )
+            if picked:
+                wizard_state["nsp_path"] = Path(picked)
+                path_input.text = picked
+                next_btn.disabled = False
+
+        browse_btn.bind(on_release=on_browse)
         root.add_widget(nav)
         s.add_widget(root)
         return s
@@ -771,7 +813,7 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                 # Always-on-top so it isn't hidden behind the Kivy window.
                 tkroot.attributes("-topmost", True)
                 chosen = tkinter.filedialog.askdirectory(
-                    title="Pick a custom deploy folder",
+                    title="Select custom deploy folder",
                     parent=tkroot,
                 )
                 tkroot.destroy()

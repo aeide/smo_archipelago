@@ -379,7 +379,7 @@ def check_hactool(override_path: Path | None = None) -> PrereqResult:
         "hactool", "hactool", False,
         detail,
         INSTALL_URLS["hactool"],
-        picker_label="Locate hactool.exe",
+        picker_label="Select hactool executable",
         picker_filter=("hactool*", "*.exe", "*"),
     )
 
