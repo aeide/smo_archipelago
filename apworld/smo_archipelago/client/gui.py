@@ -56,6 +56,39 @@ if typing.TYPE_CHECKING:  # pragma: no cover
 _REFRESH_INTERVAL = 1.5
 
 
+# Vanilla SMO main-story visit order. Used to sort the Odyssey-tab
+# kingdom-moon table so the rows read top-to-bottom in the order the
+# player will traverse them, not alphabetically. Names mirror the
+# short-form used by KingdomMoons() clauses in regions.json — same
+# keyspace as ctx.dp.kingdom_exit_thresholds and the snapshot's
+# moons_received_by_kingdom dict. Unknown kingdoms (a future post-game
+# addition we haven't listed) fall after the canonical entries,
+# alphabetically.
+_KINGDOM_VISIT_ORDER = (
+    "Cap",
+    "Cascade",
+    "Sand",
+    "Lake",
+    "Wooded",
+    "Lost",
+    "Metro",
+    "Snow",
+    "Seaside",
+    "Luncheon",
+    "Ruined",
+    "Bowser's",
+    "Moon",
+    "Mushroom",
+    "Dark",
+    "Darker",
+)
+_KINGDOM_ORDER_INDEX = {k: i for i, k in enumerate(_KINGDOM_VISIT_ORDER)}
+
+
+def _kingdom_sort_key(k: str) -> tuple[int, str]:
+    return (_KINGDOM_ORDER_INDEX.get(k, len(_KINGDOM_VISIT_ORDER)), k)
+
+
 # Register Kivy's bundled monospace font under a short alias so the
 # Odyssey tab can use [font=RobotoMono] markup to line up the per-kingdom
 # moon-count table. We resolve the .ttf via kivy_data_dir directly
@@ -270,7 +303,7 @@ def _format_odyssey(ctx: "SMOContext") -> str:
 
     parts: list[str] = []
     parts.append("[b]Moons by kingdom[/b]    [i]earned / needed to exit[/i]")
-    all_k = sorted(set(moons_recv) | set(exit_thresholds))
+    all_k = sorted(set(moons_recv) | set(exit_thresholds), key=_kingdom_sort_key)
     if all_k:
         # Render the table in RobotoMono with width-padded columns so the
         # name colons, earned counts, and exit thresholds line up under
