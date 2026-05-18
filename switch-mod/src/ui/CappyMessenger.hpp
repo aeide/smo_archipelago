@@ -59,8 +59,17 @@ public:
 
     // Each on-screen balloon lives ~3s; if rs::tryShowCapMessagePriorityLow
     // returns false for this many consecutive frames we drop the head item
-    // with a log line rather than queueing indefinitely. ~30s @ 60fps.
-    static constexpr std::uint32_t kMaxRetryFrames = 1800;
+    // with a log line rather than queueing indefinitely.
+    //
+    // Was 1800 (~30s). Bumped 2026-05-18 after a Ryujinx repro showed AP
+    // items arriving DURING the new-game intro — Cappy doesn't actually join
+    // Mario for ~60s of gameplay at the start of a fresh save, so the
+    // CapMessage director is unavailable that entire window. The 30s cap was
+    // dropping any item that arrived during the intro before Cappy could
+    // ever show it. 9000 frames (~2.5 min @ 60fps) comfortably covers the
+    // intro + any pause-menu / cutscene extensions, with the queue still
+    // bounded so a truly broken state eventually drops.
+    static constexpr std::uint32_t kMaxRetryFrames = 9000;
 
     // Defensive: wait this many frames AFTER we first see a non-null scene
     // before attempting any rs:: dispatch. Gives the StageScene time to

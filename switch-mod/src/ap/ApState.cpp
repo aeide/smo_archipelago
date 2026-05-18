@@ -130,7 +130,28 @@ void ApState::applyOnFrame() {
                     // when bridge didn't resolve — works for the 1:1 names
                     // like Goomba/Goomba.
                     const char* hack = item.hack_name[0] ? item.hack_name : item.cap;
-                    smoap::game::grantCapture(item.cap, hack);
+                    const bool granted = smoap::game::grantCapture(item.cap, hack);
+                    if (!granted) {
+                        // GameDataHolder not cached yet (or symbols missing).
+                        // Stash the item so the per-frame reconciler tail can
+                        // retry once GDH is available — and the Cappy bubble
+                        // fires at the same time as the actual unlock landing,
+                        // not before. Without this, the user sees "Got Goomba"
+                        // with an empty compendium entry (the bug this fixes).
+                        if (!pending_capture_grant.push(item)) {
+                            SMOAP_LOG_WARN(
+                                "[m6-capture] pending_capture_grant FULL — "
+                                "dropping cap='%s' hack='%s' (Cappy and dict "
+                                "write both lost; raise queue cap if this fires)",
+                                item.cap, hack);
+                        }
+                        // Skip the unconditional Cappy enqueue below — we'll
+                        // fire it from flushPendingCaptureGrants after the
+                        // grant lands.
+                        inbound.popDiscard();
+                        ++drained;
+                        continue;
+                    }
                 }
                 break;
             case ItemKind::Kingdom:
@@ -166,6 +187,33 @@ void ApState::applyOnFrame() {
     }
     synthetic_grant_this_frame = false;
     maybeApplyInboundKill();
+}
+
+void ApState::flushPendingCaptureGrants() {
+    // Drain the pending-grant queue head-first. Order matters: SpscRing
+    // preserves FIFO and the user perceives Cappy messages in arrival
+    // order. If the head item's grant still fails (GDH still not cached),
+    // stop — every queued item would fail for the same reason this frame,
+    // and we'll try again next frame. The reconciler running just before
+    // this would have populated the dict entry for any cap whose bit is
+    // already set, so grantCapture's idempotent isExist check almost
+    // always returns true in this loop in practice.
+    while (true) {
+        const Item* item_ptr = pending_capture_grant.peekRef();
+        if (!item_ptr) break;
+        const Item& item = *item_ptr;
+        const char* hack = item.hack_name[0] ? item.hack_name : item.cap;
+        const bool granted = smoap::game::grantCapture(item.cap, hack);
+        if (!granted) break;
+        SMOAP_LOG_INFO("[m6-capture] deferred Cappy firing now cap='%s' "
+                       "hack='%s' from=%s",
+                       item.cap, hack, item.from);
+        // suppress=false for the retry path: by the time we get here the
+        // original bulk-replay burst (if any) is N frames behind us.
+        smoap::ui::CappyMessenger::instance().enqueue(item, local_slot,
+                                                      /*suppress=*/false);
+        pending_capture_grant.popDiscard();
+    }
 }
 
 std::int64_t ApState::nowMs() {

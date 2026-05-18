@@ -419,8 +419,37 @@ public:
     // void* to keep this header free of game-side dependencies.
     std::atomic<void*> scene_cache{nullptr};
 
+    // M6 phase B follow-up — pending capture grants awaiting GameDataHolder.
+    //
+    // When an AP capture ItemMsg drains in applyOnFrame BEFORE DrawMainHook
+    // has cached game_data_holder_cache (boot, scene transition, fresh save
+    // load), the in-line grantCapture call drops with "GameDataHolder not
+    // cached yet" — captures_unlocked.set still runs (so the M7-A capture
+    // lock lifts correctly), but the compendium-dict write is lost and the
+    // Cappy message would fire without the unlock having visibly landed.
+    //
+    // Each failed grant pushes the Item here; the per-frame draw-hook tail
+    // drains the queue after reconcileCaptureDictionary, retries grantCapture,
+    // and fires the deferred Cappy message once the write succeeds. Item is
+    // ~600 bytes of fixed char[] fields (no allocator path), so copying it
+    // by value into the ring is M6.1-allocator-safe.
+    //
+    // Cap = 16 — applyOnFrame's drain-cap is 16 items/frame, so even a worst-
+    // case "all 16 are captures during a GDH-down window" pushes at most 16.
+    // The ring is frame-thread-only on both ends; SpscRing just gives us the
+    // same shape as the other queues.
+    SpscRing<Item, 16> pending_capture_grant;
+
     // Apply queued inbound items to the game (frame thread).
     void applyOnFrame();
+
+    // Per-frame post-applyOnFrame tail: drains pending_capture_grant. Called
+    // from DrawMainHook right after reconcileCaptureDictionary so any dict
+    // writes the reconciler just landed are visible to the queue's
+    // grantCapture retry. Items whose grant still fails stay queued for the
+    // next frame; items whose grant succeeds emit their deferred Cappy
+    // message and pop. Frame-thread only.
+    void flushPendingCaptureGrants();
 
     // Hash a Check message body for dedupe purposes.
     static std::uint64_t hashCheck(const Check&);

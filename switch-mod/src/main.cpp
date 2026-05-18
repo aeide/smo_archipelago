@@ -81,6 +81,12 @@ namespace smoap::game {
 void installCaptureGrantSymbols();
 // M6 phase C: resolve GameDataFile::isGotShine(int) for snapshot enumeration.
 void installSnapshotSymbols();
+// M6 phase B follow-up: per-frame dict-reconciliation. Walks
+// ApState::captures_unlocked and writes any missing addHackDictionary
+// entries; heals the "ItemMsg arrived before GDH was cached" race that
+// otherwise leaves the compendium empty while the Cappy bubble already
+// fired. Cheap (single bitset query) when there's no outstanding work.
+void reconcileCaptureDictionary();
 // M6 phase D: resolve getCurrentWorldIdNoDevelop once (stored on ApState).
 void installDepositKingdomLookupSymbol();
 }  // namespace smoap::game
@@ -170,6 +176,15 @@ HOOK_DEFINE_TRAMPOLINE(DrawMainHook) {
             st.game_data_holder_cache.store(gdh, std::memory_order_relaxed);
         }
         smoap::ap::ApState::instance().applyOnFrame();
+        // M6 phase B follow-up: heal the GoombaCappy race. applyOnFrame may
+        // have dropped an in-line grantCapture if the GDH cache wasn't ready
+        // when the ItemMsg arrived; the reconciler walks captures_unlocked
+        // and writes any missing dict entries, then flushPendingCaptureGrants
+        // retries any queued items and fires their deferred Cappy bubbles.
+        // Both cheap when there's no outstanding work (single bitset query
+        // + empty-queue early-out).
+        smoap::game::reconcileCaptureDictionary();
+        smoap::ap::ApState::instance().flushPendingCaptureGrants();
         smoap::hooks::tickPendingUncapture();
         smoap::ui::drawHudFrame();
         // Pump the Cappy-speech queue. Reads the freshly-cached scene; no-op

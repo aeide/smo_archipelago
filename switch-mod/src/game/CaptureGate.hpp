@@ -24,14 +24,36 @@ std::uint8_t captureBitFor(const char* cap_name);
 //   cap_name  — apworld-canonical cap name (e.g. "Goomba"). Used for logging.
 //   hack_name — raw SMO hack name (e.g. "Kuribo"). What goes into the game.
 //
+// Returns true iff the dict entry exists after the call (either we wrote it
+// or it was already present). Returns false when the write was dropped —
+// callers (notably ApState::applyOnFrame) use this to defer the Cappy
+// message and queue the item for the per-frame reconciler to retry.
+//
 // Call from the game frame thread only. Requires the GameDataHolder* cache
-// in ApState to be populated (DrawMainHook does this every frame).
+// in ApState to be populated (DrawMainHook does this every frame). When the
+// cache is null (boot, scene transition, fresh save load), the first
+// post-HELLO ItemMsg drain can race ahead of the first DrawMainHook cache
+// update — that's the "GoombaCappy bubble fired but compendium empty" bug.
+// The reconciler in reconcileCaptureDictionary heals it the next frame
+// regardless.
 //
 // resolveCaptureGrantSymbols() must be called once at module init (from
 // installCaptureGrantSymbols below) to bind the GameDataFunction:: function
 // pointers via nn::ro::LookupSymbol. If the lookup fails, grantCapture logs
-// and drops.
-void grantCapture(const char* cap_name, const char* hack_name);
+// and returns false.
+bool grantCapture(const char* cap_name, const char* hack_name);
+
+// Per-frame reconciliation. Walks ApState::captures_unlocked; for every set
+// bit whose hack_name is missing from the in-game dictionary, attempts the
+// addHackDictionary write. Bails as a single cheap pointer-load when the
+// GDH cache or symbols aren't ready yet — safe to call every frame.
+//
+// Healing path for the silent-failure race in grantCapture: when an AP
+// capture item arrives before DrawMainHook has cached the GameDataHolder
+// pointer, the in-line grantCapture call drops. The bit stays set in
+// captures_unlocked, and this reconciler picks it up on the next frame
+// where the cache is populated. Frame-thread only.
+void reconcileCaptureDictionary();
 
 // Resolve the addHackDictionary + isExistInHackDictionary symbols once at
 // module init. Wired from main.cpp alongside the existing softInstall calls.
