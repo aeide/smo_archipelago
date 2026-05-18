@@ -127,22 +127,7 @@ jobs:
 
             ### First-time users — start here
 
-            1. **Download `smo.apworld`** below.
-            2. **Drop it into your Archipelago install's `custom_worlds/`**
-               directory.
-            3. **Generate your multiworld.** In the Archipelago Launcher,
-               click *Generate Template* — this writes a YAML stub for
-               every installed game into your `Players/` directory. Find
-               the one labeled **Spicy Meatball Overdrive** (that's how
-               this apworld registers in the game list), edit your `name`
-               and any options, then click *Generate*. Extract the
-               resulting per-player zip from `output/` — alongside the
-               usual AP files you'll find a `<player>.smoap`.
-            4. **Double-click your `.smoap`.** The Launcher routes it to
-               **SMO Client** (that's how the entry appears in the
-               Launcher's Clients list). On first run, the setup wizard
-               walks you through prereq checks, moon/capture extraction
-               from your own NSP, Switch-mod build, and deploy to SD card.
+            **📖 [docs/first-time-setup.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/first-time-setup.md)** — full walkthrough: prerequisites, multiworld generation, and the SMOClient setup wizard.
 
             ### Optional: PopTracker pack
 
@@ -153,9 +138,6 @@ jobs:
             and slot name you used for SMOClient. The pack auto-syncs your
             YAML options from the AP server's slot_data and shows live
             reachability for all 482 location checks.
-
-            **📖 Full walkthrough with prerequisites:**
-            [docs/first-time-setup.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/first-time-setup.md)
 
             **🔄 Changing AP server / slot / bridge PC after setup:**
             [docs/changing-servers.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/changing-servers.md)
