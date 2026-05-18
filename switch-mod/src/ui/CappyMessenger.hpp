@@ -201,11 +201,14 @@ int formatCappyMsg(char* buf, std::size_t cap, const smoap::ap::Item& item);
 // Cosmetic name shortening for the speech bubble ONLY. Wire/AP/tracker/REPL/
 // logs all keep the canonical name (174 items, see
 // apworld/smo_archipelago/data/items.json). 36 items match one of three
-// long suffixes and we rewrite each to save bubble space:
+// long suffixes and we drop just " Kingdom" from each so the item type
+// (Power Moon / Multi-Moon / Sticker) stays full-text — matches the
+// bridge's `format_moon_label` shape so live cutscene labels and offline
+// reconcile bubbles read identically:
 //
-//   "X Kingdom Power Moon" -> "X Moon"        (saves up to 19 chars)
-//   "X Kingdom Multi-Moon" -> "X Multi-Moon"  (saves up to 13 chars)
-//   "X Kingdom Sticker"    -> "X Sticker"     (saves up to 11 chars)
+//   "X Kingdom Power Moon" -> "X Power Moon"  (saves 8 chars)
+//   "X Kingdom Multi-Moon" -> "X Multi-Moon"  (saves 8 chars)
+//   "X Kingdom Sticker"    -> "X Sticker"     (saves 8 chars)
 //
 // Everything else is copied verbatim. dst always NUL-terminates; if src
 // is longer than dst_cap-1 the unchanged-copy path truncates silently

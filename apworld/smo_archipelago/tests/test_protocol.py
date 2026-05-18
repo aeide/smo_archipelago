@@ -8,6 +8,7 @@ import pytest
 
 from client import protocol
 from client.protocol import (
+    CappyMsg,
     CheckMsg,
     Classification,
     DepositAckMsg,
@@ -207,6 +208,25 @@ def test_moon_label_msg_unicode_text_preserved():
     raw = protocol.encode(msg)
     parsed = protocol.decode(raw)
     assert parsed["text"] == "Got Café Power Moon!"
+
+
+# --- CappyMsg (capturesanity bubble) -------------------------------------
+
+
+def test_cappy_msg_round_trip():
+    msg = CappyMsg(text="Got Goomba!")
+    parsed = protocol.decode(protocol.encode(msg))
+    assert parsed == {"t": "cappy", "text": "Got Goomba!"}
+
+
+def test_cappy_msg_defaults_round_trip():
+    parsed = protocol.decode(protocol.encode(CappyMsg()))
+    assert parsed == {"t": "cappy", "text": ""}
+
+
+def test_cappy_msg_unicode_text_preserved():
+    parsed = protocol.decode(protocol.encode(CappyMsg(text="Sent Frög → P3")))
+    assert parsed["text"] == "Sent Frög → P3"
 
 
 # ---------------------------------------------------------------------------

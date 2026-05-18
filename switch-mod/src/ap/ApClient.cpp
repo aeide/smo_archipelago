@@ -956,6 +956,13 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
                        m.moon_label.valid_for_ms);
         ApState::instance().setPendingMoonLabel(
             m.moon_label.text, m.moon_label.seq, deadline);
+    } else if (eq(m.t, "cappy")) {
+        // Capturesanity check announcement. Bridge composes the verbatim
+        // bubble text ("Got Goomba!" / "Sent Frog -> Player2") and we
+        // route it straight into the speech-bubble queue. Empty text is
+        // a no-op (enqueueSystem guards).
+        SMOAP_LOG_INFO("[cappy] system bubble text='%s'", m.cappy.text);
+        smoap::ui::CappyMessenger::instance().enqueueSystem(m.cappy.text);
     } else if (eq(m.t, "shine_scouts")) {
         // AP-classification moon color. Bridge sends one or more chunks of
         // (shine_uid -> palette) after AP LocationInfo lands, and a full

@@ -1022,6 +1022,149 @@ async def test_push_capturesanity_replay_can_run_standalone():
 
 
 @pytest.mark.asyncio
+async def test_capture_check_emits_cappy_msg_with_compose_label():
+    """Capturesanity: a capture-check resolves to a loc_id; the bridge
+    composes the bubble text (same formatter used for moon cutscene
+    labels) and sends it as a CappyMsg so the Switch's speech bubble
+    surfaces what the check yielded. No MoonLabelMsg for captures —
+    there's no cutscene to label."""
+    state = BridgeState()
+
+    async def on_check(msg: dict) -> int | None:
+        # Pretend AP resolved this capture-check to loc_id 9001.
+        return 9001 if msg.get("hack_name") == "Kuribo" else None
+
+    async def on_goal(): ...
+
+    composed: list[int] = []
+
+    def compose_label(loc_id: int) -> str:
+        composed.append(loc_id)
+        return "Got Goomba!"
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check, on_goal,
+        compose_moon_label=compose_label,
+    )
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg()))
+        await writer.drain()
+        await _drain_messages(reader, n=3, timeout=2.0)
+
+        # Capture-check; no seq required — Cappy queue is FIFO, no race.
+        writer.write(protocol.encode(protocol.CheckMsg(
+            kind=ItemKind.CAPTURE.value, hack_name="Kuribo",
+        )))
+        await writer.drain()
+        msgs = await _drain_messages(reader, n=1, timeout=2.0)
+        assert msgs[0] == {"t": "cappy", "text": "Got Goomba!"}
+        assert composed == [9001]
+
+        # Moon-check WITHOUT seq → no label at all (legacy path).
+        composed.clear()
+        writer.write(protocol.encode(protocol.CheckMsg(
+            kind=ItemKind.MOON.value, stage_name="X", object_id="o1",
+        )))
+        await writer.drain()
+        # Send a ping so the reader has something to wake on if a label slipped out.
+        writer.write(protocol.encode(protocol.PingMsg(ts_ms=1)))
+        await writer.drain()
+        msgs = await _drain_messages(reader, n=1, timeout=2.0)
+        assert msgs[0]["t"] == "pong"
+        assert composed == []
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_capture_check_suppresses_cappy_bubble_when_already_checked():
+    """Captures fire many times in normal gameplay (Goomba walking around
+    Cap Kingdom). After the AP credit lands once, subsequent re-captures
+    must NOT pop the Cappy bubble — would otherwise spam a "Got X!" message
+    every few seconds. Moons keep their re-collect label (separate path,
+    moons can only re-collect across save slots — rare and useful)."""
+    state = BridgeState()
+
+    async def on_check(msg: dict) -> int | None:
+        # Same loc_id for every capture-check; the bridge's locations_checked
+        # set is what dedupes.
+        return 9001 if msg.get("hack_name") == "Kuribo" else None
+
+    async def on_goal(): ...
+
+    # Bridge mirrors AP's locations_checked. The first check adds 9001;
+    # subsequent calls see it already present and treat them as not-new.
+    locations_checked: set[int] = set()
+    original_on_check = on_check
+
+    async def on_check_tracking(msg: dict) -> int | None:
+        loc_id = await original_on_check(msg)
+        if loc_id is not None:
+            locations_checked.add(loc_id)
+        return loc_id
+
+    composed_calls: list[int] = []
+
+    def compose_label(loc_id: int) -> str:
+        composed_calls.append(loc_id)
+        return "Got Goomba!"
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check_tracking, on_goal,
+        compose_moon_label=compose_label,
+        get_already_checked_loc_ids=lambda: set(locations_checked),
+    )
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg()))
+        await writer.drain()
+        await _drain_messages(reader, n=3, timeout=2.0)
+
+        # First capture of Kuribo → fresh check → cappy bubble.
+        writer.write(protocol.encode(protocol.CheckMsg(
+            kind=ItemKind.CAPTURE.value, hack_name="Kuribo",
+        )))
+        await writer.drain()
+        msgs = await _drain_messages(reader, n=1, timeout=2.0)
+        assert msgs[0] == {"t": "cappy", "text": "Got Goomba!"}
+
+        # Second + third capture of the SAME Kuribo → already checked →
+        # no bubble. Send a ping so the reader has something to wake on
+        # if a bubble accidentally slipped out.
+        for _ in range(3):
+            writer.write(protocol.encode(protocol.CheckMsg(
+                kind=ItemKind.CAPTURE.value, hack_name="Kuribo",
+            )))
+        writer.write(protocol.encode(protocol.PingMsg(ts_ms=1)))
+        await writer.drain()
+        msgs = await _drain_messages(reader, n=1, timeout=2.0)
+        assert msgs[0]["t"] == "pong", (
+            f"expected only pong (no cappy bubble); got {msgs[0]}"
+        )
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
 async def test_push_capturesanity_replay_noop_when_enabled():
     """No synthetic items emitted when capturesanity is on — even if
     push_capturesanity_replay is called directly."""

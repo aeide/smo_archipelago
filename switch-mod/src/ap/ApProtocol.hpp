@@ -303,6 +303,18 @@ struct Kill {
     char cause[kLongFieldCap] = {};
 };
 
+struct Cappy {
+    // Verbatim text routed into CappyMessenger::enqueueSystem for
+    // capturesanity capture-check announcements. Bridge composes the
+    // string ("Got Goomba!" / "Sent Frog -> Player2") so the mod doesn't
+    // need to know the AP slot map; we just pass it through.
+    //
+    // Fixed char[] per the M6.1 inbound-allocator-safety contract.
+    // kMediumFieldCap (128) is generous over the Cappy bubble's ~60-char
+    // comfortable width; enqueueSystem trims on copy if needed.
+    char text[kMediumFieldCap] = {};
+};
+
 struct MoonLabel {
     // M6 phase A.5 — Channel A. Bridge ships this in the same TCP push as
     // the handshake reply to a Check, so the text is in our hands before
@@ -416,6 +428,7 @@ struct DecodedMsg {
     Err err{};
     Kill kill{};
     MoonLabel moon_label{};
+    Cappy cappy{};
     ShineScouts shine_scouts{};
     DepositAck deposit_ack{};
     Outstanding outstanding{};

@@ -418,6 +418,24 @@ class OutstandingMsg:
 
 
 @dataclass
+class CappyMsg:
+    """Verbatim text for the Cappy speech bubble.
+
+    Used for capturesanity capture-checks: captures don't trigger a moon-get
+    cutscene, so the MoonLabelMsg path can't surface what the check yielded.
+    Bridge sends this in the same TCP push as the LocationChecks handshake
+    so Cappy announces "Got X!" / "Sent X -> Player2" the same way a moon
+    cutscene would.
+
+    Routed verbatim into `CappyMessenger::enqueueSystem` on the Switch —
+    bypasses the "Got X from Y!" wrapping used for inbound ItemMsgs (the
+    text is already a complete sentence). Empty `text` is a no-op.
+    """
+    t: str = "cappy"
+    text: str = ""
+
+
+@dataclass
 class MoonLabelMsg:
     """M6 phase A.5 — Channel A: replace the moon-get cutscene's pane text
     with AP-aware text. Bridge sends this in the same TCP push as the

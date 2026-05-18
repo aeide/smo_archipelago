@@ -150,7 +150,7 @@ TEST(format_reconcile_sentinel_drops_from_clause) {
                          "Cascade Kingdom Power Moon");
     char buf[96];
     formatCappyMsg(buf, sizeof(buf), item);
-    EXPECT_EQ_S(std::string(buf), "Got Cascade Moon!");
+    EXPECT_EQ_S(std::string(buf), "Got Cascade Power Moon!");
 }
 
 TEST(format_reconcile_sentinel_short_capture_name) {
@@ -178,8 +178,8 @@ TEST(format_reconcile_sentinel_filter_passes) {
 TEST(shorten_kingdom_power_moon) {
     char buf[64];
     auto n = shortenItemNameForBubble("Cascade Kingdom Power Moon", buf, sizeof(buf));
-    EXPECT_EQ_S(std::string(buf), "Cascade Moon");
-    EXPECT_EQ_I(n, std::strlen("Cascade Moon"));
+    EXPECT_EQ_S(std::string(buf), "Cascade Power Moon");
+    EXPECT_EQ_I(n, std::strlen("Cascade Power Moon"));
 }
 
 TEST(shorten_kingdom_multi_moon) {
@@ -199,7 +199,7 @@ TEST(shorten_apostrophe_kingdom_handled) {
     // not the suffix. Should still match and shorten correctly.
     char buf[64];
     shortenItemNameForBubble("Bowser's Kingdom Power Moon", buf, sizeof(buf));
-    EXPECT_EQ_S(std::string(buf), "Bowser's Moon");
+    EXPECT_EQ_S(std::string(buf), "Bowser's Power Moon");
 }
 
 TEST(shorten_no_match_verbatim) {
@@ -232,8 +232,8 @@ TEST(shorten_zero_cap_safe) {
 }
 
 TEST(shorten_tiny_cap_truncates_verbatim) {
-    // Rewrite would fit ("Cascade Moon" = 12) but dst is too small — fall
-    // through to verbatim with truncation. We just need no overrun + NUL.
+    // Rewrite would fit ("Cascade Power Moon" = 18) but dst is too small —
+    // fall through to verbatim with truncation. We just need no overrun + NUL.
     char buf[8];
     shortenItemNameForBubble("Cascade Kingdom Power Moon", buf, sizeof(buf));
     EXPECT(std::strlen(buf) < sizeof(buf));
@@ -246,7 +246,7 @@ TEST(format_shortens_long_moon_name) {
     Item item = makeItem(ItemKind::Moon, "Alice", "Luncheon Kingdom Power Moon");
     char buf[128];
     formatCappyMsg(buf, sizeof(buf), item);
-    EXPECT_EQ_S(std::string(buf), "Got Luncheon Moon from Alice!");
+    EXPECT_EQ_S(std::string(buf), "Got Luncheon Power Moon from Alice!");
 }
 
 TEST(format_shortens_multimoon) {

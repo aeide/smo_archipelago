@@ -480,6 +480,25 @@ TEST(decode_err) {
     EXPECT_EQ_S(m.err.ctx, "check");
 }
 
+TEST(decode_cappy) {
+    DecodedMsg m;
+    EXPECT(decodeFrom(R"json({"t":"cappy","text":"Got Goomba!"})json", m));
+    EXPECT_EQ_S(m.t, "cappy");
+    EXPECT_EQ_S(m.cappy.text, "Got Goomba!");
+}
+
+TEST(decode_cappy_empty_text) {
+    DecodedMsg m;
+    EXPECT(decodeFrom(R"({"t":"cappy","text":""})", m));
+    EXPECT_EQ_S(m.t, "cappy");
+    EXPECT_EQ_S(m.cappy.text, "");
+}
+
+TEST(decode_cappy_rejects_unknown_field) {
+    DecodedMsg m;
+    EXPECT(!decodeFrom(R"({"t":"cappy","text":"x","seq":1})", m));
+}
+
 TEST(decode_unknown_type_returns_true_with_t) {
     DecodedMsg m;
     EXPECT(decodeFrom(R"({"t":"future_type","x":1,"y":"z"})", m));

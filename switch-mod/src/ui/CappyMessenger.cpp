@@ -301,17 +301,20 @@ bool shouldShowCappyMsg(smoap::ap::ItemKind kind,
     return true;
 }
 
-// Rewrite table — one row per suffix we shorten. Order doesn't matter
-// (suffixes are disjoint) but " Kingdom Multi-Moon" must be checked before
-// " Kingdom Power Moon" would have been a concern; they're disjoint so it
-// doesn't matter here. Kept const so the table sits in rodata.
+// Rewrite table — one row per suffix we shorten. Every rule drops just
+// " Kingdom" so the displayed item type stays full-text ("Power Moon" /
+// "Multi-Moon" / "Sticker"). The bridge-side `format_moon_label` uses the
+// same shape ("Got Cascade Power Moon!"), so a moon offline-collected and
+// surfaced via the inbound-ItemMsg path now reads the same as one
+// surfaced via the live cutscene label. Order doesn't matter — suffixes
+// are disjoint. Kept const so the table sits in rodata.
 namespace {
 struct ShortenRule {
     const char* suffix;
     const char* replacement;
 };
 constexpr ShortenRule kShortenRules[] = {
-    {" Kingdom Power Moon",  " Moon"},
+    {" Kingdom Power Moon",  " Power Moon"},
     {" Kingdom Multi-Moon",  " Multi-Moon"},
     {" Kingdom Sticker",     " Sticker"},
 };

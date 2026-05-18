@@ -154,6 +154,9 @@ async def test_snapshot_end_to_end_dispatches_synthetic_checks():
         await _drain_messages(reader, n=3, timeout=2.0)
 
         # Send a snapshot: 2 moons in one stage, 1 in another, plus a capture.
+        # Captures are dropped by the snapshot dispatch (dict-derived signal
+        # can't tell manual captures from grant-induced dict entries), so the
+        # capture in _meta gets logged + ignored. Only moons reach AP.
         for m in [
             StateBeginMsg(mod_ver="0.1.0", save_slot=0),
             StateChunkMsg(stage_name="CapWorldHomeStage", shines=[
@@ -170,12 +173,13 @@ async def test_snapshot_end_to_end_dispatches_synthetic_checks():
         await writer.drain()
         await asyncio.sleep(0.2)
 
-        # 4 synthetic checks: 3 moons + 1 capture.
-        assert len(forwarded_checks) == 4
+        # 3 synthetic checks (moons only); the snapshot's capture entry was
+        # dropped per the no-manual-capture-signal rule.
+        assert len(forwarded_checks) == 3
         moons = [c for c in forwarded_checks if c["kind"] == "moon"]
         captures = [c for c in forwarded_checks if c["kind"] == "capture"]
         assert len(moons) == 3
-        assert len(captures) == 1
+        assert captures == []
         # Moons carry raw IDs (Switch never sent canonical here).
         moon_objs = sorted(m["object_id"] for m in moons)
         assert moon_objs == ["MoonHatTrampoline", "MoonMultiMoon", "MoonOurFirst"]
@@ -183,10 +187,151 @@ async def test_snapshot_end_to_end_dispatches_synthetic_checks():
         first_moon = next(m for m in moons if m["object_id"] == "MoonOurFirst")
         assert first_moon["stage_name"] == "CapWorldHomeStage"
         assert first_moon["shine_uid"] == 100
-        assert captures[0]["hack_name"] == "Kuribo"
 
-        # checked_locations was populated via dedup-aware add (4 entries).
-        assert len(state.checked_locations) == 4
+        # checked_locations was populated via dedup-aware add (3 entries).
+        assert len(state.checked_locations) == 3
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_snapshot_capture_dispatch_does_not_send_cappy_msg():
+    """Snapshot-derived captures must NOT send the new CappyMsg path from
+    _dispatch_check. The M6-phase-C reconcile-Cappy machinery
+    (try_fire_reconcile_cappy) handles snapshot-derived bubbles by
+    synthesizing an ItemMsg(from="(offline)") that the Switch formats
+    locally. Both paths firing for the same loc_id would pop the same
+    "Got Cascade Power Moon!" bubble twice for the same offline catch-up.
+
+    Live capture-checks (post-Switch HELLO, not via snapshot) MUST keep
+    firing CappyMsg — that's the capturesanity announcement. This test
+    only locks down the snapshot-path suppression.
+    """
+    state = BridgeState()
+
+    async def on_check(msg: dict) -> int | None:
+        return 9001 if msg.get("hack_name") == "Killer" else None
+
+    async def on_goal() -> None:
+        pass
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check, on_goal,
+        compose_moon_label=lambda loc_id: "Got Cascade Power Moon!",
+        get_already_checked_loc_ids=lambda: set(),  # treat as fresh
+    )
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg()))
+        await writer.drain()
+        await _drain_messages(reader, n=3, timeout=2.0)
+
+        # Snapshot with one capture entry that compose_label would label
+        # as "Got Cascade Power Moon!" (this capture's location yields a
+        # Moon item in this seed).
+        for m in [
+            StateBeginMsg(mod_ver="0.1.0", save_slot=0),
+            StateChunkMsg(stage_name="_meta", captures=["Killer"], goal_reached=False),
+            StateEndMsg(),
+        ]:
+            writer.write(protocol.encode(m))
+        await writer.drain()
+        # Send a ping so the reader has something to wake on regardless.
+        writer.write(protocol.encode(protocol.PingMsg(ts_ms=1)))
+        await writer.drain()
+
+        # Drain whatever the bridge sent back. A CappyMsg slipping through
+        # would arrive BEFORE the pong (Nagle-batched same TCP push), so
+        # if the very first reply is the pong, no CappyMsg fired.
+        msgs = await _drain_messages(reader, n=1, timeout=2.0)
+        assert msgs[0]["t"] == "pong", (
+            f"snapshot dispatch leaked a CappyMsg: {msgs[0]}"
+        )
+
+        # Sanity: live capture-check (NOT via snapshot) still fires
+        # CappyMsg via the same code path.
+        writer.write(protocol.encode(protocol.CheckMsg(
+            kind=ItemKind.CAPTURE.value, hack_name="Killer",
+        )))
+        await writer.drain()
+        msgs = await _drain_messages(reader, n=1, timeout=2.0)
+        # Live capture's loc_id is also 9001 (was_new check uses the
+        # get_already_checked callback above which returns empty), so it
+        # was_new=True and the CappyMsg should fire.
+        assert msgs[0] == {"t": "cappy", "text": "Got Cascade Power Moon!"}
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_snapshot_drops_all_capture_entries():
+    """Snapshot path must NEVER fire capture-checks. SMO's hack dictionary
+    is populated by being ALLOWED to use a capture — every AP grant, every
+    baseline pre-populate, every prior-session /grant REPL command, every
+    save-file edit lands an entry. A snapshot rebuilt from the dict
+    therefore can't distinguish "manually captured this run" from "added
+    by external means," and crediting from the dict has burned users
+    (2026-05-18: granting T-Rex on a save with 6 leftover dict entries
+    fired 6 phantom AP check-credits). Live CaptureStartHook is the only
+    authoritative source — it fires reportCaptureChecked directly, not
+    via snapshot."""
+    state = BridgeState()
+    forwarded_checks: list[dict] = []
+
+    async def on_check(msg: dict) -> None:
+        forwarded_checks.append(msg)
+
+    async def on_goal() -> None:
+        pass
+
+    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal)
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg(mod_ver="0.1.0", smo_ver="1.0.0")))
+        await _drain_messages(reader, n=3, timeout=2.0)
+
+        # Three captures in the snapshot — none should reach the AP forwarder.
+        # A moon in the same snapshot SHOULD still fire (moons are trustworthy).
+        for m in [
+            StateBeginMsg(mod_ver="0.1.0", save_slot=0),
+            StateChunkMsg(stage_name="CapWorldHomeStage", shines=[
+                {"object_id": "MoonOurFirst", "shine_uid": 100},
+            ]),
+            StateChunkMsg(
+                stage_name="_meta",
+                captures=["Statue", "Killer", "Bubble"],
+                goal_reached=False,
+            ),
+            StateEndMsg(),
+        ]:
+            writer.write(protocol.encode(m))
+        await writer.drain()
+        await asyncio.sleep(0.2)
+
+        captures = [c for c in forwarded_checks if c["kind"] == "capture"]
+        moons = [c for c in forwarded_checks if c["kind"] == "moon"]
+        assert captures == [], (
+            f"expected zero capture forwards; got {captures}"
+        )
+        assert len(moons) == 1, f"moon snapshot path must still fire: {moons}"
     finally:
         writer.close()
         try:
@@ -697,81 +842,16 @@ async def test_reconcile_fires_cappy_for_self_moon():
 
 
 @pytest.mark.asyncio
-async def test_reconcile_fires_cappy_for_self_capture():
-    """Captures collected during the offline window also missed their
-    natural in-game Capture-List notification, so reconcile-Cappy fires
-    for them too. Builder returns ItemMsg(kind=capture, cap=..., from_=sentinel)
-    and SwitchServer pushes it to the Switch via send_item."""
-    state = BridgeState()
-    items_sent: list[Any] = []
-
-    async def on_check(msg: dict) -> int | None:
-        return 9999  # fake loc_id for the synthetic capture entry
-
-    async def on_goal() -> None:
-        pass
-
-    def builder(loc_id: int):
-        from client.protocol import ItemMsg
-        return ItemMsg(
-            kind="capture", cap="Goomba", name="Goomba",
-            from_="(offline)", hack_name="Kuribo",
-        )
-
-    sw = SwitchServer(
-        "127.0.0.1", 0, state, on_check, on_goal,
-        is_ap_ready=lambda: False,
-        build_reconcile_cappy_item=builder,
-    )
-    async def fake_send_item(item):
-        items_sent.append(item)
-    sw.send_item = fake_send_item  # type: ignore[assignment]
-
-    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
-    sw._server = server
-    port = server.sockets[0].getsockname()[1]
-
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
-    try:
-        writer.write(protocol.encode(HelloMsg()))
-        await _drain_messages(reader, n=3, timeout=2.0)
-        for m in [
-            StateBeginMsg(mod_ver="0.1.0", save_slot=0),
-            StateChunkMsg(stage_name="_meta", captures=["Kuribo"], goal_reached=False),
-            StateEndMsg(),
-        ]:
-            writer.write(protocol.encode(m))
-        await writer.drain()
-        await asyncio.sleep(0.1)
-        await sw.drain_pending_snapshot()
-
-        # Capture Cappy fired with the (offline) sentinel and resolved hack_name.
-        assert len(items_sent) == 1
-        msg = items_sent[0]
-        assert msg.kind == "capture"
-        assert msg.cap == "Goomba"
-        assert msg.hack_name == "Kuribo"
-        assert msg.from_ == "(offline)"
-    finally:
-        writer.close()
-        try:
-            await writer.wait_closed()
-        except Exception:
-            pass
-        await sw.stop()
-
-
-@pytest.mark.asyncio
 async def test_reconcile_suppresses_cappy_on_burst_threshold():
     """Fresh-AP-slot guard: when a single drain produces >5 freshly-checked
     entries, suppress the WHOLE drain's Cappy bubbles. Bridge has still
     forwarded each LocationCheck to AP — only the per-item bubble is
-    skipped. Matches the user's 12:48 log scenario: 41 captures enumerated
-    on first connect would otherwise flood the CappyMessenger ring."""
+    skipped. Matches the user's 12:48 log scenario: a long binge of
+    offline moon collects would otherwise flood the CappyMessenger ring."""
     from client.switch_server import RECONCILE_CAPPY_BURST_THRESHOLD
     state = BridgeState()
     items_sent: list[Any] = []
-    # Each capture resolves to a distinct loc_id so all count as "fresh".
+    # Each moon resolves to a distinct loc_id so all count as "fresh".
     next_id = [10_000]
     async def on_check(msg: dict) -> int | None:
         next_id[0] += 1
@@ -780,7 +860,8 @@ async def test_reconcile_suppresses_cappy_on_burst_threshold():
         pass
     def builder(loc_id: int):
         from client.protocol import ItemMsg
-        return ItemMsg(kind="capture", cap="X", from_="(offline)")
+        return ItemMsg(kind="moon", kingdom="Cascade", shine_id="Power Moon",
+                       from_="(offline)")
     sw = SwitchServer(
         "127.0.0.1", 0, state, on_check, on_goal,
         is_ap_ready=lambda: False,
@@ -797,10 +878,11 @@ async def test_reconcile_suppresses_cappy_on_burst_threshold():
         writer.write(protocol.encode(HelloMsg()))
         await _drain_messages(reader, n=3, timeout=2.0)
         burst = RECONCILE_CAPPY_BURST_THRESHOLD + 3  # >threshold
-        captures = [f"Cap{i}" for i in range(burst)]
+        shines = [{"object_id": f"obj{i}", "shine_uid": 5000 + i}
+                  for i in range(burst)]
         for m in [
             StateBeginMsg(mod_ver="0.1.0", save_slot=0),
-            StateChunkMsg(stage_name="_meta", captures=captures, goal_reached=False),
+            StateChunkMsg(stage_name="CapWorldHomeStage", shines=shines),
             StateEndMsg(),
         ]:
             writer.write(protocol.encode(m))
@@ -836,7 +918,8 @@ async def test_reconcile_fires_cappy_at_burst_boundary():
         pass
     def builder(loc_id: int):
         from client.protocol import ItemMsg
-        return ItemMsg(kind="capture", cap="X", from_="(offline)")
+        return ItemMsg(kind="moon", kingdom="Cascade", shine_id="Power Moon",
+                       from_="(offline)")
     sw = SwitchServer(
         "127.0.0.1", 0, state, on_check, on_goal,
         is_ap_ready=lambda: False,
@@ -852,10 +935,11 @@ async def test_reconcile_fires_cappy_at_burst_boundary():
     try:
         writer.write(protocol.encode(HelloMsg()))
         await _drain_messages(reader, n=3, timeout=2.0)
-        at_threshold = [f"Cap{i}" for i in range(RECONCILE_CAPPY_BURST_THRESHOLD)]
+        at_threshold = [{"object_id": f"obj{i}", "shine_uid": 7000 + i}
+                        for i in range(RECONCILE_CAPPY_BURST_THRESHOLD)]
         for m in [
             StateBeginMsg(mod_ver="0.1.0", save_slot=0),
-            StateChunkMsg(stage_name="_meta", captures=at_threshold, goal_reached=False),
+            StateChunkMsg(stage_name="CapWorldHomeStage", shines=at_threshold),
             StateEndMsg(),
         ]:
             writer.write(protocol.encode(m))

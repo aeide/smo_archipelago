@@ -15,6 +15,7 @@ from typing import Any, Awaitable, Callable
 from . import protocol
 from .protocol import (
     ApStateMsg,
+    CappyMsg,
     CheckedReplayMsg,
     DepositAckMsg,
     ErrMsg,
@@ -278,6 +279,9 @@ class SwitchServer:
     async def send_moon_label(self, label: MoonLabelMsg) -> None:
         await self._send(label)
 
+    async def send_cappy(self, msg: CappyMsg) -> None:
+        await self._send(msg)
+
     async def send_outstanding(self, msg: OutstandingMsg) -> None:
         """Push the authoritative per-kingdom balance to the Switch.
 
@@ -508,7 +512,7 @@ class SwitchServer:
 
         await self._send(DepositAckMsg(seq=seq))
 
-    async def _dispatch_check(self, msg: dict) -> "int | None":
+    async def _dispatch_check(self, msg: dict, *, from_snapshot: bool = False) -> "int | None":
         """Forward a check (live or snapshot-derived) to AP and record locally.
 
         BridgeState.add_checked_location dedupes via the full ItemRef identity,
@@ -520,20 +524,66 @@ class SwitchServer:
         MoonLabelMsg in the same TCP push (Nagle-batched) so it arrives
         before the cutscene fires.
 
+        Capturesanity capture-checks have no cutscene to label; instead we
+        route the composed text into a CappyMsg so the speech bubble
+        surfaces what the check yielded ("Got Goomba!" / "Sent Frog ->
+        Player2"). No seq for the Cappy path — the bubble queue is FIFO
+        and there's no cutscene-timing race to dedupe against.
+
+        Capture-bubble suppression for already-known checks: captures fire
+        many times in normal gameplay (a Goomba in Cap Kingdom is captured
+        every time the player walks back through the area), so a bubble on
+        every re-capture would be noise. Moons keep firing the label on
+        re-collect because (1) SMO itself prevents re-collection within a
+        save file, so this only ever fires when loading a different save
+        slot where the moon hasn't been collected yet, and (2) the cutscene
+        is already playing — overwriting "Power Moon" with the real item
+        name is useful.
+
+        Snapshot-derived captures (`from_snapshot=True`) also skip the
+        Cappy path here. The Switch will receive an inbound ItemMsg for
+        whatever the location yielded — either right now via the
+        M6-phase-C reconcile-Cappy machinery (deferred drains) or
+        moments later when AP echoes ReceivedItems back from the
+        LocationChecks we just sent (immediate drains). Either way the
+        Switch's enqueue() path formats and shows the bubble. Firing
+        CappyMsg from here too would pop the same "Got Cascade Power
+        Moon!" twice (once via this path, once via the inbound ItemMsg).
+
         Returns the resolved AP `loc_id` (or None when unresolvable) so the
         snapshot drain can distinguish fresh vs already-known checks for the
         reconcile-Cappy path.
         """
+        # Snapshot pre-call so we can tell "newly-checked this dispatch"
+        # apart from "already-known" — gates the capture-Cappy suppression
+        # below. report_check still returns loc_id for already-known checks
+        # (so the moon-label path can re-label re-collected moons), so
+        # post-call membership doesn't help. Falls back to empty (treats
+        # every check as fresh) when the wiring isn't present — matches
+        # legacy behavior for callers that don't care.
+        already_checked = (
+            set(self._get_already_checked()) if self._get_already_checked is not None
+            else set()
+        )
         loc_id = await self._on_check(msg)
         seq = msg.get("seq") or 0
-        if loc_id is not None and seq and self._compose_label is not None:
-            try:
-                text = self._compose_label(loc_id)
-            except Exception:
-                log.exception("compose_moon_label failed for loc_id=%s seq=%s", loc_id, seq)
-                text = None
-            if text:
+        kind = msg.get("kind", "moon")
+        was_new = loc_id is not None and loc_id not in already_checked
+        if loc_id is not None and self._compose_label is not None:
+            text: str | None = None
+            if (kind == "moon" and seq) or kind == "capture":
+                try:
+                    text = self._compose_label(loc_id)
+                except Exception:
+                    log.exception(
+                        "compose_label failed for loc_id=%s kind=%s seq=%s",
+                        loc_id, kind, seq,
+                    )
+                    text = None
+            if text and kind == "moon":
                 await self.send_moon_label(MoonLabelMsg(text=text, seq=seq))
+            elif text and kind == "capture" and was_new and not from_snapshot:
+                await self.send_cappy(CappyMsg(text=text))
         self._state.add_checked_location(
             CheckEvent(item=protocol.ItemRef(
                 kind=msg.get("kind", "moon"),
@@ -602,8 +652,43 @@ class SwitchServer:
         # drain.
         fresh_this_drain: set[int] = set()
         for entry in entries:
+            # Drop ALL snapshot capture entries. The Switch builds
+            # _meta.captures by walking SMO's hack dictionary, which is
+            # populated by being ALLOWED to use a capture — every
+            # addHackDictionary call (AP grant, baseline pre-populate,
+            # prior-session /grant REPL, save-file edits, manual capture)
+            # lands an entry. So a dict-derived snapshot would ALWAYS
+            # credit every AP-granted capture as a manual check on the
+            # next reload, even when the player never actually captured
+            # that enemy in-game. Confirmed live 2026-05-18: granting
+            # T-Rex on a save with 6 leftover dict entries from prior
+            # testing fired 6 phantom AP check-credits the moment the
+            # bridge reconnected.
+            #
+            # Live CaptureStartHook is the only authoritative signal —
+            # it fires reportCaptureChecked directly (not via snapshot),
+            # so manual captures still credit. The Switch's outbound
+            # check ring drains queued live captures on reconnect, so
+            # brief disconnects are covered. The only window this drops
+            # is a manual capture done during a disconnect followed by
+            # a Switch reboot before the ring drains — rare, and the
+            # player can re-capture in seconds vs. an AP server credited
+            # with locations they never earned.
+            if entry.get("kind") == "capture":
+                log.info(
+                    "snapshot: dropping capture-check for hack=%r "
+                    "(dict-derived snapshot is not a manual-capture signal)",
+                    entry.get("hack_name") or "",
+                )
+                continue
             synthetic = {"t": "check", **entry}
-            loc_id = await self._dispatch_check(synthetic)
+            # Always mark snapshot-derived dispatches so _dispatch_check
+            # suppresses its CappyMsg path. Whether this drain is
+            # immediate (from_reconcile=False) or deferred
+            # (from_reconcile=True), the Switch's inbound-ItemMsg path
+            # will fire the bubble for whatever the location yielded;
+            # firing here too would double it up.
+            loc_id = await self._dispatch_check(synthetic, from_snapshot=True)
             if (
                 from_reconcile
                 and loc_id is not None

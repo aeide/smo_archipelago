@@ -435,6 +435,15 @@ bool parseOutstanding(Reader& r, Outstanding& out) {
     return true;
 }
 
+bool parseCappy(Reader& r, Cappy& out) {
+    std::string_view key;
+    while (r.nextField(key)) {
+        if (key == "text") { if (!readIntoField(r, out.text)) return false; }
+        else               { return false; }
+    }
+    return true;
+}
+
 bool parseMoonLabel(Reader& r, MoonLabel& out) {
     std::int64_t tmp = 0;
     std::string_view key;
@@ -473,6 +482,7 @@ bool decode(const char* data, std::size_t len, DecodedMsg& out) {
     else if (eqStr(out.t, "err"))            ok = parseErr(r, out.err);
     else if (eqStr(out.t, "kill"))           ok = parseKill(r, out.kill);
     else if (eqStr(out.t, "moon_label"))     ok = parseMoonLabel(r, out.moon_label);
+    else if (eqStr(out.t, "cappy"))          ok = parseCappy(r, out.cappy);
     else if (eqStr(out.t, "shine_scouts"))   ok = parseShineScouts(r, out.shine_scouts);
     else if (eqStr(out.t, "deposit_ack"))    ok = parseDepositAck(r, out.deposit_ack);
     else if (eqStr(out.t, "outstanding"))    ok = parseOutstanding(r, out.outstanding);
