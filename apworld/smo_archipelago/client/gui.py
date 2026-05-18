@@ -37,7 +37,9 @@ import typing
 from kvui import GameManager, UILog
 
 from kivy.clock import Clock
+from kivy.core.text import LabelBase
 from kivy.metrics import dp
+from kivy.resources import resource_find
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
@@ -50,6 +52,16 @@ if typing.TYPE_CHECKING:  # pragma: no cover
 # human speed (moon collects, item arrivals, save loads) so 1.5s mirrors
 # the old web tracker's setInterval and keeps Kivy's frame budget free.
 _REFRESH_INTERVAL = 1.5
+
+
+# Register Kivy's bundled monospace font under a short alias so the
+# Odyssey tab can use [font=RobotoMono] markup to line up the per-kingdom
+# moon-count table. Kivy ships RobotoMono-Regular.ttf in its data dir and
+# resource_find resolves it via the font dirs auto-added at Kivy init.
+# If resolution fails (custom Kivy build), markup falls back to default.
+_MONO_FONT_PATH = resource_find("RobotoMono-Regular.ttf")
+if _MONO_FONT_PATH:
+    LabelBase.register(name="RobotoMono", fn_regular=_MONO_FONT_PATH)
 
 
 class _LiveLabel(Label):
@@ -167,21 +179,29 @@ class SmoManager(GameManager):
         # Width auto-fits the text (texture_size[0] + a small pad) so the
         # pill can't overflow the top bar at narrow window widths — the
         # connect_layout's text input absorbs whatever's left over.
+        # Height + pos_hint mirror the Connect button (kvui sets
+        # server_connect_button.height = server_connect_bar.height and
+        # pos_hint={"center_y": 0.55}) so the pill sits at the same
+        # vertical position as the button instead of taking the full
+        # dp(40) layout height (which made the text float to the very top
+        # of the strip — valign='middle' alone wasn't enough).
+        pill_h = self.server_connect_bar.height
         self._switch_pill = Label(
             text="Off",
             markup=True,
             size_hint_x=None,
             size_hint_y=None,
             width=dp(60),
-            height=self.connect_layout.height,
+            height=pill_h,
             halign="center",
             valign="middle",
             padding=(dp(6), 0),
+            pos_hint={"center_y": 0.55},
             # Bound only on the height axis so valign='middle' centers the
             # texture vertically; width is left None so the texture_size
             # binding below can keep auto-fitting to the natural text width.
             # See _bind_switch_pill_layout for why both axes can't be bound.
-            text_size=(None, self.connect_layout.height),
+            text_size=(None, pill_h),
         )
         _bind_switch_pill_layout(self._switch_pill)
         self.connect_layout.add_widget(self._switch_pill)
@@ -242,11 +262,28 @@ def _format_odyssey(ctx: "SMOContext") -> str:
     parts.append("[b]Moons by kingdom[/b]    [i]earned / needed to exit[/i]")
     all_k = sorted(set(moons_recv) | set(exit_thresholds))
     if all_k:
+        # Render the table in RobotoMono with width-padded columns so the
+        # name colons, earned counts, and exit thresholds line up under
+        # Kivy's proportional default font. Width is computed from the
+        # observed values so adding a longer-named kingdom doesn't break
+        # alignment.
+        name_w = max(len(k) for k in all_k)
+        recv_w = max(len(str(moons_recv.get(k, 0))) for k in all_k)
+        need_w = max(
+            (len(str(exit_thresholds[k])) for k in all_k
+             if exit_thresholds.get(k) is not None),
+            default=1,
+        )
+        rows: list[str] = []
         for k in all_k:
             recv = moons_recv.get(k, 0)
             need = exit_thresholds.get(k)
-            earned_needed = f"{recv} / {need}" if need is not None else f"{recv}"
-            parts.append(f"  {k}:    {earned_needed}")
+            label = f"{k}:".ljust(name_w + 1)
+            if need is not None:
+                rows.append(f"  {label} {recv:>{recv_w}} / {need:>{need_w}}")
+            else:
+                rows.append(f"  {label} {recv:>{recv_w}}")
+        parts.append("[font=RobotoMono]" + "\n".join(rows) + "[/font]")
     else:
         parts.append("[i](nothing yet)[/i]")
     parts.append("")
