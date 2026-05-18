@@ -681,6 +681,15 @@ class SMOContext(CommonContext):
         # Normal path: dedup by rii. Items at position < rii were already
         # side-effected in a past bridge session.
         rii_at_entry = self.state.get_received_items_index()
+        # In-memory mirror dedup: items at position < initial_mirror_len
+        # were already added to state.received_items earlier in THIS
+        # session (e.g. AP re-pushing the full history on a reconnect blip
+        # without a bridge restart). The rii check below covers the
+        # cross-session case where state.received_items is empty but rii
+        # is loaded from the AP store — there we still want to mirror so
+        # SwitchServer's HELLO replay can re-deliver to a freshly booted
+        # mod.
+        initial_mirror_len = len(self.state.received_items)
         moon_granted_this_batch = False
 
         for i, ni in enumerate(items):
@@ -688,14 +697,15 @@ class SMOContext(CommonContext):
             ref, classification, sender_name, cappy_from = self._parse_received_item(ni)
             if ref is None:
                 continue
-            # Always mirror into state.received_items so SwitchServer's
-            # HELLO replay can re-deliver captures/kingdoms to a freshly
-            # booted mod even if the bridge restarted between sessions.
-            # Persist cappy_from so HELLO replay's from_= matches the live
-            # send (self-find suppression survives reconnects).
-            self.state.add_received_item(
-                ItemEvent(item=ref, sender=sender_name, cappy_from=cappy_from)
-            )
+            if pos >= initial_mirror_len:
+                # Either truly new, or being mirrored for the first time
+                # this session after a bridge restart (cross-session
+                # replay needed for SwitchServer's HELLO re-delivery).
+                # Persist cappy_from so HELLO replay's from_= matches the
+                # live send (self-find suppression survives reconnects).
+                self.state.add_received_item(
+                    ItemEvent(item=ref, sender=sender_name, cappy_from=cappy_from)
+                )
 
             if pos < rii_at_entry:
                 # Already processed in a past session; skip side effects.
