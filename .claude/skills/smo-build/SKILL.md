@@ -24,15 +24,24 @@ Rerun this whenever `apworld/smo_archipelago/data/items.json` changes (the table
 ```pwsh
 cd C:\Users\maxwe\Documents\smo_archipelago\switch-mod
 $env:DEVKITPRO = "C:/devkitPro"
+# Auto-detect this machine's current LAN IP (interface with a default gateway, Up).
+# DHCP can hand out a different address week-to-week, so re-detect every build rather
+# than hardcoding. For Ryujinx-on-same-host runs, override with `$bridgeHost = "127.0.0.1"`.
+$bridgeHost = (Get-NetIPConfiguration | Where-Object {
+    $_.IPv4DefaultGateway -ne $null -and $_.NetAdapter.Status -eq 'Up'
+} | Select-Object -First 1).IPv4Address.IPAddress
+if (-not $bridgeHost) { throw "Could not detect LAN IP — check network adapters." }
+Write-Host "BRIDGE_HOST=$bridgeHost"
 & "C:/Program Files/CMake/bin/cmake.exe" -S . -B build -G Ninja `
     -DCMAKE_TOOLCHAIN_FILE=lunakit-vendor/cmake/toolchain.cmake `
-    -DBRIDGE_HOST=192.168.1.187
+    -DBRIDGE_HOST=$bridgeHost
 & "C:/Program Files/CMake/bin/cmake.exe" --build build
 ```
 
 Defaults:
-- `-DBRIDGE_HOST=192.168.1.187` — user's LAN IP. For Ryujinx-on-same-host runs, use `127.0.0.1` instead.
+- `-DBRIDGE_HOST` — auto-detected from the active LAN adapter (the one with a default gateway). DHCP leases change, so let the snippet above resolve it fresh each build rather than baking a literal. For Ryujinx-on-same-host runs, set `$bridgeHost = "127.0.0.1"` before the cmake call.
 - Bridge port baked at compile time; the runtime `romfs/ap_config.json` SD-read path was abandoned (MountSdCardForDebug fails on retail/newer FW). Edit-and-rebuild is the only way.
+- The detected IP is baked into `subsdk9`; if your LAN IP changes after deploy, you must rebuild and re-deploy or the Switch mod will try to connect to a stale address.
 
 **Do NOT add `-DRYU_PATH=...` unless the user explicitly asks.** The post-build hook auto-deploys subsdk9+npdm+ap_config.json into Ryujinx mods/, which clobbers parallel agents' state in another worktree. For build-verification ("does it compile?"), omit it. If a deploy IS needed for this turn, ask first. Manual copy steps below.
 
