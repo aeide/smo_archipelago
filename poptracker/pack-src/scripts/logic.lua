@@ -9,7 +9,6 @@
 
 OPTIONS = OPTIONS or {
   capturesanity                 = false,  -- Toggle off
-  include_post_metro_moons      = true,
   include_cap_peace_moons       = true,
   include_cascade_peace_moons   = true,
   include_sand_peace_moons      = true,

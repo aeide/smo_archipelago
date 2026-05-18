@@ -685,7 +685,6 @@ def emit_kingdom_credit_items(items: list[dict]) -> list[dict]:
 # loudly at pack-load time when slot_data references an unknown code.
 OPTION_META = {
     "capturesanity":                ("Capturesanity",                          False),
-    "include_post_metro_moons":     ("Include Post-Metro Moons",               True),
     "include_cap_peace_moons":      ("Include Cap Kingdom Peace Moons",        True),
     "include_cascade_peace_moons":  ("Include Cascade Kingdom Peace Moons",    True),
     "include_sand_peace_moons":     ("Include Sand Kingdom Peace Moons",       True),

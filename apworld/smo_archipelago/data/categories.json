@@ -227,9 +227,6 @@
         ]
     },
     "post-metro": {
-        "yaml_option": [
-            "include_post_metro_moons"
-        ],
         "hidden": true
     },
     "Bullet Bill Skip": {

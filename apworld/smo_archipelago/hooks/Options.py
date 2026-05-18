@@ -136,18 +136,9 @@ class Capturesanity(Toggle):
     Captures found in Cap or Cascade on the first visit are considered to be given for free and will not grant checks."""
     display_name = "Capturesanity"
 
-class IncludePostMetroMoons(DefaultOnToggle):
-    """Turning this off will remove every location and item that isn't relevant before Metro Kingdom.
-    This removes roughly 200 locations, depending on your settings.
-    WARNING: this is by far the largest single reduction in the moon pool. Combining it with multiple
-    other 'include_...' toggles set to false can drop the location count below what's needed to place
-    all items, and generation will fail with 'not enough locations to place items'."""
-    display_name = "Include Post-Metro Moons"
-
 # This is called before any manual options are defined, in case you want to define your own with a clean slate or let Manual define over them
 def before_options_defined(options: dict) -> dict:
     options["capturesanity"] = Capturesanity
-    options["include_post_metro_moons"] = IncludePostMetroMoons
     # Per-kingdom Peace toggles
     options["include_cap_peace_moons"] = IncludeCapPeaceMoons
     options["include_cascade_peace_moons"] = IncludeCascadePeaceMoons

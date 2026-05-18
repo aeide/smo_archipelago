@@ -12,7 +12,6 @@ Spicy Meatball Overdrive:
   # All category toggles default to on; we explicitly enable the big ones
   # so the seed has a meaningful number of locations regardless of upstream
   # apworld default-flips.
-  include_post_metro_moons: true
   capturesanity: true
 
   # Per-kingdom Peace toggles (default true).

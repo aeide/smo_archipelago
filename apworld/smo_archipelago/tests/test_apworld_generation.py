@@ -96,7 +96,6 @@ def _smo_yaml(overrides: dict[str, bool], slot_name: str = "Mario") -> str:
         # Toggles always specified for parity with the loopback seed
         # (capturesanity defaults OFF, so it needs an explicit true to
         # be exercised at all).
-        "include_post_metro_moons": True,
         "capturesanity": True,
     }
     base.update(overrides)
