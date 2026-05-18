@@ -61,6 +61,12 @@ class _StubSwitch:
     async def send_ap_state(self, conn: str) -> None:  # pragma: no cover - unused here
         self.ap_states.append(conn)
 
+    def set_capturesanity_enabled(self, enabled: bool) -> None:  # pragma: no cover - unused here
+        pass
+
+    async def push_capturesanity_replay(self) -> None:  # pragma: no cover - unused here
+        pass
+
 
 def _make_ctx(*, deathlink: bool, slot: str = "Mario") -> tuple[SMOContext, BridgeState, _StubSwitch]:
     state = BridgeState()

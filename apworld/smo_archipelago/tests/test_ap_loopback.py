@@ -88,6 +88,16 @@ class _StubSwitch:
     async def send_ap_state(self, conn: str) -> None:
         self.ap_states.append(conn)
 
+    def set_capturesanity_enabled(self, enabled: bool) -> None:
+        # SMOContext._handle_ap_package("Connected", ...) calls this with
+        # the slot_data flag. No-op for loopback assertions — the seed
+        # under test has capturesanity off, so flipping the flag here is
+        # the same as the default state.
+        pass
+
+    async def push_capturesanity_replay(self) -> None:
+        pass
+
 
 def _free_port() -> int:
     """Pick a free TCP port for the local MultiServer to bind."""
