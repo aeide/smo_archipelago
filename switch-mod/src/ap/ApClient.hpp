@@ -95,6 +95,14 @@ private:
     // silence the disconnect notification — after the window, normal bubble
     // behavior resumes.
     std::atomic<std::int64_t> suppress_state_bubble_until_ms_{0};
+    // Deadline (monotonic ms) for firing the deferred "Disconnected from
+    // Archipelago" Cappy bubble after an ungraceful TCP drop. 0 = no pending.
+    // disconnect() arms this instead of enqueueing immediately, so a sub-N-
+    // second blip can recover silently (ap_state("ready") clears it, and the
+    // matching "Connected" bubble stays silent because s_last_ap_state was
+    // never flipped to "disconnected"). If grace expires with no recovery,
+    // the worker loop fires the bubble + commits the state transition.
+    std::atomic<std::int64_t> pending_disconnect_bubble_at_ms_{0};
     int socket_fd_{-1};
     char read_buf_[kInboundLineCap];
     std::size_t read_buf_len_{0};

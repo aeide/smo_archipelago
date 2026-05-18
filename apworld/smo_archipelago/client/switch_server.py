@@ -291,13 +291,47 @@ class SwitchServer:
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         peer = writer.get_extra_info("peername")
         if self._writer is not None and not self._writer.is_closing():
-            log.warning("rejecting extra Switch connection from %s (one already active)", peer)
-            try:
-                writer.write(protocol.encode(ErrMsg(code="busy", ctx="connect")))
-                await writer.drain()
-            finally:
-                writer.close()
-            return
+            # A Switch Wi-Fi blip can leave us with a half-open writer: the
+            # Switch's TCP layer closed its side, but the FIN never reached
+            # us (link was down at the time), so reader.read() in the old
+            # handler stays parked indefinitely. Without intervention, the
+            # Switch's reconnect attempts would be rejected with ErrMsg(busy)
+            # until our writer eventually surfaces EPIPE on a write attempt.
+            # If the new connection's peer IP matches the existing writer's,
+            # assume the old socket is dead and take over — two distinct
+            # Switches racing for the same SMOClient is so rare we treat
+            # peer-IP match as conclusive evidence of a reconnect.
+            existing_peer = self._writer.get_extra_info("peername")
+            same_host = (
+                peer is not None and existing_peer is not None
+                and peer[0] == existing_peer[0]
+            )
+            if same_host:
+                log.info(
+                    "Switch reconnecting from %s; replacing stale writer (was %s)",
+                    peer, existing_peer,
+                )
+                try:
+                    self._writer.close()
+                except Exception:
+                    pass
+                # Don't await wait_closed — the old handler's reader.read()
+                # will surface EOF and its finally block will tear down. We
+                # null self._writer here so the old finally's
+                # `self._writer is writer` check skips state mutation; the
+                # new handler below claims ownership immediately.
+                self._writer = None
+            else:
+                log.warning(
+                    "rejecting extra Switch connection from %s (one already "
+                    "active from %s)", peer, existing_peer,
+                )
+                try:
+                    writer.write(protocol.encode(ErrMsg(code="busy", ctx="connect")))
+                    await writer.drain()
+                finally:
+                    writer.close()
+                return
 
         log.info("switch connected from %s", peer)
         self._writer = writer
@@ -321,13 +355,19 @@ class SwitchServer:
         except (ConnectionResetError, BrokenPipeError):
             log.info("switch connection reset")
         finally:
-            self._state.set_switch_conn("disconnected")
+            # If we've been replaced (same-host takeover above), skip the
+            # state mutation — the new handler has already updated
+            # set_switch_conn to "connecting"/"ready" and a stray
+            # "disconnected" here would flicker the bridge UI.
+            is_active = self._writer is writer
+            if is_active:
+                self._state.set_switch_conn("disconnected")
             try:
                 writer.close()
                 await writer.wait_closed()
             except Exception:
                 pass
-            if self._writer is writer:
+            if is_active:
                 self._writer = None
 
     async def _dispatch(self, msg: dict) -> None:

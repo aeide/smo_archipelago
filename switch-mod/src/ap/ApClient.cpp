@@ -53,6 +53,16 @@ constexpr std::size_t kWorkerStackSize = 64 * 1024;
 // Exponential backoff caps (ms): 1s, 2s, 5s, 10s, 30s.
 constexpr std::uint32_t kBackoffCapMs = 30 * 1000;
 
+// "Quick bounce" threshold: a connection held for less than this many ms
+// before disconnecting is treated as a failure for backoff purposes. Covers
+// the bridge's stale-_writer rejection path (TCP handshake succeeds, app
+// layer sends ErrMsg(busy) and closes within ms), which without this gate
+// would keep resetting backoff_ms on every "successful" connect and hammer
+// the bridge at LAN line-rate. Symmetric semantics: we also wait until a
+// connection has been held this long before resetting backoff_ms — so a
+// connect-then-quick-disconnect cycle escalates monotonically.
+constexpr std::int64_t kStableConnectMs = 1000;
+
 // Last AP-side connection state we observed from the bridge. Drives the Cappy
 // "Connected to Archipelago" / "Disconnected from Archipelago" speech bubbles
 // on ready <-> not-ready transitions. Two writers, both on the worker thread:
@@ -210,6 +220,18 @@ void ApClient::stop() {
 // implies SMOClient genuinely died and the user should see the disconnect.
 static constexpr std::int64_t kRehelloBubbleSuppressMs = 3000;
 
+// Grace period (ms) before an ungraceful TCP drop surfaces as a Cappy
+// "Disconnected from Archipelago" bubble. Sized to absorb routine LAN /
+// Wi-Fi blips (observed 5-9s on real hardware, errno 101 ENETUNREACH on
+// reconnect attempts) without spamming the user. If TCP + AP recover inside
+// this window, both the disconnect AND the matching "Connected" bubble stay
+// silent — s_last_ap_state never flips, so the ap_state(ready) handler sees
+// was_ready=true,now_ready=true and dispatches nothing. If grace expires
+// with no recovery, the worker loop fires the bubble and commits the state
+// transition; a later recovery then surfaces "Connected from Archipelago"
+// through the normal path.
+static constexpr std::int64_t kDisconnectGracePeriodMs = 10000;
+
 void ApClient::requestRehello() {
     // Arm the bubble suppressor BEFORE setting the rehello flag so the worker
     // thread can't race ahead and call disconnect() between these stores.
@@ -235,8 +257,43 @@ void ApClient::threadMain() {
     SMOAP_LOG_INFO("[worker] entering connect loop");
 
     std::uint32_t backoff_ms = target_.retry_ms;
+    // Monotonic ms when current connection was established; 0 = not
+    // connected. Drives the quick-bounce / stability gates below.
+    std::int64_t connected_at_ms = 0;
 
     while (running_) {
+        // Fire deferred "Disconnected from Archipelago" bubble if the grace
+        // window armed by disconnect() has expired with no recovery. We get
+        // here on every loop iteration including the connect-fail backoff
+        // path (which `continue`s back to the top), so even a 30s backoff
+        // sleep adds at most one extra cycle of latency to the bubble.
+        // s_last_ap_state can only be "ready" here if we deferred and never
+        // recovered; the ap_state(ready) handler clears the timer.
+        if (const auto deadline = pending_disconnect_bubble_at_ms_.load(
+                std::memory_order_relaxed);
+            deadline > 0 && ApState::nowMs() >= deadline) {
+            SMOAP_LOG_INFO("[bubble] firing deferred 'Disconnected from "
+                           "Archipelago' (grace expired)");
+            smoap::ui::CappyMessenger::instance()
+                .enqueueSystem("Disconnected from Archipelago");
+            std::strcpy(s_last_ap_state, "disconnected");
+            pending_disconnect_bubble_at_ms_.store(0, std::memory_order_relaxed);
+        }
+
+        // Reset backoff after we've held a connection for kStableConnectMs.
+        // Gated on backoff being elevated so this is a no-op in the steady
+        // state. Done HERE (not on connect-success) so the bridge's
+        // accept-then-reject path can't keep resetting backoff to retry_ms
+        // and hammering the bridge at LAN line-rate.
+        if (connected_at_ms > 0 && backoff_ms != target_.retry_ms &&
+            ApState::nowMs() - connected_at_ms >= kStableConnectMs) {
+            SMOAP_LOG_INFO("[conn] connection stable for >=%lldms; backoff "
+                           "reset to %u ms",
+                           static_cast<long long>(kStableConnectMs),
+                           target_.retry_ms);
+            backoff_ms = target_.retry_ms;
+        }
+
         // Drain any frame-thread re-HELLO request before doing anything else.
         bool expected = true;
         if (rehello_requested_.compare_exchange_strong(expected, false)) {
@@ -254,6 +311,7 @@ void ApClient::threadMain() {
         }
 
         if (socket_fd_ < 0) {
+            connected_at_ms = 0;
             ApState::instance().conn.store(ConnState::Connecting);
             if (!connectOnce()) {
                 SMOAP_LOG_WARN("connect failed; sleeping %u ms before retry", backoff_ms);
@@ -261,7 +319,12 @@ void ApClient::threadMain() {
                 backoff_ms = backoff_ms < kBackoffCapMs ? backoff_ms * 2 : kBackoffCapMs;
                 continue;
             }
-            backoff_ms = target_.retry_ms;  // reset on success
+            connected_at_ms = ApState::nowMs();
+            // Backoff reset is DEFERRED to the stability check at the top of
+            // the loop. A "successful" TCP handshake followed by an immediate
+            // app-layer ErrMsg(busy)+FIN from the bridge would otherwise reset
+            // backoff every iteration; the deferred reset means a sustained
+            // rejection cycle keeps backoff escalating.
             sendHello();
             // Skip snapshot until a save has been loaded. SMO populates
             // GameDataHolder from the last-used save file at the title
@@ -316,14 +379,33 @@ void ApClient::threadMain() {
         tv.tv_usec = static_cast<long>((target_.recv_timeout_ms % 1000) * 1000);
         const int sel = nn::socket::Select(socket_fd_ + 1, &rfds, nullptr, nullptr, &tv);
 
+        // Lambda: if the connection died within kStableConnectMs of being
+        // established, escalate backoff and sleep here so the next reconnect
+        // attempt is paced. Bridge-rejection cycles ("busy" ErrMsg + FIN
+        // immediately after handshake) would otherwise loop at ~100Hz with
+        // no sleep, since connectOnce() returns true and the failure path
+        // that increments backoff_ms is bypassed.
+        auto quickBounceBackoff = [&]() {
+            if (connected_at_ms <= 0) return;
+            const auto held_ms = ApState::nowMs() - connected_at_ms;
+            if (held_ms >= kStableConnectMs) return;
+            backoff_ms = backoff_ms < kBackoffCapMs ? backoff_ms * 2 : kBackoffCapMs;
+            SMOAP_LOG_WARN("[conn] quick bounce after only %lldms held; "
+                           "backoff -> %u ms; sleeping",
+                           static_cast<long long>(held_ms), backoff_ms);
+            svcSleepThread(static_cast<s64>(backoff_ms) * 1'000'000);
+        };
+
         if (sel < 0) {
             SMOAP_LOG_WARN("Select returned error; reconnecting");
+            quickBounceBackoff();
             disconnect();
             continue;
         }
         if (sel > 0 && FD_ISSET(socket_fd_, &rfds)) {
             if (!recvIntoBuf()) {
                 SMOAP_LOG_WARN("recv error or peer closed; reconnecting");
+                quickBounceBackoff();
                 disconnect();
                 continue;
             }
@@ -408,30 +490,42 @@ void ApClient::disconnect() {
     // pending_deposits ring + unacked tracking; they'll replay after
     // reconnect.
     st.bridge_connected.store(false, std::memory_order_relaxed);
-    // Fire the Cappy "Disconnected" bubble if the bridge died while we
-    // believed AP was ready. Covers SMOClient being killed / crashing
-    // without sending a graceful ap_state("disconnected") first (the
-    // graceful path is handled by the ap_state dispatch branch). Reset
-    // s_last_ap_state so the next reconnect's ap_state replay fires
-    // the "Connected" bubble cleanly.
-    //
-    // Skip the bubble during a save-load-driven re-HELLO: requestRehello()
-    // sets a short suppression window so the user doesn't see scary
-    // "Disconnected from Archipelago" text every time they enter a
-    // kingdom. The corresponding "Connected" suppression lives in the
-    // ap_state dispatch path so both ends of the transition stay quiet.
+    // Cappy "Disconnected" bubble policy. Three paths:
+    //   (a) rehello window: suppress + commit state transition. The
+    //       matching "Connected" on reconnect is suppressed by the same
+    //       window on the ap_state path.
+    //   (b) was-ready + TCP-blip path: DEFER. Arm the grace timer and
+    //       leave s_last_ap_state at "ready". The worker loop fires the
+    //       bubble + commits the transition if grace expires. If
+    //       ap_state(ready) arrives first, it clears the timer and the
+    //       was_ready=true,now_ready=true comparison fires no bubble.
+    //   (c) not previously ready: nothing to fire; just commit state.
     const bool suppress = ApState::nowMs() <
         suppress_state_bubble_until_ms_.load(std::memory_order_relaxed);
     if (std::strcmp(s_last_ap_state, "ready") == 0) {
         if (suppress) {
             SMOAP_LOG_INFO("[bubble] suppressing 'Disconnected from Archipelago' "
                            "(rehello window)");
+            std::strcpy(s_last_ap_state, "disconnected");
         } else {
-            smoap::ui::CappyMessenger::instance()
-                .enqueueSystem("Disconnected from Archipelago");
+            // Use CAS so a re-disconnect during an already-pending grace
+            // window doesn't push the deadline out — we want the bubble
+            // to fire on the ORIGINAL schedule even if instability causes
+            // multiple short drops in a row.
+            std::int64_t expected = 0;
+            const std::int64_t target = ApState::nowMs() + kDisconnectGracePeriodMs;
+            if (pending_disconnect_bubble_at_ms_.compare_exchange_strong(
+                    expected, target, std::memory_order_relaxed)) {
+                SMOAP_LOG_INFO("[bubble] deferring 'Disconnected from "
+                               "Archipelago' (%lldms grace for TCP recovery)",
+                               static_cast<long long>(kDisconnectGracePeriodMs));
+            }
+            // s_last_ap_state stays "ready" so a quick ap_state(ready)
+            // recovery hits the was_ready=true,now_ready=true silent path.
         }
+    } else {
+        std::strcpy(s_last_ap_state, "disconnected");
     }
-    std::strcpy(s_last_ap_state, "disconnected");
 }
 
 void ApClient::sendHello() {
@@ -668,7 +762,23 @@ bool ApClient::recvIntoBuf() {
     const std::size_t cap = avail < 1024 ? avail : 1024;
     const int n = nn::socket::Recv(socket_fd_, read_buf_ + read_buf_len_,
                                    cap, 0);
-    if (n <= 0) return false;
+    if (n <= 0) {
+        // Distinguish clean EOF (n==0, peer sent FIN) from socket-level
+        // failures (n<0, errno explains why). Common values on this stack:
+        //   ECONNRESET (104): peer sent RST — SMOClient crashed, or the
+        //     kernel surfaced a stale half-open connection.
+        //   ENETUNREACH (101): IP route gone — Switch Wi-Fi blip.
+        //   ETIMEDOUT (110): TCP keepalive or retransmit timer expired.
+        // We log the raw values rather than translating: errno mappings
+        // are libc-version-dependent and the log goes to bridge analysis
+        // anyway, where the mapping is stable.
+        const int err = (n < 0) ? nn::socket::GetLastErrno() : 0;
+        SMOAP_LOG_WARN("[recv] Recv -> %d errno=%d (%s)",
+                       n, err,
+                       n == 0 ? "clean EOF from peer"
+                              : "socket error");
+        return false;
+    }
     read_buf_len_ += static_cast<std::size_t>(n);
     return true;
 }
@@ -782,6 +892,18 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
         // transition bubbles resume (covers SMOClient genuinely dying).
         const bool bubble_suppressed = ApState::nowMs() <
             suppress_state_bubble_until_ms_.load(std::memory_order_relaxed);
+        // Always cancel any deferred TCP-blip bubble — the bridge is alive
+        // and authoritatively reporting AP state, so either:
+        //   - now=ready: silent recovery, bubble was unnecessary
+        //   - now=disconnected: the was_ready/now_disconnected branch below
+        //     fires the bubble now via the graceful path; the deferred timer
+        //     would double-fire if left armed.
+        if (pending_disconnect_bubble_at_ms_.exchange(
+                0, std::memory_order_relaxed) > 0) {
+            SMOAP_LOG_INFO("[bubble] cancelling deferred 'Disconnected' "
+                           "(ap_state=%s arrived inside grace window)",
+                           m.ap_state.conn);
+        }
         if (!was_ready && now_ready) {
             if (bubble_suppressed) {
                 SMOAP_LOG_INFO("[bubble] suppressing 'Connected to Archipelago' "

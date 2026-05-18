@@ -290,7 +290,17 @@ async def test_log_message_routes_to_switch_logger_and_state(caplog):
 
 
 @pytest.mark.asyncio
-async def test_second_connection_rejected_busy():
+async def test_same_host_reconnect_takes_over_stale_writer():
+    """A second connection from the same peer IP REPLACES the existing one.
+
+    The previous behavior was to reject extras with ErrMsg(busy). That was
+    wrong in production because a Switch Wi-Fi blip can leave the bridge with
+    a half-open writer (Switch closed its side but the FIN never delivered),
+    and the bridge would then reject the Switch's reconnect attempts until
+    the half-open socket eventually surfaces EPIPE on a write — which on TCP
+    keepalive defaults can take minutes. We now treat peer-IP match as
+    conclusive evidence of a reconnect and take over.
+    """
     state = BridgeState()
 
     async def on_check(_): ...
@@ -307,11 +317,25 @@ async def test_second_connection_rejected_busy():
         await w1.drain()
         await _drain_messages(r1, n=3, timeout=2.0)  # consume hello_ack/replay/ap_state
 
+        # Reconnect from the same host. The new connection should succeed
+        # (HelloAck arrives) instead of being rejected with busy.
         r2, w2 = await asyncio.open_connection("127.0.0.1", port)
         try:
+            w2.write(protocol.encode(HelloMsg()))
+            await w2.drain()
             msgs = await _drain_messages(r2, n=1, timeout=2.0)
-            assert msgs[0]["t"] == "err"
-            assert msgs[0]["code"] == "busy"
+            assert msgs[0]["t"] == "hello_ack", msgs
+
+            # The old reader should see EOF promptly because the takeover
+            # closed its writer. read() returns b"" on EOF.
+            try:
+                async with asyncio.timeout(2.0):
+                    leftover = await r1.read(4096)
+                assert leftover == b"", (
+                    "stale writer should see EOF after takeover, got %r" % leftover
+                )
+            except asyncio.TimeoutError:
+                pytest.fail("stale writer never saw EOF after same-host takeover")
         finally:
             w2.close()
             try:
@@ -322,6 +346,51 @@ async def test_second_connection_rejected_busy():
         w1.close()
         try:
             await w1.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_different_host_rejected_busy():
+    """A second connection from a DIFFERENT peer IP is still rejected.
+
+    The takeover-on-same-IP heuristic protects the common Switch reconnect
+    case without trampling the "two distinct Switches racing for the same
+    SMOClient" case (rare in practice — typically one SMOClient instance
+    per LAN — but we want the explicit error rather than silently swapping
+    the active session).
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    state = BridgeState()
+
+    async def on_check(_): ...
+    async def on_goal(): ...
+
+    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal)
+    # Pretend a Switch from a different LAN IP is already connected. Mock
+    # the writer just enough for the busy-rejection path (peer-IP read,
+    # closing check, and the stop() cleanup).
+    fake = MagicMock(spec=asyncio.StreamWriter)
+    fake.is_closing.return_value = False
+    fake.get_extra_info.return_value = ("10.0.0.42", 12345)
+    fake.wait_closed = AsyncMock()
+    sw._writer = fake
+
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    r, w = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        msgs = await _drain_messages(r, n=1, timeout=2.0)
+        assert msgs[0]["t"] == "err"
+        assert msgs[0]["code"] == "busy"
+    finally:
+        w.close()
+        try:
+            await w.wait_closed()
         except Exception:
             pass
         await sw.stop()
