@@ -103,8 +103,13 @@ class BridgeState:
             if evt.item.kind == "capture" and evt.item.cap:
                 self.captures_unlocked.add(evt.item.cap)
             elif evt.item.kind == "moon" and evt.item.kingdom:
+                # Effective moon credits, matching `KingdomMoons` rule weighting:
+                # Multi-Moon is worth 3, Power Moon is worth 1. So the GUI's
+                # `recv / need` comparison is apples-to-apples against the
+                # exit threshold (which is also in effective moons).
+                weight = 3 if evt.item.shine_id == "Multi-Moon" else 1
                 self.moons_received_by_kingdom[evt.item.kingdom] = (
-                    self.moons_received_by_kingdom.get(evt.item.kingdom, 0) + 1
+                    self.moons_received_by_kingdom.get(evt.item.kingdom, 0) + weight
                 )
 
     def add_checked_location(self, evt: CheckEvent) -> bool:
