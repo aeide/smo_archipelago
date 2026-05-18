@@ -76,6 +76,35 @@ class _LiveLabel(Label):
         self.height = max(self.texture_size[1] + dp(20), dp(60))
 
 
+def _bind_switch_pill_layout(pill: Label) -> None:
+    """Wire the auto-width + vertical-center bindings on the Switch pill.
+
+    Two axes need different treatment:
+
+    * **Width** auto-fits to the text texture (`width = texture_size[0] +
+      dp(12)`) so the pill can't overflow the top bar — the AP server
+      input absorbs whatever's left. This is what keeps the input usable
+      at narrow window widths.
+
+    * **Vertical centering** works only when `text_size[1]` is set, so
+      Label's `valign='middle'` has a box height to center within. We
+      bind that to widget height, keeping `text_size[0] = None`.
+
+    Why we **do not** bind `text_size = widget_size` (both axes):
+    setting `text_size[0]` to the widget width makes the texture render
+    out to that width too, which feeds the texture_size→width binding,
+    which grows the widget, which grows text_size[0]… The pill either
+    runaway-grows until it eats every other top-bar widget (real
+    `connect_layout` height) or collapses to width≈2 (zero-height
+    layout). Either way, the user can't type a server address. See
+    `test_switch_pill_layout.py` for the regression case.
+    """
+    pill.bind(
+        texture_size=lambda lbl, sz: setattr(lbl, "width", sz[0] + dp(12)),
+        height=lambda lbl, h: setattr(lbl, "text_size", (None, h)),
+    )
+
+
 class SmoManager(GameManager):
     """Window for the SMOClient.
 
@@ -149,11 +178,13 @@ class SmoManager(GameManager):
             halign="center",
             valign="middle",
             padding=(dp(6), 0),
+            # Bound only on the height axis so valign='middle' centers the
+            # texture vertically; width is left None so the texture_size
+            # binding below can keep auto-fitting to the natural text width.
+            # See _bind_switch_pill_layout for why both axes can't be bound.
+            text_size=(None, self.connect_layout.height),
         )
-        self._switch_pill.bind(
-            texture_size=lambda lbl, sz: setattr(lbl, "width", sz[0] + dp(12)),
-            size=lambda lbl, sz: setattr(lbl, "text_size", sz),
-        )
+        _bind_switch_pill_layout(self._switch_pill)
         self.connect_layout.add_widget(self._switch_pill)
 
         Clock.schedule_interval(self._refresh_panels, _REFRESH_INTERVAL)
