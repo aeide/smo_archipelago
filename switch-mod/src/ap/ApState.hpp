@@ -227,6 +227,19 @@ public:
     // release/acquire visibility guarantee.
     std::atomic<bool> save_load_passthrough{false};
 
+    // Cap name queued alongside the keeper. tickPendingUncapture re-reads
+    // PlayerHackKeeper::getCurrentHackName(keeper) at deadline and compares
+    // against this string. Mismatch (or empty) means SMO already released the
+    // capture for some reason — player pressed Y, captured enemy died to the
+    // environment (Bullet Bill against a wall, Goomba into lava), scene
+    // transitioned, save loaded. Without this guard, forceKillHack/endHack
+    // fires on a stale keeper bound to either nothing or a different cap.
+    //
+    // Frame-thread-only (CaptureStartHook deny writes, tickPendingUncapture
+    // reads + clears) — no atomic required. char[64] not std::string for
+    // the usual subsdk9 allocator-NULL-deref reason.
+    char pending_kill_hack_name[64] = {};
+
     // M6 phase A — AP-credit counters surfaced via shine-counter hooks.
     // These are NOT shine flag flips: collecting a moon locally still drives
     // SMO's own shine table; AP-granted moons accumulate here and the
