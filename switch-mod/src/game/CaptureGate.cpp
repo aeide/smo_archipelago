@@ -35,6 +35,27 @@ using IsExistInHackDictionaryFn = bool (*)(GameDataHolderAccessor, const char*);
 AddHackDictionaryFn       s_addHackDictionary       = nullptr;
 IsExistInHackDictionaryFn s_isExistInHackDictionary = nullptr;
 
+// Always-unlocked captures whose dict entries we pre-populate at scene load,
+// independent of AP grants. These are captures the apworld deliberately
+// EXCLUDES from the AP item pool (so they're free / always-available) but
+// the in-game compendium would otherwise stay empty until the player
+// organically encountered them. Pre-populating makes the compendium honest:
+// if AP isn't gating them, they should show up from the start.
+//
+// Raw SMO hack names (cross-checked against capture_map.json):
+//   "Frog"        — cap_name "Frog" (Cap Kingdom)
+//   "ElectricWire"— cap_name "Spark pylon" (Wooded Kingdom)
+//
+// captureBitFor() returns 0xff for these (they're not in capture_table.h),
+// so AddHackDictionaryHook::captureBlocked() returns false and our writes
+// pass through Orig naturally. If the user organically captures one before
+// the reconciler ever runs, the same hook lets the organic write through —
+// idempotent either way.
+inline constexpr std::array<std::string_view, 2> kBaselineHacks = {
+    "Frog",
+    "ElectricWire",
+};
+
 }  // namespace
 
 std::uint8_t captureBitFor(const char* cap_name) {
@@ -111,31 +132,54 @@ void enumerateOwnedCaptures(CaptureEnumerationCallback cb, void* ctx) {
     SMOAP_LOG_INFO("[snapshot] enumerateOwnedCaptures emitted=%d", emitted);
 }
 
-void grantCapture(const char* cap_name, const char* hack_name) {
+bool grantCapture(const char* cap_name, const char* hack_name) {
     if (!hack_name || !*hack_name) {
         SMOAP_LOG_WARN("[m6-capture] dropped: empty hack_name (cap='%s')",
                        cap_name ? cap_name : "");
-        return;
+        return false;
     }
     if (!s_addHackDictionary || !s_isExistInHackDictionary) {
         SMOAP_LOG_WARN("[m6-capture] dropped: symbols unresolved "
                        "(cap='%s' hack='%s')",
                        cap_name ? cap_name : "", hack_name);
-        return;
+        return false;
     }
-    void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
-        std::memory_order_relaxed);
+    auto& st = smoap::ap::ApState::instance();
+    // Scene-loaded gate. GameDataHolder.mGameDataFile (offset 0x20) is a
+    // file-slot pointer that flips when the user navigates from title /
+    // file-select into actual gameplay. Writes that land while we're still
+    // on title go into the transient file slot active there; once the user
+    // loads a save, that slot is swapped for the loaded-save's file and our
+    // earlier writes are gone. Symptom in the 2026-05-18 Ryujinx log:
+    //   0:15.417 isExistInHackDictionary('Killer') -> TRUE (some title slot)
+    //   0:35.196 isExistInHackDictionary('Killer') -> FALSE (post-swap)
+    //   0:35.199 addHackDictionary OK (but lands in current-slot at title)
+    //   0:52.273 [cappy] scene changed last=0 new=0x...  (game scene appears)
+    //   0:53.644 in Cap Kingdom — compendium has no Bullet Bill
+    // Fix: defer all grants until the scene cache is populated. The pending_
+    // capture_grant queue + reconciler tail already handle the retry — bits
+    // stay set in captures_unlocked across the deferral, so when the
+    // reconciler fires post-scene-load it observes the loaded-save's file
+    // (via mGameDataFile-after-swap) and writes there.
+    if (!st.scene_cache.load(std::memory_order_relaxed)) {
+        SMOAP_LOG_WARN("[m6-capture] dropped: scene not loaded yet "
+                       "(cap='%s' hack='%s') — reconciler will retry once "
+                       "user enters game",
+                       cap_name ? cap_name : "", hack_name);
+        return false;
+    }
+    void* gdh = st.game_data_holder_cache.load(std::memory_order_relaxed);
     if (!gdh) {
         SMOAP_LOG_WARN("[m6-capture] dropped: GameDataHolder not cached yet "
-                       "(cap='%s' hack='%s')",
+                       "(cap='%s' hack='%s') — reconciler will retry next frame",
                        cap_name ? cap_name : "", hack_name);
-        return;
+        return false;
     }
     GameDataHolderAccessor acc{gdh};
     if (s_isExistInHackDictionary(acc, hack_name)) {
         SMOAP_LOG_INFO("[m6-capture] already in dictionary cap='%s' hack='%s'",
                        cap_name ? cap_name : "", hack_name);
-        return;
+        return true;
     }
     GameDataHolderWriter w{gdh};
     // Log before the call so the trampoline's `[m7-dict] FIRE` line
@@ -146,6 +190,54 @@ void grantCapture(const char* cap_name, const char* hack_name) {
     s_addHackDictionary(w, hack_name);
     SMOAP_LOG_INFO("[m6-capture] addHackDictionary OK cap='%s' hack='%s'",
                    cap_name ? cap_name : "", hack_name);
+    return true;
+}
+
+void reconcileCaptureDictionary() {
+    auto& s = smoap::ap::ApState::instance();
+    if (!s_addHackDictionary || !s_isExistInHackDictionary) return;
+    // Same scene-loaded gate as grantCapture above — we must not write while
+    // the user is at title/file-select because mGameDataFile flips on save
+    // load and our writes get stranded. See the timeline in grantCapture's
+    // comment for the 2026-05-18 repro.
+    if (!s.scene_cache.load(std::memory_order_relaxed)) return;
+    void* gdh = s.game_data_holder_cache.load(std::memory_order_relaxed);
+    if (!gdh) return;
+
+    GameDataHolderAccessor acc{gdh};
+    GameDataHolderWriter   w{gdh};
+
+    // Baseline pre-populate: captures the apworld leaves out of the AP pool
+    // (Frog, Spark Pylon as of 2026-05-18). Idempotent — isExist short-
+    // circuits after the first frame these write.
+    for (const auto& sv : kBaselineHacks) {
+        if (sv.empty()) continue;
+        const char* hack = sv.data();
+        if (s_isExistInHackDictionary(acc, hack)) continue;
+        SMOAP_LOG_INFO("[m6-capture] baseline pre-populate hack='%s'", hack);
+        s_addHackDictionary(w, hack);
+        SMOAP_LOG_INFO("[m6-capture] baseline addHackDictionary OK hack='%s'", hack);
+    }
+
+    // AP-granted captures: skip the bitset walk entirely when nothing's set.
+    if (s.captures_unlocked.none()) return;
+
+    // captures_unlocked is sized 128 but only ~42 caps exist. Walk the
+    // hack-name table directly so unused trailing bits are skipped for free.
+    for (std::uint8_t i = 0; i < kCaptureHackNames.size(); ++i) {
+        if (!s.captures_unlocked.test(i)) continue;
+        const auto& sv = kCaptureHackNames[i];
+        if (sv.empty()) continue;
+        // string_view from capture_table.h is backed by a literal string and
+        // is NUL-terminated; data() is safe to pass to the C-string API.
+        const char* hack = sv.data();
+        if (s_isExistInHackDictionary(acc, hack)) continue;
+        SMOAP_LOG_INFO("[m6-capture] reconcile firing for bit=%u hack='%s'",
+                       static_cast<unsigned>(i), hack);
+        s_addHackDictionary(w, hack);
+        SMOAP_LOG_INFO("[m6-capture] reconcile addHackDictionary OK bit=%u hack='%s'",
+                       static_cast<unsigned>(i), hack);
+    }
 }
 
 void installCaptureGrantSymbols() {
