@@ -26,6 +26,12 @@ from typing import Callable, Iterable
 
 from . import appdata_root, build_dir, data_dir
 
+# Suppress the per-child console window when the wizard runs under the
+# Launcher's windowed PyInstaller (no parent console → Windows opens a
+# fresh console for each CONSOLE-subsystem child, which steals focus
+# from the Kivy wizard). No-op on non-Windows.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 # Where the bundled C++ sources + extractor scripts live inside the apworld.
 # Filled by `install_apworld.py --bundle-mod --bundle-scripts`. On dev
 # checkouts you can populate it manually by symlinking switch-mod/ +
@@ -293,6 +299,7 @@ def _stream_subprocess(
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,  # line-buffered
+            creationflags=_NO_WINDOW,
         )
     except (FileNotFoundError, OSError) as e:
         msg = f"failed to spawn {cmd[0]}: {e}"

@@ -25,6 +25,12 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+# Suppress the per-child console window when running under the Launcher's
+# windowed PyInstaller (no parent console → Windows opens a fresh console
+# for each CONSOLE-subsystem child, which steals focus from the wizard).
+# No-op on non-Windows.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 # Hard min for cmake — lunakit's toolchain file uses target_link_options
 # (3.13+) and project(... LANGUAGES CXX) policies (3.24 enables CMP0135),
 # and our switch-mod uses target features that landed in 3.24.
@@ -90,6 +96,7 @@ def _run(cmd: list[str], *, timeout: float = 10.0) -> tuple[int, str, str]:
         capture_output=True,
         text=True,
         timeout=timeout,
+        creationflags=_NO_WINDOW,
     )
     return res.returncode, res.stdout or "", res.stderr or ""
 
