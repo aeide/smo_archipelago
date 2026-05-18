@@ -161,11 +161,16 @@ Moon -> P3").
 
 ### Items can arrive at any time, including outside cutscenes
 
-When another player finds something for you, the item is granted
-silently in the background. Today the only feedback for off-cutscene
-arrivals is the Tracker tab in SMOClient and the AP-server log; a
-dedicated in-game notification surface (the "Cappy bubble") is on the
-roadmap.
+When another player finds something for you, **Cappy pops up a speech
+bubble in-game** with the item name and sender (e.g. *"Got Frog from
+P3!"*) — no need to alt-tab to SMOClient. The same surface announces AP
+connection state changes ("Connected to Archipelago" / "Disconnected")
+and replays any moons or captures you picked up while the bridge was
+offline once it reconnects.
+
+Self-grants and bulk replays are suppressed so the bubble doesn't spam
+during reconnects. The Tracker tab in SMOClient and the AP-server log
+remain the canonical full-history views.
 
 ### Changing AP server or slot after setup
 
