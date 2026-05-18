@@ -239,7 +239,6 @@ def _format_odyssey(ctx: "SMOContext") -> str:
     kingdoms = snap.get("kingdoms_unlocked") or []
     moons_recv = snap.get("moons_received_by_kingdom") or {}
     exit_thresholds = ctx.dp.kingdom_exit_thresholds()
-    outstanding = ctx.state.get_outstanding()
 
     parts: list[str] = []
     parts.append("[b]Kingdoms unlocked[/b]")
@@ -251,9 +250,8 @@ def _format_odyssey(ctx: "SMOContext") -> str:
         for k in all_k:
             recv = moons_recv.get(k, 0)
             need = exit_thresholds.get(k)
-            out = outstanding.get(k, 0)
             earned_needed = f"{recv} / {need}" if need is not None else f"{recv}"
-            parts.append(f"  {k}:    {earned_needed}    ([b]{out}[/b] unspent)")
+            parts.append(f"  {k}:    {earned_needed}")
     else:
         parts.append("[i](nothing yet)[/i]")
     parts.append("")
