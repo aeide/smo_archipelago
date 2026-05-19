@@ -123,26 +123,14 @@ HOOK_DEFINE_INLINE(ShineInitColorPatch) {
         // the Shine itself OR a child LiveActor at [Shine + 0x2e8] depending
         // on the site / per-shine branch (see the file-header comment).
         const auto* parent = reinterpret_cast<const std::uint8_t*>(ctx->X[19]);
+        if (!parent) return;
 
         // Two-step lookup: read the list-INDEX from [Shine + 0x290], then
         // resolve through mShineHintList[index].UniqueId to get the key the
-        // bridge actually populated `shine_palette[]` with. Keep an
-        // unconditional diagnostic log for the first 80 fires so we can
-        // verify the translation works in Ryujinx; strip back to a
-        // substitution-only log once the recolor is visually confirmed.
-        static int s_total_fires = 0;
-        static int s_subst_count = 0;
-        const int fire_idx = s_total_fires++;
-        const int index = parent
-            ? *reinterpret_cast<const int*>(parent + kShineMShineIdxOffset)
-            : -1;
+        // bridge actually populated `shine_palette[]` with.
+        const int index = *reinterpret_cast<const int*>(
+            parent + kShineMShineIdxOffset);
         const int unique_id = resolveShineIndexToUniqueId(index);
-        if (fire_idx < 80) {
-            SMOAP_LOG_INFO("[shine-color] fire#%d actor=%p shine=%p index=%d unique_id=%d",
-                           fire_idx + 1, ctx->X[0], ctx->X[19], index, unique_id);
-        }
-
-        if (!parent) return;
         if (unique_id <= 0 ||
             static_cast<std::size_t>(unique_id) >= smoap::ap::ApState::kMaxShineUid) {
             return;
@@ -151,11 +139,13 @@ HOOK_DEFINE_INLINE(ShineInitColorPatch) {
         if (pal == smoap::ap::ApState::kNoPaletteOverride) return;
 
         // Per-shine, each Shine::init fires 2 of the 4 patches (one Mtp +
-        // one Mcl), so 2 fires per moon is the natural rate.
+        // one Mcl), so 2 fires per moon is the natural rate — 16 covers ~8
+        // shines.
+        static int s_subst_count = 0;
         if (s_subst_count < 16) {
-            SMOAP_LOG_INFO("[shine-color] subst#%d actor=%p shine=%p index=%d unique_id=%d palette=%u",
-                           s_subst_count + 1, ctx->X[0], ctx->X[19], index,
-                           unique_id, static_cast<unsigned>(pal));
+            SMOAP_LOG_INFO("[shine-color] subst#%d shine=%p unique_id=%d palette=%u",
+                           s_subst_count + 1, ctx->X[19], unique_id,
+                           static_cast<unsigned>(pal));
         }
         ++s_subst_count;
         ctx->W[2] = pal;  // substitute the color arg (zero-extends X2)
