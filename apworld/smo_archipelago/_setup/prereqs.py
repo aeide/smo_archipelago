@@ -391,40 +391,73 @@ def check_hactool(override_path: Path | None = None) -> PrereqResult:
     )
 
 
-def check_prod_keys() -> PrereqResult:
-    """Switch console keys at the standard hactool default location.
+def check_prod_keys(override_path: Path | None = None) -> PrereqResult:
+    """Switch console keys, either at the standard hactool location or a
+    user-picked path.
 
     The extractor needs `prod.keys` to decrypt the NSP. Users typically dump
     these via Lockpick_RCM into `~/.switch/prod.keys` (hactool's default
-    location); we look there only. If a user has them elsewhere they can
-    point the extractor at them via the `--keys` arg (the wizard will
-    surface that override option in a future revision).
+    location), but plenty of users keep them elsewhere — alongside their
+    emulator config, on a separate "Switch tools" drive, etc.
+
+    Detection order:
+      1. `override_path` if provided (typically read from
+         setup_state.json's `prodkeys_path` key — set when the user
+         pointed the wizard's "Browse..." button at a prod.keys file).
+      2. Default `~/.switch/prod.keys` (hactool's convention).
+
+    Fails open (returns not-ok with picker_label set) when neither works,
+    so the wizard can surface a "Browse..." button.
     """
-    p = Path.home() / ".switch" / "prod.keys"
-    if not p.exists():
-        return PrereqResult(
-            "prodkeys", "prod.keys", False,
-            f"not found at {p} (dump with Lockpick_RCM)",
-            INSTALL_URLS["prodkeys"],
+    if override_path is not None:
+        if override_path.is_file():
+            return PrereqResult(
+                "prodkeys", "prod.keys", True,
+                f"{override_path} (user-picked)",
+            )
+        # Fall through to default location — the persisted path may have
+        # moved since the user picked it; we should not silently lock them
+        # out.
+
+    default = Path.home() / ".switch" / "prod.keys"
+    if default.is_file():
+        return PrereqResult("prodkeys", "prod.keys", True, str(default))
+
+    detail = f"not found at {default} (dump with Lockpick_RCM)"
+    if override_path is not None:
+        detail = (
+            f"previously-picked path {override_path} no longer exists, "
+            f"and no prod.keys at {default}"
         )
-    return PrereqResult("prodkeys", "prod.keys", True, str(p))
+    return PrereqResult(
+        "prodkeys", "prod.keys", False,
+        detail,
+        INSTALL_URLS["prodkeys"],
+        picker_label="Select prod.keys file",
+        picker_filter=("*.keys", "prod.keys", "*"),
+    )
 
 
-def check_all(*, hactool_override: Path | None = None) -> list[PrereqResult]:
+def check_all(
+    *,
+    hactool_override: Path | None = None,
+    prod_keys_override: Path | None = None,
+) -> list[PrereqResult]:
     """Run every detector. Order is wizard-display order — heaviest /
     most-likely-missing first so the user isn't surprised at the end of
     the list.
 
     `hactool_override` flows from the wizard's persisted user-picked
-    path (setup_state.json's `hactool_path` key); pass None on first
-    invocation or when the user has not yet picked a custom location."""
+    path (setup_state.json's `hactool_path` key); `prod_keys_override`
+    flows from `prodkeys_path`. Pass None on first invocation or when
+    the user has not yet picked a custom location for that prereq."""
     return [
         check_devkitpro(),
         check_cmake(),
         check_ninja(),
         check_python312(),
         check_hactool(override_path=hactool_override),
-        check_prod_keys(),
+        check_prod_keys(override_path=prod_keys_override),
     ]
 
 

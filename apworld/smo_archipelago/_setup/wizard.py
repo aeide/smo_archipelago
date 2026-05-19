@@ -354,7 +354,13 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                 hactool_override = (
                     Path(state["hactool_path"]) if state.get("hactool_path") else None
                 )
-                results = check_all(hactool_override=hactool_override)
+                prod_keys_override = (
+                    Path(state["prodkeys_path"]) if state.get("prodkeys_path") else None
+                )
+                results = check_all(
+                    hactool_override=hactool_override,
+                    prod_keys_override=prod_keys_override,
+                )
                 def finish(_dt):
                     render(results)
                     recheck.text = "Re-check"
@@ -548,7 +554,11 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                 hactool_override = (
                     Path(state["hactool_path"]) if state.get("hactool_path") else None
                 )
+                prod_keys_override = (
+                    Path(state["prodkeys_path"]) if state.get("prodkeys_path") else None
+                )
                 on_line(f"[wizard] hactool override: {hactool_override}")
+                on_line(f"[wizard] prod.keys override: {prod_keys_override}")
                 on_line(f"[wizard] DEVKITPRO env: {os.environ.get('DEVKITPRO', '<unset>')}")
                 on_line(f"[wizard] PATH (first 200 chars): {os.environ.get('PATH', '')[:200]}")
                 # Start the heartbeat *after* we've laid down the header so
@@ -559,6 +569,7 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                 hb.start()
                 result = run_extract_maps(
                     nsp,
+                    keys_path=prod_keys_override,
                     hactool_path=hactool_override,
                     on_line=on_line,
                 )
