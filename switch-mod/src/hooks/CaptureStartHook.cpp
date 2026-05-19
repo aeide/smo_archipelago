@@ -74,6 +74,10 @@ struct CapKillDelayOverride {
 };
 constexpr CapKillDelayOverride kCapKillDelayOverrides[] = {
     {"TRex", 6000},
+    // Bullet Bill: capture interaction is short — at 4s the player can
+    // already collect an out-of-logic moon before forceKillHack fires.
+    // Playtest 2026-05-18.
+    {"Killer", 2000},
 };
 
 int deferredKillMsForCap(const char* hack_name) {
