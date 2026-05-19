@@ -168,17 +168,22 @@ def _individual_off_cases() -> list[tuple[str, dict[str, bool]]]:
     return cases
 
 
-# "all-new-off" (every per-kingdom Peace toggle + every annoying-cluster
-# toggle set to false) is intentionally NOT enumerated -- the resulting
-# location count drops below the apworld's progression item count and AP's
-# Fill stage raises FillError. It's a known-bad config we warn users against,
-# not a scenario we're trying to support.
+def _all_off() -> dict[str, bool]:
+    """Every disabling toggle off. Stresses the kingdom-moon demotion logic in
+    hooks/World.py:after_create_items -- without it, items.json's static
+    progression count (450 moons) exceeds the trimmed location pool and AP
+    raises FillError. With demotion, the surplus moons are useful-classified
+    and Manual.adjust_filler_items trims them to fit."""
+    return {k: False for k in PER_KINGDOM_PEACE_TOGGLES + ANNOYING_CLUSTER_TOGGLES}
+
+
 def _build_scenarios() -> list[tuple[str, dict[str, bool]]]:
     fast = os.environ.get("SMOAP_GEN_TEST_FAST") == "1"
     if fast:
         return [("all_on", _all_on())]
     return [
         ("all_on", _all_on()),
+        ("all_off", _all_off()),
         *_individual_off_cases(),
     ]
 
