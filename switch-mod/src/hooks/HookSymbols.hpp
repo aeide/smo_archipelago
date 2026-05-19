@@ -154,7 +154,7 @@ inline constexpr const char* kGameDataFunctionGetGotShineNum =
     "_ZN16GameDataFunction14getGotShineNumE22GameDataHolderAccessori";
 
 // =============================================================================
-// M6 phase D — moon-deposit debit (AP credit decrements on Odyssey toss).
+// M6 phase D — moon-deposit observation (drives PayShineNum snapshot to bridge).
 // =============================================================================
 //
 // When Mario hand-tosses moons at an Odyssey, vanilla SMO does NOT mutate
@@ -170,19 +170,30 @@ inline constexpr const char* kGameDataFunctionGetGotShineNum =
 //
 // addPayShineCurrentAll() is the "pay everything in current kingdom" variant
 // (probably used in kingdom-complete celebrations). We hook it secondarily so
-// non-per-toss payments aren't lost; for those, the count is computed via the
-// AP-credit balance for currentKingdom.
+// the snapshot fires for that path too.
 //
 // getCurrentWorldIdNoDevelop is the safe `getCurrentWorldId` variant that
 // clamps the develop-state `-1` return to 0. We resolve it via
 // nn::ro::LookupSymbol once and call through a function pointer (same as
 // addHackDictionary), since this is read-only inside our hook callback.
+//
+// getPayShineNum is the per-(worldId) reader; we resolve it the same way and
+// call it from ApState::buildPaySnapshot to populate a per-kingdom totals
+// array. The snapshot ships on every toss + on HELLO via PaySnapshotMsg —
+// the bridge derives outstanding = moons_received − PayShineNum, which is
+// crash-survivable (save rollback shrinks PayShineNum, outstanding rebounds).
 inline constexpr const char* kGameDataFunctionAddPayShine =
     "_ZN16GameDataFunction11addPayShineE20GameDataHolderWriteri";
 inline constexpr const char* kGameDataFunctionAddPayShineCurrentAll =
     "_ZN16GameDataFunction21addPayShineCurrentAllE20GameDataHolderWriter";
 inline constexpr const char* kGameDataFunctionGetCurrentWorldIdNoDevelop =
     "_ZN16GameDataFunction26getCurrentWorldIdNoDevelopE22GameDataHolderAccessor";
+// GameDataFunction::getPayShineNum(GameDataHolderAccessor, s32 worldId)
+// Source: lunakit-vendor/src/game/GameData/GameDataFunction.h:175
+// Same mangling pattern as kGameDataFunctionGetGotShineNum (the (Accessor,
+// s32) shape). Verified HIT in real 1.0.0 main.nso via check_nso_symbols.py.
+inline constexpr const char* kGameDataFunctionGetPayShineNumByWorld =
+    "_ZN16GameDataFunction14getPayShineNumE22GameDataHolderAccessori";
 
 // =============================================================================
 // M6 phase B — capture grant (addHackDictionary + idempotency probe).

@@ -47,15 +47,6 @@ log = logging.getLogger(__name__)
 GAME_NAME = "Spicy Meatball Overdrive"
 
 
-def _moon_grant_amount(shine_id: str | None) -> int:
-    """Mirror of the Switch's moonGrantAmount: Multi-Moons grant 3, all
-    other moon items grant 1. Case-sensitive substring match per the
-    apworld's exact item naming ("X Kingdom Multi-Moon")."""
-    if shine_id and "Multi-Moon" in shine_id:
-        return 3
-    return 1
-
-
 class SMOClientCommandProcessor(ClientCommandProcessor):
     """`/`-prefixed commands typed into the Kivy command bar.
 
@@ -229,20 +220,6 @@ class SMOContext(CommonContext):
         # the AP server would reject our Connect with InvalidGame anyway,
         # but the proactive check gives a clearer error.
         self._roominfo_games: set[str] | None = None
-        # M6 phase D — cross-restart outstanding double-count guard.
-        # Cleared on Connected, set after the first Retrieved/SetReply for
-        # our outstanding key hydrates the rii high-water mark from the AP
-        # data store. ReceivedItems waits on this so the dedup decision is
-        # made against the authoritative rii rather than the in-process
-        # default of 0 (which would treat every historical item as new and
-        # double-bump outstanding).
-        self._outstanding_hydrated = asyncio.Event()
-        # Migration flag: set by hydration when the AP data store value is
-        # the v1 schema (raw `{kingdom: int}`, no `_v` tag). On the next
-        # ReceivedItems(index=0) we skip apply_grant entirely — the hydrated
-        # outstanding is already correct, and processing the historical
-        # batch would double-count it. Cleared after handling.
-        self._outstanding_v1_migration_pending = False
 
     # ----------------------------------------------------------- AP overrides
 
@@ -439,80 +416,52 @@ class SMOContext(CommonContext):
 
     # ----------------------------------------------------------- AP -> Switch
 
-    # M6 phase D — AP data store key for our per-slot outstanding-moon
-    # balance. Follows the convention established by every other apworld
-    # using set_notify (pokemon_emerald, cvcotm, mlss, pokemon_rb):
-    # `{game_short}_{purpose}_{team}_{slot}`.
-    def _outstanding_key(self) -> str | None:
-        if self.team is None or self.slot is None:
-            return None
-        return f"smo_outstanding_{self.team}_{self.slot}"
-
-    # AP data store payload schema for the outstanding key.
+    # M6 phase D — derived per-kingdom outstanding.
     #
-    # v1 (legacy): bare dict ``{kingdom_name: count, ...}`` — just the
-    # outstanding balance.
+    # outstanding[K] = lifetime_received_AP[K] - PayShineNum[K]
     #
-    # v2 (current): tagged dict
-    #     ``{"_v": 2,
-    #        "outstanding": {kingdom: count, ...},
-    #        "rii": int}``
-    # where ``rii`` is the items_received high-water mark. The schema bump
-    # is what lets us tell "this slot is on legacy data — trust the
-    # hydrated outstanding and DO NOT re-apply historical grants" from
-    # "this slot is on the new schema — both fields are authoritative".
-    _OUTSTANDING_SCHEMA_VERSION = 2
-
-    def _persist_outstanding(self) -> None:
-        """Write the current outstanding_by_kingdom + rii high-water mark to
-        the AP data store under our outstanding key.
-
-        Fire-and-forget Set (`want_reply: False`). The AP server's Set
-        handler is single-coroutine async (MultiServer.py:2176-2195), so
-        back-to-back Sets are linearized — last writer wins, no
-        read-modify-write race for a single bridge. Defaults the key to {}
-        so a never-before-seen slot doesn't 404.
-        """
-        key = self._outstanding_key()
-        if key is None:
-            return
-        value = self.state.get_outstanding()
-        # Cast keys/values to plain JSON-serializable types (the AP server
-        # round-trips through json.dumps).
-        payload = {
-            "_v": self._OUTSTANDING_SCHEMA_VERSION,
-            "outstanding": {str(k): int(v) for k, v in value.items()},
-            "rii": int(self.state.get_received_items_index()),
-        }
-        asyncio.create_task(self.send_msgs([{
-            "cmd": "Set",
-            "key": key,
-            "default": {},
-            "want_reply": False,
-            "operations": [{"operation": "replace", "value": payload}],
-        }]), name="smo_outstanding_persist")
+    # Lifetime receipts come from BridgeState.moons_received_by_kingdom
+    # (rebuilt on every Connected from state.all_received_items, so it
+    # survives bridge restart without explicit persistence). PayShineNum
+    # comes from the Switch's save via PaySnapshotMsg (shipped on every
+    # HELLO + every Odyssey toss). Neither side requires the bridge to
+    # persist anything — the deposit-then-crash data-loss class is
+    # eliminated because outstanding can't drift from PayShineNum.
+    #
+    # Until the first PaySnapshotMsg arrives, compute_outstanding returns
+    # None and _push_outstanding_to_switch early-returns. The Switch sees
+    # its first OutstandingMsg right after its first PaySnapshotMsg the
+    # same connection cycle.
 
     def _outstanding_entries_for_switch(self) -> list[OutstandingEntry]:
-        """Snapshot of current outstanding balance as wire entries."""
+        """Snapshot of derived outstanding as wire entries."""
+        outstanding = self.state.compute_outstanding() or {}
         return [
             OutstandingEntry(kingdom=k, count=int(v))
-            for k, v in sorted(self.state.get_outstanding().items())
+            for k, v in sorted(outstanding.items())
         ]
 
     async def _push_outstanding_to_switch(self) -> None:
-        """Send the current OutstandingMsg to the Switch (no-op if no switch).
+        """Send the current OutstandingMsg to the Switch (no-op if no switch
+        OR no PaySnapshotMsg has arrived yet).
 
-        Called whenever outstanding_by_kingdom changes (grant arrival,
-        AP-store retrieval, deposit applied). The Switch overwrites
-        ap_moons_kingdom[bit] for each entry.
+        Called whenever the inputs to compute_outstanding change: a moon
+        item arrives from AP (lifetime_received bumps) or a PaySnapshotMsg
+        lands from the Switch. Early-return when compute_outstanding
+        returns None — the Switch is on title screen / has no save loaded,
+        and pushing `outstanding = lifetime − 0` would credit AP moons
+        before the Switch has any opinion about PayShineNum.
 
         Always ships lake_received_total / snow_received_total too — the
-        M7 Path A kingdom-order gate consumes those on the Switch. Lifetime
-        counts come from BridgeState.moons_received_by_kingdom, which is
-        populated by add_received_item for every Moon item in the AP
-        history (so it survives bridge restart on the next Connected).
+        M7 Path A kingdom-order gate consumes those on the Switch.
         """
         if self.switch is None:
+            return
+        if self.state.compute_outstanding() is None:
+            log.debug(
+                "[m6-deposit] suppressing OutstandingMsg (no PaySnapshotMsg "
+                "from Switch yet — deferring until save loads)"
+            )
             return
         await self.switch.send_outstanding(OutstandingMsg(
             entries=self._outstanding_entries_for_switch(),
@@ -520,222 +469,68 @@ class SMOContext(CommonContext):
             snow_received_total=self.state.get_kingdom_lifetime_received("Snow"),
         ))
 
-    async def _hydrate_outstanding_from_ap(self) -> None:
-        """Pull the current outstanding + rii high-water mark from
-        `ctx.stored_data` (populated by CommonClient's Retrieved/SetReply
-        handler) into BridgeState, then push OutstandingMsg to the Switch.
+    async def apply_pay_snapshot_from_switch(
+        self, totals: dict[str, int]
+    ) -> None:
+        """Handler called by SwitchServer when a PaySnapshotMsg lands.
 
-        Handles the initial Connected -> Retrieved cycle and subsequent
-        SetReply notifications. None-valued stored_data entries (server has
-        no entry yet) hydrate as an empty dict.
-
-        Supports two schema versions:
-          - v1 (legacy): bare ``{kingdom: count}``. Trusted as-is, but rii
-            stays 0 and we set ``_outstanding_v1_migration_pending`` so the
-            next ReceivedItems(index=0) skips apply_grant (the historical
-            replay would otherwise double-bump every kingdom).
-          - v2: tagged ``{"_v": 2, "outstanding": ..., "rii": int}``. Both
-            fields trusted authoritatively.
-        Always sets ``_outstanding_hydrated`` so ReceivedItems handlers
-        that were waiting on hydration can proceed.
+        `totals` is keyed by AP-form kingdom name (e.g. "Bowser's"); the
+        SwitchServer dispatcher does the Switch→AP translation before
+        calling us. Wholesale-replaces the per-kingdom PayShineNum reading
+        and re-derives outstanding, then pushes the new OutstandingMsg.
         """
-        key = self._outstanding_key()
-        if key is None:
-            return
-        raw = self.stored_data.get(key) or {}
-        if not isinstance(raw, dict):
-            log.warning("AP store entry %r has unexpected type %s; resetting",
-                        key, type(raw).__name__)
-            raw = {}
-
-        if "_v" in raw:
-            # v2 schema — both outstanding and rii are authoritative.
-            inner = raw.get("outstanding") or {}
-            if not isinstance(inner, dict):
-                inner = {}
-            rii_raw = raw.get("rii", 0)
-            self._outstanding_v1_migration_pending = False
-        else:
-            # v1 schema (or empty). Bare dict is the legacy outstanding.
-            inner = raw
-            rii_raw = 0
-            # Only flag the migration when there's actually prior data to
-            # protect. A fresh slot (empty dict) just starts at rii=0 and
-            # processes ReceivedItems normally.
-            if inner:
-                self._outstanding_v1_migration_pending = True
-                log.info(
-                    "[m6-deposit] outstanding key is v1 legacy schema (no rii); "
-                    "trusting hydrated balance and will skip apply_grant on the "
-                    "next ReceivedItems historical batch to avoid double-count"
-                )
-            else:
-                self._outstanding_v1_migration_pending = False
-
-        coerced: dict[str, int] = {}
-        for k, v in inner.items():
-            try:
-                coerced[str(k)] = int(v)
-            except (TypeError, ValueError):
-                log.warning("AP store outstanding[%r] = %r is not coercible to int", k, v)
-        try:
-            rii = max(0, int(rii_raw))
-        except (TypeError, ValueError):
-            log.warning("AP store rii = %r is not coercible to int; resetting to 0", rii_raw)
-            rii = 0
-
-        self.state.replace_outstanding(coerced)
-        self.state.set_received_items_index(rii)
+        self.state.apply_pay_snapshot(totals)
+        out = self.state.compute_outstanding() or {}
         log.info(
-            "[m6-deposit] hydrated from AP store: outstanding=%r rii=%d (migration=%s)",
-            coerced, rii, self._outstanding_v1_migration_pending,
+            "[m6-deposit] PaySnapshot applied (%d kingdoms); "
+            "derived outstanding=%r",
+            len(totals), {k: v for k, v in sorted(out.items()) if v},
         )
-        self._outstanding_hydrated.set()
         await self._push_outstanding_to_switch()
-
-    async def apply_deposit_from_switch(
-        self, *, seq: int, kingdom: str, amount: int
-    ) -> bool:
-        """Handler called by SwitchServer when a DepositMsg lands.
-
-        Returns True if this seq was newly applied (caller can log it as a
-        fresh deposit), False if it was idempotent-skipped (re-ack only).
-        Either way, the caller MUST send a DepositAckMsg back to the Switch
-        so its pending-deposit ring drops the entry.
-        """
-        if self.state.should_skip_deposit(seq):
-            log.info("[m6-deposit] re-ack seq=%d (already applied this session)", seq)
-            return False
-        new = self.state.apply_deposit(kingdom, amount)
-        log.info(
-            "[m6-deposit] applied seq=%d kingdom=%s amount=%d new_balance=%d",
-            seq, kingdom, amount, new,
-        )
-        self._persist_outstanding()
-        await self._push_outstanding_to_switch()
-        return True
 
     async def _process_received_items(self, args: dict) -> None:
         """Handle a ReceivedItems packet.
 
-        Three jobs:
-          1. Mirror every item into ``state.received_items`` so SwitchServer
-             can replay captures/kingdoms on a fresh Switch HELLO. Always
-             runs — even for items the bridge has already side-effected in
-             a prior session.
-          2. For each item at AP position >= ``state.received_items_index``,
-             fire side effects (apply_grant for moons, send_item to the
-             Switch). Items below rii are skipped — they were processed in
-             a past bridge session and re-applying them would double-count
-             outstanding and trigger ghost Cappy speech for old grants.
-          3. Advance the rii high-water mark + persist the new value to the
-             AP data store. After this completes, the next session will
-             correctly skip whatever we just processed.
+        Two jobs (M6 phase D simplification — outstanding is derived, so
+        there's no rii dedup, no v1 migration, no apply_grant, no persist):
+          1. Mirror every item into ``state.received_items`` (the canonical
+             history; rebuilds moons_received_by_kingdom on every Connected
+             via add_received_item). Mirror dedup by current length so AP's
+             reconnect-blip replays don't double-bump lifetime counts.
+          2. Forward each NEW item to the Switch via ItemMsg so the mod can
+             log arrival, run the Cappy speech filter, and (for captures)
+             write into the HackDictionary. Items already in our in-memory
+             history are skipped — they would have been forwarded the first
+             time they arrived this session.
 
-        The hydration gate (``_outstanding_hydrated``) guarantees rii is
-        authoritative before the dedup decision is made. ReceivedItems
-        often arrives BEFORE the matching Retrieved on a fresh connect
-        (Retrieved is a response to our Get, ReceivedItems is a push),
-        so processing without the gate would always see rii=0 and treat
-        every historical item as "new".
-
-        v1-schema migration: when the AP data store held the legacy bare
-        ``{kingdom: int}`` payload, hydration trusts the outstanding values
-        but ALSO sets ``_outstanding_v1_migration_pending``. The first
-        post-hydration ReceivedItems(index=0) batch then skips apply_grant
-        entirely (the hydrated outstanding already accounts for those
-        items) and bumps rii to the batch length so subsequent sessions
-        dedup correctly.
+        Outstanding mutates implicitly: every Moon item bumps
+        moons_received_by_kingdom (in add_received_item), and the resulting
+        OutstandingMsg is pushed at the end so the Switch sees the updated
+        derived value. The push is gated on the bridge having received at
+        least one PaySnapshotMsg (otherwise the Switch is on title screen
+        and can't act on outstanding anyway).
         """
         items = args.get("items") or []
         ap_index = int(args.get("index", 0) or 0)
 
-        # Block until the outstanding key has been hydrated from AP store.
-        # Bounded so a wedged AP server (or a slot without team/slot info)
-        # can't deadlock the whole bridge.
-        if self._outstanding_key() is not None and not self._outstanding_hydrated.is_set():
-            try:
-                await asyncio.wait_for(self._outstanding_hydrated.wait(), timeout=10.0)
-            except asyncio.TimeoutError:
-                log.warning(
-                    "[m6-deposit] Retrieved/SetReply for outstanding key did "
-                    "not arrive within 10s; proceeding with rii=%d (live items "
-                    "may double-count outstanding if a previous session "
-                    "persisted to the v1 schema and the server is slow)",
-                    self.state.get_received_items_index(),
-                )
-
-        # v1 → v2 migration: the legacy schema had no rii to dedup against.
-        # The hydrated outstanding is trusted (it's what the user actually
-        # had at last persist), so the safe move is to skip apply_grant for
-        # the entire historical batch and seed rii from its length. From
-        # the next ReceivedItems onward the normal pos>=rii path takes over.
-        if self._outstanding_v1_migration_pending and ap_index == 0:
-            log.info(
-                "[m6-deposit] v1 migration: trusting hydrated outstanding, "
-                "skipping side effects for %d historical items, setting rii=%d",
-                len(items), len(items),
-            )
-            for ni in items:
-                ref, _classification, sender_name, cappy_from = self._parse_received_item(ni)
-                if ref is None:
-                    continue
-                self.state.add_received_item(
-                    ItemEvent(item=ref, sender=sender_name, cappy_from=cappy_from)
-                )
-            self.state.set_received_items_index(len(items))
-            self._outstanding_v1_migration_pending = False
-            self._persist_outstanding()  # rewrites under v2 schema
-            return
-
-        # Normal path: dedup by rii. Items at position < rii were already
-        # side-effected in a past bridge session.
-        rii_at_entry = self.state.get_received_items_index()
-        # In-memory mirror dedup: items at position < initial_mirror_len
-        # were already added to state.received_items earlier in THIS
-        # session (e.g. AP re-pushing the full history on a reconnect blip
-        # without a bridge restart). The rii check below covers the
-        # cross-session case where state.received_items is empty but rii
-        # is loaded from the AP store — there we still want to mirror so
-        # SwitchServer's HELLO replay can re-deliver to a freshly booted
-        # mod.
         initial_mirror_len = len(self.state.received_items)
-        moon_granted_this_batch = False
+        moon_received_this_batch = False
 
         for i, ni in enumerate(items):
             pos = ap_index + i
             ref, classification, sender_name, cappy_from = self._parse_received_item(ni)
             if ref is None:
                 continue
-            if pos >= initial_mirror_len:
-                # Either truly new, or being mirrored for the first time
-                # this session after a bridge restart (cross-session
-                # replay needed for SwitchServer's HELLO re-delivery).
-                # Persist cappy_from so HELLO replay's from_= matches the
-                # live send (self-find suppression survives reconnects).
-                self.state.add_received_item(
-                    ItemEvent(item=ref, sender=sender_name, cappy_from=cappy_from)
-                )
-
-            if pos < rii_at_entry:
-                # Already processed in a past session; skip side effects.
+            if pos < initial_mirror_len:
+                # Already mirrored earlier in this session (AP re-pushed
+                # the full history on a reconnect blip). Skip both mirror
+                # and side-effect to avoid double-counting + double-Cappy.
                 continue
-
-            # M6 phase D — Moon grants bump the per-kingdom outstanding
-            # balance. The per-kingdom counter on the Switch is exclusively
-            # driven by OutstandingMsg below; the ItemMsg for a moon is
-            # observation-only on the mod side (mutating ap_moons_kingdom[]
-            # from both paths would double-count every grant). We still
-            # send ItemMsg so the mod can log the arrival, run the Cappy
-            # speech filter, and exercise any future per-item side effects.
+            self.state.add_received_item(
+                ItemEvent(item=ref, sender=sender_name, cappy_from=cappy_from)
+            )
             if ref.kind == ItemKind.MOON.value and ref.kingdom:
-                amount = _moon_grant_amount(ref.shine_id)
-                new = self.state.apply_grant(ref.kingdom, amount)
-                log.info(
-                    "[m6-deposit] grant kingdom=%s +%d new_balance=%d (sender=%s)",
-                    ref.kingdom, amount, new, sender_name,
-                )
-                moon_granted_this_batch = True
+                moon_received_this_batch = True
             if self.switch is not None:
                 await self.switch.send_item(ItemMsg(
                     kind=ref.kind,
@@ -748,24 +543,11 @@ class SMOContext(CommonContext):
                     classification=classification,
                 ))
 
-        # Advance the rii high-water mark over everything in this batch
-        # (including items at pos < rii_at_entry — they don't move the mark
-        # backwards). Persist on either: a moon was granted (outstanding
-        # changed) OR the mark advanced (the persisted rii needs catching up
-        # even for capture/kingdom-only batches, else we'd re-send those
-        # ItemMsgs on every reconnect).
-        new_rii = max(rii_at_entry, ap_index + len(items))
-        rii_advanced = new_rii > rii_at_entry
-        if rii_advanced:
-            self.state.set_received_items_index(new_rii)
-
-        if moon_granted_this_batch or rii_advanced:
-            # One Set covers both fields (single AP data store key holds
-            # outstanding + rii in v2). Push OutstandingMsg only when a
-            # moon's balance actually changed.
-            self._persist_outstanding()
-            if moon_granted_this_batch:
-                await self._push_outstanding_to_switch()
+        if moon_received_this_batch:
+            # lifetime_received bumped; re-derive outstanding and push.
+            # No-op when no PaySnapshotMsg has arrived yet (Switch on
+            # title screen).
+            await self._push_outstanding_to_switch()
 
     def _parse_received_item(self, ni):
         """Decode a NetworkItem (dict or namedtuple) into
@@ -890,23 +672,12 @@ class SMOContext(CommonContext):
                     await self.switch.drain_pending_snapshot()
                 except Exception:
                     log.exception("drain_pending_snapshot failed")
-            # M6 phase D — subscribe to the outstanding-moon-balance key in
-            # the AP data store. `set_notify` sends Get + SetNotify in one
-            # batch; the Retrieved reply lands in `ctx.stored_data` BEFORE
-            # our on_package override sees the cmd, so the Retrieved arm
-            # below can hydrate from `stored_data` directly.
-            key = self._outstanding_key()
-            if key is not None:
-                # Reset the hydration gate so ReceivedItems blocks on the
-                # fresh Retrieved for THIS connection (a reconnect must not
-                # process new items against the prior session's rii).
-                self._outstanding_hydrated.clear()
-                self._outstanding_v1_migration_pending = False
-                self.set_notify(key)
-            else:
-                # No team/slot resolved — there's nothing to hydrate, so
-                # don't block on the event.
-                self._outstanding_hydrated.set()
+            # M6 phase D — no AP data-store key to subscribe to: outstanding
+            # is now derived from (lifetime_received_AP − PayShineNum).
+            # lifetime_received comes from state.received_items on every
+            # Connected; PayShineNum comes from the Switch's PaySnapshotMsg.
+            # The legacy `smo_outstanding_<team>_<slot>` key is abandoned in
+            # place — no read, no write, no migration.
             if self.display_enabled or self.colors.enabled:
                 # Warm the scout cache so (a) Channel A's moon-get cutscene
                 # label is ready before the cutscene fires, and (b) M-color
@@ -930,20 +701,6 @@ class SMOContext(CommonContext):
                 self.state.seed = seed
         elif cmd == "ReceivedItems":
             await self._process_received_items(args)
-        elif cmd in ("Retrieved", "SetReply"):
-            # M6 phase D — CommonContext's default handler has already
-            # written into ctx.stored_data before our on_package runs
-            # (CommonClient.py:1099+). Hydrate from there and push to Switch
-            # IFF this update was for our outstanding key.
-            key = self._outstanding_key()
-            if key is None:
-                return
-            if cmd == "Retrieved":
-                if key in args.get("keys", {}):
-                    await self._hydrate_outstanding_from_ap()
-            else:  # SetReply
-                if args.get("key") == key:
-                    await self._hydrate_outstanding_from_ap()
         elif cmd == "DataPackage":
             data = args.get("data", {}).get("games", {})
             for game_name, package in data.items():

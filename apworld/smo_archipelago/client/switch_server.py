@@ -17,7 +17,6 @@ from .protocol import (
     ApStateMsg,
     CappyMsg,
     CheckedReplayMsg,
-    DepositAckMsg,
     ErrMsg,
     HelloAckMsg,
     ItemMsg,
@@ -66,11 +65,11 @@ GoalHandler = Callable[[], Awaitable[None]]
 DeathHandler = Callable[[int], Awaitable[None]]
 LabelComposer = Callable[[int], "str | None"]              # loc_id -> label text
 SwitchReadyHandler = Callable[[], Awaitable[None]]         # fired post-HELLO
-# M6 phase D — DepositHandler(seq=int, kingdom=str, amount=int) -> applied?
-# Returns True if newly applied (caller can log), False if idempotent skip.
-# Either way the server still sends a DepositAckMsg for the Switch to
-# drop the matching entry from its pending-deposit ring.
-DepositHandler = Callable[..., Awaitable[bool]]
+# M6 phase D — PaySnapshotHandler(totals=dict[str, int]) -> None.
+# `totals` is keyed by AP-form kingdom name (dispatcher does the
+# Switch→AP translation). Handler folds into BridgeState and re-derives
+# outstanding, then pushes OutstandingMsg to the Switch.
+PaySnapshotHandler = Callable[..., Awaitable[None]]
 # M6 phase D — OutstandingProvider() -> list[OutstandingEntry]. Used at HELLO
 # time to snapshot the current per-kingdom balance for the Switch.
 OutstandingProvider = Callable[[], "list"]
@@ -109,7 +108,7 @@ class SwitchServer:
         deathlink_enabled: bool = False,
         compose_moon_label: LabelComposer | None = None,
         on_switch_ready: SwitchReadyHandler | None = None,
-        on_deposit: DepositHandler | None = None,
+        on_pay_snapshot: PaySnapshotHandler | None = None,
         get_outstanding_entries: OutstandingProvider | None = None,
         capturesanity_enabled: bool = True,
         get_all_captures: AllCapturesProvider | None = None,
@@ -126,7 +125,7 @@ class SwitchServer:
         self._deathlink_enabled = deathlink_enabled
         self._compose_label = compose_moon_label
         self._on_switch_ready = on_switch_ready
-        self._on_deposit = on_deposit
+        self._on_pay_snapshot = on_pay_snapshot
         self._get_outstanding = get_outstanding_entries
         # Default True (fail-safe = current behavior, AP-granted captures
         # only). SMOContext flips this from slot_data on AP Connected.
@@ -283,11 +282,11 @@ class SwitchServer:
         await self._send(msg)
 
     async def send_outstanding(self, msg: OutstandingMsg) -> None:
-        """Push the authoritative per-kingdom balance to the Switch.
+        """Push the derived per-kingdom balance to the Switch.
 
-        Called from context.py whenever outstanding_by_kingdom mutates (AP
-        store retrieval, grant arrival, deposit applied) AND once at HELLO
-        ack. The Switch overwrites `ap_moons_kingdom[bit]` for each entry.
+        Called from context.py whenever the inputs to compute_outstanding
+        change (Moon item arrival from AP, or PaySnapshotMsg from Switch).
+        The Switch overwrites `ap_moons_kingdom[bit]` for each entry.
         """
         await self._send(msg)
 
@@ -468,49 +467,55 @@ class SwitchServer:
                 self._state.add_snapshot_chunk_shines(stage, msg.get("shines") or [])
         elif t == "state_end":
             await self._on_state_end()
-        elif t == "deposit":
-            await self._on_deposit_msg(msg)
+        elif t == "pay_snapshot":
+            await self._on_pay_snapshot_msg(msg)
         else:
             log.warning("unknown message type from Switch: %s", t)
             await self._send(ErrMsg(code="unknown_kind", ctx=str(t)))
 
-    async def _on_deposit_msg(self, msg: dict) -> None:
-        """M6 phase D — Switch reported a moon deposit (per-toss or pay-all).
+    async def _on_pay_snapshot_msg(self, msg: dict) -> None:
+        """M6 phase D — Switch reported authoritative per-kingdom PayShineNum.
 
-        Always sends a DepositAckMsg (idempotent re-ack on re-sent seqs so
-        Switch reliably drops them from its pending ring). If `on_deposit`
-        is wired, calls it to apply the debit to BridgeState.outstanding.
+        Parses the entries list (Switch-form kingdoms with `pay` int
+        readings), translates each kingdom to AP form, and hands off to
+        the configured handler. The handler folds the totals into
+        BridgeState and re-derives outstanding. No ack: the snapshot is
+        idempotent and the next snapshot supersedes whatever the bridge
+        currently believes.
         """
-        try:
-            seq = int(msg.get("seq", 0))
-            kingdom = str(msg.get("kingdom") or "")
-            amount = int(msg.get("amount", 0))
-        except (TypeError, ValueError):
-            log.warning("malformed DepositMsg: %r", msg)
-            await self._send(ErrMsg(code="bad_deposit", ctx=str(msg)))
+        if self._on_pay_snapshot is None:
+            log.debug("pay_snapshot dropped: no handler wired")
             return
 
-        # Switch sends the bare short kingdom name ("Bowser"); bridge keys
-        # outstanding_by_kingdom by the AP form ("Bowser's"). Translate so
-        # the apply_deposit lookup targets the correct bucket.
-        kingdom = protocol.kingdom_switch_to_ap(kingdom) or ""
-
-        if seq <= 0 or not kingdom or amount < 0:
-            log.warning("invalid DepositMsg seq=%d kingdom=%r amount=%d", seq, kingdom, amount)
-            await self._send(ErrMsg(code="bad_deposit", ctx=str(msg)))
+        entries = msg.get("entries")
+        if not isinstance(entries, list):
+            log.warning("malformed PaySnapshotMsg (entries not list): %r", msg)
+            await self._send(ErrMsg(code="bad_pay_snapshot", ctx="entries"))
             return
 
-        if self._on_deposit is not None:
+        totals: dict[str, int] = {}
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            kingdom_switch = entry.get("kingdom")
+            pay = entry.get("pay")
+            if not isinstance(kingdom_switch, str) or not kingdom_switch:
+                continue
             try:
-                await self._on_deposit(seq=seq, kingdom=kingdom, amount=amount)
-            except Exception:
-                log.exception("on_deposit handler raised for seq=%d", seq)
-                # Still ack — Switch's pending ring should drop the entry
-                # even if the bridge's persistence failed. The OutstandingMsg
-                # the Switch already has remains authoritative; on next
-                # AP-store reconnect we'd recover.
+                pay_int = int(pay)
+            except (TypeError, ValueError):
+                log.warning("PaySnapshot entry has non-int pay: %r", entry)
+                continue
+            kingdom_ap = protocol.kingdom_switch_to_ap(kingdom_switch)
+            if not kingdom_ap:
+                log.warning("PaySnapshot entry has unknown kingdom: %r", kingdom_switch)
+                continue
+            totals[kingdom_ap] = max(0, pay_int)
 
-        await self._send(DepositAckMsg(seq=seq))
+        try:
+            await self._on_pay_snapshot(totals)
+        except Exception:
+            log.exception("on_pay_snapshot handler raised")
 
     async def _dispatch_check(self, msg: dict, *, from_snapshot: bool = False) -> "int | None":
         """Forward a check (live or snapshot-derived) to AP and record locally.
@@ -801,23 +806,22 @@ class SwitchServer:
         ))
         self._state.set_switch_conn("ready")
 
-        # M6 phase D — fresh HELLO session: reset the seq dedup high-water
-        # mark so the Switch's replayed-deposits aren't all dropped as
-        # already-seen (and so a brand new Switch session starting at seq=1
-        # isn't filtered against an old session's high-water mark either).
-        self._state.reset_deposit_session()
-
         # M6 phase D — push authoritative per-kingdom balance to the Switch
-        # BEFORE replaying items. The Switch overwrites ap_moons_kingdom[]
-        # to match. Item replay below skips Moons (else we'd double-count
-        # — once from OutstandingMsg, once from the item-apply path on the
-        # mod side).
+        # BEFORE replaying items, BUT only if we have a snapshot to derive
+        # from. compute_outstanding returns None until the first
+        # PaySnapshotMsg arrives (Switch on title screen). The Switch's
+        # post-HELLO sendSnapshot ships its own PaySnapshotMsg the same
+        # connection cycle; we get a second chance via the snapshot handler
+        # to push OutstandingMsg with real values then.
         #
         # M7 Path A also ships lifetime Lake/Snow receipt totals so the
         # kingdom-order gate has the right number on reconnect (read from
         # BridgeState directly — populated by add_received_item across the
         # AP history and so already correct here).
-        if self._get_outstanding is not None:
+        if (
+            self._get_outstanding is not None
+            and self._state.compute_outstanding() is not None
+        ):
             try:
                 entries = self._get_outstanding()
             except Exception:

@@ -39,6 +39,14 @@ std::uint8_t kingdomBitForWorldId(int world_id);
 // resolve "which kingdom is Mario in" inside its hot path.
 void installDepositKingdomLookupSymbol();
 
+// M6 phase D — resolve GameDataFunction::getPayShineNum(Accessor, worldId)
+// the same way. Drives ApState::buildPaySnapshot, which is the input to
+// the bridge's derived outstanding (outstanding = lifetime_received_AP −
+// PayShineNum). Without it, the bridge never sees a snapshot and AP credit
+// is never debited — deposit-then-crash protection inert. Called from
+// main.cpp adjacent to installDepositKingdomLookupSymbol().
+void installPayShineSnapshotSymbol();
+
 // Map a SMO HomeStage name (e.g. "ForestWorldHomeStage") to the apworld
 // kingdom short name ("Wooded"). Returns nullptr for unknown stages.
 // Source of truth is the same KINGDOM_FOR_HOMESTAGE table in

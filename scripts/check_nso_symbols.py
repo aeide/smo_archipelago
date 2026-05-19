@@ -70,6 +70,11 @@ SYMBOLS = [
     "_ZN16GameDataFunction11addPayShineE20GameDataHolderWriteri",
     "_ZN16GameDataFunction21addPayShineCurrentAllE20GameDataHolderWriter",
     "_ZN16GameDataFunction26getCurrentWorldIdNoDevelopE22GameDataHolderAccessor",
+    # M6 phase D successor — derived outstanding (deposit-then-crash fix).
+    # PaySnapshotMsg ships per-kingdom PayShineNum to the bridge, which
+    # derives outstanding = lifetime_received - PayShineNum. Same Itanium
+    # mangling pattern as getGotShineNum above: (Accessor, s32 worldId).
+    "_ZN16GameDataFunction14getPayShineNumE22GameDataHolderAccessori",
     # M7 Path A — world-map kingdom-order gate (three-layer architecture; see
     # switch-mod/src/hooks/WorldMapSelectHook.cpp).
     # Layer 1: regular world-map UI per-slot query (4 ptr-type overloads).

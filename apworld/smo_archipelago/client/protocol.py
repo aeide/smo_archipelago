@@ -193,22 +193,41 @@ class StateEndMsg:
 
 
 @dataclass
-class DepositMsg:
-    """M6 phase D — Switch reports a moon deposit (per-toss or pay-all).
+class PaySnapshotEntry:
+    """One per-kingdom PayShineNum row inside a PaySnapshotMsg.
 
-    Sent by AddPayShineHook / AddPayShineAllHook on the mod side every time
-    Mario hands moons to an Odyssey. `seq` is a monotonic per-Switch-session
-    counter used by the bridge for idempotent dedup of reconnect replays;
-    `kingdom` is the kingdom Mario was in at the time of the deposit (debit
-    applies to that kingdom's outstanding balance only); `amount` is the
-    number of moons actually debited (clamped at the AP-credit balance, so
-    `amount` may be less than the vanilla addPayShine count if Mario also
-    had natural moons in the pool).
+    Switch ships the kingdom in its on-Switch form (e.g. "Bowser",
+    "Mushroom"); the dispatcher in switch_server translates to AP form
+    via kingdom_switch_to_ap before handing off to BridgeState.
     """
-    t: str = "deposit"
-    seq: int = 0
     kingdom: str = ""
-    amount: int = 0
+    pay: int = 0
+
+
+@dataclass
+class PaySnapshotMsg:
+    """M6 phase D — Switch reports authoritative PayShineNum per kingdom.
+
+    Sent by ApClient at two trigger points:
+      (a) Inside sendSnapshot's tail on every (re)connect, behind the
+          save_was_loaded + scene_cache gate (so we never snapshot a
+          title-screen GDH that still mirrors a previous save).
+      (b) At the tail of every AddPayShineHook / AddPayShineAllHook fire,
+          immediately after vanilla addPayShine bumps PayShineNum.
+
+    Every snapshot is a COMPLETE reading (all 17 kingdoms), so a single
+    snapshot is sufficient to recompute outstanding for the entire game.
+    The bridge derives outstanding[K] = lifetime_received_AP[K] - pay[K],
+    so a save crash that rolls back PayShineNum naturally rebounds
+    outstanding the next time SMO loads + the snapshot lands.
+
+    `save_slot` is informational and may be -1 (absent). `complete` is
+    always True today; reserved for partial-snapshot extensions.
+    """
+    t: str = "pay_snapshot"
+    entries: list[PaySnapshotEntry] = field(default_factory=list)
+    save_slot: int = -1
+    complete: bool = True
 
 
 # ---------------------------------------------------------------------------
@@ -366,25 +385,12 @@ class KillMsg:
 
 
 @dataclass
-class DepositAckMsg:
-    """M6 phase D — bridge acknowledges a DepositMsg.
-
-    Sent unconditionally for every received DepositMsg (idempotent — a re-ack
-    of an already-processed seq is a no-op on the Switch side). The Switch
-    uses this to drop the matching entry from its pending-deposit ring so
-    the next reconnect won't replay it.
-    """
-    t: str = "deposit_ack"
-    seq: int = 0
-
-
-@dataclass
 class OutstandingEntry:
     """One per-kingdom balance row inside an OutstandingMsg.
 
     `kingdom` is the apworld-canonical kingdom name (matching kKingdoms[]
-    on the mod side). `count` is the current AP-credit balance: positive
-    integer.
+    on the mod side). `count` is the current AP-credit balance (derived,
+    not persisted: lifetime_received_AP[K] - PayShineNum[K]).
     """
     kingdom: str = ""
     count: int = 0
@@ -398,14 +404,18 @@ class OutstandingEntry:
 
 @dataclass
 class OutstandingMsg:
-    """M6 phase D — bridge-authoritative per-kingdom balance.
+    """M6 phase D — bridge-derived per-kingdom outstanding balance.
 
-    Sent immediately after HelloAckMsg on every Switch reconnect, and again
-    every time the bridge's `outstanding_by_kingdom` mutates (grant arrival
-    or deposit applied). The Switch overwrites `ap_moons_kingdom[bit]` for
-    each kingdom present in `entries`; kingdoms missing from the message are
-    left untouched (lets the bridge omit zero entries if it wants to —
-    today it sends all known kingdoms for unambiguous full-state replace).
+    Sent every time the inputs to compute_outstanding change: a Moon item
+    arrives from AP (lifetime_received bumps), OR a PaySnapshotMsg lands
+    from the Switch (PayShineNum changes). Also sent right after HelloAck
+    IFF compute_outstanding has a reading (otherwise deferred until the
+    Switch's first post-HELLO PaySnapshotMsg lands).
+
+    The Switch overwrites `ap_moons_kingdom[bit]` for each kingdom present
+    in `entries`; kingdoms missing from the message are left untouched
+    (lets the bridge omit zero entries if it wants to — today it sends
+    all known kingdoms for unambiguous full-state replace).
 
     M7 Path A adds two scalars for the kingdom-order gate's prereq kingdoms
     (Lake gates Wooded, Snow gates Seaside). These are *lifetime* AP-receipt

@@ -240,12 +240,14 @@ async def main(args: argparse.Namespace) -> None:
         # until the Switch is up; this callback promotes the pending
         # request the moment HELLO arrives.
         on_switch_ready=ctx._on_switch_ready,
-        # M6 phase D: route incoming DepositMsg through ctx so it can
-        # update outstanding_by_kingdom + persist to AP store + push
-        # OutstandingMsg back to Switch. The HELLO handler snapshots
-        # current entries via get_outstanding_entries so the Switch's
-        # ap_moons_kingdom[] is authoritative the moment it reconnects.
-        on_deposit=ctx.apply_deposit_from_switch,
+        # M6 phase D: route incoming PaySnapshotMsg through ctx. The
+        # handler folds per-kingdom PayShineNum into BridgeState and
+        # re-derives outstanding via compute_outstanding(); ctx pushes
+        # the resulting OutstandingMsg back to the Switch. The HELLO
+        # handler also snapshots current outstanding via
+        # get_outstanding_entries, BUT defers when compute_outstanding
+        # returns None (no PaySnapshotMsg has arrived yet).
+        on_pay_snapshot=ctx.apply_pay_snapshot_from_switch,
         get_outstanding_entries=ctx._outstanding_entries_for_switch,
         # Capturesanity replay: when slot_data.capturesanity == 0 the AP
         # server never sends Capture items, so SwitchServer synthesizes

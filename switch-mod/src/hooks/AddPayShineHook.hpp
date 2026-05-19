@@ -5,8 +5,10 @@
 //   - AddPayShineAllHook: "pay current kingdom in full" (less common — kingdom
 //                         clear celebrations and similar bulk-payment events)
 //
-// Both write a DepositMsg into ApState's pending_deposits ring for the
-// worker thread to ship to the bridge. See AddPayShineHook.cpp for details.
+// Both queue a PaySnapshot (per-kingdom PayShineNum reading from the live
+// GameDataHolder) into ApState's pending_pay_snapshots ring for the worker
+// thread to ship to the bridge. The bridge derives outstanding from
+// (lifetime_received_AP − PayShineNum). See AddPayShineHook.cpp for details.
 
 #pragma once
 

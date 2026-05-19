@@ -46,26 +46,15 @@ class BridgeState:
         self.captures_unlocked: set[str] = set()
         self.moons_received_by_kingdom: dict[str, int] = {}
         self.moons_checked_by_kingdom: dict[str, int] = {}
-        # M6 phase D — per-kingdom AP-credit balance (`grants - deposits`).
-        # Authoritative state lives in the AP data store; this dict mirrors
-        # it for fast access by the Kivy UI / Switch sync paths. Mutated by
-        # apply_grant (on AP ReceivedItems for Moon kind) + apply_deposit
-        # (on DepositMsg from Switch). Persisted out-of-band by context.py
-        # via Set on the AP server.
-        self.outstanding_by_kingdom: dict[str, int] = {}
-        # M6 phase D — high-water mark of how many items in the AP server's
-        # items_received list have had their bridge-side side effects
-        # applied (apply_grant for moons, send_item to Switch). Persisted
-        # alongside outstanding_by_kingdom so a bridge restart can skip
-        # re-processing the historical ReceivedItems(index=0) replay and
-        # double-counting outstanding. Local mirror; AP data store value is
-        # the source of truth (rehydrated via context.py).
-        self.received_items_index: int = 0
-        # Session-scoped seq dedup. Reset on each Switch HELLO via
-        # reset_deposit_session. Re-sent deposits with seq <= the high-water
-        # mark are skipped (idempotent re-ack only). Bridge-process-restart
-        # case is documented as a known limitation in the plan.
-        self.last_processed_deposit_seq: int = 0
+        # M6 phase D — per-kingdom PayShineNum from the Switch's save.
+        # Authoritative source: SMO's save file, snapshotted on HELLO + on
+        # every Odyssey toss via PaySnapshotMsg. Outstanding is DERIVED
+        # from this (compute_outstanding: lifetime_received - pay), so a
+        # crash-rolled-back save shrinks pay and outstanding rebounds
+        # automatically on the next snapshot. None sentinel = "no snapshot
+        # received yet this session"; bridge defers sending OutstandingMsg
+        # until the first snapshot lands.
+        self.pay_shine_num_by_kingdom: dict[str, int] | None = None
         self.last_messages: list[str] = []  # PrintJSON-style log (cap 200)
         self.death_count: int = 0  # M4 DeathLink: how many times Mario died
         # AP-classification moon coloring. Populated when AP's LocationInfo
@@ -147,57 +136,51 @@ class BridgeState:
         with self._lock:
             self.death_count += 1
 
-    # ---------- M6 phase D — per-kingdom AP-credit balance ----------
+    # ---------- M6 phase D — derived per-kingdom outstanding ----------
 
-    def apply_grant(self, kingdom: str, amount: int) -> int:
-        """Add `amount` to the kingdom's outstanding balance.
+    def apply_pay_snapshot(self, totals: dict[str, int]) -> None:
+        """Wholesale-replace pay_shine_num_by_kingdom from a PaySnapshotMsg.
 
-        Returns the new balance. Called from context.py when AP grants a
-        Moon item to this slot. Caller is responsible for persisting the
-        new state to the AP data store (via Set).
+        The Switch sends complete snapshots (every kingdom Mario has visited
+        or has any pay-shine for), so a wholesale replace gives us a clean
+        reading even if a kingdom's pay rolled BACK between snapshots (e.g.
+        the deposit-then-crash recovery path). Caller is responsible for
+        kingdom-name translation (Switch form → AP form) before calling.
         """
         with self._lock:
-            new = self.outstanding_by_kingdom.get(kingdom, 0) + amount
-            self.outstanding_by_kingdom[kingdom] = new
-            return new
+            self.pay_shine_num_by_kingdom = {
+                str(k): max(0, int(v)) for k, v in totals.items()
+            }
 
-    def apply_deposit(self, kingdom: str, amount: int) -> int:
-        """Subtract `amount` from the kingdom's outstanding balance (clamped at 0).
+    def compute_outstanding(self) -> dict[str, int] | None:
+        """Derive per-kingdom outstanding = lifetime_received − PayShineNum.
 
-        Returns the new balance. Called from switch_server.py when the
-        Switch reports a moon hand-toss. Caller persists to AP data store.
+        Returns None until the first PaySnapshotMsg arrives — caller must
+        not push OutstandingMsg before then (the Switch would receive a
+        spurious "outstanding = lifetime − 0" the moment SMOClient connects
+        before SMO is even on a save file). Once a snapshot lands, every
+        kingdom in either lifetime_received or pay_shine_num contributes
+        an entry; defensive clamp at zero in case PayShineNum exceeds
+        lifetime (vanilla SMO moons not credited to AP can bump PayShineNum
+        past what we've received).
         """
         with self._lock:
-            cur = self.outstanding_by_kingdom.get(kingdom, 0)
-            new = max(0, cur - amount)
-            self.outstanding_by_kingdom[kingdom] = new
-            return new
+            if self.pay_shine_num_by_kingdom is None:
+                return None
+            out: dict[str, int] = {}
+            for k, lifetime in self.moons_received_by_kingdom.items():
+                pay = self.pay_shine_num_by_kingdom.get(k, 0)
+                out[k] = max(0, lifetime - pay)
+            for k in self.pay_shine_num_by_kingdom:
+                out.setdefault(k, 0)
+            return out
 
-    def replace_outstanding(self, entries: dict[str, int]) -> None:
-        """Atomically replace outstanding_by_kingdom (hydration path).
-
-        Used when bootstrapping from AP data store on Connected. The
-        replacement is wholesale — keys not in `entries` are dropped, so
-        the caller should pass the full dict (or an empty dict to reset).
-        """
+    def get_pay_shine_num(self) -> dict[str, int] | None:
+        """Return a defensive copy of the last received PayShineNum snapshot."""
         with self._lock:
-            self.outstanding_by_kingdom = dict(entries)
-
-    def set_received_items_index(self, n: int) -> None:
-        """Set the high-water mark for items_received that have had their
-        bridge-side side effects applied. Used by context.py during
-        hydration and after each ReceivedItems batch is processed."""
-        with self._lock:
-            self.received_items_index = max(0, int(n))
-
-    def get_received_items_index(self) -> int:
-        with self._lock:
-            return self.received_items_index
-
-    def get_outstanding(self) -> dict[str, int]:
-        """Return a defensive copy of the current outstanding map."""
-        with self._lock:
-            return dict(self.outstanding_by_kingdom)
+            if self.pay_shine_num_by_kingdom is None:
+                return None
+            return dict(self.pay_shine_num_by_kingdom)
 
     def get_kingdom_lifetime_received(self, kingdom: str) -> int:
         """Lifetime sum of moon items received for `kingdom`, with
@@ -206,46 +189,19 @@ class BridgeState:
 
         M7 Path A consumes this on the Switch via OutstandingMsg's
         lake_received_total / snow_received_total fields — distinct from
-        outstanding_by_kingdom (the balance, which decays as the player
-        deposits at the kingdom's Odyssey). The kingdom-order gate must
+        compute_outstanding (which subtracts PayShineNum and decays as
+        the player deposits at the Odyssey). The kingdom-order gate must
         read the lifetime number, otherwise depositing at Lake re-closes
         the Wooded gate (2026-05-18 regression: post-Sand fork showed two
         Lake kingdoms after a Lake deposit).
 
         Data is populated by add_received_item, which runs for every item
-        in the AP items_received history (including the pre-rii historical
-        replay), so this survives bridge restarts without explicit
-        persistence — the next Connected/ReceivedItems rebuilds it from
-        the authoritative server-side list.
+        in the AP items_received history (so it survives bridge restarts
+        without explicit persistence — the next Connected/ReceivedItems
+        rebuilds it from the authoritative server-side list).
         """
         with self._lock:
             return int(self.moons_received_by_kingdom.get(kingdom, 0))
-
-    def reset_deposit_session(self) -> None:
-        """Drop the session-scoped deposit-seq high-water mark.
-
-        Called on each Switch HELLO so a fresh Switch session (or a
-        reconnect with replays) is dispatched correctly. Re-ack-only
-        replays from the SAME Switch session still get deduped against
-        the high-water mark within the session.
-        """
-        with self._lock:
-            self.last_processed_deposit_seq = 0
-
-    def should_skip_deposit(self, seq: int) -> bool:
-        """Idempotency check + high-water-mark update.
-
-        Returns True iff the deposit with this seq has already been applied
-        in the current session (caller should re-ack only). Returns False
-        and advances the high-water mark for fresh seqs.
-        """
-        if seq <= 0:
-            return True  # invalid seq; safest to skip
-        with self._lock:
-            if seq <= self.last_processed_deposit_seq:
-                return True
-            self.last_processed_deposit_seq = seq
-            return False
 
     def set_shine_palette(self, entries: dict[int, int]) -> None:
         """Replace the (shine_uid -> palette) table with the given entries.
@@ -276,6 +232,11 @@ class BridgeState:
                 "captures_unlocked": sorted(self.captures_unlocked),
                 "moons_received_by_kingdom": dict(self.moons_received_by_kingdom),
                 "moons_checked_by_kingdom": dict(self.moons_checked_by_kingdom),
+                "pay_shine_num_by_kingdom": (
+                    dict(self.pay_shine_num_by_kingdom)
+                    if self.pay_shine_num_by_kingdom is not None
+                    else None
+                ),
                 "recent_items": [
                     {
                         "kind": e.item.kind,

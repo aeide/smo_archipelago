@@ -474,19 +474,17 @@ async def test_stop_returns_promptly_with_active_switch_connection():
 
 
 # ---------------------------------------------------------------------------
-# M6 phase D — deposit + outstanding
+# M6 phase D — pay_snapshot + outstanding (derived state)
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_hello_sends_outstanding_and_skips_moon_items_in_replay():
-    """On HELLO, the bridge must (a) push the per-kingdom OutstandingMsg
-    BEFORE the item replay and (b) skip Moon items in the replay so the
-    Switch doesn't double-count credits."""
+async def test_hello_defers_outstanding_until_pay_snapshot_lands():
+    """On HELLO BEFORE any PaySnapshotMsg has arrived: compute_outstanding
+    returns None (Switch on title screen / no save loaded), so the bridge
+    MUST NOT push OutstandingMsg. Moons still skip in the item replay —
+    OutstandingMsg comes later, after the Switch's first PaySnapshot."""
     state = BridgeState()
-    # Pre-load received_items with one Moon (must be skipped) and one
-    # Capture (must replay through as ItemMsg).
-    from client.protocol import OutstandingEntry
     state.add_received_item(ItemEvent(
         item=ItemRef(kind="moon", kingdom="Wooded", shine_id="Power Moon"),
         sender="Mario",
@@ -495,17 +493,17 @@ async def test_hello_sends_outstanding_and_skips_moon_items_in_replay():
         item=ItemRef(kind="capture", cap="Frog"),
         sender="Bob",
     ))
-    # Mirror what context.py would have applied for the Moon grant above.
-    state.apply_grant("Wooded", 1)
-    state.apply_grant("Cap", 2)
 
     async def on_check(_): return None
     async def on_goal(): ...
 
+    from client.protocol import OutstandingEntry
+
     def get_outstanding():
+        out = state.compute_outstanding() or {}
         return [
             OutstandingEntry(kingdom=k, count=v)
-            for k, v in sorted(state.get_outstanding().items())
+            for k, v in sorted(out.items())
         ]
 
     sw = SwitchServer(
@@ -520,17 +518,80 @@ async def test_hello_sends_outstanding_and_skips_moon_items_in_replay():
     try:
         writer.write(protocol.encode(HelloMsg()))
         await writer.drain()
-        # Expect: hello_ack, outstanding, checked_replay, item (capture
-        # only, NOT the moon), ap_state.
+        # Expect: hello_ack, checked_replay, item (capture only, NOT
+        # the moon), ap_state. NO outstanding — no PaySnapshot has landed.
+        msgs = await _drain_messages(reader, n=4, timeout=2.0)
+        kinds = [m["t"] for m in msgs]
+        assert "outstanding" not in kinds, (
+            f"OutstandingMsg must be deferred when compute_outstanding "
+            f"returns None; got {kinds}"
+        )
+        assert kinds == ["hello_ack", "checked_replay", "item", "ap_state"]
+        item = msgs[2]
+        assert item["kind"] == "capture"
+        assert item["cap"] == "Frog"
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_hello_sends_outstanding_when_snapshot_already_landed():
+    """If a PaySnapshotMsg landed in a prior session (state pre-seeded)
+    HELLO ships an OutstandingMsg right after HelloAck and before the
+    item replay, mirroring the legacy contract."""
+    state = BridgeState()
+    state.add_received_item(ItemEvent(
+        item=ItemRef(kind="moon", kingdom="Wooded", shine_id="Power Moon"),
+        sender="Mario",
+    ))
+    state.add_received_item(ItemEvent(
+        item=ItemRef(kind="capture", cap="Frog"),
+        sender="Bob",
+    ))
+    # Pre-seed a PaySnapshot — outstanding becomes derivable.
+    state.apply_pay_snapshot({"Wooded": 0, "Cap": 0})
+
+    async def on_check(_): return None
+    async def on_goal(): ...
+
+    from client.protocol import OutstandingEntry
+
+    def get_outstanding():
+        out = state.compute_outstanding() or {}
+        return [
+            OutstandingEntry(kingdom=k, count=v)
+            for k, v in sorted(out.items())
+        ]
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check, on_goal,
+        get_outstanding_entries=get_outstanding,
+    )
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg()))
+        await writer.drain()
+        # hello_ack, outstanding, checked_replay, item (capture only,
+        # moon skipped), ap_state.
         msgs = await _drain_messages(reader, n=5, timeout=2.0)
         kinds = [m["t"] for m in msgs]
         assert kinds == ["hello_ack", "outstanding", "checked_replay",
                          "item", "ap_state"]
         outstanding = msgs[1]
-        assert outstanding["entries"] == [
-            {"kingdom": "Cap", "count": 2},
-            {"kingdom": "Wooded", "count": 1},
-        ]
+        # Wooded had 1 received Power Moon, pay=0 → outstanding=1.
+        wooded = next(
+            e for e in outstanding["entries"] if e["kingdom"] == "Wooded"
+        )
+        assert wooded["count"] == 1
         item = msgs[3]
         assert item["kind"] == "capture"
         assert item["cap"] == "Frog"
@@ -544,24 +605,24 @@ async def test_hello_sends_outstanding_and_skips_moon_items_in_replay():
 
 
 @pytest.mark.asyncio
-async def test_hello_without_outstanding_provider_replays_legacy_path():
-    """When `get_outstanding_entries` is None (older bridge wiring) HELLO
-    must NOT send an OutstandingMsg — falls back to the M6-A behavior
-    where ItemMsg replay drives the per-kingdom counter."""
+async def test_pay_snapshot_dispatch_updates_state_and_triggers_handler():
+    """PaySnapshotMsg from Switch → on_pay_snapshot called with
+    AP-form kingdoms + ints. Handler is responsible for state mutation +
+    OutstandingMsg push."""
     state = BridgeState()
-    state.add_received_item(ItemEvent(
-        item=ItemRef(kind="moon", kingdom="Cap", shine_id="Power Moon"),
-        sender="Mario",
-    ))
+    handler_calls: list[dict[str, int]] = []
 
     async def on_check(_): return None
     async def on_goal(): ...
 
-    # No get_outstanding_entries -> moons still skip in replay (so
-    # legacy bridges talking to new switches don't double-count). The
-    # mod's M6-A code is gone; if anyone needs the old behavior they
-    # need to roll back the mod too.
-    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal)
+    async def on_pay_snapshot(totals: dict[str, int]) -> None:
+        handler_calls.append(dict(totals))
+        state.apply_pay_snapshot(totals)
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check, on_goal,
+        on_pay_snapshot=on_pay_snapshot,
+    )
     server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
     sw._server = server
     port = server.sockets[0].getsockname()[1]
@@ -570,11 +631,69 @@ async def test_hello_without_outstanding_provider_replays_legacy_path():
     try:
         writer.write(protocol.encode(HelloMsg()))
         await writer.drain()
-        # hello_ack + checked_replay + ap_state (no outstanding, no item).
-        msgs = await _drain_messages(reader, n=3, timeout=2.0)
-        kinds = [m["t"] for m in msgs]
-        assert "outstanding" not in kinds
-        assert "item" not in kinds  # moon skipped, no captures
+        await _drain_messages(reader, n=2, timeout=2.0)  # hello_ack + ap_state
+
+        # Switch ships per-kingdom totals — Switch-form names.
+        writer.write(
+            b'{"t":"pay_snapshot","complete":true,"entries":['
+            b'{"kingdom":"Cap","pay":2},'
+            b'{"kingdom":"Cascade","pay":3}'
+            b']}\n'
+        )
+        await writer.drain()
+        # Give the dispatcher a moment to land.
+        await asyncio.sleep(0.05)
+
+        assert len(handler_calls) == 1
+        assert handler_calls[0] == {"Cap": 2, "Cascade": 3}
+        assert state.get_pay_shine_num() == {"Cap": 2, "Cascade": 3}
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_pay_snapshot_translates_bowser_to_apostrophe_form():
+    """Switch sends bare 'Bowser'; bridge keys outstanding by AP form
+    ("Bowser's"). _on_pay_snapshot_msg must translate before handing the
+    kingdom to on_pay_snapshot, else the wrong bucket gets stored."""
+    state = BridgeState()
+    handler_calls: list[dict[str, int]] = []
+
+    async def on_check(_): return None
+    async def on_goal(): ...
+
+    async def on_pay_snapshot(totals: dict[str, int]) -> None:
+        handler_calls.append(dict(totals))
+        state.apply_pay_snapshot(totals)
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check, on_goal,
+        on_pay_snapshot=on_pay_snapshot,
+    )
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg()))
+        await writer.drain()
+        await _drain_messages(reader, n=2, timeout=2.0)
+
+        # Switch wire format: bare "Bowser".
+        writer.write(
+            b'{"t":"pay_snapshot","entries":[{"kingdom":"Bowser","pay":5}]}\n'
+        )
+        await writer.drain()
+        await asyncio.sleep(0.05)
+
+        assert handler_calls == [{"Bowser's": 5}]
+        assert state.get_pay_shine_num() == {"Bowser's": 5}
     finally:
         writer.close()
         try:
@@ -628,192 +747,6 @@ async def test_hello_replay_respects_cappy_suppression_for_self_finds():
         assert by_cap["Goomba"]["from"] == ""
         # Server-injected: from_ surfaces -> Cappy fires.
         assert by_cap["Frog"]["from"] == "Archipelago"
-    finally:
-        writer.close()
-        try:
-            await writer.wait_closed()
-        except Exception:
-            pass
-        await sw.stop()
-
-
-@pytest.mark.asyncio
-async def test_deposit_msg_dispatched_and_acked():
-    state = BridgeState()
-    state.apply_grant("Wooded", 3)
-    deposits_seen: list[dict] = []
-
-    async def on_check(_): return None
-    async def on_goal(): ...
-    async def on_deposit(*, seq: int, kingdom: str, amount: int) -> bool:
-        deposits_seen.append({"seq": seq, "kingdom": kingdom, "amount": amount})
-        # Mirror what apply_deposit_from_switch does so the test exercises
-        # the realistic flow including the should_skip_deposit dedup.
-        if state.should_skip_deposit(seq):
-            return False
-        state.apply_deposit(kingdom, amount)
-        return True
-
-    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal,
-                      on_deposit=on_deposit)
-    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
-    sw._server = server
-    port = server.sockets[0].getsockname()[1]
-
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
-    try:
-        writer.write(protocol.encode(HelloMsg()))
-        await writer.drain()
-        await _drain_messages(reader, n=3, timeout=2.0)
-
-        # Two deposits in sequence.
-        writer.write(protocol.encode(protocol.DepositMsg(
-            seq=1, kingdom="Wooded", amount=1,
-        )))
-        writer.write(protocol.encode(protocol.DepositMsg(
-            seq=2, kingdom="Wooded", amount=1,
-        )))
-        await writer.drain()
-        acks = await _drain_messages(reader, n=2, timeout=2.0)
-        assert [a["t"] for a in acks] == ["deposit_ack", "deposit_ack"]
-        assert [a["seq"] for a in acks] == [1, 2]
-        assert deposits_seen == [
-            {"seq": 1, "kingdom": "Wooded", "amount": 1},
-            {"seq": 2, "kingdom": "Wooded", "amount": 1},
-        ]
-        # Bridge balance went from 3 -> 1 (one per deposit).
-        assert state.get_outstanding()["Wooded"] == 1
-    finally:
-        writer.close()
-        try:
-            await writer.wait_closed()
-        except Exception:
-            pass
-        await sw.stop()
-
-
-@pytest.mark.asyncio
-async def test_deposit_msg_replay_is_idempotent():
-    """If the same seq arrives twice (reconnect-driven replay), bridge
-    should re-ack but only apply once."""
-    state = BridgeState()
-    state.apply_grant("Cap", 5)
-    applied_calls: list[int] = []
-
-    async def on_check(_): return None
-    async def on_goal(): ...
-    async def on_deposit(*, seq: int, kingdom: str, amount: int) -> bool:
-        if state.should_skip_deposit(seq):
-            return False
-        applied_calls.append(seq)
-        state.apply_deposit(kingdom, amount)
-        return True
-
-    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal,
-                      on_deposit=on_deposit)
-    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
-    sw._server = server
-    port = server.sockets[0].getsockname()[1]
-
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
-    try:
-        writer.write(protocol.encode(HelloMsg()))
-        await writer.drain()
-        await _drain_messages(reader, n=3, timeout=2.0)
-
-        for _ in range(3):
-            writer.write(protocol.encode(protocol.DepositMsg(
-                seq=10, kingdom="Cap", amount=2,
-            )))
-        await writer.drain()
-        acks = await _drain_messages(reader, n=3, timeout=2.0)
-        # All three got acked (idempotent re-ack).
-        assert [a["seq"] for a in acks] == [10, 10, 10]
-        # But only one apply landed.
-        assert applied_calls == [10]
-        assert state.get_outstanding()["Cap"] == 3
-    finally:
-        writer.close()
-        try:
-            await writer.wait_closed()
-        except Exception:
-            pass
-        await sw.stop()
-
-
-@pytest.mark.asyncio
-async def test_deposit_msg_translates_bowser_to_apostrophe_form():
-    """Switch sends bare 'Bowser'; bridge keys outstanding by AP form
-    ("Bowser's"). _on_deposit_msg must translate before handing the
-    kingdom to on_deposit, else the wrong bucket gets debited."""
-    state = BridgeState()
-    state.apply_grant("Bowser's", 4)
-    deposits_seen: list[dict] = []
-
-    async def on_check(_): return None
-    async def on_goal(): ...
-    async def on_deposit(*, seq: int, kingdom: str, amount: int) -> bool:
-        deposits_seen.append({"seq": seq, "kingdom": kingdom, "amount": amount})
-        if state.should_skip_deposit(seq):
-            return False
-        state.apply_deposit(kingdom, amount)
-        return True
-
-    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal,
-                      on_deposit=on_deposit)
-    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
-    sw._server = server
-    port = server.sockets[0].getsockname()[1]
-
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
-    try:
-        writer.write(protocol.encode(HelloMsg()))
-        await writer.drain()
-        await _drain_messages(reader, n=3, timeout=2.0)
-
-        # Switch wire format: bare "Bowser" (no apostrophe).
-        writer.write(b'{"t":"deposit","seq":1,"kingdom":"Bowser","amount":2}\n')
-        await writer.drain()
-        acks = await _drain_messages(reader, n=1, timeout=2.0)
-        assert acks[0]["t"] == "deposit_ack" and acks[0]["seq"] == 1
-        # on_deposit saw the translated AP form.
-        assert deposits_seen == [{"seq": 1, "kingdom": "Bowser's", "amount": 2}]
-        # And the correct bucket was debited.
-        assert state.get_outstanding()["Bowser's"] == 2
-    finally:
-        writer.close()
-        try:
-            await writer.wait_closed()
-        except Exception:
-            pass
-        await sw.stop()
-
-
-@pytest.mark.asyncio
-async def test_deposit_msg_invalid_yields_err():
-    state = BridgeState()
-    async def on_check(_): return None
-    async def on_goal(): ...
-    async def on_deposit(**_): return False
-    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal,
-                      on_deposit=on_deposit)
-    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
-    sw._server = server
-    port = server.sockets[0].getsockname()[1]
-
-    reader, writer = await asyncio.open_connection("127.0.0.1", port)
-    try:
-        writer.write(protocol.encode(HelloMsg()))
-        await writer.drain()
-        await _drain_messages(reader, n=3, timeout=2.0)
-
-        # Missing seq.
-        writer.write(b'{"t":"deposit","kingdom":"Cap","amount":1}\n')
-        # Invalid amount (negative).
-        writer.write(b'{"t":"deposit","seq":1,"kingdom":"Cap","amount":-1}\n')
-        await writer.drain()
-        msgs = await _drain_messages(reader, n=2, timeout=2.0)
-        assert all(m["t"] == "err" and m["code"] == "bad_deposit" for m in msgs)
     finally:
         writer.close()
         try:

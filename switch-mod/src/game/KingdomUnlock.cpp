@@ -38,12 +38,28 @@ void installDepositKingdomLookupSymbol() {
         smoap::sym::kGameDataFunctionGetCurrentWorldIdNoDevelop);
     if (R_FAILED(rc)) {
         SMOAP_LOG_ERROR("getCurrentWorldIdNoDevelop lookup FAILED rc=0x%x — "
-                        "AddPayShineHook will suppress all debits", rc);
+                        "AddPayShineHook will suppress all snapshots", rc);
         smoap::ap::ApState::instance().get_current_world_id_fn = nullptr;
         return;
     }
     smoap::ap::ApState::instance().get_current_world_id_fn = reinterpret_cast<void*>(addr);
     SMOAP_LOG_INFO("getCurrentWorldIdNoDevelop resolved @ 0x%lx", addr);
+}
+
+void installPayShineSnapshotSymbol() {
+    uintptr_t addr = 0;
+    const Result rc = nn::ro::LookupSymbol(&addr,
+        smoap::sym::kGameDataFunctionGetPayShineNumByWorld);
+    if (R_FAILED(rc)) {
+        SMOAP_LOG_ERROR("getPayShineNum lookup FAILED rc=0x%x — "
+                        "ApState::buildPaySnapshot will return false and the "
+                        "bridge will never derive outstanding (no AP credit "
+                        "ever debited; deposit-then-crash protection inert)", rc);
+        smoap::ap::ApState::instance().get_pay_shine_num_fn = nullptr;
+        return;
+    }
+    smoap::ap::ApState::instance().get_pay_shine_num_fn = reinterpret_cast<void*>(addr);
+    SMOAP_LOG_INFO("getPayShineNum resolved @ 0x%lx", addr);
 }
 
 std::uint8_t kingdomBitForWorldId(int world_id) {

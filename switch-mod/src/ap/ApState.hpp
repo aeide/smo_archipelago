@@ -398,7 +398,7 @@ public:
     // at 1 so the wire encoder's "seq > 0 means present" check works.
     std::atomic<int> next_check_seq{1};
 
-    // ---- M6 phase D — moon-deposit accounting -------------------------------
+    // ---- M6 phase D — moon-deposit observation ------------------------------
     //
     // bridge_connected: set by ApClient::threadMain on HELLO ack, cleared on
     // disconnect/socket error. AddPayShineHook + ShineNumGetHook both read
@@ -406,36 +406,36 @@ public:
     // state, just an authoritative "are we online" bit.
     std::atomic<bool> bridge_connected{false};
 
-    // next_deposit_seq: monotonic per-session sequence id stamped onto each
-    // DepositMsg by AddPayShineHook so the bridge can ack idempotently.
-    // Starts at 1; 0 reserved as "absent" / sentinel.
-    std::atomic<std::uint64_t> next_deposit_seq{1};
-
-    // last_acked_deposit_seq: high-water mark of seqs the bridge has acked.
-    // Updated by ApClient on inbound DepositAckMsg. SaveLoadHook resets to
-    // 0 — the post-load HELLO produces a fresh OutstandingMsg from the
-    // bridge that becomes authoritative.
-    std::atomic<std::uint64_t> last_acked_deposit_seq{0};
-
     // get_current_world_id_fn: function pointer resolved via nn::ro::Lookup
     // Symbol at module init (same pattern as M6-B's addHackDictionary). Takes
     // a GameDataHolderAccessor by value (1 ptr in x0) and returns s32 world
     // id, clamped to 0 in develop states. Null until resolved.
     void* get_current_world_id_fn = nullptr;
 
-    // Pending deposits awaiting bridge ack. Replayed on reconnect from
-    // ApClient::threadMain right after HELLO ack. Fixed-size ring (same
-    // allocator-safety discipline as every other outbound buffer) — 32
-    // entries × ~80 bytes = ~2.5 KiB BSS. Per-toss deposits are rate-limited
-    // by the cutscene/fuel-up animation (sub-second cadence on the upper
-    // bound) so the ring covers many seconds of offline buffering before
-    // overflow truncates with a log line.
-    struct PendingDeposit {
-        std::uint64_t seq = 0;
-        char kingdom[32] = {};
-        int amount = 0;
+    // get_pay_shine_num_fn: function pointer to
+    // GameDataFunction::getPayShineNum(GameDataHolderAccessor, s32 worldId).
+    // Resolved the same way (installPayShineSnapshotSymbol in KingdomUnlock.cpp).
+    // Called from ApState::buildPaySnapshot in the AddPayShineHook tail / the
+    // worker's HELLO snapshot path. Null until resolved.
+    void* get_pay_shine_num_fn = nullptr;
+
+    // Snapshot of per-kingdom PayShineNum awaiting transmission to the
+    // bridge. The frame thread (AddPayShineHook tail) builds via
+    // buildPaySnapshot and pushes; the worker drains in pumpOnce. The
+    // bridge derives outstanding = lifetime_received_AP − PayShineNum, so
+    // a save crash that rolls back PayShineNum naturally rebounds the
+    // outstanding on the next snapshot. Ring size 4 with last-snapshot-
+    // wins semantics — every snapshot is a complete reading, so coalescing
+    // is safe (and desirable: spaced-too-close tosses don't backpressure).
+    struct PendingPaySnapshot {
+        int totals[17] = {};      // index = kingdomBit
     };
-    SpscRing<PendingDeposit, 32> pending_deposits;
+    SpscRing<PendingPaySnapshot, 4> pending_pay_snapshots;
+
+    // Populate `out.totals[0..16]` from the live GameDataHolder. Returns
+    // false if GameDataHolder isn't cached yet (title screen pre-save-load)
+    // or the symbol failed to resolve — caller skips push.
+    bool buildPaySnapshot(PendingPaySnapshot& out) const;
 
     // Local AP slot name — captured by ApClient when the bridge sends
     // hello_ack. Fixed buffer rather than std::string to avoid subsdk9's

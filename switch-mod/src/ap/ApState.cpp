@@ -232,6 +232,40 @@ void ApState::flushPendingCaptureGrants() {
     }
 }
 
+namespace {
+// Minimal layout mirror — same shape as AddPayShineHook's local. Keeping
+// this here keeps the game-side header bleed contained to one .cpp.
+struct GameDataHolderAccessor { void* mData; };
+using GetPayShineNumFn = int (*)(GameDataHolderAccessor, int);
+}  // namespace
+
+bool ApState::buildPaySnapshot(PendingPaySnapshot& out) const {
+    void* holder = game_data_holder_cache.load(std::memory_order_relaxed);
+    if (!holder || !get_pay_shine_num_fn) return false;
+    auto fn = reinterpret_cast<GetPayShineNumFn>(get_pay_shine_num_fn);
+    GameDataHolderAccessor acc{holder};
+    // Iterate by kingdom BIT and resolve the matching worldId. Composition
+    // (bit → short name → worldId) honors the four SMO↔apworld order swaps
+    // documented on kingdomBitForWorldId — direct kKingdoms[] indexing
+    // would mis-route Sea↔Snow / Boss↔Sky just like M7 Path A's gate path
+    // does, and we'd report Snow's PayShineNum under the Seaside slot.
+    for (int bit = 0; bit < 17; ++bit) {
+        const char* name = smoap::game::kingdomForBit(static_cast<std::uint8_t>(bit));
+        if (!name || !*name) {
+            out.totals[bit] = 0;
+            continue;
+        }
+        const int world_id = smoap::game::worldIdFromKingdomShort(name);
+        if (world_id < 0) {
+            out.totals[bit] = 0;
+            continue;
+        }
+        const int n = fn(acc, world_id);
+        out.totals[bit] = (n < 0) ? 0 : n;
+    }
+    return true;
+}
+
 std::int64_t ApState::nowMs() {
     // nn::os::GetSystemTick returns a u64 tick at a fixed ~19.2 MHz. Convert
     // via the SDK helper so we don't bake the rate in here.

@@ -189,25 +189,39 @@ struct StateChunk {
 
 struct StateEnd {};
 
-// M6 phase D — Switch -> Bridge deposit notification.
+// M6 phase D — Switch -> Bridge per-kingdom PayShineNum snapshot.
 //
-// Each call to GameDataFunction::addPayShine (intercepted by AddPayShineHook)
-// emits one Deposit with the per-toss `amount`, the kingdom Mario was in at
-// the time, and a monotonic-per-session `seq`. The bridge applies the debit
-// to its outstanding cache, writes to the AP data store, and replies with a
-// DepositAck carrying the same seq so the Switch can drop the entry from
-// its pending-deposit ring. Unacked entries are replayed on reconnect.
+// Sent on every (re)connect after the SaveLoad gate opens (HELLO snapshot
+// pair) AND at the tail of every AddPayShineHook / AddPayShineAllHook fire.
+// Carries the authoritative PayShineNum reading for every kingdom Mario has
+// visited; bridge derives outstanding = lifetime_received_AP − PayShineNum.
 //
-// Fixed-size kingdom buffer because this is encoded on the worker thread
-// (allocator-NULL-deref discipline). 32 is generous — the longest internal
-// kingdom string is "Darker Side" (11 chars) plus NUL.
-struct Deposit {
-    std::uint64_t seq = 0;
+// Why a snapshot rather than a delta: the derived-state model is the bug-
+// class fix for deposit-then-crash data loss. Save rollback shrinks
+// PayShineNum on the next snapshot → outstanding correctly rebounds. No
+// bridge-side persistence, no two-phase commit. See plan
+// `make-a-plan-first-reactive-elephant.md` for the full rationale.
+//
+// Fixed-size buffers per the libstdc++-allocator NULL-deref contract
+// (M6.1) — every Switch→Bridge encoder path runs on the worker thread.
+struct PaySnapshotEntry {
     char kingdom[kCheckFieldCap] = {};
-    int amount = 0;
+    int pay = 0;
 };
 
-void encodeDeposit(smoap::util::json::LineBuffer&, const Deposit&);
+struct PaySnapshot {
+    // 17 kingdoms in total (see KingdomUnlock::kKingdoms). Even if Mario
+    // hasn't visited a kingdom, we send pay=0 for it so the bridge can
+    // confidently zero out any per-kingdom outstanding the AP store still
+    // remembers from a prior session.
+    static constexpr std::size_t kMaxEntries = 17;
+    PaySnapshotEntry entries[kMaxEntries]{};
+    std::size_t entry_count = 0;
+    int save_slot = -1;       // -1 means absent; bridge does NOT fence on this
+    bool complete = true;     // false reserved for future partial snapshots
+};
+
+void encodePaySnapshot(smoap::util::json::LineBuffer&, const PaySnapshot&);
 
 // Bridge -> Switch ----------------------------------------------------------
 //
@@ -362,22 +376,14 @@ struct ShineScouts {
     bool truncated = false;
 };
 
-// M6 phase D — Bridge -> Switch deposit ack.
-//
-// One ack per inbound Deposit (idempotent: the bridge re-acks already-seen
-// seqs unconditionally so reconnect-replay always self-heals). Switch keeps
-// last_acked_deposit_seq as the high-water mark and drops everything at or
-// below it from the pending-deposit ring.
-struct DepositAck {
-    std::uint64_t seq = 0;
-};
-
 // M6 phase D — Bridge -> Switch authoritative per-kingdom balance.
 //
-// Sent (1) immediately after HelloAckMsg on every Switch reconnect and (2)
-// every time the bridge's outstanding_by_kingdom mutates (grant arrival or
-// deposit applied). The Switch overwrites each `ap_moons_kingdom[bit]` so
-// the AP data store remains the single source of truth across reboots.
+// Sent on every PaySnapshotMsg the bridge receives (1 per HELLO + 1 per
+// Odyssey toss) AND on every Moon item arrival from AP. The Switch
+// overwrites each `ap_moons_kingdom[bit]`; the bridge is now the only
+// source of truth for this counter (the AddPayShine local debit was
+// removed when DepositMsg was retired — see plan
+// `make-a-plan-first-reactive-elephant.md`).
 //
 // Up to 17 entries (one per kingdom). Unused entries pad with zero `count`
 // + empty `kingdom` — the consumer skips empty kingdoms (treats as "no
@@ -424,8 +430,8 @@ void encodeLog(smoap::util::json::LineBuffer&, const Log&);
 void encodeStateBegin(smoap::util::json::LineBuffer&, const StateBegin&);
 void encodeStateChunk(smoap::util::json::LineBuffer&, const StateChunk&);
 void encodeStateEnd(smoap::util::json::LineBuffer&);
-// encodeDeposit is declared above (next to the Deposit struct) so the
-// Switch->Bridge encoders all live with their associated structs.
+// encodePaySnapshot is declared above (next to the PaySnapshot struct) so
+// the Switch->Bridge encoders all live with their associated structs.
 
 // Returns true on parse success and fills the discriminated union outputs.
 struct DecodedMsg {
@@ -441,7 +447,6 @@ struct DecodedMsg {
     MoonLabel moon_label{};
     Cappy cappy{};
     ShineScouts shine_scouts{};
-    DepositAck deposit_ack{};
     Outstanding outstanding{};
 };
 bool decode(const char* data, std::size_t len, DecodedMsg& out);

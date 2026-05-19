@@ -60,6 +60,29 @@ Single persistent TCP connection. Each message is one line of UTF-8 JSON termina
 ]}
 {"t":"state_chunk","stage_name":"_meta","captures":["Kuribo"],"goal_reached":false}
 {"t":"state_end"}
+
+// M6 phase D — per-kingdom PayShineNum snapshot. Sent (a) by ApClient at
+// the tail of every (re)connect's sendSnapshot, behind the save+scene
+// gate, and (b) at the tail of every AddPayShineHook /
+// AddPayShineAllHook fire (after vanilla addPayShine bumps PayShineNum).
+//
+// `entries` is a complete reading (typically all 17 kingdoms) — kingdoms
+// with pay=0 are included so the bridge can confidently zero-out a
+// kingdom whose value rolled back. `kingdom` uses the Switch-form short
+// name ("Bowser", "Cap"); the bridge translates to AP form on receipt.
+// `save_slot` is informational (-1 = absent; bridge does not fence).
+//
+// The bridge derives outstanding[K] = lifetime_received_AP[K] − pay[K]
+// and ships the result back in OutstandingMsg. Crash-survivable: if SMO
+// crashes between toss and autosave, the next snapshot reports the
+// rolled-back pay value and outstanding rebounds automatically. No
+// bridge-side persistence — the whole machinery exists to make
+// deposit-then-crash data loss structurally impossible.
+{"t":"pay_snapshot","save_slot":0,"complete":true,"entries":[
+  {"kingdom":"Cap","pay":3},
+  {"kingdom":"Cascade","pay":0},
+  {"kingdom":"Bowser","pay":5}
+]}
 ```
 
 The bridge accumulates chunks between `state_begin` and `state_end`. On end,
@@ -114,6 +137,25 @@ is a no-op.
 // silently dropped (cutscene shows vanilla). Text is pre-truncated by
 // the bridge to ≤30 bytes UTF-8.
 {"t":"moon_label","text":"Sent Cap Power Moon -> P3","seq":17,"valid_for_ms":4000}
+
+// M6 phase D — derived per-kingdom outstanding (AP credit available for
+// the next Odyssey toss). Sent whenever the inputs to compute_outstanding
+// change: a Moon item arrives from AP (lifetime_received bumps), OR a
+// PaySnapshotMsg lands from the Switch (PayShineNum changes). Also sent
+// right after HelloAck IFF the bridge has at least one PaySnapshot
+// reading; otherwise deferred until the Switch's first post-HELLO
+// PaySnapshot.
+//
+// `entries[].kingdom` is the apworld-canonical kingdom name
+// ("Bowser's", not Switch-form "Bowser"). `lake_received_total` and
+// `snow_received_total` are LIFETIME receipt counts (Multi-Moon=3,
+// Power Moon=1) for the M7 Path A kingdom-order gate — these never
+// decay on deposit, distinct from entries[].count which is the derived
+// `lifetime_received − PayShineNum` balance.
+{"t":"outstanding","entries":[
+  {"kingdom":"Cap","count":2},
+  {"kingdom":"Cascade","count":5}
+],"lake_received_total":12,"snow_received_total":0}
 ```
 
 ## State machines

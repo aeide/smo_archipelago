@@ -11,8 +11,6 @@ from client.protocol import (
     CappyMsg,
     CheckMsg,
     Classification,
-    DepositAckMsg,
-    DepositMsg,
     HelloAckMsg,
     HelloMsg,
     ItemMsg,
@@ -21,6 +19,8 @@ from client.protocol import (
     MoonLabelMsg,
     OutstandingEntry,
     OutstandingMsg,
+    PaySnapshotEntry,
+    PaySnapshotMsg,
     PingMsg,
     PongMsg,
     ShineScoutsMsg,
@@ -285,27 +285,44 @@ def test_shine_scouts_msg_round_trip():
 
 
 # ---------------------------------------------------------------------------
-# M6 phase D — deposit + outstanding wire messages
+# M6 phase D — pay_snapshot + outstanding wire messages
 # ---------------------------------------------------------------------------
 
 
-def test_deposit_msg_round_trip():
-    msg = DepositMsg(seq=7, kingdom="Wooded", amount=1)
-    raw = protocol.encode(msg)
-    parsed = protocol.decode(raw)
-    assert parsed == {"t": "deposit", "seq": 7, "kingdom": "Wooded", "amount": 1}
-
-
-def test_deposit_msg_multi_moon_amount_three():
-    msg = DepositMsg(seq=42, kingdom="Cap", amount=3)
+def test_pay_snapshot_msg_round_trip():
+    msg = PaySnapshotMsg(entries=[
+        PaySnapshotEntry(kingdom="Cap", pay=3),
+        PaySnapshotEntry(kingdom="Cascade", pay=0),
+    ])
     parsed = protocol.decode(protocol.encode(msg))
-    assert parsed["amount"] == 3
+    assert parsed == {
+        "t": "pay_snapshot",
+        "entries": [
+            {"kingdom": "Cap", "pay": 3},
+            {"kingdom": "Cascade", "pay": 0},
+        ],
+        "save_slot": -1,
+        "complete": True,
+    }
 
 
-def test_deposit_ack_msg_round_trip():
-    msg = DepositAckMsg(seq=99)
+def test_pay_snapshot_msg_with_save_slot():
+    msg = PaySnapshotMsg(
+        entries=[PaySnapshotEntry(kingdom="Cap", pay=2)],
+        save_slot=1,
+    )
     parsed = protocol.decode(protocol.encode(msg))
-    assert parsed == {"t": "deposit_ack", "seq": 99}
+    assert parsed["save_slot"] == 1
+    assert parsed["entries"] == [{"kingdom": "Cap", "pay": 2}]
+
+
+def test_pay_snapshot_msg_empty_is_valid():
+    """A snapshot with no entries is still a legitimate "everything zero"
+    reading — the encoder must not omit it for backward-compat reasons."""
+    msg = PaySnapshotMsg(entries=[])
+    parsed = protocol.decode(protocol.encode(msg))
+    assert parsed["entries"] == []
+    assert parsed["complete"] is True
 
 
 def test_outstanding_msg_empty_round_trip():

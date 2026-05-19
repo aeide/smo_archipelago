@@ -89,6 +89,8 @@ void installSnapshotSymbols();
 void reconcileCaptureDictionary();
 // M6 phase D: resolve getCurrentWorldIdNoDevelop once (stored on ApState).
 void installDepositKingdomLookupSymbol();
+// M6 phase D: resolve getPayShineNum once (stored on ApState).
+void installPayShineSnapshotSymbol();
 }  // namespace smoap::game
 
 namespace {
@@ -244,6 +246,8 @@ extern "C" void exl_main(void* /*x0*/, void* /*x1*/) {
 
     SMOAP_LOG_INFO("resolving M6-phase-D current-kingdom lookup");
     smoap::game::installDepositKingdomLookupSymbol();
+    SMOAP_LOG_INFO("resolving M6-phase-D getPayShineNum lookup");
+    smoap::game::installPayShineSnapshotSymbol();
     SMOAP_LOG_INFO("installing M6-phase-D deposit hooks (addPayShine + addPayShineCurrentAll)");
     smoap::hooks::installAddPayShineHook();
     smoap::hooks::installAddPayShineAllHook();

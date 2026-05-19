@@ -187,18 +187,23 @@ void encodeStateEnd(LineBuffer& line) {
     line.append('\n');
 }
 
-void encodeDeposit(LineBuffer& line, const Deposit& d) {
+void encodePaySnapshot(LineBuffer& line, const PaySnapshot& s) {
     line.clear();
     Encoder e{line};
     e.beginObject()
-        .key("t").value("deposit")
-        // seq is a u64; cast to int64 for the encoder (the max session
-        // deposit count is bounded by ring capacity * runtime, far below
-        // 2^63 — see ApState::next_deposit_seq).
-        .key("seq").value(static_cast<std::int64_t>(d.seq))
-        .key("kingdom").value(d.kingdom)
-        .key("amount").value(d.amount)
-     .endObject();
+        .key("t").value("pay_snapshot");
+    if (s.save_slot >= 0) e.key("save_slot").value(s.save_slot);
+    e.key("complete").value(s.complete);
+    e.key("entries").beginArray();
+    for (std::size_t i = 0; i < s.entry_count; ++i) {
+        const auto& entry = s.entries[i];
+        e.beginObject()
+            .key("kingdom").value(entry.kingdom)
+            .key("pay").value(entry.pay)
+         .endObject();
+    }
+    e.endArray();
+    e.endObject();
     line.append('\n');
 }
 
@@ -386,23 +391,6 @@ inline bool eqStr(const char* a, const char* b) {
     return *a == '\0' && *b == '\0';
 }
 
-bool parseDepositAck(Reader& r, DepositAck& out) {
-    std::string_view key;
-    while (r.nextField(key)) {
-        if (key == "seq") {
-            std::int64_t v;
-            if (!r.nextInt(v)) return false;
-            // Negative seqs are never emitted by the bridge but be defensive:
-            // clamp to 0 (which the ack-handler treats as a no-op since the
-            // initial last_acked_deposit_seq is 0).
-            out.seq = (v < 0) ? 0u : static_cast<std::uint64_t>(v);
-        } else {
-            return false;
-        }
-    }
-    return true;
-}
-
 bool parseOutstanding(Reader& r, Outstanding& out) {
     out.entry_count = 0;
     out.lake_received_total = 0;
@@ -494,7 +482,6 @@ bool decode(const char* data, std::size_t len, DecodedMsg& out) {
     else if (eqStr(out.t, "moon_label"))     ok = parseMoonLabel(r, out.moon_label);
     else if (eqStr(out.t, "cappy"))          ok = parseCappy(r, out.cappy);
     else if (eqStr(out.t, "shine_scouts"))   ok = parseShineScouts(r, out.shine_scouts);
-    else if (eqStr(out.t, "deposit_ack"))    ok = parseDepositAck(r, out.deposit_ack);
     else if (eqStr(out.t, "outstanding"))    ok = parseOutstanding(r, out.outstanding);
     else {
         // Unknown type: leave out.t set so handleLine can warn. Don't bother

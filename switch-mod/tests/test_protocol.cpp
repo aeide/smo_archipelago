@@ -545,38 +545,75 @@ TEST(decode_rejects_truncated) {
 // --------------------------------------------------------------------------
 
 // --------------------------------------------------------------------------
-// M6 phase D — deposit + outstanding wire messages
+// M6 phase D — pay_snapshot + outstanding wire messages
 // --------------------------------------------------------------------------
 
-TEST(encode_deposit_basic) {
-    Deposit d{};
-    d.seq = 7;
-    copyCheckField(d.kingdom, "Wooded");
-    d.amount = 1;
-    EXPECT_EQ_S(wire([&](auto& b){ encodeDeposit(b, d); }),
-        R"({"t":"deposit","seq":7,"kingdom":"Wooded","amount":1})" "\n");
+TEST(encode_pay_snapshot_basic) {
+    PaySnapshot ps{};
+    ps.save_slot = 0;
+    ps.complete = true;
+    copyCheckField(ps.entries[0].kingdom, "Cap");
+    ps.entries[0].pay = 3;
+    copyCheckField(ps.entries[1].kingdom, "Cascade");
+    ps.entries[1].pay = 0;
+    ps.entry_count = 2;
+    EXPECT_EQ_S(wire([&](auto& b){ encodePaySnapshot(b, ps); }),
+        R"({"t":"pay_snapshot","save_slot":0,"complete":true,"entries":[)"
+        R"({"kingdom":"Cap","pay":3},)"
+        R"({"kingdom":"Cascade","pay":0}]})" "\n");
 }
 
-TEST(encode_deposit_multi_moon_amount_three) {
-    Deposit d{};
-    d.seq = 42;
-    copyCheckField(d.kingdom, "Cap");
-    d.amount = 3;
-    EXPECT_EQ_S(wire([&](auto& b){ encodeDeposit(b, d); }),
-        R"({"t":"deposit","seq":42,"kingdom":"Cap","amount":3})" "\n");
+TEST(encode_pay_snapshot_omits_negative_save_slot) {
+    PaySnapshot ps{};
+    ps.save_slot = -1;  // absent sentinel
+    ps.complete = true;
+    copyCheckField(ps.entries[0].kingdom, "Cap");
+    ps.entries[0].pay = 2;
+    ps.entry_count = 1;
+    EXPECT_EQ_S(wire([&](auto& b){ encodePaySnapshot(b, ps); }),
+        R"({"t":"pay_snapshot","complete":true,"entries":[)"
+        R"({"kingdom":"Cap","pay":2}]})" "\n");
 }
 
-TEST(decode_deposit_ack) {
-    DecodedMsg m;
-    EXPECT(decodeFrom(R"({"t":"deposit_ack","seq":7})", m));
-    EXPECT_EQ_S(m.t, "deposit_ack");
-    EXPECT_EQ_I(m.deposit_ack.seq, 7u);
+TEST(encode_pay_snapshot_empty_entries) {
+    // Defensive: an empty snapshot still serializes (e.g. title-screen
+    // buildPaySnapshot returned false earlier but we somehow reached
+    // the encoder). The bridge tolerates an empty entries[] list.
+    PaySnapshot ps{};
+    ps.complete = true;
+    EXPECT_EQ_S(wire([&](auto& b){ encodePaySnapshot(b, ps); }),
+        R"({"t":"pay_snapshot","complete":true,"entries":[]})" "\n");
 }
 
-TEST(decode_deposit_ack_zero) {
-    DecodedMsg m;
-    EXPECT(decodeFrom(R"({"t":"deposit_ack","seq":0})", m));
-    EXPECT_EQ_I(m.deposit_ack.seq, 0u);
+TEST(roundtrip_pay_snapshot_via_reader) {
+    PaySnapshot ps{};
+    ps.save_slot = 1;
+    ps.complete = true;
+    copyCheckField(ps.entries[0].kingdom, "Bowser");
+    ps.entries[0].pay = 5;
+    ps.entry_count = 1;
+    std::string w = wire([&](auto& b){ encodePaySnapshot(b, ps); });
+    if (!w.empty() && w.back() == '\n') w.pop_back();
+    smoap::util::json::Reader r(w.data(), w.size());
+    EXPECT(r.enterObject());
+    std::string_view k, v;
+    std::int64_t iv;
+    bool bv;
+    EXPECT(r.nextField(k)); EXPECT(k == "t");         EXPECT(r.nextString(v)); EXPECT(v == "pay_snapshot");
+    EXPECT(r.nextField(k)); EXPECT(k == "save_slot"); EXPECT(r.nextInt(iv));   EXPECT(iv == 1);
+    EXPECT(r.nextField(k)); EXPECT(k == "complete");  EXPECT(r.nextBool(bv));  EXPECT(bv == true);
+    EXPECT(r.nextField(k)); EXPECT(k == "entries");
+    EXPECT(r.enterArray());
+    EXPECT(r.hasMoreInArray());
+    EXPECT(r.enterObject());
+    EXPECT(r.nextField(k)); EXPECT(k == "kingdom"); EXPECT(r.nextString(v)); EXPECT(v == "Bowser");
+    EXPECT(r.nextField(k)); EXPECT(k == "pay");     EXPECT(r.nextInt(iv));   EXPECT(iv == 5);
+    EXPECT(!r.nextField(k));
+    EXPECT(r.exitObject());
+    EXPECT(!r.hasMoreInArray());
+    EXPECT(r.exitArray());
+    EXPECT(!r.nextField(k));
+    EXPECT(r.exitObject());
 }
 
 TEST(decode_outstanding_empty) {
@@ -652,25 +689,6 @@ TEST(decode_outstanding_lifetime_defaults_when_absent) {
     EXPECT_EQ_I(m.outstanding.entry_count, 0u);
     EXPECT_EQ_I(m.outstanding.lake_received_total, 0);
     EXPECT_EQ_I(m.outstanding.snow_received_total, 0);
-}
-
-TEST(roundtrip_deposit_via_reader) {
-    Deposit d{};
-    d.seq = 99;
-    copyCheckField(d.kingdom, "Snow");
-    d.amount = 2;
-    std::string w = wire([&](auto& b){ encodeDeposit(b, d); });
-    if (!w.empty() && w.back() == '\n') w.pop_back();
-    smoap::util::json::Reader r(w.data(), w.size());
-    EXPECT(r.enterObject());
-    std::string_view k, v;
-    std::int64_t iv;
-    EXPECT(r.nextField(k)); EXPECT(k == "t");       EXPECT(r.nextString(v)); EXPECT(v == "deposit");
-    EXPECT(r.nextField(k)); EXPECT(k == "seq");     EXPECT(r.nextInt(iv));   EXPECT(iv == 99);
-    EXPECT(r.nextField(k)); EXPECT(k == "kingdom"); EXPECT(r.nextString(v)); EXPECT(v == "Snow");
-    EXPECT(r.nextField(k)); EXPECT(k == "amount");  EXPECT(r.nextInt(iv));   EXPECT(iv == 2);
-    EXPECT(!r.nextField(k));
-    EXPECT(r.exitObject());
 }
 
 TEST(roundtrip_check_via_reader) {
