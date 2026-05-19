@@ -78,6 +78,9 @@ constexpr CapKillDelayOverride kCapKillDelayOverrides[] = {
     // already collect an out-of-logic moon before forceKillHack fires.
     // Playtest 2026-05-18.
     {"Killer", 2000},
+    // Zipper: same short-interaction profile as Bullet Bill — 4s lets the
+    // player claim an out-of-logic moon before forceKillHack fires.
+    {"Fastener", 2000},
 };
 
 int deferredKillMsForCap(const char* hack_name) {
