@@ -1,91 +1,38 @@
 # Spicy Meatball Overdrive
 
-A real Archipelago client for **Super Mario Odyssey** on a modded Nintendo Switch.
+An Archipelago client for **Super Mario Odyssey** on a modded Nintendo Switch.
 
 Today the SMO Archipelago experience is a *Manual* client ([empathy-mp3/SMO-manual-AP](https://github.com/empathy-mp3/SMO-manual-AP)) — an honor-system checklist where players tick boxes by hand. This project replaces the honor system with an in-game module that:
 
 - Detects moons / captures / scenario events on Switch and reports them as AP location checks.
 - Receives AP items (moons, captures, kingdoms) and applies them to the live game.
-- Enforces capture locks (cannot possess Frog/Yoshi/T-Rex/etc. until the AP item is received).
-- Surfaces progress through a Kivy tracker tab and an in-game ImGui overlay (later).
+- Enforces capture locks (cannot possess Frog / Yoshi / T-Rex / etc. until the AP item is received).
+- Surfaces progress through a Kivy tracker tab and an in-game HUD overlay.
 
-## Architecture
+> ⚠️ **Status: pre-alpha.** Core gameplay loop works end-to-end (Ryujinx and real Switch), but rough edges remain — see [the open issues](../../issues) before joining a serious multiworld.
 
-```
-[ Switch / SMO ]  <--TCP/JSON LAN-->  [ SMOClient (Python, inside .apworld) ]  <--websocket-->  [ AP server ]
-   exlaunch                              SMOContext(CommonContext)                                archipelago.gg
-   LunaKit hooks                         Kivy GUI (Tracker + Connections tabs)                    or self-host
-   ImGui overlay                         SwitchServer on :17777
-```
+## Requirements
 
-The SMOClient is registered as the "SMO Client" component in Archipelago's Launcher; click it from the Launcher GUI and you get one process that simultaneously connects to the AP server (via the inherited `CommonContext` websocket plumbing) AND runs the LAN TCP server the Switch mod connects to. Wire format: [`docs/wire-protocol.md`](docs/wire-protocol.md).
+| Requirement | Notes |
+|---|---|
+| **Super Mario Odyssey 1.0.0** | 1.1.0+ won't work. Downgrade with [Istador/odyssey-downgrade](https://github.com/Istador/odyssey-downgrade). |
+| **Switch firmware 21.x or earlier, with Atmosphere CFW** | FW22+ is **not supported** — homebrew lifecycle changes break our module. |
+| **Windows PC** on the same LAN as the Switch | Linux/macOS aren't blocked by design but the wizard and several scripts assume Windows paths. |
+| **Archipelago, Python 3.12, devkitPro+devkitA64, CMake, Ninja, hactool, prod.keys** | The setup wizard checks for all of these and links you to install pages for whatever's missing. |
 
-Earlier revisions of this project shipped the client as a standalone `python -m smo_ap_bridge` process; the Phase 1-7 reshape merged it into the in-apworld client (plan: `~/.claude/plans/please-put-together-a-playful-thacker.md`).
+See [`docs/first-time-setup.md`](docs/first-time-setup.md) for the full prereq table with install links.
 
-## Project layout
+## Installation
 
-| Path | Purpose |
-| --- | --- |
-| `apworld/smo_archipelago/` | Forked apworld + SMOClient. Generates seeds AND ships the Launcher button. |
-| `apworld/smo_archipelago/client/` | Python client. Subclasses CommonContext, hosts the SwitchServer. |
-| `apworld/smo_archipelago/tests/` | Unit + integration tests (227 pass, 41 skipped — live-AP / extraction / Windows-only-detect gated). |
-| `switch-mod/` | exlaunch C++ module. Hooks SMO; produces `subsdk9` ELF. |
-| `docs/` | Architecture, wire protocol, build, install, symbol catalog. |
-| `scripts/` | install_apworld, ap_generate, ap_server, switch_smoke_test, sync_capture_table, extract_shine_map. |
-
-## Status
-
-Pre-alpha. Tracking against milestones M0-M8 — see [`docs/architecture.md`](docs/architecture.md) and the plan files at `~/.claude/plans/`.
-
-| Milestone | What works |
-| --- | --- |
-| M0 | Toolchain + SMO 1.0.0 symbol map |
-| M1 | Bridge skeleton |
-| M2 | Apworld parity fork |
-| M3 | Switch module skeleton |
-| M4 | Read-only state mirroring (moons, captures) |
-| M4.5 | State reconciliation across disconnects |
-| M5 | Web tracker (since merged into the Kivy GUI's Tracker tab) |
-| M5.5 | AP server live integration (PC-only loopback validated) |
-| M5.7 | Ryujinx E2E |
-| **M6** | **Item application — phase A (moons), A.5 (cutscene labels), B (captures) done** |
-| M6.1 | Worker-thread allocator hardening |
-| **Bridge merge** | **Bridge collapsed into the apworld as SMOClient; one process, one Kivy GUI** |
-| M7 | Capture lock + goal |
-| M8 | Apworld extensions, in-game ImGui, polish |
-
-## First-time setup (typical user flow)
-
-> ⚠️ **Requires SMO 1.0.0** on a modded Switch running **Atmosphere on
-> firmware 21.x or earlier**. SMO 1.1.0+ won't work; downgrade with
-> [Istador/odyssey-downgrade](https://github.com/Istador/odyssey-downgrade).
-> **FW22+ is NOT supported** (homebrew lifecycle changes break our
-> subsdk9 module).
->
-> **Platform:** Windows only today. Linux/macOS aren't blocked by design,
-> but the setup wizard and several scripts assume `%APPDATA%`,
-> `C:/devkitPro`, and the Windows Python launcher.
-
-The user-facing flow:
-
-1. **Download `smo.apworld`** from the
-   [Releases page](../../releases).
+1. **Download `smo.apworld`** from the [Releases page](../../releases).
 2. **Drop it into your Archipelago install's `custom_worlds/`** directory.
-3. **Generate a multiworld with an SMO slot.** If you're new to AP:
-   open the Archipelago Launcher → *Generate Template* → find the
-   YAML labeled **Spicy Meatball Overdrive** in your `Players/`
-   directory → set your `name` and any options → click *Generate*.
-   Extract the per-player zip from `output/` — alongside the usual AP
-   files you'll find a `<player>.smoap`.
-4. **Double-click your `.smoap` file.** The Launcher routes it to
-   **SMO Client** (that's how the entry appears in the Launcher's
-   Clients list). On first run, SMO Client opens the setup wizard,
-   which walks you through prereq checks → SMO NSP pick →
-   moon/capture extraction → bridge PC IP → Switch-mod compile →
-   deploy to SD card.
+3. **Generate a multiworld with an SMO slot.** From the Archipelago Launcher: *Generate Template* → edit the YAML labeled **Spicy Meatball Overdrive** in `Players/` → *Generate*. Extract the per-player zip from `output/`; alongside the usual AP files you'll find a `<player>.smoap`.
+4. **Double-click your `.smoap` file.** Archipelago Launcher routes it to **SMO Client**. On first run, SMOClient opens the setup wizard, which walks you through prereq checks → SMO NSP pick → moon/capture extraction → bridge PC IP → Switch-mod compile → deploy to SD card (or Ryujinx).
+5. **Boot SMO.** The mod loads on game start and dials the bridge PC every couple seconds until SMOClient is listening.
 
-Detailed walkthrough including prerequisites:
-[`docs/first-time-setup.md`](docs/first-time-setup.md).
+Detailed walkthrough: [`docs/first-time-setup.md`](docs/first-time-setup.md).
+
+After setup, joining additional multiworlds is just **double-click the `.smoap`**.
 
 ## How the game plays differently from vanilla SMO
 
@@ -187,52 +134,6 @@ rebuild-vs-no-rebuild matrix.
 compile time — retail Switch firmware can't read runtime config from SD).
 Type `/setup` in SMOClient to re-run the wizard.
 
-## Loopback dev setup (no Switch required)
-
-For project contributors. Brings up the full SMOClient ↔ AP loop locally
-so you can validate AP-side wiring without booting Ryujinx or a Switch.
-Tested against Archipelago 0.6.7 on Windows 11 + Python 3.13.
-
-```pwsh
-# 0. After fresh clone:
-git submodule update --init --recursive
-
-# 1. Dev venv + deps (the legacy bridge/.venv from before the merge is fine
-#    to reuse if you have one; Archipelago's deps are a superset of what we need)
-python -m venv .venv
-.\.venv\Scripts\python -m pip install pytest pytest-asyncio websockets
-.\.venv\Scripts\python -m pip install "setuptools<81" PyYAML pathspec jellyfish `
-    colorama platformdirs certifi orjson bsdiff4 schema typing_extensions `
-    "websockets==13.1"
-
-# 2. Build the apworld zip + capture-table header
-.\.venv\Scripts\python scripts\install_apworld.py
-python scripts\sync_capture_table.py
-
-# 3. Generate a test seed (single-slot, items_handling=7)
-.\.venv\Scripts\python scripts\ap_generate.py `
-    --player_files_path apworld\smo_archipelago\tests\seeds `
-    --outputpath apworld\smo_archipelago\tests\seeds\out
-# Unzip the .archipelago out of the .zip
-.\.venv\Scripts\python -c "import zipfile, glob; \
-    [zipfile.ZipFile(z).extractall('apworld/smo_archipelago/tests/seeds/out') for z in glob.glob('apworld/smo_archipelago/tests/seeds/out/AP_*.zip')]"
-
-# 4. Host AP locally + launch SMOClient + drive checks (3 panes)
-# Pane A
-.\.venv\Scripts\python scripts\ap_server.py --port 38281 `
-    apworld\smo_archipelago\tests\seeds\out\AP_*.archipelago
-# Pane B — launch SMOClient (either via Launcher button or headless)
-.\.venv\Scripts\python vendor\Archipelago\Launcher.py "SMO Client" `
-    --connect localhost:38281 --name Mario
-# Pane C — drive a fake Switch
-python scripts\switch_smoke_test.py
-# Expect: each `>> check` is mirrored by a `<< item` from AP within ~1s.
-
-# Or run the regression test that scripts all of the above:
-$env:SMOAP_LIVE_AP="1"
-.\.venv\Scripts\python -m pytest -v apworld\smo_archipelago\tests\test_ap_loopback.py
-```
-
 ## Credits
 
 - [empathy-mp3](https://github.com/empathy-mp3/SMO-manual-AP) — original SMO Manual AP world (apworld is forked from this).
@@ -243,3 +144,7 @@ $env:SMOAP_LIVE_AP="1"
 ## License
 
 See [LICENSE](LICENSE).
+
+---
+
+**For contributors:** project architecture, milestone status, build/test workflows, and the wire protocol live in [`CLAUDE.md`](CLAUDE.md), [`docs/architecture.md`](docs/architecture.md), [`docs/wire-protocol.md`](docs/wire-protocol.md), and [`docs/milestones.md`](docs/milestones.md). Project skills under `.claude/skills/` cover the build (`smo-build`), loopback test (`smo-loopback-test`), C++ host tests (`smo-host-tests`), symbol discovery (`smo-symbol-discovery`), data extraction (`smo-extract-data`), and PopTracker pack (`smo-poptracker`).

@@ -13,6 +13,24 @@ Validates the whole Switch↔Client↔AP stack without booting SMO. The fake-Swi
 - `vendor/Archipelago/` submodule initialized (`git submodule update --init --recursive`).
 - `apworld/smo_archipelago/client/data/{shine_map,capture_map}.json` present (gitignored; copy from main checkout if working in a worktree, or generate via the `smo-extract-data` skill).
 
+### Bootstrapping a fresh dev venv
+
+If `bridge/.venv/` is missing (fresh clone, new contributor), set one up.
+Tested against Archipelago 0.6.7 on Windows 11 + Python 3.13:
+
+```pwsh
+python -m venv .venv
+.\.venv\Scripts\python -m pip install pytest pytest-asyncio websockets
+.\.venv\Scripts\python -m pip install "setuptools<81" PyYAML pathspec jellyfish `
+    colorama platformdirs certifi orjson bsdiff4 schema typing_extensions `
+    "websockets==13.1"
+```
+
+Substitute `.\.venv\Scripts\python` for `.\bridge\.venv\Scripts\python` in the
+commands below. Archipelago's `setup.py` blocks `pip install`; this list is the
+minimum subset needed to run `ap_generate.py`, `ap_server.py`, and the SMOClient
+Launcher entry.
+
 ## Step-by-step (3 panes)
 
 ```pwsh
