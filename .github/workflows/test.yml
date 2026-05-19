@@ -88,13 +88,13 @@ jobs:
       - name: Install apworld zip
         run: python scripts/install_apworld.py
 
-      # SMOAP_GEN_TEST_FAST keeps the generation sweep to the headline
-      # all-on / all-off cases — full sweep is 18 scenarios * 2 (solo +
-      # multi-world partner) and runs several minutes per CI worker.
+      # Full sweep is 19 scenarios * 2 (solo + multi-world partner). At
+      # ~5s per generation that's ~3 minutes; well within the 20m job
+      # timeout. The fast-mode env (SMOAP_GEN_TEST_FAST=1) is still
+      # honored locally for quick smoke runs.
       - name: Run live-AP tests
         env:
           SMOAP_LIVE_AP: '1'
-          SMOAP_GEN_TEST_FAST: '1'
         run: |
           python -m pytest -v \
             apworld/smo_archipelago/tests/test_ap_loopback.py \

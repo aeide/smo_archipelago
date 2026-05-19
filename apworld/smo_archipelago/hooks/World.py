@@ -1,6 +1,6 @@
 # Object classes from AP core, to represent an entire MultiWorld and this individual World that's part of it
 from worlds.AutoWorld import World
-from BaseClasses import MultiWorld
+from BaseClasses import ItemClassification, MultiWorld
 
 # Item/Location subclasses extending AP core, used during generation
 from ..Items import SMOItem
@@ -15,6 +15,27 @@ from ..Helpers import is_location_enabled
 
 # calling logging.info("message") anywhere below in this file will output the message to both console and log file
 import logging
+
+
+# Thresholds from KingdomMoons(K, N) clauses in data/regions.json. These are
+# the per-kingdom effective-moon counts needed to leave that kingdom for the
+# next, where each Multi-Moon = 3 effective and each Power Moon = 1. Mirrored
+# here so after_create_items can demote surplus moons from progression to
+# useful, freeing locations for toggle-driven location reductions to trim. The
+# test_kingdom_moon_demotion sweep keeps this table in sync with regions.json.
+KINGDOM_MOON_GATES = {
+    "Cascade":  5,
+    "Sand":    16,
+    "Lake":     8,
+    "Wooded":  16,
+    "Lost":    10,
+    "Metro":   20,
+    "Snow":    10,
+    "Seaside": 10,
+    "Luncheon": 18,
+    "Ruined":   3,
+    "Bowser's": 8,
+}
 
 ########################################################################################
 ## Order of method calls when the world generates:
@@ -65,6 +86,26 @@ def before_create_items_filler(item_pool: list, world: World, multiworld: MultiW
 
 # The complete item pool prior to being set for generation is provided here, in case you want to make changes to it
 def after_create_items(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
+    # Items.json marks every kingdom moon as `progression: true`, but each
+    # gated kingdom's KingdomMoons(K, N) rule only needs N effective moons
+    # reachable. The surplus contributes nothing to reachability but blocks
+    # adjust_filler_items from trimming the pool when toggles drop the
+    # location count -- it pops fillers/traps/useful but never progression.
+    # Demote the surplus to useful so disabling-toggles work gracefully.
+    for kingdom, threshold in KINGDOM_MOON_GATES.items():
+        pm_name = f"{kingdom} Kingdom Power Moon"
+        mm_name = f"{kingdom} Kingdom Multi-Moon"
+        prog_mms = [it for it in item_pool
+                    if it.name == mm_name and it.classification == ItemClassification.progression]
+        prog_pms = [it for it in item_pool
+                    if it.name == pm_name and it.classification == ItemClassification.progression]
+        # MMs first since each is worth 3 effective; minimize kept count.
+        mms_kept = min(len(prog_mms), threshold // 3)
+        pms_kept = min(len(prog_pms), max(0, threshold - 3 * mms_kept))
+        for it in prog_mms[mms_kept:]:
+            it.classification = ItemClassification.useful
+        for it in prog_pms[pms_kept:]:
+            it.classification = ItemClassification.useful
     return item_pool
 
 # Called before rules for accessing regions and locations are created.
