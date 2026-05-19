@@ -132,12 +132,7 @@ jobs:
             ### Optional: PopTracker pack
 
             Download `smo-poptracker-${{ github.ref_name }}.zip` below and
-            extract it into PopTracker's `packs/` directory (Windows:
-            `%APPDATA%\PopTracker\packs\`). In PopTracker, load the pack
-            and pick the **Archipelago** variant; enter the same host/port
-            and slot name you used for SMOClient. The pack auto-syncs your
-            YAML options from the AP server's slot_data and shows live
-            reachability for all 482 location checks.
+            extract it into PopTracker's `packs/` directory.
 
             **🔄 Changing AP server / slot / bridge PC after setup:**
             [docs/changing-servers.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/docs/changing-servers.md)
