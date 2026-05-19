@@ -74,18 +74,16 @@ SYMBOLS = [
     # derives outstanding = lifetime_received - PayShineNum. Same Itanium
     # mangling pattern as getGotShineNum above: (Accessor, s32 worldId).
     "_ZN16GameDataFunction14getPayShineNumE22GameDataHolderAccessori",
-    # M7 Path A — world-map kingdom-order gate (three-layer architecture; see
-    # switch-mod/src/hooks/WorldMapSelectHook.cpp).
-    # Layer 1: regular world-map UI per-slot query (4 ptr-type overloads).
-    "_ZN16GameDataFunction27getUnlockWorldIdForWorldMapEPK14GameDataHolderi",
-    "_ZN16GameDataFunction27getUnlockWorldIdForWorldMapEPKN2al11LayoutActorEi",
-    "_ZN16GameDataFunction27getUnlockWorldIdForWorldMapEPKN2al5SceneEi",
-    "_ZN16GameDataFunction27getUnlockWorldIdForWorldMapEPKN2al9LiveActorEi",
-    # Layer 2: post-Multi-Moon FORK cinematic per-slot query.
+    # M7 Path A — fork-cinematic kingdom-order gate (two-layer architecture;
+    # see switch-mod/src/hooks/WorldMapSelectHook.cpp).
+    # Layer 1: post-Multi-Moon FORK cinematic per-slot query (also fires on
+    # the regular leave-kingdom map; released by visited bit + current-kingdom
+    # OR-check in the gate, not by hook layering).
     "_ZN16GameDataFunction32calcNextLockedWorldIdForWorldMapEPKN2al11LayoutActorEi",
     "_ZN16GameDataFunction32calcNextLockedWorldIdForWorldMapEPKN2al5SceneEi",
-    # Layer 3: stage-commit chokepoint (BACKSTOP).
+    # Layer 2: cinematic stage-commit BACKSTOP (substitutes + sets visited).
     "_ZN16GameDataFunction35tryChangeNextStageWithDemoWorldWarpE20GameDataHolderWriterPKc",
+    # Regular-map stage-commit (visited-only; NOT used for substitution).
     "_ZN16GameDataFunction35tryChangeNextStageWithWorldWarpHoleE20GameDataHolderWriterPKc",
 ]
 

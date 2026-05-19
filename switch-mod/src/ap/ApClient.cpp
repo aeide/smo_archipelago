@@ -1078,21 +1078,7 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
             st.ap_moons_kingdom[bit].store(v, std::memory_order_relaxed);
             ++applied;
         }
-        // M7 Path A — cumulative lifetime moon receipts for the two prereq
-        // kingdoms the kingdom-order gate consumes. Bridge always populates
-        // these (default 0 on a fresh slot), so a store-overwrite is safe —
-        // it reflects what BridgeState saw in items_received at send time.
-        // See ApState::lake_received_total comment for why we don't also
-        // increment in the ItemMsg drain.
-        const int lake_total = (m.outstanding.lake_received_total < 0)
-                                   ? 0 : m.outstanding.lake_received_total;
-        const int snow_total = (m.outstanding.snow_received_total < 0)
-                                   ? 0 : m.outstanding.snow_received_total;
-        st.lake_received_total.store(lake_total, std::memory_order_relaxed);
-        st.snow_received_total.store(snow_total, std::memory_order_relaxed);
-        SMOAP_LOG_INFO("[m6-outstanding] applied %zu kingdom balances "
-                       "(lake_lifetime=%d snow_lifetime=%d)",
-                       applied, lake_total, snow_total);
+        SMOAP_LOG_INFO("[m6-outstanding] applied %zu kingdom balances", applied);
     } else {
         SMOAP_LOG_WARN("unknown message t=%s", m.t);
     }

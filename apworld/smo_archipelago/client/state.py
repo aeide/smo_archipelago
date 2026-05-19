@@ -187,18 +187,17 @@ class BridgeState:
         Multi-Moon weighted as 3 and Power Moon as 1 (matching
         `KingdomMoons` in hooks/Rules.py).
 
-        M7 Path A consumes this on the Switch via OutstandingMsg's
-        lake_received_total / snow_received_total fields — distinct from
-        compute_outstanding (which subtracts PayShineNum and decays as
-        the player deposits at the Odyssey). The kingdom-order gate must
-        read the lifetime number, otherwise depositing at Lake re-closes
-        the Wooded gate (2026-05-18 regression: post-Sand fork showed two
-        Lake kingdoms after a Lake deposit).
+        Used as one of two inputs to compute_outstanding (the other being
+        PayShineNum from PaySnapshotMsg). Also read by the Kivy GUI for the
+        per-kingdom recv/need display. Data is populated by add_received_item,
+        which runs for every item in the AP items_received history (so it
+        survives bridge restarts without explicit persistence — the next
+        Connected/ReceivedItems rebuilds it from the authoritative
+        server-side list).
 
-        Data is populated by add_received_item, which runs for every item
-        in the AP items_received history (so it survives bridge restarts
-        without explicit persistence — the next Connected/ReceivedItems
-        rebuilds it from the authoritative server-side list).
+        Note: the M7 Path A kingdom-order gate USED to consume this signal
+        via OutstandingMsg lifetime scalars; that gate moved to a Switch-side
+        visited bit + current-kingdom OR-check that needs no bridge state.
         """
         with self._lock:
             return int(self.moons_received_by_kingdom.get(kingdom, 0))

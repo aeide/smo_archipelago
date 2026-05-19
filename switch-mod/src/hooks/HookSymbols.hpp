@@ -333,55 +333,54 @@ inline constexpr const char* kRsIsActiveCapMessage =
 // (and other non-Shine actors) where Shine-class field offsets aren't valid.
 
 // =============================================================================
-// M7 Path A — world-map kingdom-order gate (three-layer architecture).
+// M7 Path A — fork-cinematic kingdom-order gate (two-layer architecture).
 // =============================================================================
 //
-// Forces linear progression at SMO's two world-map bifurcations by substituting
-// gated worldIds with their prerequisite kingdom's worldId at every layer the
-// world-map UI / fork cinematic can ask "what kingdom is at this slot?". From
-// SMO's perspective the gated kingdom is never offered.
+// Forces linear progression at SMO's two world-map bifurcations only at the
+// FORK CINEMATIC moment by substituting gated worldIds with their prerequisite
+// kingdom's worldId. The regular (post-fork) world map is intentionally NOT
+// hooked — once the cinematic has flown Mario to the prereq kingdom, both
+// kingdoms are unlocked on the regular map and the player can travel freely.
 //
-// Eight symbols total, organized in three layers:
+// Three symbols total, organized in two layers:
 //
-//   Layer 1 — regular world-map UI per-slot query (4 overloads by ptr-type):
-//     The Odyssey's world map, opened any time after the post-Sand /
-//     post-Metro fork has been resolved, calls these to populate slot N with
-//     a worldId. Verified firing on LiveActor + Scene overloads in playtest.
-//
-//   Layer 2 — post-Multi-Moon FORK cinematic per-slot query (2 overloads):
+//   Layer 1 — post-Multi-Moon FORK cinematic per-slot query (2 overloads):
 //     The one-time "newly unlocked" presentation that plays right after
-//     collecting a kingdom's Multi-Moon uses these instead of Layer 1.
-//     Verified firing as the Scene overload in the 2026-05-17 fork playtest.
+//     collecting a kingdom's Multi-Moon. Verified firing as the Scene overload
+//     in the 2026-05-17 fork playtest.
 //
-//   Layer 3 — actual stage-commit chokepoint (BACKSTOP, 2 functions):
-//     Substitutes the `stage` arg if neither Layer 1 nor Layer 2 caught the
-//     destination. Substitution at this layer can produce broken cutscene
-//     visuals (Mario in destination kingdom without the Odyssey, frozen
-//     camera — per CLAUDE.md M7 section's prior-iteration failure log), so
-//     the WARN log on a fired backstop is a signal that an upstream catch
-//     needs adding.
+//   Layer 2 — cinematic stage-commit BACKSTOP (1 function):
+//     `tryChangeNextStageWithDemoWorldWarp` — "Demo" = cutscene; this is the
+//     cinematic flight path. If Layer 1 misses, this rewrites the stage arg.
+//     Substitution may produce broken cutscene visuals (per CLAUDE.md M7
+//     section's prior-iteration failure log), so the WARN log on a fired
+//     backstop is a signal that an upstream catch needs adding.
 //
-// All 8 verified against SMO 1.0.0 main.nso via scripts/check_nso_symbols.py.
+// All 3 verified against SMO 1.0.0 main.nso via scripts/check_nso_symbols.py.
+//
+// (The regular-map equivalents — getUnlockWorldIdForWorldMap (4 overloads) and
+// tryChangeNextStageWithWorldWarpHole — were intentionally removed; their
+// substitutions blocked free travel after the fork and combined with a stale
+// threshold gate produced a soft-lock where players with high lifetime Snow
+// AP-receipts but no Snow visit got trapped in Seaside.)
 
-// ---- Layer 1: regular world-map UI ----
-inline constexpr const char* kGameDataFunctionGetUnlockWorldIdForWorldMap_Holder =
-    "_ZN16GameDataFunction27getUnlockWorldIdForWorldMapEPK14GameDataHolderi";
-inline constexpr const char* kGameDataFunctionGetUnlockWorldIdForWorldMap_LayoutActor =
-    "_ZN16GameDataFunction27getUnlockWorldIdForWorldMapEPKN2al11LayoutActorEi";
-inline constexpr const char* kGameDataFunctionGetUnlockWorldIdForWorldMap_Scene =
-    "_ZN16GameDataFunction27getUnlockWorldIdForWorldMapEPKN2al5SceneEi";
-inline constexpr const char* kGameDataFunctionGetUnlockWorldIdForWorldMap_LiveActor =
-    "_ZN16GameDataFunction27getUnlockWorldIdForWorldMapEPKN2al9LiveActorEi";
-
-// ---- Layer 2: post-Multi-Moon FORK cinematic ----
+// ---- Layer 1: post-Multi-Moon FORK cinematic ----
 inline constexpr const char* kGameDataFunctionCalcNextLockedWorldIdForWorldMap_LayoutActor =
     "_ZN16GameDataFunction32calcNextLockedWorldIdForWorldMapEPKN2al11LayoutActorEi";
 inline constexpr const char* kGameDataFunctionCalcNextLockedWorldIdForWorldMap_Scene =
     "_ZN16GameDataFunction32calcNextLockedWorldIdForWorldMapEPKN2al5SceneEi";
 
-// ---- Layer 3: stage-commit BACKSTOP ----
+// ---- Layer 2: cinematic stage-commit BACKSTOP (substitutes + sets visited) ----
 inline constexpr const char* kGameDataFunctionTryChangeNextStageWithDemoWorldWarp =
     "_ZN16GameDataFunction35tryChangeNextStageWithDemoWorldWarpE20GameDataHolderWriterPKc";
+
+// ---- Regular-map stage-commit (visited-only; NOT used for substitution) ----
+// Hooked to set the sticky visited bit when Mario actively flies between
+// kingdoms via the regular world map. Distinguishes "actually traveled here"
+// from "save-data load happened to place Mario here" — save load doesn't go
+// through tryChange, so reloading into Lake leaves visited[Lake] cold (the
+// gate's current-kingdom OR-check handles that case without polluting the
+// sticky mask).
 inline constexpr const char* kGameDataFunctionTryChangeNextStageWithWorldWarpHole =
     "_ZN16GameDataFunction35tryChangeNextStageWithWorldWarpHoleE20GameDataHolderWriterPKc";
 

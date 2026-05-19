@@ -331,8 +331,6 @@ def test_outstanding_msg_empty_round_trip():
     assert parsed == {
         "t": "outstanding",
         "entries": [],
-        "lake_received_total": 0,
-        "snow_received_total": 0,
     }
 
 
@@ -349,26 +347,6 @@ def test_outstanding_msg_multiple_kingdoms_round_trip():
         {"kingdom": "Cascade", "count": 5},
         {"kingdom": "Wooded", "count": 0},
     ]
-    # Lifetime scalars default to 0 when not set by the caller.
-    assert parsed["lake_received_total"] == 0
-    assert parsed["snow_received_total"] == 0
-
-
-def test_outstanding_msg_lifetime_totals_round_trip():
-    """M7 Path A — lake/snow lifetime AP-receipt counts ride on every
-    OutstandingMsg so the Switch's kingdom-order gate has the right number
-    after reconnect."""
-    msg = OutstandingMsg(
-        entries=[OutstandingEntry(kingdom="Lake", count=2)],
-        lake_received_total=10,
-        snow_received_total=4,
-    )
-    parsed = protocol.decode(protocol.encode(msg))
-    assert parsed["lake_received_total"] == 10
-    assert parsed["snow_received_total"] == 4
-    # Balance and lifetime are independent — Lake's balance is 2 (e.g.
-    # 8 of the 10 lifetime have already been deposited at the Odyssey).
-    assert parsed["entries"] == [{"kingdom": "Lake", "count": 2}]
 
 
 def test_outstanding_msg_serialises_entries_as_dicts():

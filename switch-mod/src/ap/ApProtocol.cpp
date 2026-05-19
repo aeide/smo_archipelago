@@ -393,8 +393,6 @@ inline bool eqStr(const char* a, const char* b) {
 
 bool parseOutstanding(Reader& r, Outstanding& out) {
     out.entry_count = 0;
-    out.lake_received_total = 0;
-    out.snow_received_total = 0;
     std::string_view key;
     while (r.nextField(key)) {
         if (key == "entries") {
@@ -418,14 +416,12 @@ bool parseOutstanding(Reader& r, Outstanding& out) {
                 // bridge bug, not a wire-protocol concern.
             }
             if (!r.exitArray()) return false;
-        } else if (key == "lake_received_total") {
-            // M7 Path A — cumulative Lake moons received (gates Wooded).
-            // Accept-missing for forward/backward compat with bridges that
-            // pre-date this field; defaults to 0 from the reset above.
-            if (!readIntoInt(r, out.lake_received_total)) return false;
-        } else if (key == "snow_received_total") {
-            // M7 Path A — cumulative Snow moons received (gates Seaside).
-            if (!readIntoInt(r, out.snow_received_total)) return false;
+        } else if (key == "lake_received_total" || key == "snow_received_total") {
+            // Legacy M7 Path A fields — bridge no longer ships these but
+            // older bridges still in flight might. Consume the int and drop
+            // it; the gate is now stateless (KingdomOrderGate.hpp).
+            int discard = 0;
+            if (!readIntoInt(r, discard)) return false;
         } else {
             return false;
         }

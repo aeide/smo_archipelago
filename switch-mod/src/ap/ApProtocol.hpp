@@ -398,17 +398,6 @@ struct Outstanding {
     static constexpr std::size_t kMaxEntries = 17;
     OutstandingEntry entries[kMaxEntries]{};
     std::size_t entry_count = 0;
-
-    // M7 Path A — lifetime sum of moon items received from AP for the two
-    // kingdoms the kingdom-order gate consumes (Lake gates Wooded; Snow
-    // gates Seaside). Computed bridge-side from the full items_received
-    // history so a bridge restart reconstructs them on the next Connected.
-    // Bridge always ships these (default 0 on a fresh slot); the Switch
-    // overwrites ApState::lake_received_total / snow_received_total on every
-    // OutstandingMsg. See ApState.hpp for why this is separate from
-    // entries[].count (balance debits on deposit; lifetime never does).
-    int lake_received_total = 0;
-    int snow_received_total = 0;
 };
 
 // (de)serialization --------------------------------------------------------

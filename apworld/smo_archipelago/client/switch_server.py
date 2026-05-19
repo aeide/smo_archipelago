@@ -813,11 +813,6 @@ class SwitchServer:
         # post-HELLO sendSnapshot ships its own PaySnapshotMsg the same
         # connection cycle; we get a second chance via the snapshot handler
         # to push OutstandingMsg with real values then.
-        #
-        # M7 Path A also ships lifetime Lake/Snow receipt totals so the
-        # kingdom-order gate has the right number on reconnect (read from
-        # BridgeState directly — populated by add_received_item across the
-        # AP history and so already correct here).
         if (
             self._get_outstanding is not None
             and self._state.compute_outstanding() is not None
@@ -827,11 +822,7 @@ class SwitchServer:
             except Exception:
                 log.exception("get_outstanding_entries failed during HELLO")
                 entries = []
-            await self._send(OutstandingMsg(
-                entries=entries,
-                lake_received_total=self._state.get_kingdom_lifetime_received("Lake"),
-                snow_received_total=self._state.get_kingdom_lifetime_received("Snow"),
-            ))
+            await self._send(OutstandingMsg(entries=entries))
 
         # Replay snapshots so the Switch can re-apply state idempotently.
         replay_ids = [evt.item for evt in self._state.all_checked_locations()]

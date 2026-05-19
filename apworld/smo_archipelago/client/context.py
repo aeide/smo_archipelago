@@ -477,9 +477,6 @@ class SMOContext(CommonContext):
         returns None — the Switch is on title screen / has no save loaded,
         and pushing `outstanding = lifetime − 0` would credit AP moons
         before the Switch has any opinion about PayShineNum.
-
-        Always ships lake_received_total / snow_received_total too — the
-        M7 Path A kingdom-order gate consumes those on the Switch.
         """
         if self.switch is None:
             return
@@ -491,8 +488,6 @@ class SMOContext(CommonContext):
             return
         await self.switch.send_outstanding(OutstandingMsg(
             entries=self._outstanding_entries_for_switch(),
-            lake_received_total=self.state.get_kingdom_lifetime_received("Lake"),
-            snow_received_total=self.state.get_kingdom_lifetime_received("Snow"),
         ))
 
     async def apply_pay_snapshot_from_switch(

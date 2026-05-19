@@ -139,15 +139,15 @@ def test_crash_rollback_multi_kingdom():
     assert s.compute_outstanding() == {"Cap": 2, "Cascade": 3}
 
 
-# ---------- get_kingdom_lifetime_received (M7 Path A gate source) ----------
+# ---------- get_kingdom_lifetime_received (compute_outstanding input + GUI) ----------
 #
-# The 2026-05-18 regression: post-Sand fork showed two Lake kingdoms after
-# Mario deposited at Lake's Odyssey. Cause: KingdomOrderGate read the
-# undeposited balance (ap_moons_kingdom[Lake]), which the deposit had just
-# debited below the 8-moon threshold. The fix moved the gate onto a
-# lifetime counter that never decrements. After the M6-D derivation
-# refactor that counter is `moons_received_by_kingdom` directly — same
-# invariant (never decays on deposit).
+# Effective per-kingdom moon counts with Multi-Moon weighted as 3 (matches
+# `KingdomMoons` in hooks/Rules.py). One of the two inputs to
+# compute_outstanding (the other is PayShineNum from PaySnapshotMsg); also
+# read by the Kivy GUI for the per-kingdom recv/need display. M7 Path A's
+# kingdom-order gate USED to read this via OutstandingMsg lifetime scalars;
+# that gate moved to a Switch-side visited bit + current-kingdom OR-check
+# that needs no bridge state — see KingdomOrderGate.cpp.
 
 def test_lifetime_received_starts_at_zero_for_unseen_kingdom():
     s = BridgeState()
@@ -166,8 +166,8 @@ def test_lifetime_received_counts_power_moons_as_one_each():
 
 def test_lifetime_received_weighs_multi_moon_as_three():
     """Matches `KingdomMoons` in hooks/Rules.py and the Switch's
-    moonGrantAmount helper, so the gate threshold (e.g. 8 effective moons
-    for Wooded) is apples-to-apples."""
+    moonGrantAmount helper. Used by compute_outstanding (lifetime − pay)
+    and by the GUI's per-kingdom recv/need display."""
     s = BridgeState()
     s.add_received_item(ItemEvent(
         item=ItemRef(kind="moon", kingdom="Snow", shine_id="Multi-Moon"),
@@ -180,9 +180,10 @@ def test_lifetime_received_weighs_multi_moon_as_three():
 
 
 def test_lifetime_received_does_not_decay_on_pay_snapshot():
-    """The regression-defining invariant: PaySnapshotMsg (the post-toss
-    re-snapshot) updates pay_shine_num_by_kingdom but must NOT touch the
-    lifetime counter the kingdom-order gate consumes."""
+    """Invariant: PaySnapshotMsg (the post-toss re-snapshot) updates
+    pay_shine_num_by_kingdom but must NOT touch the lifetime counter.
+    Otherwise compute_outstanding would underflow against itself after
+    every toss."""
     s = BridgeState()
     for _ in range(8):
         s.add_received_item(ItemEvent(
@@ -192,6 +193,7 @@ def test_lifetime_received_does_not_decay_on_pay_snapshot():
     s.apply_pay_snapshot({"Lake": 8})
     assert s.compute_outstanding().get("Lake", 0) == 0   # balance drained
     assert s.get_kingdom_lifetime_received("Lake") == 8  # lifetime intact
+
 
 
 def test_lifetime_received_ignores_non_moon_items():
