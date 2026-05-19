@@ -46,25 +46,6 @@ log = logging.getLogger(__name__)
 
 GAME_NAME = "Spicy Meatball Overdrive"
 
-# Apworld goal location ([data/locations.json] has exactly one entry with
-# "victory": true). Awarded after the Moon Kingdom spark-pylon escape +
-# wedding cutscene — the canonical "you finished the game" moment in
-# vanilla SMO. The bridge fires `report_goal()` when a Switch moon-check
-# resolves to this name.
-VICTORY_LOCATION_NAME = "Defeat Bowser and Escape the Moon"
-
-# Apworld diverged from Nintendo's MSBT English text for the goal Multi
-# Moon: Nintendo's "Long Journey's End" is renamed to make the victory
-# condition explicit. shine_map.json (extracted from the user's NSP) is
-# keyed by Nintendo's MSBT text, so without this alias the natural
-# resolution `"Moon: " + shine_id` produces "Moon: Long Journey's End",
-# which doesn't exist in the apworld and gets dropped — the goal never
-# fires. Apply at lookup time so a stock-extracted shine_map.json
-# resolves cleanly without forcing the user to regenerate.
-MOON_NAME_ALIASES: dict[str, str] = {
-    "Moon: Long Journey's End": VICTORY_LOCATION_NAME,
-}
-
 
 class SMOClientCommandProcessor(ClientCommandProcessor):
     """`/`-prefixed commands typed into the Kivy command bar.
@@ -242,12 +223,12 @@ class SMOContext(CommonContext):
         # the AP server would reject our Connect with InvalidGame anyway,
         # but the proactive check gives a clearer error.
         self._roominfo_games: set[str] | None = None
-        # Goal-once latch. Set to True after `report_check` fires
-        # `report_goal()` for the victory location, and pre-set on Connected
-        # if the victory loc_id is already in `self.checked_locations`
-        # (server-authoritative; covers post-reconnect / snapshot replay).
-        # AP server is idempotent on ClientGoal anyway — this just keeps
-        # the log clean.
+        # Goal-once latch. Set to True the first time `report_goal()` ships
+        # a ClientGoal StatusUpdate. The Switch's goal wire message (sent
+        # from WorldMapSelectHook on first arrival in Mushroom Kingdom) is
+        # the only producer; the latch keeps `goal_sent` snapshot replays
+        # from re-firing on every Switch reconnect. AP server is idempotent
+        # on ClientGoal anyway — this just keeps logs clean.
         self._goal_reported: bool = False
 
     # ----------------------------------------------------------- AP overrides
@@ -632,17 +613,11 @@ class SMOContext(CommonContext):
             self._populate_datapackage_from_self()
             self.state.set_ap_conn("ready")
             self.state.slot = self.auth or ""
-            # Pre-arm the goal latch if the victory location is already
-            # checked on the server side. Without this, a snapshot/replay
-            # of the victory location after a reconnect would re-fire
-            # ClientGoal — harmless to AP but noisy in logs. Use
-            # self.checked_locations (server-authoritative; populated by
-            # CommonContext from args["checked_locations"] before
-            # on_package runs), not self.locations_checked (local dedup
-            # set, empty on a fresh process).
-            victory_id = self.dp.location_name_to_id.get(VICTORY_LOCATION_NAME)
-            if victory_id is not None and victory_id in self.checked_locations:
-                self._goal_reported = True
+            # Note: no pre-arm for `_goal_reported`. The latch lives only in
+            # `report_goal()` and only matters within a single SMOClient
+            # process — across reconnects the worst case is one duplicate
+            # ClientGoal StatusUpdate from a Switch goal-snapshot replay,
+            # which the AP server treats idempotently.
             if self.switch is not None:
                 # Push the capturesanity flag BEFORE send_ap_state — the
                 # next Switch HELLO will use it to decide whether to
@@ -862,11 +837,6 @@ class SMOContext(CommonContext):
             cap = self.capture_map.resolve(hack_name) or hack_name
 
         loc_name = self._reconstruct_location_name(kind, kingdom, shine_id, cap)
-        # Apply the apworld's moon-name aliases (e.g. Nintendo's
-        # "Long Journey's End" -> apworld's "Defeat Bowser and Escape the
-        # Moon"). Lookup keys are post-reconstruction names so the alias
-        # table works whether or not the kingdom prefix is involved.
-        loc_name = MOON_NAME_ALIASES.get(loc_name, loc_name)
         loc_id = self.dp.location_name_to_id.get(loc_name)
         if loc_id is None:
             log.warning("no AP id for location %r (kind=%s)", loc_name, kind)
@@ -889,15 +859,6 @@ class SMOContext(CommonContext):
         log.info("forwarding LocationCheck %r (id=%d) to AP", loc_name, loc_id)
         await self.send_msgs([{"cmd": "LocationChecks", "locations": [loc_id]}])
         self.locations_checked.add(loc_id)
-        # Goal trigger: when the apworld's single victory location ("Defeat
-        # Bowser and Escape the Moon" — the Multi Moon awarded after the
-        # spark-pylon escape) is checked, ship a ClientGoal status. Idempotent
-        # via `_goal_reported`; AP server is idempotent too, but the latch
-        # keeps logs clean across snapshot replays and reconnects.
-        if loc_name == VICTORY_LOCATION_NAME and not self._goal_reported:
-            self._goal_reported = True
-            log.info("victory location checked — reporting goal")
-            await self.report_goal()
         return loc_id
 
     def compose_moon_label_for_location(self, loc_id: int) -> str | None:
@@ -991,6 +952,22 @@ class SMOContext(CommonContext):
         )
 
     async def report_goal(self) -> None:
+        """Mark this slot as goaled with the AP server.
+
+        Wired from `SwitchServer._on_goal` (fires on a `goal` wire message
+        from the Switch + on a snapshot's `goal_reached` meta flag). The
+        Switch produces both signals on the same condition: Mario's first
+        arrival in Mushroom Kingdom, captured in `ApState::goal_sent`.
+
+        Latched via `_goal_reported` for log hygiene — snapshot replays
+        across Switch reconnects would otherwise reprint "reporting goal"
+        on every (re)connect. AP server is idempotent on ClientGoal
+        regardless.
+        """
+        if self._goal_reported:
+            return
+        self._goal_reported = True
+        log.info("reporting goal to AP")
         await self.send_msgs([
             {"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}
         ])

@@ -28,6 +28,14 @@ void reportStatus(const char* stage_name, int scenario_no);
 // DeathHook -> sends death event; debounced via ApState::death_pending_send.
 void reportDeath();
 
+// WorldMapSelectHook -> sends a one-shot `goal` wire message when the player
+// first arrives in Mushroom Kingdom (the only "you've beaten the main game"
+// signal SMO emits — there is no game-completion Power Moon awarded; Mario is
+// simply deposited in PeachWorld after the wedding cutscene). Idempotent at
+// the caller side via the ApState::visited_kingdoms 0→1 transition check, so
+// this just enqueues an event; the worker thread drains outbound_status.
+void reportGoal();
+
 // smoap::util::log() forwarder. Pushes a Log entry into
 // ApState::outbound_logs for the worker thread to ship. `level` is one of
 // "info" / "warn" / "error" / "debug". `msg` is the already-formatted

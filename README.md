@@ -29,6 +29,8 @@ See [`docs/first-time-setup.md`](docs/first-time-setup.md) for the full prereq t
 5. **Boot SMO.** The mod loads on game start and dials your PC every couple seconds until SMO Client is listening.
 6. **Join a multiworld.** Type the host/port and your slot name into the Connect bar in SMO Client and click *Connect* — exactly like any other Archipelago client.
 
+> ⚠️ **Start a new save before opening SMO Client.** The Switch mod talks to SMO Client as soon as the client is listening — well before you click *Connect* — and any moon/capture/scenario event the game fires from that moment on is a candidate to be reported as a fresh check. Loading a save with prior progress can replay state-restore events that look identical to fresh collects. Boot SMO and start a new game first, then open SMO Client.
+
 Detailed walkthrough: [`docs/first-time-setup.md`](docs/first-time-setup.md).
 
 After setup, joining additional multiworlds is the same as any other Archipelago client — open SMO Client from the Archipelago Launcher and connect to the AP server. No rebuild required when changing host, slot, password, or apworld version.
@@ -39,12 +41,13 @@ A few behaviors only make sense once you know what the mod is doing. The
 short version: **moons and captures aren't yours until AP gives them to
 you**, and the in-game UI is your honest indicator of what AP has sent.
 
-### Goal: collect the Multi Moon awarded for defeating Bowser on the Moon
+### Goal: arrive in the Mushroom Kingdom
 
 The win condition is the same as vanilla SMO's main-story ending —
 **defeat Bowser on the Moon Kingdom, complete the spark-pylon escape
-sequence, and collect the "Long Journey's End" Multi Moon** awarded at the
-end of the wedding cutscene. The moment you collect it your slot is marked
+sequence, and watch the post-wedding cutscene drop Mario in the
+Mushroom Kingdom**. There's no completion Power Moon to collect; the
+moment Mario touches down outside Peach's Castle your slot is marked
 complete.
 
 ### How do I know it is working?
