@@ -887,6 +887,19 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
     };
     if (eq(m.t, "hello_ack")) {
         auto& st = ApState::instance();
+        // Version policing: the bridge rejects with ok=false + err text when
+        // SMOClient and Switch mod versions don't match. Log loudly with
+        // both versions so the user can see the mismatch in lm-log (real
+        // Switch) or stdout (Ryujinx) without needing the Kivy UI handy.
+        // Don't transition to Ready; the bridge will close the socket
+        // momentarily and our recv loop will surface EOF.
+        if (!m.hello_ack.ok) {
+            SMOAP_LOG_ERROR("hello_ack REJECTED: ok=false bridge=%s mod=%s err=%s",
+                            m.hello_ack.client_ver[0] ? m.hello_ack.client_ver : "(unknown)",
+                            SMO_AP_MOD_VERSION_STRING,
+                            m.hello_ack.err);
+            return;
+        }
         // Publish local_slot + deathlink_enabled BEFORE the conn.store(Ready)
         // release. The frame thread observes conn == Ready first (acquire),
         // then reads local_slot — no separate fence needed. Toast filter
@@ -900,11 +913,13 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
         // M6 phase D: bridge_connected gates AddPayShineHook + ShineNumGetHook.
         // Set AFTER conn.store so the same release fence orders both.
         st.bridge_connected.store(true, std::memory_order_release);
-        SMOAP_LOG_INFO("hello_ack: ok=%d seed=%s slot=%s deathlink_enabled=%d",
+        SMOAP_LOG_INFO("hello_ack: ok=%d seed=%s slot=%s deathlink_enabled=%d client_ver=%s mod_ver=%s",
                        m.hello_ack.ok ? 1 : 0,
                        m.hello_ack.seed,
                        m.hello_ack.slot,
-                       m.hello_ack.deathlink_enabled ? 1 : 0);
+                       m.hello_ack.deathlink_enabled ? 1 : 0,
+                       m.hello_ack.client_ver[0] ? m.hello_ack.client_ver : "(unset)",
+                       SMO_AP_MOD_VERSION_STRING);
     } else if (eq(m.t, "checked_replay")) {
         for (std::size_t i = 0; i < m.checked_replay.id_count; ++i) {
             const auto& ref = m.checked_replay.ids[i];

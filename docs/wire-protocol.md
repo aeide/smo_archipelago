@@ -93,8 +93,13 @@ is a no-op.
 ## Bridge → Switch
 
 ```jsonc
-// Reply to the Switch's hello.
-{"t":"hello_ack","ok":true,"seed":"X4F2","slot":"Mario","cap_table_hash":"sha1:..."}
+// Reply to the Switch's hello. `client_ver` is the SMOClient version
+// baked at apworld build time (mirror of the Switch's `mod_ver` in
+// `hello`); the mod logs both versions so the user sees the pair side-
+// by-side. On a version mismatch the bridge replies with `ok=false` +
+// an `err` string identifying which side to upgrade, then closes the
+// socket. The mod treats `ok=false` as "do not transition to Ready".
+{"t":"hello_ack","ok":true,"seed":"X4F2","slot":"Mario","cap_table_hash":"sha1:...","client_ver":"0.1.0"}
 
 // Authoritative replay sent immediately after hello_ack so the Switch can
 // rebuild its `locations_checked` set and not double-send checks.

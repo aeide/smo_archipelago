@@ -242,6 +242,12 @@ struct HelloAck {
     // unconditionally; this flag gates whether we act on inbound kill messages
     // so the user enables DeathLink in bridge config without rebuilding.
     bool deathlink_enabled = false;
+    // SMOClient version baked into the apworld at build time. The mod logs
+    // it on receipt so the user sees both halves of the version pair side-
+    // by-side (Switch mod's own version is in SMO_AP_MOD_VERSION_STRING).
+    // On version-mismatch refusal the bridge also includes a human-readable
+    // explanation in `err`; ok=false is the actionable signal.
+    char client_ver[kCheckFieldCap] = {};
     char err[kLongFieldCap] = {};
 };
 

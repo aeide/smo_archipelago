@@ -1137,6 +1137,206 @@ async def test_push_capturesanity_replay_noop_when_enabled():
         await sw.stop()
 
 
+# ---------------------------------------------------------------------------
+# Version exchange — bridge refuses a Switch built against a different
+# SMOClient version. Both halves of the version pair appear in the err
+# message so the user can act on it without consulting logs.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_hello_refuses_when_mod_ver_older_than_client_ver():
+    """Switch shipped from an older apworld: bridge rejects with ok=false,
+    err naming both versions, advises re-running /setup."""
+    state = BridgeState()
+
+    async def on_check(_): return None
+    async def on_goal(): ...
+
+    ready_calls: list[None] = []
+
+    async def on_switch_ready() -> None:
+        ready_calls.append(None)
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check, on_goal,
+        client_ver="0.2.0",
+        on_switch_ready=on_switch_ready,
+    )
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg(mod_ver="0.1.0", smo_ver="1.0.0")))
+        await writer.drain()
+        # The bridge sends ONLY a rejecting hello_ack, then closes the socket.
+        msgs = await _drain_messages(reader, n=1, timeout=2.0)
+        ack = msgs[0]
+        assert ack["t"] == "hello_ack"
+        assert ack["ok"] is False
+        assert ack["client_ver"] == "0.2.0"
+        # Both versions must be in err so the user can read the pair.
+        assert "0.2.0" in ack["err"]
+        assert "0.1.0" in ack["err"]
+        # Older Switch mod → advise re-running /setup.
+        assert "/setup" in ack["err"]
+        # Two-stage AP gate must stay parked — never promote on a rejection.
+        await asyncio.sleep(0.05)
+        assert ready_calls == []
+        # The bridge closes the socket; EOF arrives promptly.
+        try:
+            async with asyncio.timeout(2.0):
+                leftover = await reader.read(4096)
+            assert leftover == b""
+        except asyncio.TimeoutError:
+            pytest.fail("bridge never closed socket after version rejection")
+        # State must reflect the rejection so the UI doesn't show ready.
+        assert state.switch_conn == "disconnected"
+        # Kivy UI surface: an [version mismatch] line landed in
+        # BridgeState.last_messages.
+        assert any(
+            "version mismatch" in line.lower() for line in state.last_messages
+        ), f"no version-mismatch line; got {list(state.last_messages)}"
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_hello_refuses_when_client_ver_older_advises_apworld_update():
+    """Bridge older than Switch: err advises installing a newer apworld."""
+    state = BridgeState()
+
+    async def on_check(_): return None
+    async def on_goal(): ...
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check, on_goal,
+        client_ver="0.1.0",
+    )
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg(mod_ver="0.2.0", smo_ver="1.0.0")))
+        await writer.drain()
+        msgs = await _drain_messages(reader, n=1, timeout=2.0)
+        ack = msgs[0]
+        assert ack["ok"] is False
+        assert "0.1.0" in ack["err"]
+        assert "0.2.0" in ack["err"]
+        assert "apworld" in ack["err"].lower()
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_hello_accepts_matching_versions_and_advertises_client_ver():
+    """Matching versions → normal handshake + client_ver echoed in ack so
+    the Switch mod can log both halves of the version pair."""
+    state = BridgeState()
+    state.slot = "Mario"
+    state.seed = "TEST"
+
+    async def on_check(_): return None
+    async def on_goal(): ...
+
+    ready_calls: list[None] = []
+
+    async def on_switch_ready() -> None:
+        ready_calls.append(None)
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check, on_goal,
+        client_ver="0.1.0",
+        on_switch_ready=on_switch_ready,
+    )
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg(mod_ver="0.1.0", smo_ver="1.0.0")))
+        await writer.drain()
+        # hello_ack + checked_replay + ap_state — full normal handshake.
+        msgs = await _drain_messages(reader, n=3, timeout=2.0)
+        ack = msgs[0]
+        assert ack["t"] == "hello_ack"
+        assert ack["ok"] is True
+        assert ack["client_ver"] == "0.1.0"
+        assert state.switch_conn == "ready"
+        await asyncio.sleep(0.05)
+        assert ready_calls == [None]
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
+async def test_hello_skips_version_check_when_client_ver_unset():
+    """Tests that don't configure client_ver get the legacy behavior:
+    no version check, no client_ver on the wire."""
+    state = BridgeState()
+
+    async def on_check(_): return None
+    async def on_goal(): ...
+
+    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal)
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        # Any mod_ver should work — check is skipped.
+        writer.write(protocol.encode(HelloMsg(mod_ver="9.9.9", smo_ver="1.0.0")))
+        await writer.drain()
+        msgs = await _drain_messages(reader, n=3, timeout=2.0)
+        ack = msgs[0]
+        assert ack["ok"] is True
+        assert "client_ver" not in ack  # stripped when bridge has none
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+def test_compare_versions():
+    """Helper used by the mismatch advice — must rank dotted-numeric
+    components numerically, not lexicographically."""
+    from client.switch_server import _compare_versions
+    assert _compare_versions("0.1.0", "0.1.0") == 0
+    assert _compare_versions("0.1.0", "0.2.0") == -1
+    assert _compare_versions("0.2.0", "0.1.0") == 1
+    # Lex would mis-rank these: "0.10.0" < "0.2.0" lex, but newer numerically.
+    assert _compare_versions("0.10.0", "0.2.0") == 1
+    assert _compare_versions("0.2.0", "0.10.0") == -1
+    # Metadata suffixes ignored.
+    assert _compare_versions("0.1.0+abc", "0.1.0") == 0
+    assert _compare_versions("0.1.0-dev", "0.1.0") == 0
+
+
 async def _drain_messages(reader: asyncio.StreamReader, n: int, timeout: float) -> list[dict]:
     """Read until we've parsed n full JSON lines or timeout expires."""
     buf = bytearray()

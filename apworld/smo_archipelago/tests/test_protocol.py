@@ -114,6 +114,29 @@ def test_hello_ack_optional_fields():
     assert parsed["ok"] is True
     assert parsed["seed"] == "X4F2"
     assert "err" not in parsed  # None should be stripped
+    assert "client_ver" not in parsed  # None default should be stripped
+
+
+def test_hello_ack_includes_client_ver_when_set():
+    """Version-exchange: when the bridge stamps client_ver, it lands on the
+    wire so the Switch mod can log both halves of the version pair."""
+    msg = HelloAckMsg(ok=True, seed="X4F2", slot="Mario", client_ver="0.2.0")
+    parsed = protocol.decode(protocol.encode(msg))
+    assert parsed["client_ver"] == "0.2.0"
+
+
+def test_hello_ack_version_mismatch_payload():
+    """The mismatch hello_ack carries ok=false, the bridge's client_ver,
+    and a human-readable err — Switch mod logs err, Kivy UI displays it."""
+    msg = HelloAckMsg(
+        ok=False,
+        client_ver="0.2.0",
+        err="Version mismatch: SMOClient is 0.2.0, Switch mod is 0.1.0.",
+    )
+    parsed = protocol.decode(protocol.encode(msg))
+    assert parsed["ok"] is False
+    assert parsed["client_ver"] == "0.2.0"
+    assert "0.2.0" in parsed["err"] and "0.1.0" in parsed["err"]
 
 
 def test_iter_lines_basic():

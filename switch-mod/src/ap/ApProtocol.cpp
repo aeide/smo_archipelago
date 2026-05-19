@@ -233,6 +233,7 @@ bool parseHelloAck(Reader& r, HelloAck& out) {
         else if (key == "slot")              { if (!readIntoField(r, out.slot)) return false; }
         else if (key == "cap_table_hash")    { if (!readIntoField(r, out.cap_table_hash)) return false; }
         else if (key == "deathlink_enabled") { if (!r.nextBool(out.deathlink_enabled)) return false; }
+        else if (key == "client_ver")        { if (!readIntoField(r, out.client_ver)) return false; }
         else if (key == "err")               { if (!readIntoField(r, out.err)) return false; }
         else                                 { return false; }  // unknown field
     }

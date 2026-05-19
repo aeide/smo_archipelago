@@ -364,6 +364,32 @@ TEST(decode_hello_ack_with_err) {
     EXPECT_EQ_S(m.hello_ack.err, "bad slot");
 }
 
+TEST(decode_hello_ack_with_client_ver) {
+    // Version exchange: bridge advertises its SMOClient version so the mod
+    // can log both versions side-by-side in lm-log.
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"hello_ack","ok":true,"seed":"X4F2","slot":"Mario","client_ver":"0.2.0"})",
+        m));
+    EXPECT(m.hello_ack.ok == true);
+    EXPECT_EQ_S(m.hello_ack.client_ver, "0.2.0");
+}
+
+TEST(decode_hello_ack_version_mismatch) {
+    // ok=false + client_ver + err — what the bridge sends to refuse a Switch
+    // built against a different apworld. Mod handler should log err+versions
+    // and skip the conn.store(Ready) transition.
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"hello_ack","ok":false,"client_ver":"0.2.0",)"
+        R"("err":"Version mismatch: SMOClient is 0.2.0, Switch mod is 0.1.0."})",
+        m));
+    EXPECT(m.hello_ack.ok == false);
+    EXPECT_EQ_S(m.hello_ack.client_ver, "0.2.0");
+    EXPECT(std::strstr(m.hello_ack.err, "0.2.0") != nullptr);
+    EXPECT(std::strstr(m.hello_ack.err, "0.1.0") != nullptr);
+}
+
 TEST(decode_checked_replay_truncates_past_cap) {
     // Synthesize a checked_replay with kMaxIds + 4 entries; the decoder must
     // fill the buffer to capacity, set truncated=true, and still successfully

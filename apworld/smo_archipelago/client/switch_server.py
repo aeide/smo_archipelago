@@ -96,6 +96,32 @@ ReconcileItemBuilder = Callable[[int], "ItemMsg | None"]
 AlreadyCheckedProvider = Callable[[], "set[int]"]
 
 
+def _compare_versions(a: str, b: str) -> int:
+    """Compare two dotted-numeric version strings (e.g. "0.10.0" vs "0.2.0").
+
+    Returns -1 if a < b, +1 if a > b, 0 if equal. Non-numeric trailing
+    segments (e.g. "0.1.0+abc") are stripped before parsing — only the
+    leading dotted-numeric prefix matters. Non-numeric inputs (or pure-
+    metadata diffs) compare as 0; callers fall back to a neutral message.
+    """
+    def parse(v: str) -> tuple[int, ...]:
+        head = v.split("+", 1)[0].split("-", 1)[0]
+        parts: list[int] = []
+        for token in head.split("."):
+            try:
+                parts.append(int(token))
+            except ValueError:
+                break
+        return tuple(parts)
+
+    pa, pb = parse(a), parse(b)
+    if pa < pb:
+        return -1
+    if pa > pb:
+        return 1
+    return 0
+
+
 class SwitchServer:
     def __init__(
         self,
@@ -115,6 +141,7 @@ class SwitchServer:
         is_ap_ready: ApReadyProbe | None = None,
         build_reconcile_cappy_item: ReconcileItemBuilder | None = None,
         get_already_checked_loc_ids: AlreadyCheckedProvider | None = None,
+        client_ver: str = "",
     ):
         self._host = host
         self._port = port
@@ -127,6 +154,12 @@ class SwitchServer:
         self._on_switch_ready = on_switch_ready
         self._on_pay_snapshot = on_pay_snapshot
         self._get_outstanding = get_outstanding_entries
+        # SMOClient version baked at apworld build time. Compared at HELLO
+        # against the Switch mod's `mod_ver` field; mismatch -> refuse the
+        # connection with a hello_ack carrying ok=false + err describing
+        # both halves of the version pair. Empty string disables the check
+        # (used by tests that don't care about version policing).
+        self._client_ver = client_ver
         # Default True (fail-safe = current behavior, AP-granted captures
         # only). SMOContext flips this from slot_data on AP Connected.
         self._capturesanity_enabled = capturesanity_enabled
@@ -796,13 +829,78 @@ class SwitchServer:
             self._reconcile_cappy_pending.discard(loc_id)
 
     async def _on_hello(self, msg: dict) -> None:
-        log.info("switch HELLO: mod=%s smo=%s", msg.get("mod_ver"), msg.get("smo_ver"))
+        mod_ver = str(msg.get("mod_ver") or "")
+        smo_ver = str(msg.get("smo_ver") or "")
+        log.info(
+            "switch HELLO: mod=%s smo=%s (client=%s)",
+            mod_ver, smo_ver, self._client_ver or "(unchecked)",
+        )
+
+        # Version policing: the Switch mod and SMOClient ship in lockstep
+        # (mod_ver in switch-mod/CMakeLists.txt tracks client/__init__.py's
+        # __version__). A mismatch here means the user updated one half
+        # without rebuilding/redeploying the other; refuse the connection
+        # so AP traffic doesn't get applied with stale wire-format
+        # assumptions. The two-stage AP gate stays parked because we
+        # never fire on_switch_ready below.
+        if self._client_ver and mod_ver and mod_ver != self._client_ver:
+            order = _compare_versions(mod_ver, self._client_ver)
+            if order < 0:
+                advice = (
+                    f"Switch mod is older than SMOClient. Re-run /setup to "
+                    f"rebuild and redeploy the Switch mod at {self._client_ver}."
+                )
+            elif order > 0:
+                advice = (
+                    f"SMOClient is older than Switch mod. Install a later "
+                    f"smo.apworld into vendor/Archipelago/custom_worlds/ "
+                    f"(needs to match {mod_ver})."
+                )
+            else:
+                # Versions differ as strings but compare equal numerically
+                # (e.g. "0.1.0" vs "0.1.0+abc"). Treat as Switch-side
+                # rebuild needed by default.
+                advice = (
+                    f"Re-run /setup to rebuild and redeploy the Switch mod, "
+                    f"or install a matching smo.apworld."
+                )
+            err = (
+                f"Version mismatch: SMOClient is {self._client_ver}, "
+                f"Switch mod is {mod_ver}. {advice}"
+            )
+            log.error("[version] refusing Switch connection — %s", err)
+            self._state.add_log(f"[version mismatch] {err}")
+            await self._send(HelloAckMsg(
+                ok=False,
+                seed=self._state.seed,
+                slot=self._state.slot,
+                cap_table_hash=msg.get("cap_table_hash", ""),
+                deathlink_enabled=self._deathlink_enabled,
+                client_ver=self._client_ver,
+                err=err,
+            ))
+            # Close the writer so the Switch sees EOF and reconnects with
+            # backoff. On every retry we re-check — a rebuilt-and-redeployed
+            # Switch mod (or a re-installed apworld + restarted client)
+            # recovers automatically.
+            async with self._writer_lock:
+                w = self._writer
+                if w is not None:
+                    try:
+                        w.close()
+                    except Exception:
+                        pass
+                    self._writer = None
+            self._state.set_switch_conn("disconnected")
+            return
+
         await self._send(HelloAckMsg(
             ok=True,
             seed=self._state.seed,
             slot=self._state.slot,
             cap_table_hash=msg.get("cap_table_hash", ""),
             deathlink_enabled=self._deathlink_enabled,
+            client_ver=self._client_ver or None,
         ))
         self._state.set_switch_conn("ready")
 

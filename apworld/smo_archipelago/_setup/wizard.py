@@ -608,7 +608,8 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
         root.add_widget(_label(
             "Enter the LAN IP your Switch will use to reach this PC. We've "
             "guessed your primary adapter's IP. This IP gets baked into the "
-            "Switch module — changing it later means re-running setup."
+            "Switch module — changing it later (or updating to a newer "
+            "apworld) means re-running setup."
         ))
         ip_input = TextInput(text=wizard_state["bridge_ip"], multiline=False,
                               size_hint_y=None, height=48)
@@ -942,10 +943,13 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                     "inside the folder you picked. Copy that whole subtree "
                     "to your SD card's root (or onto the Switch however you "
                     "prefer).\n\n"
-                    "Re-run this wizard only if your bridge PC's LAN IP "
-                    "changes (or you want to switch deploy targets). AP "
-                    "server / slot changes don't need a rebuild — type "
-                    "/connect or use the Connect bar in SMOClient."
+                    "Re-run this wizard if you update to a newer apworld "
+                    "(SMOClient and the Switch mod ship in lockstep; "
+                    "SMOClient will refuse to connect on a version "
+                    "mismatch), if your bridge PC's LAN IP changes, or if "
+                    "you want to switch deploy targets. AP server / slot "
+                    "changes don't need a rebuild — type /connect or use "
+                    "the Connect bar in SMOClient."
                 )
                 # Multi-line summary needs explicit height proportional to
                 # content; the standard _label() helper hardcodes 32px which

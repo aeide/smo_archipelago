@@ -246,6 +246,14 @@ class HelloAckMsg:
     # set here, so the user enables/disables DeathLink in bridge config rather
     # than rebuilding the mod. Older Switch builds (M4-era) ignore the field.
     deathlink_enabled: bool = False
+    # SMOClient version baked at apworld build time. The Switch mod logs it on
+    # receipt so a real-Switch player whose lm-log is captured can see both
+    # versions side-by-side; bridge also includes it in `err` text on
+    # version-mismatch rejection so the message in the Kivy UI carries both
+    # halves of the version pair. Optional (None default → stripped from the
+    # wire) so a future older Switch parser that doesn't know the field still
+    # accepts a normal hello_ack.
+    client_ver: str | None = None
     err: str | None = None
 
 

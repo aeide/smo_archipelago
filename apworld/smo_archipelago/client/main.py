@@ -268,6 +268,11 @@ async def main(args: argparse.Namespace) -> None:
         # captured once before each drain to gate Cappy-bubble synthesis on
         # "wasn't there already". Re-replays of known checks skip Cappy.
         get_already_checked_loc_ids=lambda: set(ctx.locations_checked),
+        # Version policing: compared against the Switch mod's HELLO mod_ver.
+        # Mismatch refuses the connection with a clear hello_ack(ok=false)
+        # + an [version mismatch] log line surfaced in the Kivy UI naming
+        # both versions, so the user knows which side to update.
+        client_ver=__version__,
     )
     ctx.switch = sw
     # M-color: ApClient → SwitchServer palette callback. Wired post-

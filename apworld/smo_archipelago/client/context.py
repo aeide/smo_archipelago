@@ -135,11 +135,13 @@ class SMOClientCommandProcessor(ClientCommandProcessor):
         """Re-run the first-time-setup wizard.
 
         Use this when the bridge PC's LAN IP changes (Switch mod has the
-        old one baked in), when the apworld's capture list is edited, or
-        when you want to switch deploy target between real Switch and
-        Ryujinx. Spawns the wizard as a subprocess so SMOClient stays up;
-        the wizard's "Done" page does NOT re-launch SMOClient in this
-        codepath (the user already has one running).
+        old one baked in), when you've updated to a newer apworld and need
+        to rebuild + redeploy the Switch mod to match, when the apworld's
+        capture list is edited, or when you want to switch deploy target
+        between real Switch and Ryujinx. Spawns the wizard as a
+        subprocess so SMOClient stays up; the wizard's "Done" page does
+        NOT re-launch SMOClient in this codepath (the user already has
+        one running).
         """
         from worlds.LauncherComponents import launch_subprocess
         # Defer to a module-level callable that the subprocess machinery
@@ -151,8 +153,9 @@ class SMOClientCommandProcessor(ClientCommandProcessor):
         launch_subprocess(_run_setup_wizard_no_smoap, name="SMOSetup")
         self.output(
             "Launched setup wizard in a new window. SMOClient stays open; "
-            "restart it after the wizard finishes if the bridge PC IP "
-            "changed (the Switch mod needs a re-deploy + reboot)."
+            "restart it after the wizard finishes if you're updating to a "
+            "newer apworld or the bridge PC IP changed (the Switch mod "
+            "needs a re-deploy + reboot in either case)."
         )
         return True
 
