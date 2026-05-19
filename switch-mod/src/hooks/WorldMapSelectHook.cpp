@@ -1,50 +1,49 @@
-// M7 Path A — fork-cinematic kingdom-order gate (two-layer architecture).
+// M7 Path A — fork-cinematic kingdom-order gate.
 //
-// Forces linear progression at SMO's two world-map bifurcations only at the
-// FORK CINEMATIC moment: the post-Sand fork substitutes Wooded->Lake; the
-// post-Metro fork substitutes Seaside->Snow. The regular (post-fork) world
-// map is intentionally NOT hooked here — once the cinematic has flown Mario
-// to the prereq kingdom, both kingdoms are unlocked on the regular map
-// (vanilla SMO behavior) and the player can travel freely between any
-// unlocked kingdom. That free-travel property is what prevents the
-// "stuck in Seaside without enough Seaside moons to advance to Luncheon"
-// soft-lock — Mario can always teleport back via the regular map.
+// Forces linear progression at SMO's two world-map bifurcations: the
+// post-Sand fork substitutes Wooded->Lake; the post-Metro fork substitutes
+// Seaside->Snow. The substitution applies anywhere calcNextLocked* fires
+// (cinematic AND the leave-kingdom regular map — both share that
+// function), released once Mario has actually been to the prereq kingdom.
 //
-// Layered defense — outer layer runs first; each is a different fn the
-// FORK cinematic can call to ask about kingdoms:
+// The release condition is OR'd in the gate (see KingdomOrderGate.cpp):
+//   (a) ApState::visited_kingdoms bit set — Mario flew here via either
+//       transition hook below. STICKY for the session.
+//   (b) Mario is currently in the prereq kingdom — on-demand query via
+//       getCurrentWorldIdNoDevelop. Handles the save-reload-into-Lake
+//       case without polluting (a) on every load.
 //
-//   Layer 1: calcNextLockedWorldIdForWorldMap (LayoutActor + Scene overloads)
-//     The post-Multi-Moon fork cinematic uses this to populate the "newly
-//     unlocked" presentation. Verified firing in the 2026-05-17 fresh-save
-//     fork playtest as Scene overload on slot 0 — this is what actually
-//     catches the one-time fork moment.
+// Hooks installed:
 //
-//   Layer 2: tryChangeNextStageWithDemoWorldWarp (BACKSTOP)
-//     The cinematic's stage-commit chokepoint. If a future SMO update
-//     routes the cinematic through a path Layer 1 doesn't catch, this
-//     catches it. WARN-level log fires when the backstop substitutes —
-//     that's a signal the upstream catch needs adding back. Substitution
-//     at this layer can produce broken cutscene visuals (per failed
-//     iteration #3 in CLAUDE.md M7 section's prior-iteration failure log);
-//     better than going to the wrong kingdom, but not the desired path.
+//   calcNextLockedWorldIdForWorldMap (LayoutActor + Scene overloads)
+//     Fires when the world map (cinematic OR regular leave-kingdom UI)
+//     populates a "next-unlocked" slot. SUBSTITUTES per the gate decision.
 //
-// History — the prior three-layer design also hooked getUnlockWorldId
-// (regular world map, 4 overloads) and tryChangeNextStageWithWorldWarpHole
-// (regular-map portal-hole commit). That made the post-fork regular map
-// behave the same as the cinematic — Seaside was substituted to Snow on
-// every map open even after Mario had already been to Snow. Combined with
-// the threshold gate it produced a soft-lock when a player had >=10
-// lifetime Snow AP-receipts (e.g., from other players' completions of
-// own-slot moons) but had never visited Snow: the cinematic released
-// Seaside, the player picked it, and couldn't farm enough Seaside moons
-// to advance. Narrowing substitution to the cinematic + dropping the
-// threshold removes the trap entirely.
+//   tryChangeNextStageWithDemoWorldWarp (cinematic stage commit)
+//     BACKSTOP for the cinematic flight in case calcNextLocked misses.
+//     Also marks visited[destination] so post-cinematic the gate releases.
 //
-// See CLAUDE.md M7 section's "prior-iteration failure log" for the earlier
+//   tryChangeNextStageWithWorldWarpHole (regular-map portal-hole commit)
+//     VISITED-ONLY (no substitution). Marks visited[destination] when
+//     Mario actively boards the Odyssey from the regular map. NOT a
+//     substitution chokepoint — the substitution happens earlier at
+//     calcNextLocked when the UI populates the slot.
+//
+// History — prior iterations also hooked getUnlockWorldId (4 overloads)
+// and used tryChangeNextStageWithWorldWarpHole for substitution. That
+// blocked the leave-kingdom map after the cinematic (Seaside-from-Snow
+// loop). The earlier threshold gate (e505c5c, "lifetime AP-receipts >=
+// N") soft-locked when other players' own-slot completions pushed the
+// counter past the gate before Mario had ever visited. Switching the
+// signal to "actually traveled here, OR currently here" plus narrowing
+// substitution to the cinematic-shared calcNextLocked path is what
+// makes both bugs not-a-problem.
+//
+// See CLAUDE.md M7 section's "prior-iteration failure log" for the
 // failed attempts (skip Orig at ChangeStage / DemoWorldWarp produces UI
-// soft-lock; substitute at DemoWorldWarp produces broken cutscene visuals;
-// isUnlockedWorld doesn't gate the cursor; refusing tryChange soft-locks
-// the menu).
+// soft-lock; substitute at DemoWorldWarp produces broken cutscene
+// visuals; isUnlockedWorld doesn't gate the cursor; refusing tryChange
+// soft-locks the menu).
 
 #include "lib.hpp"  // HOOK_DEFINE_TRAMPOLINE
 
