@@ -251,24 +251,31 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           # If branch already exists upstream (retried workflow), reuse it.
+          # The prior `Update versions.json` step has modified the main-branch
+          # working tree, but origin/$BRANCH already contains that exact edit,
+          # so `git checkout -B` would refuse with "local changes would be
+          # overwritten". Discard the local mod first — we'll regenerate it
+          # on the branch in a moment, and update_poptracker_versions.py is
+          # idempotent so a no-op result is fine.
           if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
             git fetch origin "$BRANCH"
+            git checkout -- poptracker/versions.json
             git checkout -B "$BRANCH" "origin/$BRANCH"
           else
             git checkout -b "$BRANCH"
           fi
 
+          # Commit + push only if there's something new. On retry the branch
+          # already contains the entry, so this is a no-op — but we must NOT
+          # early-exit here, because the original failure may have been the
+          # `gh pr create` call that runs below.
           git add poptracker/versions.json
-          if git diff --cached --quiet; then
-            echo "versions.json already contains ${TAG} — nothing to PR"
-            exit 0
+          if ! git diff --cached --quiet; then
+            git commit -m "PopTracker auto-update: add ${TAG} to versions.json"
+            git push origin "$BRANCH"
           fi
 
-          git commit -m "PopTracker auto-update: add ${TAG} to versions.json"
-          git push origin "$BRANCH"
-
-          # `gh pr create` is a no-op (well, errors) if a PR for this branch
-          # already exists, so check first.
+          # `gh pr create` errors if a PR for this branch already exists.
           if gh pr list --head "$BRANCH" --state open --json number -q '.[0].number' | grep -q .; then
             echo "PR already open for ${BRANCH}"
             exit 0
