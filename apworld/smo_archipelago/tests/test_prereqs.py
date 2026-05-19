@@ -374,13 +374,102 @@ def test_prod_keys_present(monkeypatch, tmp_path) -> None:
     assert r.ok
 
 
-def test_prod_keys_missing(monkeypatch, tmp_path) -> None:
+def test_prod_keys_missing_surfaces_picker(monkeypatch, tmp_path) -> None:
+    """Failure case must include a `picker_label` so the wizard can render
+    a Browse button. Not every user keeps prod.keys at the hactool default
+    `~/.switch/prod.keys` — emulator users especially keep them with their
+    emulator config."""
     home = tmp_path / "userhome"
     home.mkdir()
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
     r = check_prod_keys()
     assert not r.ok
     assert "Lockpick" in r.install_url
+    assert r.picker_label, "missing picker_label — wizard can't render Browse button"
+    assert r.picker_filter, "missing picker_filter — file dialog needs an extension filter"
+
+
+def test_prod_keys_user_picked_path_used(monkeypatch, tmp_path) -> None:
+    """When the user has pointed the wizard's Browse button at a prod.keys,
+    that path wins even when the default `~/.switch/prod.keys` is absent."""
+    home = tmp_path / "userhome"
+    home.mkdir()  # no .switch subdir → default location missing
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    user_picked = tmp_path / "elsewhere" / "prod.keys"
+    user_picked.parent.mkdir(parents=True)
+    user_picked.write_text("# keys\n")
+    r = check_prod_keys(override_path=user_picked)
+    assert r.ok
+    assert str(user_picked) in r.detail
+    assert "user-picked" in r.detail
+
+
+def test_prod_keys_user_picked_wins_over_default(monkeypatch, tmp_path) -> None:
+    """If the user has explicitly picked a prod.keys, prefer it over the
+    one at the default location — they may be intentionally pointing at a
+    different keyset (e.g. a separate Switch's dump)."""
+    home = tmp_path / "userhome"
+    (home / ".switch").mkdir(parents=True)
+    (home / ".switch" / "prod.keys").write_text("# default keys\n")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    user_picked = tmp_path / "elsewhere" / "prod.keys"
+    user_picked.parent.mkdir(parents=True)
+    user_picked.write_text("# user keys\n")
+    r = check_prod_keys(override_path=user_picked)
+    assert r.ok
+    assert str(user_picked) in r.detail
+
+
+def test_prod_keys_stale_user_picked_path_falls_back_to_default(
+    monkeypatch, tmp_path,
+) -> None:
+    """If the persisted user-picked path no longer exists but the default
+    `~/.switch/prod.keys` is present, fall back to the default rather than
+    locking the user out. Persisted state can rot; the default location
+    is still authoritative if it exists."""
+    home = tmp_path / "userhome"
+    (home / ".switch").mkdir(parents=True)
+    (home / ".switch" / "prod.keys").write_text("# keys\n")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    stale = tmp_path / "deleted" / "prod.keys"  # never created
+    r = check_prod_keys(override_path=stale)
+    assert r.ok
+    assert str(home / ".switch" / "prod.keys") in r.detail
+
+
+def test_prod_keys_stale_picked_and_no_default_fails_clearly(
+    monkeypatch, tmp_path,
+) -> None:
+    """Both override and default missing → fail with a detail that names
+    the missing override (so the user understands what to re-pick)."""
+    home = tmp_path / "userhome"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    stale = tmp_path / "deleted" / "prod.keys"
+    r = check_prod_keys(override_path=stale)
+    assert not r.ok
+    assert str(stale) in r.detail
+    assert r.picker_label
+
+
+def test_check_all_threads_prod_keys_override(monkeypatch, tmp_path) -> None:
+    """check_all must forward the persisted prod_keys path through to the
+    per-detector function — without this the wizard's persistence has no
+    effect."""
+    home = tmp_path / "userhome"
+    home.mkdir()  # no default keys present
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    user_picked = tmp_path / "prod.keys"
+    user_picked.write_text("# keys\n")
+    # Stub the devkitpro probe so check_all doesn't fail on machines
+    # without devkitPro installed at the default location.
+    monkeypatch.delenv("DEVKITPRO", raising=False)
+    monkeypatch.setattr(prereqs, "_DEVKITPRO_DEFAULT_ROOTS", ())
+
+    results = check_all(prod_keys_override=user_picked)
+    prodkeys = next(r for r in results if r.key == "prodkeys")
+    assert prodkeys.ok
+    assert str(user_picked) in prodkeys.detail
 
 
 # ---------- check_all / all_ok ----------
