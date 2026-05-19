@@ -63,7 +63,7 @@ back-and-forth:
 ## The flow
 
 1. **Download `smo.apworld`** from the
-   [Releases page](https://github.com/maxwell-r-dietz/smo_archipelago/releases).
+   [Releases page](https://github.com/mdietz94/smo_archipelago/releases).
 2. **Drop it into Archipelago's `custom_worlds/`** directory. On Windows the
    path is typically `%LOCALAPPDATA%\Archipelago\custom_worlds\` or
    wherever you installed Archipelago.
