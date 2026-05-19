@@ -27,9 +27,9 @@ See [`docs/first-time-setup.md`](docs/first-time-setup.md) for the full prereq t
 1. **Download `smo.apworld`** from the [Releases page](../../releases).
 2. **Drop it into your Archipelago install's `custom_worlds/`** directory.
 3. **Open the Archipelago Launcher and click "SMO Client"** in the Clients list.
-4. **Run `/setup`** in the SMOClient command bar. The setup wizard walks you through prereq checks → SMO NSP pick → moon/capture extraction → bridge PC IP → Switch-mod compile → deploy to SD card (or Ryujinx). You only need to do this **once per machine** (or again if your bridge PC's LAN IP changes, or after upgrading to a new SMO Archipelago release).
-5. **Boot SMO.** The mod loads on game start and dials the bridge PC every couple seconds until SMOClient is listening.
-6. **Join a multiworld.** Type the host/port and your slot name into the Connect bar in SMOClient and click *Connect* — exactly like any other Archipelago client.
+4. **Run `/setup`** in the SMO Client command bar. The setup wizard walks you through prereq checks → SMO NSP pick → moon/capture extraction → your PC's LAN IP → Switch-mod compile → deploy to SD card (or Ryujinx). You only need to do this **once per machine** (or again if your PC's LAN IP changes, or after upgrading to a new SMO Archipelago release).
+5. **Boot SMO.** The mod loads on game start and dials your PC every couple seconds until SMO Client is listening.
+6. **Join a multiworld.** Type the host/port and your slot name into the Connect bar in SMO Client and click *Connect* — exactly like any other Archipelago client.
 
 Detailed walkthrough: [`docs/first-time-setup.md`](docs/first-time-setup.md).
 
@@ -48,21 +48,21 @@ The win condition is the same as vanilla SMO's main-story ending —
 sequence, and collect the "Long Journey's End" Multi Moon** awarded at the
 end of the wedding cutscene. That single moon is the apworld's `victory`
 location ("Defeat Bowser and Escape the Moon"); the moment you collect it
-SMOClient ships an AP `ClientGoal` and your slot is marked complete.
+SMO Client ships an AP `ClientGoal` and your slot is marked complete.
 
 ### How do I know it is working?
 
 The earliest in-game signal is **Cappy himself**. Shortly after you
 acquire him in the Cap Kingdom intro, Cappy should pop a speech bubble
 that reads *"Connected to Archipelago"* — that's the mod confirming the
-Switch ↔ SMOClient ↔ AP-server chain is live. From that point on Cappy
+Switch ↔ SMO Client ↔ AP-server chain is live. From that point on Cappy
 will narrate item arrivals from other players (e.g. *"Got Frog from
-P3!"*), and will also announce *"Disconnected from Archipelago"* if the
-bridge drops, replaying anything you collected during the gap once it
-reconnects.
+P3!"*), and will also announce *"Disconnected from Archipelago"* if
+SMO Client drops, replaying anything you collected during the gap once
+it reconnects.
 
 If you never see the "Connected" bubble after Cappy joins you, check
-SMOClient's Tracker tab and the AP-server log — the bridge isn't
+SMO Client's Tracker tab and the AP-server log — SMO Client isn't
 reaching the Switch.
 
 ### Your Capture List is the source of truth for what you can capture
@@ -109,7 +109,7 @@ Practical consequences:
   travel — only AP-granted moons do.
 - The Odyssey ship will refuse to launch if your current-kingdom
   AP-credit balance is below the cost.
-- The tracker tab in SMOClient (and the PopTracker pack, if you're
+- The tracker tab in SMO Client (and the PopTracker pack, if you're
   using it) is the canonical view of what you have everywhere.
 
 ### Collecting a moon for a different kingdom: HUD blips down, then back up
@@ -125,19 +125,20 @@ Moon -> P3").
 ### Changing AP server or slot after setup
 
 **Doesn't require a rebuild.** Open SMO Client from the Archipelago
-Launcher and type `/connect <host>:<port> <slot>` in the command bar — or,
-if the multiworld's organizer sent you an `.smoap` file, double-click that
-to open SMO Client with the slot pre-filled. Either path works for any
-multiworld you join, as long as the SMO mod on your Switch matches the
-SMO Archipelago version the seed was generated against.
+Launcher, type the host/port and your slot name into the **Connect** bar
+at the top of the window, and click **Connect** — or, if the multiworld's
+organizer sent you an `.smoap` file, double-click that to open SMO Client
+with the slot pre-filled. Either path works for any multiworld you join,
+as long as the SMO mod on your Switch matches the SMO Archipelago version
+the seed was generated against.
 See [`docs/changing-servers.md`](docs/changing-servers.md) for the full
 rebuild-vs-no-rebuild matrix.
 
-### Changing bridge PC IP
+### Changing your PC's LAN IP
 
 **Does require a rebuild** (the IP is baked into the Switch module at
 compile time — retail Switch firmware can't read runtime config from SD).
-Type `/setup` in SMOClient to re-run the wizard.
+Type `/setup` in SMO Client to re-run the wizard.
 
 ## Credits
 
