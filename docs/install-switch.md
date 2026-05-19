@@ -71,7 +71,7 @@ You can keep both binaries on disk — for example, save LunaKit's as `subsdk9.l
 
 The M3 build delivers:
 
-- A loadable `subsdk9` module that hooks 7 SMO functions (`HakoniwaSequence::drawMain`, `GameSystem::init`, `al::Scene::endInit`, `GameDataFile::setGotShine`, `PlayerHackKeeper::startHack`, `GameDataFile::setMainScenarioNo`, `GameDataFile::initializeData`). Goal detection lives on the bridge — it fires when the "Defeat Bowser and Escape the Moon" location resolves from a Switch moon-check — rather than on a Switch-side cutscene hook.
+- A loadable `subsdk9` module that hooks 7 SMO functions (`HakoniwaSequence::drawMain`, `GameSystem::init`, `al::Scene::endInit`, `GameDataFile::setGotShine`, `PlayerHackKeeper::startHack`, `GameDataFile::setMainScenarioNo`, `GameDataFile::initializeData`). Goal detection fires when `WorldMapSelectHook` first sees Mario flown into PeachWorld (Mushroom Kingdom) via `tryChangeNextStageWithDemoWorldWarp` — vanilla SMO awards no Power Moon for clearing the main game, so Mushroom-arrival is the canonical "you've beaten Bowser" signal.
 - The 4 game-event hooks are installed but no-op trampolines for M3 — symbol resolution is verified at boot, real bodies land in M4/M7.
 - A worker thread that opens a TCP connection to the PC bridge, sends `HELLO`, and processes inbound items idempotently with exponential reconnect backoff.
 - Bridge IP/port baked at compile time (cmake `-DBRIDGE_HOST=...`). The historical attempt to read `romfs/ap_config.json` at runtime was rolled back when `nn::fs::MountSdCardForDebug` turned out to be broken on retail firmware — fine in Ryujinx, fails on real hardware. Changing the bridge IP on a real Switch requires re-running the setup wizard.

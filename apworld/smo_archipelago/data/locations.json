@@ -3859,7 +3859,7 @@
         "requires": "{ParabonesSkip()} and {OptOne(Banzai Bill)} and ({OptOne(Wall Jump)})"
     },
     {
-        "name": "Defeat Bowser and Escape the Moon",
+        "name": "Arrive in the Mushroom Kingdom",
         "category": [
             "Moon Kingdom"
         ],

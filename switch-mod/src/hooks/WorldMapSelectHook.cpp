@@ -53,6 +53,7 @@
 #include <cstdint>
 #include <cstring>
 
+#include "../ap/ApFrameBridge.hpp"
 #include "../ap/ApState.hpp"
 #include "../game/KingdomOrderGate.hpp"
 #include "../game/KingdomUnlock.hpp"
@@ -166,11 +167,24 @@ void markVisitedFromStage(const char* origin, const char* stage) {
     const std::uint8_t bit = smoap::game::kingdomBitFor(kingdom);
     if (bit >= 17) return;
     auto& st = smoap::ap::ApState::instance();
-    if (!st.isKingdomBitVisited(static_cast<int>(bit))) {
+    const bool was_visited = st.isKingdomBitVisited(static_cast<int>(bit));
+    if (!was_visited) {
         SMOAP_LOG_INFO("[wmap.%s] visited[%s] = true (stage='%s')",
                        origin, kingdom, stage);
     }
     st.markKingdomBitVisited(static_cast<int>(bit));
+    // Mushroom Kingdom arrival is the canonical "you've beaten the main
+    // game" signal — vanilla SMO awards no Power Moon for clearing Bowser
+    // (the prior DemoPeachWedding hook fired in Bowser's Kingdom too, see
+    // CLAUDE.md known-unknowns #4), and the post-wedding cutscene drops
+    // Mario in PeachWorld via tryChangeNextStageWithDemoWorldWarp. Fire
+    // once on the 0→1 transition; ApState::goal_sent guards reload re-fires
+    // and SaveLoadHook clears it on save-data load.
+    if (!was_visited && std::strcmp(kingdom, "Mushroom") == 0 && !st.goal_sent) {
+        SMOAP_LOG_INFO("[wmap.%s] first Mushroom visit — reporting goal", origin);
+        st.goal_sent = true;
+        smoap::ap::reportGoal();
+    }
 }
 
 HOOK_DEFINE_TRAMPOLINE(TryChangeDemoWorldWarpHook) {

@@ -77,6 +77,12 @@ void reportDeath() {
     st.outbound_status.push(e);
 }
 
+void reportGoal() {
+    auto& st = ApState::instance();
+    StatusEvent e{.goal = true, .death = false, .ts_ms = 0};
+    st.outbound_status.push(e);
+}
+
 void enqueueRemoteLog(const char* level, const char* msg) {
     auto& st = ApState::instance();
     // Don't bother enqueuing if no one is listening — the line still went out

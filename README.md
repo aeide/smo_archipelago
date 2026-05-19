@@ -41,12 +41,13 @@ A few behaviors only make sense once you know what the mod is doing. The
 short version: **moons and captures aren't yours until AP gives them to
 you**, and the in-game UI is your honest indicator of what AP has sent.
 
-### Goal: collect the Multi Moon awarded for defeating Bowser on the Moon
+### Goal: arrive in the Mushroom Kingdom
 
 The win condition is the same as vanilla SMO's main-story ending —
 **defeat Bowser on the Moon Kingdom, complete the spark-pylon escape
-sequence, and collect the "Long Journey's End" Multi Moon** awarded at the
-end of the wedding cutscene. The moment you collect it your slot is marked
+sequence, and watch the post-wedding cutscene drop Mario in the
+Mushroom Kingdom**. There's no completion Power Moon to collect; the
+moment Mario touches down outside Peach's Castle your slot is marked
 complete.
 
 ### How do I know it is working?
