@@ -259,6 +259,13 @@ _CMAKE_DEFAULT_PATHS = (
     Path("C:/Program Files (x86)/CMake/bin/cmake.exe"),
 )
 
+# Path fragments that identify a cmake binary as the posix-style msys2
+# build (typically the one devkitPro's installer ships). We reject those
+# during fallback because they mangle Windows-absolute paths even when
+# version-good — see `_CMAKE_DEFAULT_PATHS` comment above for the
+# drive-letter / path-separator collision.
+_MSYS2_CMAKE_MARKERS = ("msys", "cygwin", "mingw")
+
 # Module-level cache for the resolved cmake binary path. `check_cmake`
 # writes it; `resolved_cmake()` reads. Other modules (build.py) use the
 # getter rather than re-running detection.
@@ -272,6 +279,16 @@ def resolved_cmake() -> str:
     tests etc.). Production callers should always run check_cmake first.
     """
     return _resolved_cmake if _resolved_cmake is not None else "cmake"
+
+
+def _is_msys2_cmake(resolved_path: str | None) -> bool:
+    """True if `resolved_path` (typically a `shutil.which` result) points
+    at a msys2/cygwin/mingw cmake. Those builds mangle Windows-absolute
+    paths even when version-good — see `_CMAKE_DEFAULT_PATHS` comment."""
+    if not resolved_path:
+        return False
+    lowered = resolved_path.lower().replace("\\", "/")
+    return any(marker in lowered for marker in _MSYS2_CMAKE_MARKERS)
 
 
 def check_cmake() -> PrereqResult:
@@ -296,6 +313,7 @@ def check_cmake() -> PrereqResult:
     # later).
     candidates.append("cmake")
 
+    saw_msys2_path_fallback = False
     for cand in candidates:
         r = _safe_run([cand, "--version"])
         if r is None or r[0] != 0:
@@ -307,14 +325,50 @@ def check_cmake() -> PrereqResult:
             # Found a working cmake but it's too old; keep looking in
             # case another candidate is newer.
             continue
+        if cand == "cmake":
+            # Bare-name fallback only — resolve via shutil.which and reject
+            # if it lands inside msys2/cygwin/mingw. devkitPro's installer
+            # prepends C:\devkitPro\msys2\usr\bin to PATH, so the resolved
+            # cmake mangles `C:\Users\...` into `/c/cwd/C:/Users/...` and
+            # the build dies with "source directory does not exist". Even
+            # though the version check passes, the binary is unusable for
+            # our switch-mod tree.
+            resolved_path = shutil.which(cand)
+            if _is_msys2_cmake(resolved_path):
+                saw_msys2_path_fallback = True
+                continue
         _resolved_cmake = cand
         return PrereqResult(
             "cmake", f"CMake {MIN_CMAKE[0]}.{MIN_CMAKE[1]}+", True,
             f"{ver[0]}.{ver[1]}.{ver[2]} ({cand})",
         )
 
-    # Nothing usable — replay PATH cmake one more time so the failure
-    # detail mirrors what the user would see manually.
+    # Nothing usable — emit a failure detail that's specific to what we
+    # found so the user knows what to do next.
+    if saw_msys2_path_fallback:
+        # The msys2 cmake on PATH (almost always from devkitPro's bundled
+        # msys2) is the wrong build for our Windows-absolute switch-mod
+        # paths. Detail is intentionally short (row label truncates at
+        # ~80 chars); the actionable winget command + restart reminder
+        # live in `note`, which the wizard renders as a wrapping sub-row
+        # underneath. Mirrors the Ninja note's structure for consistency.
+        return PrereqResult(
+            "cmake", f"CMake {MIN_CMAKE[0]}.{MIN_CMAKE[1]}+", False,
+            "only msys2's cmake is on PATH (from devkitPro) — install "
+            "Kitware's Windows CMake instead",
+            INSTALL_URLS["cmake"],
+            note=(
+                "msys2's cmake mangles Windows drive-letter paths "
+                "(`C:\\…` → `/cwd/C:/…`) and breaks the switch-mod build. "
+                "Easiest install on Windows:\n"
+                "    winget install Kitware.CMake\n"
+                "Or use the MSI from cmake.org/download (the Install... "
+                "button on the right). Then CLOSE and REOPEN this app "
+                "before re-checking. Windows only refreshes PATH for "
+                "newly-spawned processes, so an already-running wizard "
+                "won't see the new install."
+            ),
+        )
     r = _safe_run(["cmake", "--version"])
     if r is None or r[0] != 0:
         return PrereqResult(

@@ -176,7 +176,20 @@ def test_devkitpro_env_set_to_msys2_path_falls_back_to_default(
 
 # ---------- check_cmake ----------
 
-def test_cmake_modern_version(fake_run) -> None:
+@pytest.fixture
+def cmake_path_is_kitware(monkeypatch):
+    """Default `shutil.which("cmake")` to point at a Kitware install for
+    cmake tests that exercise the bare-name PATH fallback. Without this
+    the test machine's REAL `shutil.which` runs — and on devkitPro-equipped
+    machines that resolves to msys2's cmake, which `check_cmake` now
+    correctly rejects (see `test_cmake_rejects_msys2_path_fallback`)."""
+    monkeypatch.setattr(
+        prereqs.shutil, "which",
+        lambda name: "C:\\Program Files\\CMake\\bin\\cmake.exe",
+    )
+
+
+def test_cmake_modern_version(fake_run, cmake_path_is_kitware) -> None:
     fake_run({"cmake --version": (
         0, "cmake version 3.30.5\nCMake suite maintained by Kitware\n", "")})
     r = check_cmake()
@@ -206,7 +219,7 @@ def test_cmake_missing(fake_run) -> None:
     assert r.install_url
 
 
-def test_cmake_3_24_0_exact_boundary(fake_run) -> None:
+def test_cmake_3_24_0_exact_boundary(fake_run, cmake_path_is_kitware) -> None:
     """3.24.0 should be accepted (>= 3.24)."""
     fake_run({"cmake --version": (0, "cmake version 3.24.0\n", "")})
     r = check_cmake()
@@ -250,10 +263,58 @@ def test_cmake_falls_back_to_path_when_no_windows_install(
     whatever's on PATH. Most users have it via PATH only; that case has
     to stay working."""
     monkeypatch.setattr(prereqs, "_CMAKE_DEFAULT_PATHS", ())  # empty probe list
+    monkeypatch.setattr(
+        prereqs.shutil, "which",
+        lambda name: "C:\\Program Files\\CMake\\bin\\cmake.exe",
+    )
     fake_run({"cmake --version": (0, "cmake version 3.30.5\n", "")})
     r = check_cmake()
     assert r.ok
     assert prereqs.resolved_cmake() == "cmake"
+
+
+def test_cmake_rejects_msys2_path_fallback(monkeypatch, fake_run) -> None:
+    """Regression test for v0.1.x-alpha wizard build crash on a user
+    machine where ONLY msys2 cmake (from devkitPro's bundled msys2) is
+    available:
+      CMake Error: The source directory "/c/ProgramData/Archipelago/
+        C:/Users/.../switch_mod" does not exist.
+
+    Root cause: when Kitware's CMake isn't installed at the canonical
+    `C:/Program Files/CMake/bin/cmake.exe` location, `check_cmake`
+    falls back to bare `cmake` on PATH. devkitPro prepends its msys2
+    bin dir to PATH, so the resolved cmake mangles `C:\\…` into
+    `/cwd/C:/…` and the build dies before configure finishes.
+
+    Expected behavior: detector must REJECT msys2 cmake during the
+    bare-name fallback (even though `cmake --version` succeeds), and
+    surface an actionable install-Kitware-CMake error."""
+    monkeypatch.setattr(prereqs, "_CMAKE_DEFAULT_PATHS", ())  # no Kitware install
+    monkeypatch.setattr(prereqs, "_resolved_cmake", None)
+    # `shutil.which("cmake")` resolves to devkitPro's msys2 cmake — the
+    # exact path layout Kayla's machine had.
+    monkeypatch.setattr(
+        prereqs.shutil, "which",
+        lambda name: "C:\\devkitPro\\msys2\\usr\\bin\\cmake.exe",
+    )
+    fake_run({"cmake --version": (0, "cmake version 3.28.0\n", "")})
+    r = check_cmake()
+    assert not r.ok, "msys2 cmake must not satisfy the cmake prereq"
+    assert "msys2" in r.detail.lower()
+    assert r.install_url, "Install... button needs a URL"
+    # winget one-liner is the load-bearing remediation the wizard surfaces
+    # beneath the row — losing it from the note would silently degrade the
+    # error from "here's the fix" back to "go figure out CMake yourself".
+    assert "winget install Kitware.CMake" in r.note
+    assert "CLOSE and REOPEN" in r.note, (
+        "PATH-refresh reminder is critical: winget finishes, user clicks "
+        "Re-check, wizard still sees msys2 cmake because the running "
+        "process inherited the old PATH"
+    )
+    assert prereqs.resolved_cmake() == "cmake", (
+        "no working cmake was found, so resolved_cmake() should fall "
+        "back to the bare-name default rather than caching a known-bad path"
+    )
 
 
 def test_resolved_cmake_defaults_to_bare_name_when_check_not_run(monkeypatch) -> None:
