@@ -922,6 +922,14 @@ class SMOContext(CommonContext):
             log.exception("format_moon_label failed for loc_id=%d", loc_id)
             return None
 
+    def is_festival_goal(self) -> bool:
+        """True when slot_data.goal indicates festival mode. The bridge
+        captures this on Connected to drive UI-only display filters (the
+        Odyssey tab hides Metro+ kingdoms in festival mode) and the
+        bridge-side ClientGoal trigger when the festival moon is checked.
+        """
+        return self._goal_location_name == "Metro: A Traditional Festival!"
+
     def is_ap_ready(self) -> bool:
         """True iff the AP datapackage has been loaded — the only state
         report_check needs to resolve loc_ids. Mirrors `state.ap_conn=='ready'`

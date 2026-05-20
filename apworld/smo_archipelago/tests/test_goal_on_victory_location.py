@@ -195,6 +195,17 @@ async def test_report_check_fires_goal_for_festival_victory(tmp_path: Path):
 
 
 @pytest.mark.asyncio
+async def test_is_festival_goal_predicate():
+    """is_festival_goal flips with the slot_data-derived goal location."""
+    ctx = _make_ctx()
+    assert ctx.is_festival_goal() is False  # default = mushroom mode
+    ctx._goal_location_name = "Metro: A Traditional Festival!"
+    assert ctx.is_festival_goal() is True
+    ctx._goal_location_name = "Some Future Goal!"  # other non-None values
+    assert ctx.is_festival_goal() is False
+
+
+@pytest.mark.asyncio
 async def test_report_check_does_not_fire_goal_in_mushroom_mode(tmp_path: Path):
     """Mushroom mode: collecting the festival moon (a real in-game moon
     that happens to exist server-side too) must NOT fire goal — the
