@@ -217,6 +217,43 @@ Out of scope (M7B/M8 territory): cleaner Y-button-style release via `rs::endHack
 
 **Verification**: [tests/test_goal_on_victory_location.py](../apworld/smo_archipelago/tests/test_goal_on_victory_location.py) covers the new path (StatusUpdate emission, idempotency, and a regression guard that moon checks never trigger goal). Manual Ryujinx playtest pending the next end-of-game run.
 
+## M-color — per-classification moon recolor
+
+2026-05-20: **DONE.** Power Moons now tint in-game by AP classification (filler = vanilla yellow, progression = green, useful = cyan/blue, trap = red) on all three shine variants — 3D Shine, 2D ShineDot (mural / side-scrolling rooms), and ShineGrand. The shipped path is a `Shine::init` post-trampoline that writes the tint directly into the body material's color slots; the earlier matanim-frame-substitute path was wrong about what the matanim animated and has been retired.
+
+**Prior-iteration failure log.**
+
+1. **Inline patches at 4 `BL` sites inside `Shine::init`** (PR #108, retired 2026-05-20). The first design substituted W2 (matanim frame index) at four call sites to `rs::setStageShineAnimFrame`, then let `Color_fcl` play the requested frame. Visual bisection on SMO 1.0.0 (frames 1, 2, 3, 7) showed every frame produced similar reddish shades on 3D moons regardless of palette value — `Color_fcl` is an emission/highlight matanim ("moon is glowing red" overlay), not a body-diffuse-color driver. ShineDot (2D) showed no color change at all because its archive's Color matanim is a texture-pattern animation (`Color_ftp`) with no material-color stream, and it has no `Mcl` anim player allocated for the frame-substitute entry point. Three follow-up patches (`c9671d0` re-target via X19, `b07b5f2` translate list-index → BYML UniqueId, `564cd93` strip diagnostic logging) refined the wrong path; the underlying assumption stayed broken.
+
+2. **Why frame substitution can't work for body color, ever.** `Color_fcl` is the wrong matanim *category*. SMO body color lives in material-parameter slots that the shader composes per variant (uncollected, collected/grey, scenario-locked, grand) — there is no single "color frame" to substitute. The matanim path can animate sparkle hue at best.
+
+**Shipped approach.** Trampoline `Shine::init` and, after `Orig` finishes setting up the actor's model and materials, write the AP-classification tint directly into the body material via four SDK helpers resolved from `nn::ro::LookupSymbol`:
+
+- `al::setMaterialProgrammable` — unlock runtime writes on the material
+- `al::setModelMaterialParameterF32` — flip the `enable_<X>_mul_color` gates
+- `al::setModelMaterialParameterRgba` — write the RGBA tint
+- `al::isExistMaterial` — probe-before-set guard (the SDK setters NULL-deref on a missing material name)
+
+Per-shine-type body material name (runtime-probed against the SMO 1.0.0 BFRES archives via `scripts/dump_shine_bfres.py`, gitignored local-only tool):
+
+| `mShineType` (+0x1a0) | Variant | Body material |
+|---|---|---|
+| 0 | 3D Shine | `BodyMT` |
+| 1 | ShineDot (2D) | `BodyMT00` |
+| 2 | ShineGrand | `BodyMT` |
+
+3D / Grand variants' shaders sample several slots depending on collected/grand state, so the override writes the same tint into `uniform0_mul_color`, `uniform1_mul_color`, `base_color_mul_color`, and `const_color0` (and flips each one's `enable_*` gate). The SDK silently no-ops slots the shader doesn't sample, so the over-write is cheap (~6 calls per init). ShineDot only needs `uniform0_mul_color` — its shader doesn't read the others, so the extra writes are skipped to keep the per-shine SDK-call count minimal.
+
+**Per-variant palette intensity split** (both palettes in [ShineAppearanceHook.cpp](../switch-mod/src/hooks/ShineAppearanceHook.cpp)). The 3D / Grand composition path stacks the tint through multiple slots — the same RGBA reads as less saturated on the visible body. The 2D path is single-slot — the same RGBA reads as more saturated on the flat 2D-camera body. Two palettes are shipped: a 3D/Grand palette softened ~10% toward identity, and a ShineDot palette softened ~20% so the perceived saturation matches. Filler stays at identity (1, 1, 1) on both — unscouted moons look vanilla.
+
+**Index → UniqueId translation** (load-bearing, kept from PR #108's `b07b5f2`). The Shine actor stores `mShineId` at +0x290, but that's a **list-INDEX into `mShineHintList`**, not the BYML UniqueId the palette is keyed on. `resolveShineIndexToUniqueId` walks `GameDataHolder` (cached on `ApState` by `DrawMainHook`) → `GameDataFile` (+0x20) → `mShineHintList` (+0x9A0) → `HintInfo[index].UniqueId` (+0x1F0 inside a 0x238-byte struct), bounded by `kShineHintListMaxIndex = 0x400`. Read-only, no allocation — safe inside the trampoline callback.
+
+**Symbols added** to [HookSymbols.hpp](../switch-mod/src/hooks/HookSymbols.hpp) + `scripts/check_nso_symbols.py` (verified against the real `main.nso` dynstr): `al::setMaterialProgrammable`, `al::setModelMaterialParameterRgba`, `al::setModelMaterialParameterF32`, `al::isExistMaterial`. Mangling via the `aarch64-none-elf-g++ -c` forward-decl path (see `.claude/skills/smo-symbol-discovery/SKILL.md`).
+
+**Guards.** Missing-symbol is non-fatal — `installShineAppearanceHook` only installs the trampoline if `setMaterialProgrammable` + `setModelMaterialParameterRgba` resolved; otherwise it logs and skips, leaving moons at vanilla yellow. Missing-material at runtime (a future SMO build with a renamed material) logs once per shine type via a 3-slot `s_warned[]` and skips that init — never NULL-derefs. The first 8 overrides per session log a one-line `[shine-color] override#N type=T unique_id=U palette=P` for visual confirmation that the path is wired, then stay quiet.
+
+**Out of scope (future polish).** The collected/grey post-pickup variant still uses SMO's natural greyscale shader path — the tint stays applied, so a collected progression-green moon reads as a desaturated green rather than vanilla grey. Considered acceptable; reverting to vanilla grey on collect would need a second trampoline on the per-frame appearance update.
+
 ## M8
 
 Apworld extensions + in-game ImGui + polish (incl. dedicated AP-credit HUD overlay).
@@ -271,4 +308,3 @@ Bridge-side `CappyMsg` could ship ahead of UI as Channel-B-prime "log only" — 
 - **`AP-server KeyError on scout for missing locations`** — fix at [context.py](../apworld/smo_archipelago/client/context.py): the warmup scopes to `ctx.missing_locations | ctx.checked_locations` instead of the full datapackage. Otherwise a single not-in-this-slot location_id in the scout request kills the websocket connection → client reconnect loop. Burned ~30 minutes finding this one during playtest setup.
 - **`apworld/.../data/{items,locations,regions}.json` invariant**: the Multi-Moon rework removed the kingdom-agnostic `Power Moon` item but it was referenced in 19 `|Power Moon:N| or ...` branches across `regions.json` + `locations.json`. The DataValidation pass at seed gen catches this loudly. **Future agents removing or renaming any item must grep both files for the bare name and update all `requires` strings.** Today this is a manual discipline; a CI lint would catch it.
 - **PopTracker pack is visually plain**: ships a 740×560 dark-gray placeholder PNG with 16 kingdom buckets on a 4×4 grid (see `scripts/build_poptracker_pack.py::make_solid_png`). Functional but ugly. A polish pass — proper kingdom artwork (one map per kingdom or a single composite world-map background), themed pin icons, maybe a side-panel that groups moons by sub-region — would make the tracker feel like a real companion app rather than a wireframe.
-- **2D moons aren't recolored by item type yet.** The `ShineAppearanceHook` inline-patches 4 BL sites inside `Shine::init` (3D moon actor) — the 2D moon variant collected in side-scrolling mural rooms goes through a different actor class and bypasses every patched offset, so those shines show vanilla yellow regardless of AP classification. Symmetric inline patches on the 2D shine init path would close the gap; resolve the 2D shine class via OdysseyDecomp (`Shine2D` / `Shine2DMap` / similar) and find its `rs::setStageShineAnimFrame` call sites the same way Kgamer77 found the 3D ones.
