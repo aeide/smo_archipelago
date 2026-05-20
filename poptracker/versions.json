@@ -1,6 +1,36 @@
 {
   "versions": [
     {
+      "package_version": "0.1.19-alpha",
+      "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.1.19-alpha/smo-poptracker-v0.1.19-alpha.zip",
+      "sha256": "b716260a5eb3c8d68ba518e3d749712c7c634cdc0af2663a41ccf8220fa672e4",
+      "changelog": [
+        "fix: trigger goal on credits roll, not Mushroom Kingdom arrival",
+        "Extract: detect hactool titlekey failures + auto-derive from .tik",
+        "apworld: demote surplus kingdom moons so toggle-off configs generate",
+        "fix: spaces in NSP path + lost exit codes in extract bootstrap",
+        "Wizard: point users at winget for Ninja + warn about PATH refresh",
+        "Always launch SMOClient; gate setup wizard on /setup only",
+        "Credit maxdietz as setup-guide author",
+        "test: align prod_keys_missing with empty install_url",
+        "Allow user-picked prod.keys location in the setup wizard",
+        "docs: drop dead Lockpick_RCM link",
+        "Strip remaining upstream-template dummy content from hooks and meta.json",
+        "Inline game_table; delete data/game.json and dead _options_presets",
+        "Remove Manual-APworld references so this reads as a normal apworld",
+        "docs: refresh CLAUDE.md + skills for release-era state",
+        "Trim redundant emulator/FW21 guidance from setup table",
+        "Generalize \"Ryujinx\" to \"an emulator\" in requirements wording",
+        "Document Ryujinx as alternative to modded Switch FW 21.x",
+        "Add Discord link to README",
+        "Make PopTracker versions.json PR job retry-safe",
+        "Trim PopTracker release-notes blurb to one sentence",
+        "Drop Compatibility requirements block from release notes",
+        "PopTracker auto-update: add v0.1.18-alpha to versions.json",
+        "Simplify README Requirements as a plain bullet list"
+      ]
+    },
+    {
       "package_version": "0.1.18-alpha",
       "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.1.18-alpha/smo-poptracker-v0.1.18-alpha.zip",
       "sha256": "42a79f98d01268bba4776eefef82ffdc571fbb456ccc7a3c5b9114535f5d296b",
