@@ -40,6 +40,29 @@ from .hooks.World import \
     before_fill_slot_data, after_fill_slot_data, before_write_spoiler
 from .hooks.Data import hook_interpret_slot_data
 
+import re as _re
+
+# Matches a MetroPeace() rule call in a `requires` string. Word boundary
+# prevents a hypothetical future MetroPeaceful() rule from false-matching;
+# the open paren ensures we're matching a call, not the bare word.
+_METRO_PEACE_CALL_RE = _re.compile(r"\bMetroPeace\s*\(")
+
+
+def _needs_metro_peace(loc_data: dict) -> bool:
+    """True if this location is only collectable after Metro Peace.
+
+    Two signals — locations carry one or both: the "Metro Peace" category
+    tag (drives the include_metro_peace_moons toggle) and a MetroPeace()
+    call in the `requires` string. Used by the festival goal to keep
+    pre-festival Metro moons as checks while dropping the post-festival
+    ones.
+    """
+    if "Metro Peace" in loc_data.get("category", []):
+        return True
+    requires = loc_data.get("requires", "")
+    return isinstance(requires, str) and bool(_METRO_PEACE_CALL_RE.search(requires))
+
+
 class SMOSettings(settings.Group):
     """SMO Client settings. Lives in `~/.archipelago/host.yaml` under the
     `meatballs_options:` key (Archipelago derives this from the apworld
@@ -130,12 +153,32 @@ class SMOWorld(World):
         runGenerationDataValidation()
 
 
+    # Maps `Goal` option values (defined in hooks/Options.py) to the victory
+    # location name marked with `"victory": true` in data/locations.json. Keep
+    # in sync with both files when adding a new goal.
+    GOAL_TO_VICTORY = {
+        0: "Arrive in the Mushroom Kingdom",  # Goal.option_mushroom_kingdom
+        1: "Metro: A Traditional Festival!",  # Goal.option_festival
+    }
+
+    # Regions emptied entirely under the festival goal. Entrances/exits stay
+    # wired so the region graph stays connected; only the locations are
+    # cleared. Order matches the regions.json chain after Metro.
+    FESTIVAL_REGIONS_TO_EMPTY = (
+        "Post-Metro", "Snow Kingdom", "Post-Snow",
+        "Seaside Kingdom", "Post-Seaside", "Very Early Luncheon",
+        "Luncheon Kingdom", "Ruined Kingdom", "Pokino",
+        "Bowser's Kingdom", "Moon Kingdom",
+    )
+
     def create_regions(self):
         before_create_regions(self, self.multiworld, self.player)
 
         create_regions(self, self.multiworld, self.player)
 
-        location_game_complete = self.multiworld.get_location(victory_names[get_option_value(self.multiworld, self.player, 'goal')], self.player)
+        goal_value = get_option_value(self.multiworld, self.player, 'goal')
+        target_victory_name = self.GOAL_TO_VICTORY[goal_value]
+        location_game_complete = self.multiworld.get_location(target_victory_name, self.player)
         location_game_complete.address = None
 
         for unused_goal in [self.multiworld.get_location(name, self.player) for name in victory_names if name != location_game_complete.name]:
@@ -143,6 +186,29 @@ class SMOWorld(World):
 
         location_game_complete.place_locked_item(
             SMOItem("__Victory__", ItemClassification.progression, None, player=self.player))
+
+        if goal_value == 1:  # festival
+            # Drop any Metro / Night Metro location that needs Metro Peace
+            # (the post-festival "kingdom calmed" state). Every other Metro
+            # moon — the five Night Metro hidden moons, the four band
+            # members, Mechawiggler, Powering Up the Station, and the
+            # festival moon itself — remains a check. Two signals mark a
+            # location as post-Metro-Peace: the "Metro Peace" category tag
+            # (used by include_metro_peace_moons) and a MetroPeace() call in
+            # `requires`. Some locations carry only one or the other (e.g.
+            # Sewer Treasure has the requires call but not the category),
+            # so check both.
+            for region_name in ("Metro Kingdom", "Night Metro"):
+                region = self.multiworld.get_region(region_name, self.player)
+                region.locations = [
+                    loc for loc in region.locations
+                    if not _needs_metro_peace(self.location_name_to_location.get(loc.name, {}))
+                ]
+            for region_name in self.FESTIVAL_REGIONS_TO_EMPTY:
+                region = self.multiworld.get_region(region_name, self.player)
+                region.locations = []
+            if hasattr(self.multiworld, "clear_location_cache"):
+                self.multiworld.clear_location_cache()
 
         after_create_regions(self, self.multiworld, self.player)
 

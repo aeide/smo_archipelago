@@ -118,8 +118,24 @@ class Capturesanity(Toggle):
     item — capturing an enemy you haven't unlocked yanks Mario back out and grants no credit."""
     display_name = "Capturesanity"
 
+class Goal(Choice):
+    """Choose your victory condition.
+
+    mushroom_kingdom: full game. Collect moons, clear Bowser, and arrive in the
+        Mushroom Kingdom (default).
+    festival: shorter game ending at the New Donk City Festival. Drops every
+        kingdom past Metro, every Metro moon except the seven on the festival
+        story path (Mechawiggler, the four band members, Powering Up the
+        Station, and A Traditional Festival! itself), and the 15 captures that
+        only exist in post-Metro kingdoms."""
+    display_name = "Goal"
+    option_mushroom_kingdom = 0
+    option_festival = 1
+    default = 0
+
 # This is called before any options are defined, in case you want to define your own with a clean slate
 def before_options_defined(options: dict) -> dict:
+    options["goal"] = Goal
     options["capturesanity"] = Capturesanity
     # Per-kingdom Peace toggles
     options["include_cap_peace_moons"] = IncludeCapPeaceMoons

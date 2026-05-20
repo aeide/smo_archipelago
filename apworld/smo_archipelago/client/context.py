@@ -47,6 +47,30 @@ log = logging.getLogger(__name__)
 GAME_NAME = "Spicy Meatball Overdrive"
 
 
+# Mirror of the apworld's SMOWorld.GOAL_TO_VICTORY (defined in
+# apworld/smo_archipelago/__init__.py). Used by `_handle_ap_package`
+# (Connected) to derive the location name whose check should fire
+# ClientGoal. Festival mode: the festival moon is a real in-game
+# collectible but its AP address is nulled, so we tee report_goal off
+# report_check on this name. Mushroom mode: there's no in-game moon
+# for "Arrive in the Mushroom Kingdom" — leave entry out so the Switch's
+# credits hook stays the sole producer.
+_GOAL_LOC_BY_OPTION: dict[int, str] = {
+    1: "Metro: A Traditional Festival!",  # Goal.option_festival
+}
+
+
+# Kingdoms whose outstanding-to-Switch counts get clamped to 0 under the
+# festival goal — Metro itself plus every kingdom downstream of it in the
+# linear-chain order. Mirrors gui._HIDDEN_KINGDOMS_FESTIVAL (display side).
+# Keep both in sync: bridge clamps the wire-protocol number so the Switch's
+# OutstandingMsg-consuming logic never thinks the player owns moons past
+# Metro, and the UI hides the rows for those same kingdoms.
+_FESTIVAL_ZEROED_KINGDOMS = frozenset({
+    "Metro", "Snow", "Seaside", "Luncheon", "Ruined", "Bowser's", "Moon",
+})
+
+
 class SMOClientCommandProcessor(ClientCommandProcessor):
     """`/`-prefixed commands typed into the Kivy command bar.
 
@@ -228,6 +252,16 @@ class SMOContext(CommonContext):
         # from re-firing on every Switch reconnect. AP server is idempotent
         # on ClientGoal anyway — this just keeps logs clean.
         self._goal_reported: bool = False
+        # Name of the location whose check should trigger goal. Set on
+        # Connected from slot_data["goal"] via GOAL_LOC_BY_OPTION. None
+        # means goal is fired exclusively by the Switch's `goal` wire
+        # message (mushroom mode: there's no real in-game moon for
+        # "Arrive in the Mushroom Kingdom", the credits hook fires it).
+        # Festival mode: the festival moon IS a real check, but the
+        # apworld nulls its `address` so AP-server-side goal detection
+        # via location check doesn't fire — the bridge tees a
+        # report_goal() off report_check() instead.
+        self._goal_location_name: str | None = None
 
     # ----------------------------------------------------------- AP overrides
 
@@ -442,10 +476,23 @@ class SMOContext(CommonContext):
     # same connection cycle.
 
     def _outstanding_entries_for_switch(self) -> list[OutstandingEntry]:
-        """Snapshot of derived outstanding as wire entries."""
+        """Snapshot of derived outstanding as wire entries.
+
+        Under the festival goal, Metro and every downstream kingdom are
+        clamped to 0 regardless of what the bridge actually received —
+        the player is meant to win inside Metro Kingdom and must not
+        accumulate enough outstanding for the Switch's M7 Path A gate to
+        unlock the Odyssey to Snow. Bridge-side `state.moons_received_by_kingdom`
+        keeps tracking real counts in case the user reconnects to a
+        non-festival seed without restarting the client.
+        """
         outstanding = self.state.compute_outstanding() or {}
+        festival = self.is_festival_goal()
         return [
-            OutstandingEntry(kingdom=k, count=int(v))
+            OutstandingEntry(
+                kingdom=k,
+                count=0 if festival and k in _FESTIVAL_ZEROED_KINGDOMS else int(v),
+            )
             for k, v in sorted(outstanding.items())
         ]
 
@@ -625,6 +672,15 @@ class SMOContext(CommonContext):
                 # stored_data, which is); read it straight off the
                 # Connected args dict.
                 slot_data = args.get("slot_data") or {}
+                # Goal-trigger location: when the apworld's victory location
+                # is a real in-game moon (festival% mode), checking it on
+                # the Switch should fire ClientGoal. The apworld nulls the
+                # location's AP address so an AP-server-side detector won't
+                # fire — handle it bridge-side instead. Mushroom mode has
+                # no in-game moon to collect; the Switch's credits hook
+                # fires the goal via its own wire message.
+                self._goal_location_name = _GOAL_LOC_BY_OPTION.get(
+                    slot_data.get("goal"))
                 capturesanity = bool(slot_data.get("capturesanity", 0))
                 self.capturesanity_enabled = capturesanity
                 self.switch.set_capturesanity_enabled(capturesanity)
@@ -857,6 +913,12 @@ class SMOContext(CommonContext):
         log.info("forwarding LocationCheck %r (id=%d) to AP", loc_name, loc_id)
         await self.send_msgs([{"cmd": "LocationChecks", "locations": [loc_id]}])
         self.locations_checked.add(loc_id)
+        # If this check IS the goal trigger (festival mode), fire ClientGoal
+        # too — AP server-side detection can't run because the apworld nulls
+        # the victory location's address, so the loc_id we just sent isn't
+        # in our slot's missing_locations and the server won't follow up.
+        if self._goal_location_name is not None and loc_name == self._goal_location_name:
+            await self.report_goal()
         return loc_id
 
     def compose_moon_label_for_location(self, loc_id: int) -> str | None:
@@ -883,6 +945,14 @@ class SMOContext(CommonContext):
         except Exception:
             log.exception("format_moon_label failed for loc_id=%d", loc_id)
             return None
+
+    def is_festival_goal(self) -> bool:
+        """True when slot_data.goal indicates festival mode. The bridge
+        captures this on Connected to drive UI-only display filters (the
+        Odyssey tab hides Metro+ kingdoms in festival mode) and the
+        bridge-side ClientGoal trigger when the festival moon is checked.
+        """
+        return self._goal_location_name == "Metro: A Traditional Festival!"
 
     def is_ap_ready(self) -> bool:
         """True iff the AP datapackage has been loaded — the only state

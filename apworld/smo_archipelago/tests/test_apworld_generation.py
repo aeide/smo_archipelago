@@ -180,10 +180,14 @@ def _all_off() -> dict[str, bool]:
 def _build_scenarios() -> list[tuple[str, dict[str, bool]]]:
     fast = os.environ.get("SMOAP_GEN_TEST_FAST") == "1"
     if fast:
-        return [("all_on", _all_on())]
+        return [
+            ("all_on", _all_on()),
+            ("festival_goal", {"goal": "festival"}),
+        ]
     return [
         ("all_on", _all_on()),
         ("all_off", _all_off()),
+        ("festival_goal", {"goal": "festival"}),
         *_individual_off_cases(),
     ]
 

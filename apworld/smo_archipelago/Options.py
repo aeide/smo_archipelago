@@ -2,7 +2,6 @@ from Options import FreeText, NumericOption, Toggle, DefaultOnToggle, Choice, Te
 from dataclasses import make_dataclass
 from .hooks.Options import before_options_defined, after_options_defined
 from .Data import category_table, game_table
-from .Locations import victory_names
 from .Items import item_table
 
 
@@ -12,10 +11,10 @@ class FillerTrapPercent(Range):
 
 meatballs_options = before_options_defined({})
 
-if len(victory_names) > 1:
-    goal = {'option_' + v: i for i, v in enumerate(victory_names)}
-    meatballs_options['goal'] = type('goal', (Choice,), goal)
-    meatballs_options['goal'].__doc__ = "Choose your victory condition."
+# The `goal` option is defined as a static Choice class in hooks/Options.py
+# (Goal). It used to be built dynamically from `victory_names` here, but the
+# resulting class attribute names (e.g. `option_Metro: A Traditional Festival!`)
+# weren't valid Python identifiers once a second victory location existed.
 
 if any(item.get('trap') for item in item_table):
     meatballs_options["filler_traps"] = FillerTrapPercent

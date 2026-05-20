@@ -1692,7 +1692,8 @@
             "Metro Kingdom"
         ],
         "region": "Metro Kingdom",
-        "requires": "{PostTrumpeter()} and {OptOne(Manhole)}"
+        "requires": "{PostTrumpeter()} and {OptOne(Manhole)}",
+        "victory": true
     },
     {
         "name": "Metro: Inside an Iron Girder",

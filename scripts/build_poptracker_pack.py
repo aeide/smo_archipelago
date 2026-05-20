@@ -509,6 +509,60 @@ def make_solid_png(w: int, h: int, rgba: tuple[int, int, int, int] = (32, 32, 32
     return sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
 
 
+# ---------- festival% goal scope
+
+# Mirrors the apworld's festival pruning in __init__.py — keep in sync.
+# Locations the apworld drops under the festival goal get $is_goal|0 ANDed
+# onto their access rule so they evaluate as unreachable when slot_data.goal
+# == 1 (festival), and behave normally when goal == 0 (mushroom kingdom).
+
+FESTIVAL_REGIONS_HIDDEN = frozenset({
+    "Post-Metro", "Snow Kingdom", "Post-Snow",
+    "Seaside Kingdom", "Post-Seaside", "Very Early Luncheon",
+    "Luncheon Kingdom", "Ruined Kingdom", "Pokino",
+    "Bowser's Kingdom", "Moon Kingdom",
+})
+
+
+# Matches a MetroPeace() rule call in a `requires` string. Word boundary
+# prevents a hypothetical future MetroPeaceful() rule from false-matching;
+# the open paren ensures we're matching a call, not the bare word.
+_METRO_PEACE_CALL_RE = re.compile(r"\bMetroPeace\s*\(")
+
+
+def _needs_metro_peace(loc: dict) -> bool:
+    """True if this Metro/Night Metro location is only reachable after
+    Metro Peace (the post-festival "kingdom calmed" state). Mirrors
+    __init__.py:_needs_metro_peace — two signals, locations carry one or
+    both: "Metro Peace" category tag, or a MetroPeace() call in
+    `requires`."""
+    if "Metro Peace" in loc.get("category", []):
+        return True
+    requires = loc.get("requires", "")
+    return isinstance(requires, str) and bool(_METRO_PEACE_CALL_RE.search(requires))
+
+# Goal-option-value → victory-location-name. Mirror of the apworld's
+# SMOWorld.GOAL_TO_VICTORY in __init__.py — values come from the static
+# Goal(Choice) class in hooks/Options.py (option_mushroom_kingdom = 0,
+# option_festival = 1). Cannot use the location's order in locations.json
+# as the index because the festival moon happens to appear first there.
+GOAL_OPTION_TO_VICTORY = {
+    0: "Arrive in the Mushroom Kingdom",
+    1: "Metro: A Traditional Festival!",
+}
+VICTORY_TO_GOAL_OPTION = {v: k for k, v in GOAL_OPTION_TO_VICTORY.items()}
+
+
+def location_out_of_festival_scope(loc: dict) -> bool:
+    """True if `loc` is dropped from the world under the festival goal."""
+    region = loc.get("region", "")
+    if region in FESTIVAL_REGIONS_HIDDEN:
+        return True
+    if region in ("Metro Kingdom", "Night Metro") and _needs_metro_peace(loc):
+        return True
+    return False
+
+
 # ---------- kingdom display grouping
 
 # Order is the linear-chain order from regions.json.
@@ -772,13 +826,27 @@ def emit_locations(
                     opt_terms.append(term)
         if opt_terms:
             own_dnf = [clause + [t for t in opt_terms if t not in clause] for clause in own_dnf]
-        # AND victory locations with $is_goal|<index>
+        def _and_term(dnf: list[list[str]], term: str) -> list[list[str]]:
+            return [clause if term in clause else clause + [term] for clause in dnf]
+
+        # AND victory locations with $is_goal|<option_value>. Uses the
+        # explicit Goal-option mapping rather than victory_names.index() —
+        # the location-table order in locations.json isn't guaranteed to
+        # match Goal's option_* numeric values.
         if loc.get("victory"):
-            try:
-                gi = victory_names.index(loc["name"])
-            except ValueError:
-                gi = 0
-            own_dnf = [clause + [f"$is_goal|{gi}"] for clause in own_dnf]
+            gi = VICTORY_TO_GOAL_OPTION.get(loc["name"])
+            if gi is None:
+                try:
+                    gi = victory_names.index(loc["name"])
+                except ValueError:
+                    gi = 0
+            own_dnf = _and_term(own_dnf, f"$is_goal|{gi}")
+        # Festival% scope: locations the apworld removes when goal=festival
+        # get $is_goal|0 ANDed in, so they evaluate as unreachable when the
+        # connected slot has goal=1. Offline (no slot_data) defaults to
+        # OPTIONS.goal=0 so these stay visible as normal.
+        if location_out_of_festival_scope(loc):
+            own_dnf = _and_term(own_dnf, "$is_goal|0")
         rules = dnf_to_access_rules(own_dnf)
         section: dict[str, Any] = {"name": loc["name"], "item_count": 1}
         if rules:
@@ -1076,6 +1144,67 @@ def self_test() -> int:
     check("code multimoon",
           code_for("Sand Kingdom Multi-Moon") == "sand_kingdom_multi_moon",
           code_for("Sand Kingdom Multi-Moon"))
+
+    # festival% scope: out-of-scope regions
+    check("festival hides Snow",
+          location_out_of_festival_scope({"name": "Snow: X", "region": "Snow Kingdom"}))
+    check("festival hides Bowser's",
+          location_out_of_festival_scope({"name": "Bowser's: Y", "region": "Bowser's Kingdom"}))
+    check("festival hides Post-Metro",
+          location_out_of_festival_scope({"name": "Anything", "region": "Post-Metro"}))
+    # festival% scope: pre-Metro-Peace Metro/Night Metro moons stay
+    check("festival keeps Mechawiggler",
+          not location_out_of_festival_scope(
+              {"name": "Metro: New Donk City's Pest Problem", "region": "Metro Kingdom",
+               "category": ["Metro Kingdom"], "requires": "{OptOne(Sherm)}"}))
+    check("festival keeps Drummer",
+          not location_out_of_festival_scope(
+              {"name": "Metro: Drummer on Board!", "region": "Metro Kingdom",
+               "category": ["Metro Kingdom"], "requires": []}))
+    check("festival keeps the goal moon",
+          not location_out_of_festival_scope(
+              {"name": "Metro: A Traditional Festival!", "region": "Metro Kingdom",
+               "category": ["Metro Kingdom"],
+               "requires": "{PostTrumpeter()} and {OptOne(Manhole)}"}))
+    check("festival keeps non-peace Metro moon",
+          not location_out_of_festival_scope(
+              {"name": "Metro: Inside the Rotating Maze", "region": "Metro Kingdom",
+               "category": ["Metro Kingdom"], "requires": "{OptOne(Manhole)}"}))
+    check("festival keeps Night Metro moons",
+          not location_out_of_festival_scope(
+              {"name": "Metro: Inside an Iron Girder", "region": "Night Metro",
+               "category": ["Metro Kingdom"], "requires": []}))
+    # festival% scope: Metro Peace moons hidden — by category tag, by requires, or both
+    check("festival hides via category tag",
+          location_out_of_festival_scope(
+              {"name": "Metro: Hidden in the Scrap", "region": "Metro Kingdom",
+               "category": ["Metro Kingdom", "Metro Peace"], "requires": []}))
+    check("festival hides via MetroPeace requires",
+          location_out_of_festival_scope(
+              {"name": "Metro: Sewer Treasure", "region": "Metro Kingdom",
+               "category": ["Metro Kingdom"], "requires": "{MetroPeace()}"}))
+    # regex must require a CALL (open paren) and word boundary — guards
+    # against a hypothetical future MetroPeaceful()/PostMetroPeace()/etc.
+    check("festival does NOT false-match MetroPeaceful",
+          not _needs_metro_peace(
+              {"category": [], "requires": "{MetroPeaceful()}"}))
+    check("festival does NOT false-match PreMetroPeace string",
+          not _needs_metro_peace(
+              {"category": [], "requires": "PreMetroPeacefully"}))
+    check("festival matches MetroPeace with whitespace",
+          _needs_metro_peace(
+              {"category": [], "requires": "{MetroPeace ()}"}))
+    # festival% scope: pre-Metro untouched
+    check("festival keeps Cascade",
+          not location_out_of_festival_scope(
+              {"name": "Cascade: Our First Power Moon", "region": "Cascade Kingdom",
+               "category": ["Cascade Kingdom"], "requires": []}))
+
+    # Goal-option mapping: must match apworld __init__.py's GOAL_TO_VICTORY.
+    check("goal mapping mushroom=0",
+          VICTORY_TO_GOAL_OPTION["Arrive in the Mushroom Kingdom"] == 0)
+    check("goal mapping festival=1",
+          VICTORY_TO_GOAL_OPTION["Metro: A Traditional Festival!"] == 1)
 
     if failures:
         print("FAIL:", file=sys.stderr)

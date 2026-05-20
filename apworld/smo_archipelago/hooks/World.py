@@ -11,7 +11,7 @@ from ..Locations import SMOLocation
 from ..Data import game_table, item_table, location_table, region_table
 
 # These helper methods allow you to determine if an option has been set, or what its value is, for any player in the multiworld
-from ..Helpers import is_location_enabled
+from ..Helpers import is_location_enabled, get_option_value
 
 # calling logging.info("message") anywhere below in this file will output the message to both console and log file
 import logging
@@ -36,6 +36,25 @@ KINGDOM_MOON_GATES = {
     "Ruined":   3,
     "Bowser's": 8,
 }
+
+# Items dropped from the pool under the festival goal (Goal.option_festival).
+# Post-Metro kingdoms are emptied of locations in create_regions, so their
+# moon items have nowhere to land — adjust_filler_items would otherwise log
+# "more items than locations" and start randomly trimming. The 15 captures
+# below are exclusive to post-Metro kingdoms; the moon items cover every
+# kingdom past Metro in the regions.json chain.
+FESTIVAL_ITEMS_TO_DROP = frozenset({
+    "Snow Kingdom Power Moon", "Snow Kingdom Multi-Moon",
+    "Seaside Kingdom Power Moon", "Seaside Kingdom Multi-Moon",
+    "Luncheon Kingdom Power Moon", "Luncheon Kingdom Multi-Moon",
+    "Ruined Kingdom Power Moon", "Ruined Kingdom Multi-Moon",
+    "Bowser's Kingdom Power Moon", "Bowser's Kingdom Multi-Moon",
+    "Moon Kingdom Power Moon",
+    "Ty-foo", "Shiverian Racer", "Snow Cheep Cheep", "Gushen",
+    "Lava Bubble", "Volbonan", "Hammer Bro", "Meat", "Fire Piranha Plant",
+    "Pokio", "Jizo", "Bowser Statue", "Parabones", "Banzai Bill",
+    "Chargin' Chuck",
+})
 
 ########################################################################################
 ## Order of method calls when the world generates:
@@ -76,22 +95,15 @@ def after_create_regions(world: World, multiworld: MultiWorld, player: int):
     if hasattr(multiworld, "clear_location_cache"):
         multiworld.clear_location_cache()
 
-# The item pool before starting items are processed, in case you want to see the raw item pool at that stage
-def before_create_items_starting(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
-    return item_pool
+def _demote_surplus_kingdom_moons(item_pool: list) -> None:
+    """Demote surplus per-kingdom progression moons to useful in place.
 
-# The item pool after starting items are processed but before filler is added, in case you want to see the raw item pool at that stage
-def before_create_items_filler(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
-    return item_pool
-
-# The complete item pool prior to being set for generation is provided here, in case you want to make changes to it
-def after_create_items(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
-    # Items.json marks every kingdom moon as `progression: true`, but each
-    # gated kingdom's KingdomMoons(K, N) rule only needs N effective moons
-    # reachable. The surplus contributes nothing to reachability but blocks
-    # adjust_filler_items from trimming the pool when toggles drop the
-    # location count -- it pops fillers/traps/useful but never progression.
-    # Demote the surplus to useful so disabling-toggles work gracefully.
+    Items.json marks every kingdom moon as `progression: true`, but each
+    gated kingdom's KingdomMoons(K, N) rule only needs N effective moons
+    reachable. The surplus contributes nothing to reachability but blocks
+    adjust_filler_items from trimming the pool when toggles drop the
+    location count — it pops fillers/traps/useful but never progression.
+    """
     for kingdom, threshold in KINGDOM_MOON_GATES.items():
         pm_name = f"{kingdom} Kingdom Power Moon"
         mm_name = f"{kingdom} Kingdom Multi-Moon"
@@ -106,6 +118,37 @@ def after_create_items(item_pool: list, world: World, multiworld: MultiWorld, pl
             it.classification = ItemClassification.useful
         for it in prog_pms[pms_kept:]:
             it.classification = ItemClassification.useful
+
+
+# The item pool before starting items are processed, in case you want to see the raw item pool at that stage
+def before_create_items_starting(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
+    # Under the festival goal, post-Metro locations are removed in
+    # create_regions, so post-Metro kingdoms' moons and the 15 captures
+    # exclusive to those kingdoms have nowhere to land. Drop them now.
+    #
+    # Metro Kingdom Power/Multi-Moons also get reclassified to filler:
+    # festival is reached from inside Metro, so nothing downstream consumes
+    # a `KingdomMoons(Metro, N)` gate, and leaving them as progression
+    # forces adjust_filler_items to leave the surplus in the pool (it pops
+    # filler/trap/useful, never progression). With them as filler, the
+    # pool trims down cleanly to the smaller location count.
+    if get_option_value(multiworld, player, "goal") == 1:
+        item_pool[:] = [it for it in item_pool if it.name not in FESTIVAL_ITEMS_TO_DROP]
+        for it in item_pool:
+            if it.name in ("Metro Kingdom Power Moon", "Metro Kingdom Multi-Moon"):
+                it.classification = ItemClassification.filler
+    return item_pool
+
+# The item pool after starting items are processed but before filler is added, in case you want to see the raw item pool at that stage
+def before_create_items_filler(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
+    return item_pool
+
+# The complete item pool prior to being set for generation is provided here, in case you want to make changes to it
+def after_create_items(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
+    # See _demote_surplus_kingdom_moons for the why. Runs in every mode so
+    # the default goal still benefits from the demotion (which is what the
+    # `all_off` peace-toggle scenarios rely on).
+    _demote_surplus_kingdom_moons(item_pool)
     return item_pool
 
 # Called before rules for accessing regions and locations are created.

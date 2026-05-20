@@ -89,6 +89,23 @@ def _kingdom_sort_key(k: str) -> tuple[int, str]:
     return (_KINGDOM_ORDER_INDEX.get(k, len(_KINGDOM_VISIT_ORDER)), k)
 
 
+# Kingdoms hidden from the Odyssey tab under the festival goal — Metro
+# itself plus every kingdom downstream of it in the linear-chain order.
+# The festival% player completes their run inside Metro and shouldn't be
+# leaving via the Odyssey; suppressing the rows keeps the UI from
+# advertising that progression. AP items are unaffected — this is purely
+# a display filter (the bridge still tracks moons_received_by_kingdom for
+# these kingdoms in case the player ever re-runs against a non-festival
+# seed without restarting the client).
+#
+# Keep in sync with context._FESTIVAL_ZEROED_KINGDOMS (which clamps the
+# wire-protocol outstanding count to 0 for the same set so the Switch's
+# M7 Path A gate stays closed).
+_HIDDEN_KINGDOMS_FESTIVAL = frozenset({
+    "Metro", "Snow", "Seaside", "Luncheon", "Ruined", "Bowser's", "Moon",
+})
+
+
 # Register Kivy's bundled monospace font under a short alias so the
 # Odyssey tab can use [font=RobotoMono] markup to line up the per-kingdom
 # moon-count table. We resolve the .ttf via kivy_data_dir directly
@@ -304,6 +321,8 @@ def _format_odyssey(ctx: "SMOContext") -> str:
     parts: list[str] = []
     parts.append("[b]Moons by kingdom[/b]    [i]earned / needed to exit[/i]")
     all_k = sorted(set(moons_recv) | set(exit_thresholds), key=_kingdom_sort_key)
+    if ctx.is_festival_goal():
+        all_k = [k for k in all_k if k not in _HIDDEN_KINGDOMS_FESTIVAL]
     if all_k:
         # Render the table in RobotoMono with width-padded columns so the
         # name colons, earned counts, and exit thresholds line up under

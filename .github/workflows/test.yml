@@ -100,6 +100,33 @@ jobs:
             apworld/smo_archipelago/tests/test_ap_loopback.py \
             apworld/smo_archipelago/tests/test_apworld_generation.py
 
+  poptracker-pack:
+    name: PopTracker pack generator
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          submodules: false
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+
+      # Pack generator is stdlib-only (parser + translator + region-prereq
+      # flatten + access-rule emitter). Self-tests are 30+ asserts that
+      # cover the requires-string mini-language, festival% scope detection
+      # (incl. MetroPeace regex), Goal-option mapping, kingdom-prereq
+      # flattening, dnf dedupe, and code_for naming.
+      - name: Run pack self-tests
+        run: python scripts/build_poptracker_pack.py --self-test
+
+      # Build the full pack against the actual apworld data — catches any
+      # bug in the requires-parser/translator that the self-tests don't
+      # exercise (e.g. an unhandled syntax in a new location's `requires`).
+      - name: Build pack against current apworld data
+        run: python scripts/build_poptracker_pack.py
+
   cpp-host:
     name: Switch-mod host tests
     runs-on: ubuntu-latest
