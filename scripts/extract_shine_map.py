@@ -95,8 +95,12 @@ def _bootstrap_and_reexec() -> None:
               file=sys.stderr, flush=True)
         # No --quiet: pip's "Collecting / Downloading / Installing" lines are
         # the only signal that anything is happening during the install.
+        # pycryptodome covers the title.keys-derivation fallback in
+        # extract_romfs (decrypt the .tik's titlekey block with titlekek_XX
+        # from prod.keys); cheap to install up front so the fallback works
+        # without a second pip round-trip mid-extract.
         subprocess.run(
-            [str(VENV_PY), "-m", "pip", "install", "oead"],
+            [str(VENV_PY), "-m", "pip", "install", "oead", "pycryptodome"],
             check=True,
         )
         print(f"[bootstrap] venv ready; relaunching under {VENV_PY}",
@@ -281,6 +285,129 @@ def _decode_msbt_text(raw: bytes, encoding_byte: int, endian: str) -> str:
     return bytes(out).decode(codec, errors="replace").rstrip("\x00").rstrip()
 
 
+# -------- title.keys derivation -------------------------------------------
+#
+# hactool's "[WARN] Unable to match rights id to titlekey. Update title.keys?"
+# fires when the user has prod.keys but not title.keys — common, because
+# title.keys is per-game and most users never populate it. The NSP's .tik
+# file already contains the encrypted titlekey, and prod.keys has the
+# titlekek_XX needed to decrypt it; we derive the plaintext titlekey
+# ourselves and pass it via hactool's `--titlekey=` flag so we don't need
+# to touch the user's keys directory.
+#
+# Caveat: this only works for COMMON tickets (TitleKeyType=0). Personalized
+# tickets (TitleKeyType=1) bind the titlekey to the dumping console's eticket
+# RSA key and can't be decrypted from prod.keys — we detect and error
+# cleanly in that case so the user knows to re-dump.
+
+
+def _parse_keys_file(path: Path) -> dict[str, bytes]:
+    """Parse a Switch keys file (prod.keys / title.keys / etc.) into {name_lower: bytes}.
+
+    Tolerates comments (# or ;), blank lines, and malformed hex by skipping.
+    Returns an empty dict if the file doesn't exist or isn't readable.
+    """
+    out: dict[str, bytes] = {}
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return out
+    for raw in text.splitlines():
+        line = raw.split(";", 1)[0].split("#", 1)[0].strip()
+        if "=" not in line:
+            continue
+        k, _, v = line.partition("=")
+        try:
+            out[k.strip().lower()] = bytes.fromhex(v.strip())
+        except ValueError:
+            continue
+    return out
+
+
+def _read_ticket(tik_path: Path) -> tuple[bytes, bytes, int, int]:
+    """Parse a Switch ticket (signature type RSA-2048-SHA256, 0x2C0 bytes).
+
+    Returns (rights_id, encrypted_titlekey, titlekek_index, titlekey_type).
+    Offsets per Switchbrew (https://switchbrew.org/wiki/Ticket) measured
+    from the start of the file — the 0x140-byte signature block is included
+    in these offsets:
+      0x180  TitleKeyBlock (0x100 bytes; first 0x10 = encrypted titlekey)
+      0x281  TitleKeyType (0 = common, 1 = personalized)
+      0x285  CommonKeyVersion
+      0x2A0  RightsId (0x10 bytes; last byte = NCA crypto_type / "master key rev")
+
+    `titlekek_index` is what the caller looks up as `titlekek_XX` in prod.keys.
+    NCA crypto_type maps to titlekek index by `max(c, 1) - 1` — values 0 and 1
+    both share master key 0 (firmware 1.0.0 - 3.0.0), 2 -> master key 1
+    (firmware 3.0.0 - 3.0.1 boundary, sometimes), 3 -> master key 2
+    (firmware 3.0.1 - 3.0.2, e.g. SMO 1.0.0). This matches hactool's
+    `find_titlekey` and the NCA header's reported "Master Key Revision".
+    Belt-and-braces against malformed tickets: take the max of rights_id[15]
+    and CommonKeyVersion before applying the off-by-one.
+    """
+    data = tik_path.read_bytes()
+    if len(data) < 0x2B0:
+        raise ValueError(f"{tik_path.name} too small ({len(data)} bytes)")
+    enc_key = data[0x180:0x190]
+    titlekey_type = data[0x281]
+    crypto_type = max(data[0x2AF], data[0x285])
+    titlekek_index = crypto_type - 1 if crypto_type > 0 else 0
+    rights_id = data[0x2A0:0x2B0]
+    return rights_id, enc_key, titlekek_index, titlekey_type
+
+
+def _ensure_pycryptodome() -> None:
+    """Make `from Crypto.Cipher import AES` importable in the current venv.
+
+    pycryptodome is added to the venv bootstrap up top, but already-
+    bootstrapped venvs from before this code landed won't have it — install
+    on demand so the fallback heals itself silently.
+    """
+    try:
+        from Crypto.Cipher import AES  # noqa: F401
+        return
+    except ImportError:
+        pass
+    print("[bootstrap] installing pycryptodome (one-time, ~5s)",
+          file=sys.stderr, flush=True)
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "pycryptodome"],
+        check=True,
+    )
+
+
+def _derive_title_key(tik_path: Path, keys_path: Path) -> tuple[str, str]:
+    """Return (rights_id_hex, titlekey_hex) by decrypting the .tik with prod.keys.
+
+    Raises with an actionable message if the ticket is personalized or
+    prod.keys is missing the relevant titlekek_XX.
+    """
+    rights_id, enc_key, key_gen, tk_type = _read_ticket(tik_path)
+    if tk_type != 0:
+        raise RuntimeError(
+            f"{tik_path.name} is a personalized ticket (TitleKeyType=0x{tk_type:02x}); "
+            "its title key is bound to the dumping console's eticket RSA key and "
+            "cannot be decrypted from prod.keys. Re-dump from a clean retail source "
+            "(NXDumpTool with the 'common ticket' option, or a known-good NSP)."
+        )
+    keys = _parse_keys_file(keys_path)
+    titlekek_name = f"titlekek_{key_gen:02x}"
+    titlekek = keys.get(titlekek_name)
+    if titlekek is None:
+        raise RuntimeError(
+            f"{keys_path} is missing {titlekek_name} (master key revision 0x{key_gen:02x}). "
+            "Update prod.keys to a complete current set."
+        )
+    if len(titlekek) != 16:
+        raise RuntimeError(
+            f"{titlekek_name} is {len(titlekek)} bytes in {keys_path}, expected 16"
+        )
+    _ensure_pycryptodome()
+    from Crypto.Cipher import AES  # type: ignore
+    title_key = AES.new(titlekek, AES.MODE_ECB).decrypt(enc_key)
+    return rights_id.hex(), title_key.hex()
+
+
 # -------- hactool: NSP -> RomFS -------------------------------------------
 
 def resolve_hactool(arg: Path | None) -> Path:
@@ -300,11 +427,46 @@ def resolve_hactool(arg: Path | None) -> Path:
 
 
 def _run_hactool(hactool: Path, keys: Path, *args: str) -> None:
+    # hactool exits 0 even when it failed to decrypt: a missing titlekey
+    # produces "[WARN] Unable to match rights id to titlekey. Update
+    # title.keys?" followed by "Error: section 0 is corrupted!" lines, but
+    # the process still returns 0 and we'd happily continue into a romfs
+    # walk that then dies with FileNotFoundError on ShineInfo.szs. Capture
+    # output line-by-line, forward it to our stderr (so the wizard log
+    # keeps showing the live hactool stream), and treat the WARN or any
+    # "Error:" line as a hard failure.
     cmd = [str(hactool), "--disablekeywarns", "-k", str(keys), *args]
-    print(f"[hactool] {' '.join(cmd)}", file=sys.stderr)
-    proc = subprocess.run(cmd)
-    if proc.returncode != 0:
-        sys.exit(f"ERROR: hactool exited {proc.returncode}")
+    print(f"[hactool] {' '.join(cmd)}", file=sys.stderr, flush=True)
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    titlekey_missing = False
+    error_lines: list[str] = []
+    assert proc.stdout is not None
+    for raw in proc.stdout:
+        line = raw.rstrip("\r\n")
+        print(line, file=sys.stderr, flush=True)
+        if "Unable to match rights id to titlekey" in line:
+            titlekey_missing = True
+        if line.startswith("Error:"):
+            error_lines.append(line)
+    rc = proc.wait()
+    if titlekey_missing:
+        sys.exit(
+            "ERROR: hactool could not decrypt the NSP — your title.keys is missing\n"
+            "the entry for SMO's rights ID (01000000000100000000000000000003).\n"
+            f"Update title.keys (alongside {keys}) with the Super Mario Odyssey\n"
+            "titlekey and rerun the extract."
+        )
+    if error_lines:
+        joined = "\n  ".join(error_lines)
+        sys.exit(f"ERROR: hactool reported failures while extracting:\n  {joined}")
+    if rc != 0:
+        sys.exit(f"ERROR: hactool exited {rc}")
 
 
 def extract_romfs(nsp: Path, keys: Path, hactool: Path, romfs_dir: Path) -> None:
@@ -321,13 +483,42 @@ def extract_romfs(nsp: Path, keys: Path, hactool: Path, romfs_dir: Path) -> None
     romfs_dir.mkdir(parents=True, exist_ok=True)
 
     _run_hactool(hactool, keys, "-t", "pfs0", f"--pfs0dir={pfs0_dir}", str(nsp))
+
+    # Derive the title key from the .tik so we don't depend on a populated
+    # title.keys. We always do this (rather than only as a fallback after a
+    # failed hactool run) because hactool exits 0 even when titlekey lookup
+    # silently fails — passing --titlekey= explicitly is the only reliable
+    # way to know the NCA call will actually decrypt.
+    titlekey_args: list[str] = []
+    tiks = sorted(pfs0_dir.glob("*.tik"))
+    if tiks:
+        try:
+            rights_id_hex, title_key_hex = _derive_title_key(tiks[0], keys)
+            print(
+                f"[titlekey] derived title key for rights id {rights_id_hex} "
+                f"from {tiks[0].name}",
+                file=sys.stderr, flush=True,
+            )
+            titlekey_args = [f"--titlekey={title_key_hex}"]
+        except Exception as e:
+            # Don't fail hard yet — fall through to the NCA call and let
+            # _run_hactool's WARN/Error detection surface the diagnostic.
+            # We still want this line in the log so the user can see why
+            # the derivation didn't help.
+            print(f"[titlekey] could not derive ({e}); falling back to title.keys",
+                  file=sys.stderr, flush=True)
+    else:
+        print(f"[titlekey] no .tik in {pfs0_dir}; falling back to title.keys",
+              file=sys.stderr, flush=True)
+
     ncas = sorted(pfs0_dir.glob("*.nca"), key=lambda p: p.stat().st_size, reverse=True)
     if not ncas:
         sys.exit(f"ERROR: no .nca produced in {pfs0_dir}")
     program_nca = ncas[0]
     print(f"[romfs] program NCA: {program_nca.name} ({program_nca.stat().st_size/(1<<30):.2f} GB)",
           file=sys.stderr)
-    _run_hactool(hactool, keys, "-t", "nca", f"--romfsdir={romfs_dir}", str(program_nca))
+    _run_hactool(hactool, keys, "-t", "nca", f"--romfsdir={romfs_dir}",
+                 *titlekey_args, str(program_nca))
 
     shutil.rmtree(pfs0_dir, ignore_errors=True)
 
