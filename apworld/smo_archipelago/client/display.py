@@ -124,19 +124,22 @@ def format_moon_label(
 
     The convention:
       * routes to me  → "Got <name>!"
-      * routes to other → "Sent <name> -> <slot>"
+      * routes to other → "Sent <name> to <slot>"
 
     Recipient and own-slot are compared as strings. When `me_slot` is None
     (no auth yet, shouldn't happen by the time a moon is collected) the
     "routes to me" check is skipped — anything that's not labelled as
     routing to me reads as outgoing.
 
-    The arrow is the ASCII `->` (not U+2192) because SMO's stage-clear
-    font doesn't ship the Unicode arrow glyph; the fallback is a tofu box.
+    Why the word `to` and not an arrow: SMO's stage-clear font ships only
+    the glyph subset needed for vanilla scenario names (letters, spaces,
+    apostrophes, hyphens). U+2192 (→) renders as a tofu box, and so does
+    ASCII `>` — the missing-glyph fallback in this font reads as a
+    question mark. Letters are the safe choice.
     """
     body = _shorten_item_name(item)
     if me_slot is not None and recipient_slot == me_slot:
         text = f"Got {body}!"
     else:
-        text = f"Sent {body} -> {recipient_slot}"
+        text = f"Sent {body} to {recipient_slot}"
     return truncate_utf8(text, max_bytes)
