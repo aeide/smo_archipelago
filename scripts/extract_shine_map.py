@@ -23,8 +23,9 @@ Prereqs the user must have:
   - hactool on PATH or at C:/Users/maxwe/Desktop/Switch/hactool.exe
   - prod.keys at C:/Users/maxwe/.switch/prod.keys (override with --keys)
   - SMO 1.0.0 NSP **or** XCI file (override location with --nsp / --xci)
-  - For XCI dumps: title.keys at C:/Users/maxwe/.switch/title.keys with the
-    SMO entry. NSPs ship their own .tik so this isn't needed.
+  - For XCI dumps: title.keys *alongside* prod.keys (i.e. derived from
+    --keys's parent dir) with the SMO entry. Override the auto-derived
+    path with --titlekeys. NSPs ship their own .tik so this isn't needed.
 """
 from __future__ import annotations
 
@@ -418,7 +419,9 @@ def resolve_hactool(arg: Path | None) -> Path:
     )
 
 
-def _run_hactool(hactool: Path, keys: Path, *args: str) -> None:
+def _run_hactool(
+    hactool: Path, keys: Path, *args: str, title_keys: Path | None = None,
+) -> None:
     # hactool exits 0 even when it failed to decrypt: a missing titlekey
     # produces "[WARN] Unable to match rights id to titlekey. Update
     # title.keys?" followed by "Error: section 0 is corrupted!" lines, but
@@ -427,7 +430,16 @@ def _run_hactool(hactool: Path, keys: Path, *args: str) -> None:
     # output line-by-line, forward it to our stderr (so the wizard log
     # keeps showing the live hactool stream), and treat the WARN or any
     # "Error:" line as a hard failure.
-    cmd = [str(hactool), "--disablekeywarns", "-k", str(keys), *args]
+    #
+    # `title_keys`: if given AND the file exists, pass `--titlekeys=` to
+    # hactool. Without this, hactool defaults the title-keys lookup to
+    # `$HOME/.switch/title.keys` regardless of the `-k` path — surprising
+    # for users who keep prod.keys elsewhere and reasonably expect their
+    # title.keys to live next to it.
+    cmd = [str(hactool), "--disablekeywarns", "-k", str(keys)]
+    if title_keys is not None and title_keys.is_file():
+        cmd.append(f"--titlekeys={title_keys}")
+    cmd.extend(args)
     print(f"[hactool] {' '.join(cmd)}", file=sys.stderr, flush=True)
     proc = subprocess.Popen(
         cmd,
@@ -448,13 +460,15 @@ def _run_hactool(hactool: Path, keys: Path, *args: str) -> None:
             error_lines.append(line)
     rc = proc.wait()
     if titlekey_missing:
+        expected = title_keys if title_keys is not None else keys.parent / "title.keys"
         sys.exit(
             "ERROR: hactool could not decrypt the dump — your title.keys is\n"
             "missing the entry for SMO's rights ID\n"
             "(01000000000100000000000000000003). NSPs ship their own ticket so\n"
             "this typically only happens with XCI cartridge dumps. Update\n"
-            f"title.keys (alongside {keys}) with the Super Mario Odyssey\n"
-            "titlekey and rerun the extract."
+            f"title.keys at {expected} (derived from --keys; override with\n"
+            "--titlekeys) with the Super Mario Odyssey titlekey and rerun\n"
+            "the extract."
         )
     if error_lines:
         joined = "\n  ".join(error_lines)
@@ -465,6 +479,7 @@ def _run_hactool(hactool: Path, keys: Path, *args: str) -> None:
 
 def extract_romfs(
     dump: Path, dump_kind: str, keys: Path, hactool: Path, romfs_dir: Path,
+    *, title_keys: Path | None = None,
 ) -> None:
     """Extract NSP/XCI -> program NCA -> RomFS at `romfs_dir`. Idempotent.
 
@@ -494,12 +509,14 @@ def extract_romfs(
     romfs_dir.mkdir(parents=True, exist_ok=True)
 
     if dump_kind == "nsp":
-        _run_hactool(hactool, keys, "-t", "pfs0", f"--pfs0dir={work_dir}", str(dump))
+        _run_hactool(hactool, keys, "-t", "pfs0", f"--pfs0dir={work_dir}", str(dump),
+                     title_keys=title_keys)
     else:  # xci
         # `--securedir=` is the "actual game NCAs" partition. The XCI also
         # has a "normal" partition (mostly metadata) and an optional
         # "update" partition (FW deltas); we don't need either.
-        _run_hactool(hactool, keys, "-t", "xci", f"--securedir={work_dir}", str(dump))
+        _run_hactool(hactool, keys, "-t", "xci", f"--securedir={work_dir}", str(dump),
+                     title_keys=title_keys)
 
     # Derive the title key from the .tik so we don't depend on a populated
     # title.keys. We always do this (rather than only as a fallback after a
@@ -541,7 +558,7 @@ def extract_romfs(
     print(f"[romfs] program NCA: {program_nca.name} ({program_nca.stat().st_size/(1<<30):.2f} GB)",
           file=sys.stderr)
     _run_hactool(hactool, keys, "-t", "nca", f"--romfsdir={romfs_dir}",
-                 *titlekey_args, str(program_nca))
+                 *titlekey_args, str(program_nca), title_keys=title_keys)
 
     shutil.rmtree(work_dir, ignore_errors=True)
 
@@ -817,6 +834,11 @@ def main(argv: list[str] | None = None) -> int:
                          "XCIs do not).")
     ap.add_argument("--keys", type=Path, default=DEFAULT_KEYS,
                     help=f"prod.keys (default: {DEFAULT_KEYS})")
+    ap.add_argument("--titlekeys", type=Path, default=None,
+                    help="title.keys (default: derived from --keys's parent "
+                         "dir as <keys-parent>/title.keys, matching hactool's "
+                         "convention that prod.keys + title.keys live "
+                         "together)")
     ap.add_argument("--hactool", type=Path, default=None,
                     help=f"hactool path (default: PATH, then {DEFAULT_HACTOOL_FALLBACK})")
     ap.add_argument("--romfs-cache", type=Path, default=DEFAULT_ROMFS_CACHE,
@@ -870,7 +892,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[extract] dump: kind={dump_kind} path={dump_path}",
               file=sys.stderr, flush=True)
         hactool = resolve_hactool(args.hactool)
-        extract_romfs(dump_path, dump_kind, args.keys, hactool, args.romfs_cache)
+        # Default title.keys to the same directory as prod.keys — that's
+        # where Lockpick_RCM drops both in a single run, and where users
+        # who relocate prod.keys typically expect title.keys to live too.
+        # hactool itself defaults to $HOME/.switch/title.keys regardless
+        # of -k, which silently breaks XCI decode when --keys points
+        # elsewhere; passing --titlekeys= explicitly closes that gap.
+        title_keys = args.titlekeys if args.titlekeys is not None \
+            else args.keys.parent / "title.keys"
+        extract_romfs(dump_path, dump_kind, args.keys, hactool, args.romfs_cache,
+                      title_keys=title_keys)
         romfs = args.romfs_cache
 
     resolved, review = extract(romfs)
