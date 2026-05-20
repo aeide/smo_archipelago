@@ -1,8 +1,18 @@
 // Spicy Meatball Overdrive — Hakkun edition entry point.
 //
-// Phase 1: empty hkMain — proves the toolchain produces a loadable .nso.
-// Phase 3 adds the AP socket pool init. Phase 4 adds the 26 trampoline + 1
-// inline hook installs. This file is intentionally minimal during phases 1-2.
+// Phase 3b in progress: installing trampoline hooks incrementally. Each
+// installXxx call below pulls a HkTrampoline + lambda definition from a
+// hooks/*.cpp into the link (gc-sections drops uninstalled trampolines, so
+// an installAtSym call here is what keeps the hook live).
+
+#include "util/Log.hpp"
+
+namespace smoap::hooks {
+void installScenarioFlagHook();
+}  // namespace smoap::hooks
 
 extern "C" void hkMain() {
+    SMOAP_LOG_INFO("=== hkMain START ===");
+    smoap::hooks::installScenarioFlagHook();
+    SMOAP_LOG_INFO("=== hkMain END ===");
 }
