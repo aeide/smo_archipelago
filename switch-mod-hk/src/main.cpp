@@ -13,11 +13,13 @@ void installMoonGetHook();
 void installDeathHook();
 void installShineNumGetHook();
 void installShineNumByWorldGetHook();
+void installAddHackDictionaryHook();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
 void installDepositKingdomLookupSymbol();
 void installPayShineSnapshotSymbol();
+void installCaptureGrantSymbols();
 }  // namespace smoap::game
 
 extern "C" void hkMain() {
@@ -33,6 +35,11 @@ extern "C" void hkMain() {
     smoap::hooks::installDeathHook();
     smoap::hooks::installShineNumGetHook();
     smoap::hooks::installShineNumByWorldGetHook();
+
+    SMOAP_LOG_INFO("resolving M6-phase-B capture-grant symbols");
+    smoap::game::installCaptureGrantSymbols();
+    SMOAP_LOG_INFO("installing AddHackDictionaryHook (Capture List AP gate)");
+    smoap::hooks::installAddHackDictionaryHook();
 
     SMOAP_LOG_INFO("=== hkMain END ===");
 }
