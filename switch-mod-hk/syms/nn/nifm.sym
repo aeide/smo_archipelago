@@ -1,0 +1,9 @@
+// nn::nifm — Network Interface Manager. ApClient calls these on the frame
+// thread inside GameSystemInit (post-Orig) to bring up the data interface
+// before the worker spawns. Sail resolves them against main.nso's dynsym.
+
+@smo:100
+
+_ZN2nn4nifm10InitializeEv
+_ZN2nn4nifm27SubmitNetworkRequestAndWaitEv
+_ZN2nn4nifm18IsNetworkAvailableEv

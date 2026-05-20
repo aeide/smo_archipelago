@@ -6,6 +6,28 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(config/config.cmake)
 
+# ---------------------------------------------------------------------------
+# Version + bridge defines (mirror switch-mod/CMakeLists.txt). The strings
+# land verbatim in HELLO + log lines so the bridge can correlate sessions.
+# Override per-machine at configure time:
+#   cmake -DBRIDGE_HOST=192.168.x.x ...
+# ---------------------------------------------------------------------------
+set(SMO_VERSION            "1.0.0"         CACHE STRING "Target SMO version")
+set(SMO_AP_MOD_VERSION     "0.1.0"         CACHE STRING "Module version baked into HELLO")
+set(BRIDGE_HOST            "192.168.1.187" CACHE STRING "PC LAN IP for the bridge")
+set(BRIDGE_PORT            17777           CACHE STRING "Bridge TCP port")
+set(BRIDGE_RETRY_MS        3000            CACHE STRING "Reconnect backoff seed (ms)")
+set(BRIDGE_RECV_TIMEOUT_MS 200             CACHE STRING "Per-iteration recv timeout (ms)")
+
+add_compile_definitions(
+    SMO_VERSION_STRING="${SMO_VERSION}"
+    SMO_AP_MOD_VERSION_STRING="${SMO_AP_MOD_VERSION}"
+    BRIDGE_HOST_STRING="${BRIDGE_HOST}"
+    BRIDGE_PORT_VALUE=${BRIDGE_PORT}
+    BRIDGE_RETRY_MS_VALUE=${BRIDGE_RETRY_MS}
+    BRIDGE_RECV_TIMEOUT_MS_VALUE=${BRIDGE_RECV_TIMEOUT_MS}
+)
+
 file(GLOB_RECURSE SOURCES_ASM ${PROJECT_SOURCE_DIR}/src/*.S)
 file(GLOB_RECURSE SOURCES_C ${PROJECT_SOURCE_DIR}/src/*.c)
 file(GLOB_RECURSE SOURCES_CXX ${PROJECT_SOURCE_DIR}/src/*.cpp)
