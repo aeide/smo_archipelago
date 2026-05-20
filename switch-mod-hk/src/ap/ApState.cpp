@@ -10,6 +10,8 @@
 #include <hk/svc/api.h>
 #include <hk/svc/cpu.h>
 
+#include "../game/KingdomUnlock.hpp"
+
 namespace smoap::ap {
 
 ApState& ApState::instance() {
@@ -49,6 +51,40 @@ std::uint64_t ApState::hashCheck(const Check& c) {
     h *= 0x100000001b3ULL;
     mix(c.hack_name);
     return h;
+}
+
+namespace {
+
+// Minimal layout mirror — same shape as AddPayShineHook's local. Keeps the
+// game-side header bleed contained to one .cpp.
+struct GameDataHolderAccessor { void* mData; };
+using GetPayShineNumFn = int (*)(GameDataHolderAccessor, int);
+
+}  // namespace
+
+bool ApState::buildPaySnapshot(PendingPaySnapshot& out) const {
+    void* holder = game_data_holder_cache.load(std::memory_order_relaxed);
+    if (!holder || !get_pay_shine_num_fn) return false;
+    auto fn = reinterpret_cast<GetPayShineNumFn>(get_pay_shine_num_fn);
+    GameDataHolderAccessor acc{holder};
+    // Iterate by kingdom BIT and resolve the matching worldId. Composition
+    // (bit → short name → worldId) honors the Sea↔Snow swap documented on
+    // kingdomBitForWorldId.
+    for (int bit = 0; bit < 17; ++bit) {
+        const char* name = smoap::game::kingdomForBit(static_cast<std::uint8_t>(bit));
+        if (!name || !*name) {
+            out.totals[bit] = 0;
+            continue;
+        }
+        const int world_id = smoap::game::worldIdFromKingdomShort(name);
+        if (world_id < 0) {
+            out.totals[bit] = 0;
+            continue;
+        }
+        const int n = fn(acc, world_id);
+        out.totals[bit] = (n < 0) ? 0 : n;
+    }
+    return true;
 }
 
 }  // namespace smoap::ap

@@ -14,6 +14,10 @@ void installDeathHook();
 void installShineNumGetHook();
 void installShineNumByWorldGetHook();
 void installAddHackDictionaryHook();
+void installAddPayShineHook();
+void installAddPayShineAllHook();
+void installCaptureStartHook();
+void tickPendingUncapture();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
@@ -40,6 +44,13 @@ extern "C" void hkMain() {
     smoap::game::installCaptureGrantSymbols();
     SMOAP_LOG_INFO("installing AddHackDictionaryHook (Capture List AP gate)");
     smoap::hooks::installAddHackDictionaryHook();
+
+    SMOAP_LOG_INFO("installing M6-phase-D deposit hooks (addPayShine + addPayShineCurrentAll)");
+    smoap::hooks::installAddPayShineHook();
+    smoap::hooks::installAddPayShineAllHook();
+
+    SMOAP_LOG_INFO("installing CaptureStartHook (capture lock + AP check)");
+    smoap::hooks::installCaptureStartHook();
 
     SMOAP_LOG_INFO("=== hkMain END ===");
 }
