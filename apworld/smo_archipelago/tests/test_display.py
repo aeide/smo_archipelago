@@ -68,7 +68,7 @@ def test_format_outgoing_kingdomed_moon():
     # test_format_long_kingdom_long_recipient_still_fits below.
     item = _moon("Cap Kingdom Power Moon", "Cap", "Power Moon")
     text = format_moon_label(item, recipient_slot="P3", me_slot="Mario")
-    assert text == "Sent Cap Power Moon -> P3"
+    assert text == "Sent Cap Power Moon to P3"
 
 
 def test_format_incoming_kingdomed_moon():
@@ -92,7 +92,7 @@ def test_format_multi_moon_carries_kingdom():
 def test_format_capture_routed_to_other():
     item = ClassifiedItem(ItemKind.CAPTURE, "Goomba", cap="Goomba")
     text = format_moon_label(item, recipient_slot="Slot2", me_slot="Mario")
-    assert text == "Sent Goomba -> Slot2"
+    assert text == "Sent Goomba to Slot2"
 
 
 def test_format_long_kingdom_long_recipient_still_fits():
