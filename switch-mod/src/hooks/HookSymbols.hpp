@@ -322,15 +322,47 @@ inline constexpr const char* kRsIsActiveCapMessage =
 // M-color — per-shine palette override (AP classification -> moon color).
 // =============================================================================
 //
-// Implemented as inline patches at 4 BL call sites inside Shine::init
-// (offsets 0x1cdce4 / 0x1cdd3c / 0x1cddcc / 0x1cde24 on 1.0.0). See
-// hooks/ShineAppearanceHook.cpp. No symbol lookup needed.
+// Implemented as a trampoline on Shine::init in hooks/ShineAppearanceHook.cpp.
+// After Orig finishes the actor's model + material setup, we write the
+// AP-classification tint directly into the body material's color slots
+// via the SDK helpers below.
 //
-// The patched BLs target rs::setStageShineAnimFrame(al::LiveActor*,
-// const char*, s32, bool) — we don't hook it, we just substitute the color
-// arg right before the BL fires. Earlier attempts to trampoline-hook that
-// symbol directly crashed because it's also called from ShineTowerRocket
-// (and other non-Shine actors) where Shine-class field offsets aren't valid.
+// Earlier approach (W2 substitution at 4 BL sites inside Shine::init
+// targeting rs::setStageShineAnimFrame) was abandoned 2026-05-20: that
+// path only animates the `Color_fcl` emission/glow matanim, which can't
+// produce per-classification distinct body colors no matter what frame
+// is selected. The material-parameter override below bypasses the
+// matanim entirely.
+
+// Shine::init — the function we trampoline.
+inline constexpr const char* kShineInit =
+    "_ZN5Shine4initERKN2al13ActorInitInfoE";
+
+// al::setMaterialProgrammable(LiveActor*) — toggles the actor's materials
+// from "stage-anim driven" to "code-driven". Precondition for runtime
+// parameter writes.
+inline constexpr const char* kAlSetMaterialProgrammable =
+    "_ZN2al23setMaterialProgrammableEPNS_9LiveActorE";
+
+// al::setModelMaterialParameterRgba(const LiveActor*, const char* mat,
+//                                   const char* param, const sead::Color4f&)
+// Writes an RGBA color directly into a named shader parameter on a named
+// material. Same family lunakit uses for Puppet outfit recolor.
+inline constexpr const char* kAlSetModelMaterialParameterRgba =
+    "_ZN2al29setModelMaterialParameterRgbaEPKNS_9LiveActorEPKcS4_RKN4sead7Color4fE";
+
+// al::setModelMaterialParameterF32(const LiveActor*, const char* mat,
+//                                  const char* param, float value)
+// Used to flip `enable_<X>_mul_color` shader gates that Nintendo's
+// shaders use to enable/disable the corresponding color slot.
+inline constexpr const char* kAlSetModelMaterialParameterF32 =
+    "_ZN2al28setModelMaterialParameterF32EPKNS_9LiveActorEPKcS4_f";
+
+// al::isExistMaterial(const LiveActor*, const char* name) — probe-before-
+// set guard so a renamed material in a future SMO build logs and skips
+// instead of crashing (the parameter setters do NOT bounds-check).
+inline constexpr const char* kAlIsExistMaterial =
+    "_ZN2al15isExistMaterialEPKNS_9LiveActorEPKc";
 
 // =============================================================================
 // M7 Path A — fork-cinematic kingdom-order gate (two-layer architecture).
