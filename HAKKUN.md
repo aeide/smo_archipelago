@@ -390,7 +390,7 @@ Each row is a known-good rollback target. The phase 3b row covers the full ap/ +
 | 1 | `5a537af` | Skeleton subsdk8 (~13 KiB) builds from `switch-mod-hk/` |
 | 2 | `1f1399d` | Sail resolves all 37 SMO 1.0.0 hooks; build still clean |
 | 2.5 | `c119228` | `build_switchmod_hk.py` auto-applies patches |
-| 3a | _TBD_ | Pure-plumbing files copied (`util/Json,Log` + `ap/{ApConfig,ApProtocol,ApFrameBridge}`); subsdk8 size unchanged (gc-sections drops dead code) |
+| 3a | `343a493` | Pure-plumbing files copied (`util/Json,Log` + `ap/{ApConfig,ApProtocol,ApFrameBridge}`, plus `ap/ApState.hpp` as transitive compile-time dep); subsdk8 14028 → 14114 bytes (+86, gc-sections drops the new TUs) |
 | 3b | _TBD_ | Full runtime ported; loopback test green; sail still resolves 37 symbols |
 | 5 | _TBD_ | All three validation gates pass (loopback, Ryujinx manual, real-Switch FW22) |
 | 6 | _TBD_ | Cutover: switch-mod-hk → switch-mod, subsdk8 → subsdk9, lunakit/exlaunch removed |
