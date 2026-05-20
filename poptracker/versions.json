@@ -1,6 +1,22 @@
 {
   "versions": [
     {
+      "package_version": "0.1.27-alpha",
+      "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.1.27-alpha/smo-poptracker-v0.1.27-alpha.zip",
+      "sha256": "ee3144787c8f630551060e7760f374d285bc337a23688b247322d9492ecd7b7d",
+      "changelog": [
+        "feat(bridge): zero OutstandingMsg counts for Metro+ in festival mode",
+        "feat(client): hide Metro+ kingdoms from Odyssey tab in festival mode",
+        "fix(festival): trigger ClientGoal on festival-moon check; harden MetroPeace; pack CI",
+        "feat(apworld,poptracker): add festival% goal option",
+        "Gate shine-color override on al::isExistModel (Cascade reload crash fix)",
+        "fix(display): use \"to\" instead of \"->\" in moon-send label",
+        "rename: smo -> meatballs to free the worlds.smo / .apsmo slot",
+        "fix(setup): reject msys2 cmake from PATH fallback",
+        "PopTracker auto-update: add v0.1.26-alpha to versions.json"
+      ]
+    },
+    {
       "package_version": "0.1.26-alpha",
       "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.1.26-alpha/smo-poptracker-v0.1.26-alpha.zip",
       "sha256": "1e7b499a12972db2e5706dccf0889f66ff6b68678b6c7426e819d24c332c774f",
