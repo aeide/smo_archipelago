@@ -121,7 +121,7 @@ def wizard_log(line: str) -> None:
 # Cap how many times a single wizard page can re-run its worker before
 # we stop offering the Retry button. Picked so a flaky network or AV
 # scan can retry a handful of times without manual intervention, but a
-# persistently broken step (wrong NSP version, missing devkitPro, etc.)
+# persistently broken step (wrong NSP version, missing toolchain, etc.)
 # eventually surfaces a clear "give up — fix the underlying cause"
 # message instead of letting the user click Retry forever. Counts reset
 # on a fresh page entry, so navigating Back→Forward gives a clean slate.
@@ -680,8 +680,8 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
         check_in_progress: dict[str, bool] = {"running": False}
 
         def do_check() -> None:
-            # `check_all` shells out to ~6 detectors (cmake, ninja,
-            # python, devkitpro, hactool, prod.keys) — ~1 second of
+            # `check_all` shells out to ~8 detectors (llvm19, winlibs,
+            # sail-python, cmake, ninja, python, hactool, prod.keys) — ~1 second of
             # frozen UI on the main thread if run inline. Off-load to
             # a worker so the button visibly changes state and the
             # Kivy frame loop keeps running.
@@ -1050,7 +1050,6 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                 )
                 on_line(f"[wizard] hactool override: {hactool_override}")
                 on_line(f"[wizard] prod.keys override: {prod_keys_override}")
-                on_line(f"[wizard] DEVKITPRO env: {os.environ.get('DEVKITPRO', '<unset>')}")
                 on_line(f"[wizard] PATH (first 200 chars): {os.environ.get('PATH', '')[:200]}")
                 # Start the heartbeat *after* we've laid down the header so
                 # the first few lines aren't drowned out by "no output" pings.
@@ -1337,8 +1336,8 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
             _Clock.schedule_once(lambda dt: setattr(next_btn, "disabled", False))
 
         # Bounded-retry counter for the build page. Same rationale as the
-        # extract page: a wedged cmake/ninja config issue (wrong devkitPro
-        # version, missing toolchain, etc.) won't fix itself by retrying,
+        # extract page: a wedged cmake/ninja config issue (wrong LLVM /
+        # WinLibs version, missing toolchain, etc.) won't fix itself by retrying,
         # so eventually we surface a "diagnose and re-open setup" message
         # instead of letting the user click Retry forever.
         build_state: dict[str, Any] = {"attempt_count": 0}
@@ -1347,10 +1346,10 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
             if build_state["attempt_count"] >= MAX_STEP_ATTEMPTS:
                 msg = (
                     f"Build failed {build_state['attempt_count']} times "
-                    f"in a row. Common causes: wrong devkitPro version, "
-                    f"missing Ninja in PATH, corrupt switch_mod sources. "
-                    f"Re-run the Re-check prereqs step, then re-open the "
-                    f"wizard."
+                    f"in a row. Common causes: wrong LLVM 19 / WinLibs "
+                    f"version, missing Ninja in PATH, corrupt switch_mod "
+                    f"sources. Re-run the Re-check prereqs step, then "
+                    f"re-open the wizard."
                 )
                 update_status(msg)
                 on_line(f"[wizard] {msg}")
