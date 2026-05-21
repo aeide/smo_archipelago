@@ -171,8 +171,17 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("installing M6-phase-A.5 cutscene label hooks");
     smoap::hooks::installMoonLabelHook();
 
-    SMOAP_LOG_INFO("installing ShineAppearanceHook (AP-classification moon color)");
-    smoap::hooks::installShineAppearanceHook();
+    // ShineAppearanceHook DISABLED for boot validation 2026-05-20. Hook fires
+    // per Shine spawn at stage load and calls .orig(); Ryujinx crashed 2x with
+    // ARMeilleure 0xC0000005 right after Cap Kingdom entry (immediately after
+    // `[cappy] scene changed last=0 new=0x2132d8a030` + first `getCurrentShine
+    // Num call#1`). The leading hypothesis is the Hakkun trampoline's missing
+    // PC-relative prologue relocation — see memory/project_hakkun_trampoline
+    // _no_pcrel_reloc.md for the diagnosis. If disabling this hook removes the
+    // crash, we've found the culprit; we can either implement reloc in
+    // HkTrampoline or skip moon-color until phase 7 polish.
+    SMOAP_LOG_INFO("ShineAppearanceHook DISABLED (PC-relative prologue probe)");
+    // smoap::hooks::installShineAppearanceHook();
 
     SMOAP_LOG_INFO("resolving M6-phase-C snapshot enumeration symbols");
     smoap::game::installSnapshotSymbols();
