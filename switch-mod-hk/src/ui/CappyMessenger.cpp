@@ -103,30 +103,24 @@ void CappyMessenger::enqueueSystem(const char* text) {
 }
 
 void CappyMessenger::tryPump(const void* scene) {
-    // Scene-stability bookkeeping. Record the wallclock-ms timestamp of the
-    // last scene transition so the settle gate below uses elapsed real time
-    // rather than frame count.
+    // Scene-stability bookkeeping. Increment the frame counter every pump
+    // when the scene is stable + non-null; reset both counters on transitions.
     if (scene != last_scene_) {
         if (last_scene_ != nullptr || scene != nullptr) {
             SMOAP_LOG_INFO("[cappy] scene changed last=%p new=%p — resetting "
-                           "settle timer",
+                           "settle gates",
                            last_scene_, scene);
         }
         last_scene_ = scene;
+        settle_frames_ = 0;
         scene_change_ms_ = scene != nullptr ? smoap::ap::ApState::nowMs() : 0;
-        // If a balloon was active on the previous scene, force-release the
-        // buffer. Two reasons: (1) CapMessage state is per-scene, so SMO has
-        // already discarded the balloon — keeping buffer_in_use_=true would
-        // strand the next dispatch waiting for an isActive that will never
-        // flip; (2) the buffer-in-use probe below would otherwise call
-        // s_isActive(new_scene) before the new scene's CapMessageDirector
-        // finishes registering with its SceneObjHolder, which NULL-derefs.
-        // Releasing here is safe — SMO can no longer read the old buffer.
         if (buffer_in_use_) {
             SMOAP_LOG_INFO("[cappy] scene change while buffer in-use — "
                            "force-releasing");
             buffer_in_use_ = false;
         }
+    } else if (scene != nullptr) {
+        ++settle_frames_;
     }
 
     if (live_count_ == 0) return;
@@ -134,22 +128,25 @@ void CappyMessenger::tryPump(const void* scene) {
     if (!s_tryShow) return;        // host test build, or symbol resolve failed
     if (!s_isActive) return;
 
-    // Settle gate: don't poke the CapMessage director until the scene has
-    // been stable for kSceneSettleMs wallclock milliseconds. New StageScene
-    // construction races with SceneObjHolder child registration; calling
-    // rs::isActiveCapMessage before the director registers NULL-derefs.
-    // Wallclock-based (was frame-count-based) because emulator catch-up frames
-    // can sprint past a 600-frame threshold in < 5s wallclock under Ryujinx.
+    // Settle gate: dispatch only after BOTH a minimum number of frames AND
+    // a minimum wallclock interval have elapsed since the scene transition.
+    // See kSceneSettleFrames / kSceneSettleMs in the header for why both.
     {
         const std::int64_t now = smoap::ap::ApState::nowMs();
-        if (scene_change_ms_ == 0 || (now - scene_change_ms_) < kSceneSettleMs) {
+        const std::int64_t elapsed_ms = scene_change_ms_ == 0
+            ? 0 : now - scene_change_ms_;
+        const bool frames_ok = settle_frames_ >= kSceneSettleFrames;
+        const bool time_ok   = elapsed_ms     >= kSceneSettleMs;
+        if (!frames_ok || !time_ok) {
             static std::int64_t s_last_wait_log_ms = 0;
             if (now - s_last_wait_log_ms > 1000) {  // throttle to 1 Hz
                 s_last_wait_log_ms = now;
                 SMOAP_LOG_INFO("[cappy] waiting for scene settle "
-                               "(%lld/%lld ms wallclock); queue=%u scene=%p",
-                               static_cast<long long>(scene_change_ms_ == 0
-                                   ? 0 : now - scene_change_ms_),
+                               "(frames %u/%u, wallclock %lld/%lld ms); "
+                               "queue=%u scene=%p",
+                               static_cast<unsigned>(settle_frames_),
+                               static_cast<unsigned>(kSceneSettleFrames),
+                               static_cast<long long>(elapsed_ms),
                                static_cast<long long>(kSceneSettleMs),
                                static_cast<unsigned>(live_count_),
                                scene);
@@ -293,6 +290,7 @@ void CappyMessenger::resetForTest() {
     for (auto& c : buffer_) c = 0;
     buffer_in_use_ = false;
     last_scene_ = nullptr;
+    settle_frames_ = 0;
     scene_change_ms_ = 0;
     dispatched_since_reset_ = false;
 }
