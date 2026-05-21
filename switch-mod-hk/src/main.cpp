@@ -146,30 +146,24 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("resolving M6-phase-D getPayShineNum lookup");
     smoap::game::installPayShineSnapshotSymbol();
 
-    SMOAP_LOG_INFO("installing 5 game-event hooks");
-    smoap::hooks::installScenarioFlagHook();
-    smoap::hooks::installMoonGetHook();
-    smoap::hooks::installDeathHook();
-    smoap::hooks::installShineNumGetHook();
-    smoap::hooks::installShineNumByWorldGetHook();
-
-    SMOAP_LOG_INFO("resolving M6-phase-B capture-grant symbols");
-    smoap::game::installCaptureGrantSymbols();
-    SMOAP_LOG_INFO("installing AddHackDictionaryHook (Capture List AP gate)");
-    smoap::hooks::installAddHackDictionaryHook();
-
-    SMOAP_LOG_INFO("installing M6-phase-D deposit hooks");
-    smoap::hooks::installAddPayShineHook();
-    smoap::hooks::installAddPayShineAllHook();
-
-    SMOAP_LOG_INFO("installing CaptureStartHook (capture lock + AP check)");
-    smoap::hooks::installCaptureStartHook();
-
-    SMOAP_LOG_INFO("installing WorldMapSelectHook (M7 Path A)");
-    smoap::hooks::installWorldMapSelectHook();
-
-    SMOAP_LOG_INFO("installing M6-phase-A.5 cutscene label hooks");
-    smoap::hooks::installMoonLabelHook();
+    // BISECT phase 2: disable EVERY hook except GameSystemInit + drawMain.
+    // If the crash still happens, it's NOT hook-related — must be in our
+    // own runtime (worker thread, ApState lifecycle, drawMain trampoline
+    // body's applyOnFrame / Cappy pump, or socket bring-up). If it goes
+    // away, we re-enable groups to find the culprit.
+    SMOAP_LOG_INFO("BISECT phase 2: ALL game-event/capture/world/label/cappy hooks DISABLED");
+    // smoap::hooks::installScenarioFlagHook();
+    // smoap::hooks::installMoonGetHook();
+    // smoap::hooks::installDeathHook();
+    // smoap::hooks::installShineNumGetHook();
+    // smoap::hooks::installShineNumByWorldGetHook();
+    // smoap::game::installCaptureGrantSymbols();
+    // smoap::hooks::installAddHackDictionaryHook();
+    // smoap::hooks::installAddPayShineHook();
+    // smoap::hooks::installAddPayShineAllHook();
+    // smoap::hooks::installCaptureStartHook();
+    // smoap::hooks::installWorldMapSelectHook();
+    // smoap::hooks::installMoonLabelHook();
 
     // BISECT: ShineAppearanceHook disabled. Highest-frequency hook (fires per
     // shine actor spawn at stage load); if the JIT crash is hook-related,
@@ -213,8 +207,9 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("resolving CappyMessenger rs:: function pointers");
     smoap::hooks::installCappyMessengerSymbols();
 
-    SMOAP_LOG_INFO("installing SaveLoadHook (session-state reset + re-HELLO)");
-    smoap::hooks::installSaveLoadHook();
+    // BISECT phase 2: SaveLoad disabled too
+    SMOAP_LOG_INFO("SaveLoadHook DISABLED (bisect phase 2)");
+    // smoap::hooks::installSaveLoadHook();
 
     SMOAP_LOG_INFO("=== hkMain END (waiting for GameSystem::init to fire) ===");
 }
