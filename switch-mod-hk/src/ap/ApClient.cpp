@@ -97,6 +97,24 @@ constexpr std::int64_t kStableConnectMs = 1000;
 // SMO boot. Worker-thread exclusive; no atomic needed.
 char s_last_ap_state[24] = "disconnected";
 
+// Worker-side system-bubble emitter. Pushes the text onto ApState's
+// inbound_system_bubbles SPSC ring; drawMain (frame thread) drains and
+// calls CappyMessenger::enqueueSystem from there. Direct worker-thread
+// calls into CappyMessenger crash Ryujinx ARMeilleure's JIT (the queue_
+// non-atomic state races with frame-thread tryPump reads); production
+// exlaunch survived the race, our Hakkun build doesn't.
+void enqueueSystemBubble(const char* text) {
+    if (!text || !*text) return;
+    ApState::SystemBubble msg;
+    std::size_t i = 0;
+    while (i + 1 < sizeof(msg.text) && text[i] != '\0') {
+        msg.text[i] = text[i];
+        ++i;
+    }
+    msg.text[i] = '\0';
+    ApState::instance().inbound_system_bubbles.push(msg);
+}
+
 // Thin wrappers around hk::socket::Socket so the worker-loop call sites stay
 // close to the production code shape. Each wrapper unpacks the
 // ValueOrResult<Tuple<s32,s32>> envelope and returns BSD-style (ret, errno):
@@ -351,15 +369,12 @@ void ApClient::requestRehello() {
 }
 
 void ApClient::deferSaveLoadStatusBubble() {
-    // BISECT phase 13: don't arm the deadline. Want to prove that the
-    // worker-thread enqueueSystem path (fired when the deadline expires)
-    // is the crash trigger, not the call to deferSaveLoadStatusBubble
-    // itself. If stable -> issue is worker calling CappyMessenger; fix is
-    // to move the enqueue to frame thread via a flag.
-    SMOAP_LOG_INFO("[bubble] deferSaveLoadStatusBubble NEUTERED (bisect)");
-    // save_load_announce_deadline_ms_.store(
-    //     ApState::nowMs() + kSaveLoadAnnounceWaitMs,
-    //     std::memory_order_relaxed);
+    save_load_announce_deadline_ms_.store(
+        ApState::nowMs() + kSaveLoadAnnounceWaitMs,
+        std::memory_order_relaxed);
+    SMOAP_LOG_INFO("[bubble] deferring save-load status announcement "
+                   "(wait %lldms for AP handshake to settle)",
+                   static_cast<long long>(kSaveLoadAnnounceWaitMs));
 }
 
 void ApClient::threadMain() {
@@ -379,8 +394,7 @@ void ApClient::threadMain() {
             deadline > 0 && ApState::nowMs() >= deadline) {
             SMOAP_LOG_INFO("[bubble] firing deferred 'Disconnected from "
                            "Archipelago' (grace expired)");
-            smoap::ui::CappyMessenger::instance()
-                .enqueueSystem("Disconnected from Archipelago");
+            smoap::ap::enqueueSystemBubble("Disconnected from Archipelago");
             std::strcpy(s_last_ap_state, "disconnected");
             pending_disconnect_bubble_at_ms_.store(0, std::memory_order_relaxed);
         }
@@ -394,15 +408,13 @@ void ApClient::threadMain() {
             if (ready_now) {
                 SMOAP_LOG_INFO("[bubble] firing deferred save-load status "
                                "'Connected to Archipelago' (ap_state=ready)");
-                smoap::ui::CappyMessenger::instance()
-                    .enqueueSystem("Connected to Archipelago");
+                smoap::ap::enqueueSystemBubble("Connected to Archipelago");
                 save_load_announce_deadline_ms_.store(0, std::memory_order_relaxed);
             } else if (expired) {
                 SMOAP_LOG_INFO("[bubble] firing deferred save-load status "
                                "'Not connected to Archipelago' (wait expired, "
                                "ap_state=%s)", s_last_ap_state);
-                smoap::ui::CappyMessenger::instance()
-                    .enqueueSystem("Not connected to Archipelago");
+                smoap::ap::enqueueSystemBubble("Not connected to Archipelago");
                 save_load_announce_deadline_ms_.store(0, std::memory_order_relaxed);
             }
         }
@@ -903,16 +915,14 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
                 SMOAP_LOG_INFO("[bubble] suppressing 'Connected to Archipelago' "
                                "(rehello window)");
             } else {
-                smoap::ui::CappyMessenger::instance()
-                    .enqueueSystem("Connected to Archipelago");
+                smoap::ap::enqueueSystemBubble("Connected to Archipelago");
             }
         } else if (was_ready && now_disconnected) {
             if (bubble_suppressed) {
                 SMOAP_LOG_INFO("[bubble] suppressing 'Disconnected from Archipelago' "
                                "(rehello window, ap_state path)");
             } else {
-                smoap::ui::CappyMessenger::instance()
-                    .enqueueSystem("Disconnected from Archipelago");
+                smoap::ap::enqueueSystemBubble("Disconnected from Archipelago");
             }
         }
         std::size_t i = 0;
@@ -928,8 +938,7 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
                 SMOAP_LOG_INFO("[bubble] firing deferred save-load status "
                                "'Connected to Archipelago' (ap_state=ready "
                                "arrived inside wait window)");
-                smoap::ui::CappyMessenger::instance()
-                    .enqueueSystem("Connected to Archipelago");
+                smoap::ap::enqueueSystemBubble("Connected to Archipelago");
                 save_load_announce_deadline_ms_.store(0, std::memory_order_relaxed);
             }
         }
@@ -956,7 +965,7 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
             m.moon_label.text, m.moon_label.seq, deadline);
     } else if (eq(m.t, "cappy")) {
         SMOAP_LOG_INFO("[cappy] system bubble text='%s'", m.cappy.text);
-        smoap::ui::CappyMessenger::instance().enqueueSystem(m.cappy.text);
+        smoap::ap::enqueueSystemBubble(m.cappy.text);
     } else if (eq(m.t, "shine_scouts")) {
         auto& ring = ApState::instance().inbound_scouts;
         std::size_t pushed = 0, dropped = 0;

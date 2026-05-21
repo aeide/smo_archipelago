@@ -193,6 +193,18 @@ public:
     // pairs. Frame thread drains and folds into shine_palette[].
     SpscRing<ShineScout, 4096> inbound_scouts;
 
+    // socket -> frame. Hakkun build crashes Ryujinx's ARMeilleure JIT when
+    // the worker thread directly calls CappyMessenger::enqueueSystem (non-
+    // atomic writes to queue_[] from one thread while drawMain reads/writes
+    // it from another). Production exlaunch survives the same race; we
+    // don't. Route every worker-side system bubble through this ring and
+    // have drawMain drain + enqueue from frame thread. 16 slots is plenty —
+    // there are at most ~3-4 system bubbles in flight at any time.
+    struct SystemBubble {
+        char text[64];
+    };
+    SpscRing<SystemBubble, 16> inbound_system_bubbles;
+
     // frame-thread-only state below
 
     std::bitset<128> captures_unlocked;     // 43 used; index from capture_table.h

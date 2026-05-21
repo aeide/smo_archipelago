@@ -25,9 +25,6 @@ std::atomic<std::int64_t>  g_last_fire_ms{0};
 std::atomic<std::int64_t>  g_last_side_effect_ms{0};
 constexpr std::int64_t kSaveLoadDebounceMs = 500;
 
-// BISECT phase 11: phase 10 (pre-orig only) was stable -> post-orig is the
-// trigger. Restore state resets + drain + save_was_loaded; leave the two
-// ApClient::instance() calls at the end OUT.
 HkTrampoline<void, GameDataFile*> saveLoadHook =
     hk::hook::trampoline([](GameDataFile* self) -> void {
         const std::uint64_t fire_n =
@@ -76,9 +73,6 @@ HkTrampoline<void, GameDataFile*> saveLoadHook =
         }
         st.save_was_loaded.store(true, std::memory_order_release);
         smoap::ap::ApClient::instance().requestRehello();
-        // BISECT phase 13: defer call back on but the underlying impl is
-        // neutered (see ApClient::deferSaveLoadStatusBubble — atomic store
-        // commented out so worker never fires the deferred-bubble path).
         smoap::ap::ApClient::instance().deferSaveLoadStatusBubble();
     });
 

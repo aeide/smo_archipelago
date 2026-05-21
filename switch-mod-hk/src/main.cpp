@@ -127,6 +127,21 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
         smoap::ap::ApState::instance().flushPendingCaptureGrants();
         smoap::hooks::tickPendingUncapture();
         smoap::ui::drawHudFrame();
+
+        // Drain worker-thread system-bubble pushes BEFORE tryPump so a freshly
+        // arrived "Connected/Disconnected/Not connected to Archipelago" lands
+        // in CappyMessenger's queue in time for this frame's dispatch attempt.
+        // Cross-thread access to CappyMessenger from the worker crashes
+        // Ryujinx ARMeilleure's JIT; the worker pushes onto the SPSC ring and
+        // we drain here from frame-thread context.
+        {
+            smoap::ap::ApState::SystemBubble bubble;
+            while (smoap::ap::ApState::instance()
+                       .inbound_system_bubbles.pop(bubble)) {
+                smoap::ui::CappyMessenger::instance().enqueueSystem(bubble.text);
+            }
+        }
+
         smoap::ui::CappyMessenger::instance().tryPump(
             smoap::ap::ApState::instance().scene_cache.load(
                 std::memory_order_relaxed));
@@ -146,24 +161,35 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("resolving M6-phase-D getPayShineNum lookup");
     smoap::game::installPayShineSnapshotSymbol();
 
-    // BISECT phase 8: SaveLoad ALONE (page-alignment fix didn't help). Are
-    // the boot-time fires of initializeData crashing on their own, or do
-    // they only crash when initializeData INTERNALLY calls our other hooked
-    // functions (setMainScenarioNo, setGotShine, etc.)?
-    SMOAP_LOG_INFO("BISECT phase 8: SaveLoad alone; all other event/world/cappy hooks off");
-    // smoap::hooks::installScenarioFlagHook();
-    // smoap::hooks::installMoonGetHook();
-    // smoap::hooks::installDeathHook();
-    // smoap::hooks::installShineNumGetHook();
-    // smoap::hooks::installShineNumByWorldGetHook();
-    // smoap::game::installCaptureGrantSymbols();
-    // smoap::hooks::installAddHackDictionaryHook();
-    // smoap::hooks::installAddPayShineHook();
-    // smoap::hooks::installAddPayShineAllHook();
-    // smoap::hooks::installCaptureStartHook();
-    // smoap::hooks::installWorldMapSelectHook();
-    // smoap::hooks::installMoonLabelHook();
-    // smoap::hooks::installShineAppearanceHook();
+    // All hooks re-enabled now that the worker->Cappy cross-thread crash is
+    // fixed via the inbound_system_bubbles SPSC ring drained by drawMain.
+    SMOAP_LOG_INFO("installing 5 game-event hooks");
+    smoap::hooks::installScenarioFlagHook();
+    smoap::hooks::installMoonGetHook();
+    smoap::hooks::installDeathHook();
+    smoap::hooks::installShineNumGetHook();
+    smoap::hooks::installShineNumByWorldGetHook();
+
+    SMOAP_LOG_INFO("resolving M6-phase-B capture-grant symbols");
+    smoap::game::installCaptureGrantSymbols();
+    SMOAP_LOG_INFO("installing AddHackDictionaryHook (Capture List AP gate)");
+    smoap::hooks::installAddHackDictionaryHook();
+
+    SMOAP_LOG_INFO("installing M6-phase-D deposit hooks");
+    smoap::hooks::installAddPayShineHook();
+    smoap::hooks::installAddPayShineAllHook();
+
+    SMOAP_LOG_INFO("installing CaptureStartHook (capture lock + AP check)");
+    smoap::hooks::installCaptureStartHook();
+
+    SMOAP_LOG_INFO("installing WorldMapSelectHook (M7 Path A)");
+    smoap::hooks::installWorldMapSelectHook();
+
+    SMOAP_LOG_INFO("installing M6-phase-A.5 cutscene label hooks");
+    smoap::hooks::installMoonLabelHook();
+
+    SMOAP_LOG_INFO("installing ShineAppearanceHook (AP-classification moon color)");
+    smoap::hooks::installShineAppearanceHook();
 
     SMOAP_LOG_INFO("resolving M6-phase-C snapshot enumeration symbols");
     smoap::game::installSnapshotSymbols();
@@ -191,9 +217,8 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("CreditsStartHook DISABLED (see main.cpp for rationale)");
     // smoap::hooks::installCreditsStartHook();
 
-    // BISECT phase 8: also disable CappyMessage 4 hooks
-    SMOAP_LOG_INFO("CappyMessageTextHooks DISABLED (phase 8)");
-    // smoap::hooks::installCappyMessageTextHooks();
+    SMOAP_LOG_INFO("installing CappyMessenger text-lookup trampolines (4)");
+    smoap::hooks::installCappyMessageTextHooks();
     SMOAP_LOG_INFO("resolving CappyMessenger rs:: function pointers");
     smoap::hooks::installCappyMessengerSymbols();
 
