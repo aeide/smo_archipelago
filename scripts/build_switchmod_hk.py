@@ -90,8 +90,14 @@ def main() -> int:
         shutil.rmtree(BUILD_DIR)
     os.makedirs(BUILD_DIR)
 
+    # Extra cmake args (after the script name) are forwarded to the configure
+    # call. Use this to override BRIDGE_HOST / BRIDGE_PORT / SMO_AP_MOD_VERSION
+    # without editing CMakeLists.txt. Example:
+    #   python scripts/build_switchmod_hk.py -DBRIDGE_HOST=127.0.0.1
+    cmake_extra = sys.argv[1:]
     cfg = subprocess.run(
-        [cmake, "-S", SWITCH_MOD, "-B", BUILD_DIR, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release"],
+        [cmake, "-S", SWITCH_MOD, "-B", BUILD_DIR, "-G", "Ninja",
+         "-DCMAKE_BUILD_TYPE=Release", *cmake_extra],
         env=env,
     )
     if cfg.returncode != 0:
