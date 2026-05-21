@@ -202,27 +202,18 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("resolving M6-phase-C snapshot enumeration symbols");
     smoap::game::installSnapshotSymbols();
 
-    // CreditsStartHook (Strategy B / StaffRollScene::init trampoline) is
-    // disabled — boot validation 2026-05-20 showed installAtSym hanging the
-    // guest thread at this exact point and SMO never reaching title. Two
-    // independent failure modes share this surface:
-    //   (a) The candidate symbol `_ZN14StaffRollScene4initERKN2al13ActorInitInfoE`
-    //       may not exist in SMO 1.0.0 main.nso under that mangling — sail's
-    //       SymbolDynamic::apply aborts via HK_ABORT_UNLESS when the name
-    //       isn't in the loaded module's dynsym, but the abort message never
-    //       surfaces in the Ryujinx log.
-    //   (b) Even if the symbol resolves, Strategy B trampolines the FUNCTION
-    //       ENTRY of StaffRollScene::init. Production uses Strategy A: an
-    //       INLINE patch at +0x4C54A4 (a BL inside the function body). The
-    //       two are not behaviorally equivalent — entry trampolines would
-    //       fire on EVERY StaffRollScene::init even if execution never
-    //       reaches the BL (e.g. early-return paths).
-    // Goal detection only matters at end-of-main-story; everything else
-    // boots without it. Restoring this needs either a Hakkun inline-hook
-    // primitive equivalent to HOOK_DEFINE_INLINE (port `writeBranchLinkAt
-    // MainOffset` from spike Gate 3 if it exists), or verified symbol
-    // mangling against an extracted main.nso.
-    SMOAP_LOG_INFO("CreditsStartHook DISABLED (see main.cpp for rationale)");
+    // CreditsStartHook (Strategy B: trampoline on StaffRollScene::init).
+    // Deferred until after first real-Switch boot validation passes. Earlier
+    // boot validation showed hkMain hanging at this install; the hang may
+    // have been the IUseSceneObjHolder vtable mistranslation (since fixed),
+    // but conservatively keep it off so a hkMain hang here doesn't ruin a
+    // first hardware test. Effect: end-of-main-story goal detection
+    // (reportGoal()) is silent. Restore by uncommenting once we've confirmed
+    // the hook target's symbol resolves cleanly on SMO 1.0.0 main.nso (run
+    // scripts/check_nso_symbols.py with the StaffRollScene symbol added).
+    // Alternative: implement Strategy A (inline patch at +0x4C54A4) via a
+    // Hakkun equivalent of writeBranchLinkAtMainOffset.
+    SMOAP_LOG_INFO("CreditsStartHook DEFERRED (re-enable after first real-Switch boot)");
     // smoap::hooks::installCreditsStartHook();
 
     SMOAP_LOG_INFO("installing CappyMessenger text-lookup trampolines (4)");

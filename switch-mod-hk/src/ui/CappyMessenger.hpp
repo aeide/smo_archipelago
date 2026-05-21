@@ -90,10 +90,15 @@ public:
     // when tryPump fires), the wallclock counter blocks if the game runs
     // faster than 60fps in catch-up mode. The MAX of the two is correct in
     // both cases.
-    // RVPROBE: small settle to reach the dispatch path quickly. 600/10s
-    // matches production exlaunch.
-    static constexpr std::uint32_t kSceneSettleFrames = 600;
-    static constexpr std::int64_t  kSceneSettleMs     = 10000;
+    // Dispatch only after BOTH a minimum number of drawMain calls AND a
+    // minimum wallclock interval since the scene transition. On real Switch
+    // 60fps is locked so the two thresholds align; on Ryujinx the wallclock
+    // half catches the catch-up-frame edge case where guest frames advance
+    // faster than wallclock under GPU stalls. Matches production's 600 frame
+    // value; the wallclock half is defense-in-depth that costs nothing on
+    // real hardware.
+    static constexpr std::uint32_t kSceneSettleFrames = 600;     // ~10s @ 60fps
+    static constexpr std::int64_t  kSceneSettleMs     = 10000;   // 10s wallclock
 
     // On-screen duration. Passed as the THIRD positional arg to
     // rs::tryShowCapMessagePriorityLow (which the decompiler signature
