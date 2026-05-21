@@ -501,6 +501,36 @@ class ActivateMsg:
 
 
 @dataclass
+class TalkatooPoolMsg:
+    """Talkatoo% per-kingdom AP-pool payload — ONE kingdom per message.
+
+    Sent from the bridge to the Switch when `talkatoo_mode=true` in
+    slot_data. The bridge fires one message per kingdom on HELLO replay
+    and on AP Connected; the Switch overwrites its per-kingdom pool
+    cache on each receipt. Total wire size per kingdom comfortably fits
+    in the 8 KiB line limit (Sand is the worst case at ~62 moons ×
+    ~25 chars ≈ 1.5 KB; everything else is smaller).
+
+    Special "mode off" message: `enabled=False` with empty `kingdom` and
+    `moons` instructs the Switch to clear its Talkatoo state entirely
+    (Talkatoo% mode off).
+
+    `kingdom` is shipped in on-Switch form (e.g. "Bowser", not "Bowser's");
+    SwitchServer.push_talkatoo_pool applies kingdom_ap_to_switch before
+    encoding so the Switch's parser hands it straight to kingdomBitFor()
+    without translation.
+
+    `moons` is the list of shine_id display names (the part after ": "
+    in the AP location name) in this kingdom that are in our AP pool.
+    The Switch picks 3 random uncollected entries on Talkatoo speech.
+    """
+    t: str = "talkatoo_pool"
+    enabled: bool = True
+    kingdom: str = ""
+    moons: list[str] = field(default_factory=list)
+
+
+@dataclass
 class MoonLabelMsg:
     """M6 phase A.5 — Channel A: replace the moon-get cutscene's pane text
     with AP-aware text. Bridge sends this in the same TCP push as the

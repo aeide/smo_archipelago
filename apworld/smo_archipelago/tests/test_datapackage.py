@@ -82,6 +82,46 @@ def test_split_kingdom_prefix():
     assert sid == "PlainName"
 
 
+def test_progression_locations_loaded_from_apworld(dp: DataPackage):
+    """The 22 audited scenario-advance moons (Multi Moons, seal prereqs,
+    Bowser's chain) are flagged `progression: true` in locations.json.
+
+    The Talkatoo% follow-up (Gap #1) needs DataPackage to expose this
+    flag so the bridge-side pool builder can skip these moons — they're
+    always collectible via the isProgressionShine bypass, so Talkatoo
+    naming one wastes a hint slot. The canonical 22-entry set is
+    audited in test_progression_moons.py; here we just spot-check that
+    the loader populated the same flags the audit relies on."""
+    # Spot-check a representative subset across distinct schemas:
+    # Multi Moon, scenario-step opener, seal, Bowser's chain entry.
+    assert dp.is_progression_location("Cascade: Multi Moon Atop the Falls")
+    assert dp.is_progression_location("Cascade: Our First Power Moon")
+    assert dp.is_progression_location("Seaside: The Stone Pillar Seal")
+    assert dp.is_progression_location("Bowser's: Showdown at Bowser's Castle")
+    # Negative: a vanilla Cascade moon should NOT be flagged.
+    assert not dp.is_progression_location("Cap: Frog-Jumping Above the Fog")
+    # Negative: captures are never progression (asserted by
+    # test_progression_moons.test_no_capture_marked_progression).
+    assert not dp.is_progression_location("Capture: Goomba")
+
+
+def test_is_progression_location_returns_false_for_unknown_name():
+    """Defensive: lookup of an unloaded name returns False, not KeyError.
+    Used by the talkatoo pool filter which iterates raw AP location names
+    that may not all be in the apworld's loaded set (e.g. cross-game
+    entries an exotic seed could produce)."""
+    dp = DataPackage()
+    assert not dp.is_progression_location("Anything")
+
+
+def test_is_progression_location_empty_when_no_data_loaded():
+    """A DataPackage constructed without data_dir/package has no
+    progression set — the gate stays open in the degenerate case
+    (better than crashing on the filter path)."""
+    dp = DataPackage()
+    assert dp._progression_locations == set()
+
+
 def test_kingdom_exit_thresholds_empty_without_regions():
     """No apworld data means no regions.json — the Odyssey tab elides the
     `/ needed` denominator entirely in that case."""

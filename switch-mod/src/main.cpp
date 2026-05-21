@@ -66,6 +66,11 @@ void installShineAppearanceHook();
 void installWorldMapSelectHook();
 // Credits-roll goal trigger: inline patch on StaffRollScene::init.
 void installCreditsStartHook();
+// Talkatoo% mode: speech-bubble substitution via tryFindShineMessage
+// trampoline + Poetter vtable filter. See hooks/TalkatooSpeechHook.cpp.
+// Phase 4 (block non-named moon collection) lives inside the existing
+// MoonGetHook (universal setGotShine chokepoint) — see MoonGetHook.cpp.
+void installTalkatooSpeechHook();
 // M7 phase A (capture lock): drain ApState::pending_kill_keeper if its
 // deadline elapsed. Called once per frame from DrawMainHook.
 void tickPendingUncapture();
@@ -281,6 +286,9 @@ extern "C" void exl_main(void* /*x0*/, void* /*x1*/) {
 
     SMOAP_LOG_INFO("installing CreditsStartHook (StaffRollScene::init goal trigger)");
     smoap::hooks::installCreditsStartHook();
+
+    SMOAP_LOG_INFO("installing TalkatooSpeechHook (Phase 3 — tryFindShineMessage tramp + Poetter vtable filter)");
+    smoap::hooks::installTalkatooSpeechHook();
 
     SMOAP_LOG_INFO("=== exl_main END (waiting for GameSystem::init to fire) ===");
 }

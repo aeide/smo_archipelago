@@ -8,6 +8,7 @@
 #include "lib.hpp"  // HOOK_DEFINE_TRAMPOLINE
 #include "../ap/ApFrameBridge.hpp"
 #include "../ap/ApState.hpp"
+#include "../ap/shine_lookup.hpp"
 #include "../game/MoonApply.hpp"
 #include "../game/ShineInfoLayout.hpp"
 #include "../util/Log.hpp"
@@ -121,20 +122,89 @@ bool stringSane(const char* s) {
 
 HOOK_DEFINE_TRAMPOLINE(MoonGetHook) {
     static void Callback(GameDataFile* self, const ShineInfo* info) {
+        // Phase 4 block: in talkatoo_mode, refuse to flip the shine bit for
+        // moons the player hasn't been told about. The decision has to
+        // happen BEFORE Orig — once setGotShine runs the moon is permanently
+        // flagged in this save until a manual reset. Skipping Orig leaves
+        // the bit unset; the moon respawns on save-reload, the AP check is
+        // also suppressed, and Mario's get-cinematic plays cosmetically
+        // (Option B / A3-fallback from the roadmap).
+        //
+        // TODO(2026-05-20): Multi Moons / scenario-advance moons are NOT
+        // exempted yet — they're in shine_table.h and will be blocked here
+        // unless Talkatoo named them. That's a fresh-start soft-lock (Multi
+        // Moons advance scenario_no, which gates downstream moons). Existing
+        // saves where the Multi Moon is already collected are fine — Orig
+        // doesn't re-fire on already-set bits. See CLAUDE.md "Partial /
+        // deferred work" section for the design options. Must land before
+        // any fresh-start Talkatoo% playtest.
+        const char* stage = info ? smoap::game::shine_info_layout::stageName(info) : nullptr;
+        const char* obj   = info ? smoap::game::shine_info_layout::objectId(info)  : nullptr;
+        const bool stage_ok = stringSane(stage);
+        const bool obj_ok   = stringSane(obj);
+
+        if (smoap::ap::ApState::instance().talkatoo_mode.load(
+                std::memory_order_acquire)) {
+            if (stage_ok && obj_ok) {
+                const int shine_uid =
+                    smoap::game::shineUidByStageObj(stage, obj);
+                // Progression/Multi Moon exemption: scenario-advancing moons
+                // are always collectible. Blocking one would soft-lock every
+                // moon that gates on scenario_no >= N downstream. Sourced
+                // from the `progression: true` flag in locations.json.
+                const bool is_progression =
+                    smoap::game::isProgressionShine(stage, obj);
+                if (shine_uid >= 0 && !is_progression &&
+                    !smoap::ap::ApState::instance().isMoonNamed(shine_uid)) {
+                    SMOAP_LOG_INFO("[talkatoo-block] BLOCKED collection "
+                                   "stage=%s obj=%s uid=%d (not named by "
+                                   "Talkatoo)",
+                                   stage, obj, shine_uid);
+                    // Paint a "Blocked by Talkatoo!" label on the cutscene
+                    // title pane. The get-cinematic that's about to play
+                    // still fires Shine::exeDemoGet etc. (which we already
+                    // hook in MoonLabelHook), and the existing label
+                    // pipeline turns this into a visible message instead
+                    // of leaving the pane with a half-initialized vanilla
+                    // moon name. valid_for 4s matches the cutscene length.
+                    //
+                    // We grab a seq via next_check_seq.fetch_add(1) so the
+                    // value never collides with a bridge-echoed seq for a
+                    // real check (the bridge always echoes seqs the Switch
+                    // emitted; by consuming a number here we just skip it
+                    // on the bridge side).
+                    const int seq = smoap::ap::ApState::instance()
+                        .next_check_seq.fetch_add(1, std::memory_order_relaxed);
+                    smoap::ap::ApState::instance().setPendingMoonLabel(
+                        "Blocked by Talkatoo!", seq,
+                        smoap::ap::ApState::nowMs() + 4000);
+                    // Skip Orig + skip the outbound check. Get-cinematic
+                    // still plays in SMO since Shine::get's other side
+                    // effects (recoveryPlayerMax, sound, particle) already
+                    // ran; the moon just won't stay flagged.
+                    return;
+                }
+                // Moon is in shine_table.h AND named: fall through to vanilla.
+                // Or moon is NOT in shine_table.h (shine_uid < 0): also fall
+                // through — SMO has more moons than the apworld tracks
+                // (regional/exclude moons), and we don't want to block
+                // those just because they aren't in our table.
+            }
+            // If stage/obj read failed we fall through to vanilla too rather
+            // than block-fail-closed — the existing stringSane check below
+            // will log a warning, which is the actionable signal.
+        }
+
         Orig(self, info);
         SMOAP_LOG_INFO("MoonGetHook fired: info=%p", info);
         if (!info) return;
-        const char* stage = smoap::game::shine_info_layout::stageName(info);
         SMOAP_LOG_INFO("MoonGetHook: stage_ptr=%p", stage);
-        const char* obj = smoap::game::shine_info_layout::objectId(info);
         SMOAP_LOG_INFO("MoonGetHook: obj_ptr=%p", obj);
         const char* scen = smoap::game::shine_info_layout::scenObjId(info);
         SMOAP_LOG_INFO("MoonGetHook: scen_ptr=%p", scen);
         const int uid = smoap::game::shine_info_layout::shineId(info);
         SMOAP_LOG_INFO("MoonGetHook: uid=%d", uid);
 
-        const bool stage_ok = stringSane(stage);
-        const bool obj_ok = stringSane(obj);
         const bool scen_ok = stringSane(scen);
         SMOAP_LOG_INFO("MoonGetHook: probe stage=%s obj=%s scen=%s uid=%d",
                        stage_ok ? stage : "<bad>",

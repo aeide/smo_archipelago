@@ -13,11 +13,16 @@
 #include "nn/os/os_tick.hpp"
 #include "nn/time/time_timespan.hpp"
 #include "../ap/ApClient.hpp"
+#include "../ap/ApProtocol.hpp"  // kCheckFieldCap
 #include "../ap/ApState.hpp"
+#include "../ap/shine_table.h"
+#include "../game/KingdomUnlock.hpp"
 #include "../ui/CappyMessenger.hpp"
 #include "../util/Log.hpp"
 #include "HookSymbols.hpp"
 #include "SoftInstall.hpp"
+
+#include <cstring>
 
 class GameDataFile;
 
@@ -45,6 +50,69 @@ constexpr std::int64_t kSaveLoadDebounceMs = 500;
 std::int64_t monotonic_ms() {
     const auto ts = nn::os::ConvertToTimeSpan(nn::os::GetSystemTick());
     return static_cast<std::int64_t>(ts.GetMilliSeconds());
+}
+
+// Talkatoo% Phase 2 — pre-mark non-AP moons so the world only contains
+// AP-pool locations. SKELETON, not wired yet — runs the apworld×shine_map
+// intersection (kShineTable) against the per-kingdom AP pool and counts
+// how many moons WOULD be pre-marked. The actual setGotShine() call is
+// TODO: GameDataFile::setGotShine takes `const ShineInfo*`, not a
+// uid — we'd need to either (a) discover a setGotShineByUid overload (run
+// scripts/check_nso_symbols.py against an "_ZN12GameDataFile11setGotShineEi"
+// candidate) or (b) construct a ShineInfo on the stack from the
+// HintInfo at mShineHintList[i] and pass it. Both are next-session work.
+//
+// Logging-only today means: enabling Talkatoo% on the user side doesn't
+// hide non-AP moons yet. The world still contains every moon. Phase 3's
+// speech-hook gives the AP feel; Phase 2's pre-marking is the polish.
+void premarkNonApMoonsIfTalkatooMode() {
+    auto& st = smoap::ap::ApState::instance();
+    if (!st.talkatoo_mode.load(std::memory_order_acquire)) return;
+
+    // Snapshot every kingdom's AP-pool once so we can do membership checks
+    // by linear search. Stack-allocated to keep allocators out — fixed
+    // upper bound from the wire-cap constants in ApProtocol.hpp.
+    using Pool = smoap::ap::ApState::TalkatooKingdomPool;
+    constexpr std::size_t kK = smoap::ap::ApState::kTalkatooKingdomCount;
+    static char pool[kK][Pool::kMaxMoons][smoap::ap::kCheckFieldCap];
+    static std::size_t pool_count[kK];
+    for (std::size_t b = 0; b < kK; ++b) {
+        pool_count[b] = st.snapshotTalkatooKingdom(
+            static_cast<int>(b), pool[b], Pool::kMaxMoons);
+    }
+
+    // Walk the static shine_table built from apworld locations × shine_map.
+    // For each moon NOT in its kingdom's pool, count it (real setGotShine
+    // call is TODO — see file header comment).
+    std::size_t would_premark = 0;
+    std::size_t hits = 0;
+    for (const auto& row : smoap::game::kShineTable) {
+        // AP-form kingdom → bit. Translation is identity for everything
+        // except "Bowser's" → bit 12 (see KingdomUnlock.cpp).
+        const std::uint8_t bit = smoap::game::kingdomBitFor(row.kingdom.data());
+        if (bit >= kK) continue;  // unknown kingdom — leave it alone
+        bool in_pool = false;
+        for (std::size_t i = 0; i < pool_count[bit]; ++i) {
+            if (std::strcmp(pool[bit][i], row.shine_id.data()) == 0) {
+                in_pool = true; break;
+            }
+        }
+        if (in_pool) {
+            ++hits;
+        } else {
+            ++would_premark;
+            // TODO: actually mark `row.shine_uid` collected once we have
+            // a write-side primitive. Candidates (need symbol discovery):
+            //   - GameDataFile::setGotShineByUid(int)        — unverified
+            //   - GameDataFile::setGotShine(const ShineInfo*) with a
+            //       hand-constructed ShineInfo borrowed from the
+            //       matching mShineHintList entry
+            //   - Direct memory write into the GameDataFile shine flags
+            //       table (offset unknown).
+        }
+    }
+    SMOAP_LOG_INFO("[talkatoo-premark] pool-hit=%zu would-premark=%zu (NOT WIRED — see file header)",
+                   hits, would_premark);
 }
 
 HOOK_DEFINE_TRAMPOLINE(SaveLoadHook) {
@@ -157,6 +225,11 @@ HOOK_DEFINE_TRAMPOLINE(SaveLoadHook) {
         // replay re-syncs both sides. The actual socket close happens on the
         // worker thread; we just set the atomic here.
         smoap::ap::ApClient::instance().requestRehello();
+
+        // Talkatoo% pre-mark pass. No-op when mode is off; today even when
+        // mode is on this just logs the count of moons that would be pre-
+        // marked — see the function header for the missing write primitive.
+        premarkNonApMoonsIfTalkatooMode();
 
         // Arm a "current connection status" Cappy bubble on every save load
         // (covers both New Game and Continue). On New Game the messenger holds

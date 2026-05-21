@@ -412,6 +412,35 @@ struct Outstanding {
     std::size_t entry_count = 0;
 };
 
+// Talkatoo% mode — one TalkatooPool message per kingdom. Bridge sends N
+// messages (one per kingdom) on HELLO replay when slot_data has
+// talkatoo_mode=true, plus a single disable message (enabled=false) when
+// the user disables Talkatoo% mid-session.
+//
+// Wire-size budget per message: Sand worst-case ~62 moons × ~25 chars =
+// 1.5 KB, JSON overhead 30%, well under the 8 KiB line limit. Larger
+// kingdoms (if a future apworld adds them) would still need single-
+// message chunking — the per-message kMaxMoons cap below is the truncation
+// threshold; the encoder logs and drops anything past that.
+//
+// Fixed-buffer storage (same M6.1 allocator-safety contract every inbound
+// struct uses). One TalkatooPool message overwrites the kingdom it names;
+// kingdoms not mentioned this round keep their previous state. The
+// `enabled=false` disable message clears everything via the ApState helper.
+inline constexpr std::size_t kTalkatooMaxMoonsPerKingdom = 96;
+    // 96 covers Sand (62 today) with headroom for apworld growth. Each entry
+    // is just kCheckFieldCap (64 bytes), so per-message storage is
+    // 96 × 64 = 6 KiB plus housekeeping — still fits the 8 KiB line cap with
+    // the JSON-encoded form well under (names are ~25 chars not 63).
+
+struct TalkatooPool {
+    bool enabled = true;
+    char kingdom[kCheckFieldCap] = {};
+    char moons[kTalkatooMaxMoonsPerKingdom][kCheckFieldCap] = {};
+    std::size_t moon_count = 0;
+    bool truncated = false;
+};
+
 // (de)serialization --------------------------------------------------------
 // Implementations in ApProtocol.cpp use util/Json.hpp (no STL exceptions).
 //
@@ -449,6 +478,7 @@ struct DecodedMsg {
     Cappy cappy{};
     ShineScouts shine_scouts{};
     Outstanding outstanding{};
+    TalkatooPool talkatoo_pool{};
 };
 bool decode(const char* data, std::size_t len, DecodedMsg& out);
 

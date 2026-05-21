@@ -133,10 +133,20 @@ class Goal(Choice):
     option_festival = 1
     default = 0
 
+class TalkatooMode(Toggle):
+    """Talkatoo% mode: Talkatoo's speech bubble names 3 of YOUR AP-pool moons from the current
+    kingdom, refilling as you collect them. Composable with the other include_* / capturesanity
+    toggles — those still define which moons enter the pool; this option only changes how
+    Talkatoo points at them. Non-AP moons are pre-marked as collected on save load so the world
+    physically contains only AP locations (NOTE: destructive to the save; reserve this mode for
+    AP-only playthroughs)."""
+    display_name = "Talkatoo Mode"
+
 # This is called before any options are defined, in case you want to define your own with a clean slate
 def before_options_defined(options: dict) -> dict:
     options["goal"] = Goal
     options["capturesanity"] = Capturesanity
+    options["talkatoo_mode"] = TalkatooMode
     # Per-kingdom Peace toggles
     options["include_cap_peace_moons"] = IncludeCapPeaceMoons
     options["include_cascade_peace_moons"] = IncludeCascadePeaceMoons

@@ -181,6 +181,27 @@ def before_fill_slot_data(slot_data: dict, world: World, multiworld: MultiWorld,
 
 # This is called after slot data is set and provides the slot data at the time, in case you want to check and modify it after the world fills it
 def after_fill_slot_data(slot_data: dict, world: World, multiworld: MultiWorld, player: int) -> dict:
+    # Talkatoo% Phase 5 (Gap #3): when the player opts into talkatoo_mode,
+    # ship a per-kingdom sphere-safe ordered list of AP-pool moon shine_ids
+    # to the bridge. The bridge keeps a per-kingdom cursor + window of 3
+    # so Talkatoo only ever names moons whose collection prefix is
+    # reachable from items already earned. Without this, fresh-start
+    # Talkatoo% seeds can soft-lock when all 3 Talkatoo picks in a
+    # kingdom are gated behind a Capture/Cap item the player hasn't
+    # received yet.
+    if not slot_data.get("talkatoo_mode"):
+        return slot_data
+    from ..talkatoo_order import build_talkatoo_order
+    # locations.json's `progression: true` flag is the canonical source.
+    # The Switch's MoonGetHook bypasses the Talkatoo block for these via
+    # isProgressionShine — they're never gated by the cursor-window, so
+    # don't include them in the ordered list.
+    progression_names = {
+        loc["name"] for loc in location_table
+        if loc.get("progression", False)
+    }
+    slot_data["talkatoo_order"] = build_talkatoo_order(
+        world, multiworld, player, progression_names)
     return slot_data
 
 # This is called right at the end, in case you want to write stuff to the spoiler log

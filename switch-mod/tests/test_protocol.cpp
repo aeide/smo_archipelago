@@ -723,6 +723,50 @@ TEST(decode_outstanding_ignores_legacy_lifetime_fields) {
     EXPECT_EQ_I(m.outstanding.entries[0].count, 2);
 }
 
+TEST(decode_talkatoo_pool_enabled) {
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"talkatoo_pool","enabled":true,"kingdom":"Cap","moons":)"
+        R"(["Frog-Jumping Above the Fog","Good Evening, Captain Toad!"]})",
+        m));
+    EXPECT_EQ_S(m.t, "talkatoo_pool");
+    EXPECT(m.talkatoo_pool.enabled);
+    EXPECT_EQ_S(m.talkatoo_pool.kingdom, "Cap");
+    EXPECT_EQ_I(m.talkatoo_pool.moon_count, 2u);
+    EXPECT_EQ_S(m.talkatoo_pool.moons[0], "Frog-Jumping Above the Fog");
+    EXPECT_EQ_S(m.talkatoo_pool.moons[1], "Good Evening, Captain Toad!");
+    EXPECT(!m.talkatoo_pool.truncated);
+}
+
+TEST(decode_talkatoo_pool_disable) {
+    DecodedMsg m;
+    EXPECT(decodeFrom(R"({"t":"talkatoo_pool","enabled":false})", m));
+    EXPECT_EQ_S(m.t, "talkatoo_pool");
+    EXPECT(!m.talkatoo_pool.enabled);
+    EXPECT_EQ_I(m.talkatoo_pool.moon_count, 0u);
+}
+
+TEST(decode_talkatoo_pool_truncates_overflow) {
+    // Synthesize a kingdom carrying kTalkatooMaxMoonsPerKingdom + 3 moons.
+    // Parser must accept up to the cap and flag truncated; remaining slots
+    // are parse-and-discarded so the JSON stays well-formed.
+    std::string body =
+        R"({"t":"talkatoo_pool","enabled":true,"kingdom":"Sand","moons":[)";
+    constexpr std::size_t kOver = kTalkatooMaxMoonsPerKingdom + 3;
+    for (std::size_t i = 0; i < kOver; ++i) {
+        if (i > 0) body += ',';
+        body += '"';
+        body += "m";
+        body += std::to_string(i);
+        body += '"';
+    }
+    body += "]}";
+    DecodedMsg m;
+    EXPECT(decodeFrom(body, m));
+    EXPECT_EQ_I(m.talkatoo_pool.moon_count, kTalkatooMaxMoonsPerKingdom);
+    EXPECT(m.talkatoo_pool.truncated);
+}
+
 TEST(roundtrip_check_via_reader) {
     Check c{.kind=ItemKind::Moon, .kingdom="Cap", .shine_id="Spinning-Hat Stack"};
     std::string w = wire([&](auto& b){ encodeCheck(b, c); });

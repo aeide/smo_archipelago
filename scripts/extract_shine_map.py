@@ -49,7 +49,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 VENV_DIR = REPO_ROOT / "scripts" / ".extract-venv"
 VENV_PY = VENV_DIR / "Scripts" / "python.exe"
 
-DEFAULT_NSP = Path(r"C:\Users\maxwe\Desktop\Switch\SMO_1.0.0.nsp")
+DEFAULT_NSP = Path(r"C:\Users\maxwe\Desktop\Roms\Switch\Super Mario Odyssey [0100000000010000][v0][Base].nsp")
 DEFAULT_KEYS = Path.home() / ".switch" / "prod.keys"
 # The wizard's auto-install path drops hactool.exe at this location
 # (`_setup.installers.install_hactool` writes here; `_setup.prereqs.

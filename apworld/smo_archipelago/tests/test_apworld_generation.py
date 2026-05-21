@@ -183,11 +183,16 @@ def _build_scenarios() -> list[tuple[str, dict[str, bool]]]:
         return [
             ("all_on", _all_on()),
             ("festival_goal", {"goal": "festival"}),
+            # Phase 5 (Gap #3): exercise the talkatoo_order validator
+            # against the default option set so a regression in the
+            # greedy permutation builder is caught even on the fast run.
+            ("talkatoo_mode", {"talkatoo_mode": True}),
         ]
     return [
         ("all_on", _all_on()),
         ("all_off", _all_off()),
         ("festival_goal", {"goal": "festival"}),
+        ("talkatoo_mode", {"talkatoo_mode": True}),
         *_individual_off_cases(),
     ]
 

@@ -99,6 +99,19 @@ SYMBOLS = [
     "_ZN16GameDataFunction35tryChangeNextStageWithDemoWorldWarpE20GameDataHolderWriterPKc",
     # Regular-map stage-commit (visited-only; NOT used for substitution).
     "_ZN16GameDataFunction35tryChangeNextStageWithWorldWarpHoleE20GameDataHolderWriterPKc",
+    # Talkatoo% Phase 3 — speech-bubble substitution. Hook target is the
+    # runtime moon-name-message resolver (returns char16_t*); the Poetter
+    # vtable address is read at install to vtable-filter the trampoline so
+    # non-Talkatoo callers (cutscene cards, pause menu, AchievementHint)
+    # pass through untouched. exeWait kept for reference; see HookSymbols.hpp.
+    "_ZN16GameDataFunction19tryFindShineMessageEPKN2al9LiveActorEPKNS0_17IUseMessageSystemEii",
+    "_ZTV7Poetter",
+    "_ZN7Poetter7exeWaitEv",
+    # Phase 4 — collection block chokepoint. Hooked in TalkatooBlockHook.cpp.
+    # Tiny (0x58 bytes) function that owns the path: read ShineInfo* at
+    # this+0x120, call setGotShine. Skipping Orig in a trampoline = moon
+    # respawns on save-reload (Option B / A3-fallback from the roadmap).
+    "_ZN5Shine3getEv",
 ]
 
 

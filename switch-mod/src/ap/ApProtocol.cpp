@@ -440,6 +440,36 @@ bool parseCappy(Reader& r, Cappy& out) {
     return true;
 }
 
+bool parseTalkatooPool(Reader& r, TalkatooPool& out) {
+    // Reset to defaults — overwrite semantics (last message per kingdom wins).
+    out.enabled = true;
+    out.kingdom[0] = '\0';
+    out.moon_count = 0;
+    out.truncated = false;
+    std::string_view key;
+    while (r.nextField(key)) {
+        if      (key == "enabled") { if (!r.nextBool(out.enabled)) return false; }
+        else if (key == "kingdom") { if (!readIntoField(r, out.kingdom)) return false; }
+        else if (key == "moons") {
+            if (!r.enterArray()) return false;
+            while (r.hasMoreInArray()) {
+                std::string_view v;
+                if (!r.nextString(v)) return false;
+                if (out.moon_count < kTalkatooMaxMoonsPerKingdom) {
+                    copyFixedFieldN(out.moons[out.moon_count], v.data(), v.size());
+                    ++out.moon_count;
+                } else {
+                    // Parse-and-discard so the JSON stays well-formed;
+                    // consumer logs truncation.
+                    out.truncated = true;
+                }
+            }
+            if (!r.exitArray()) return false;
+        } else { return false; }
+    }
+    return true;
+}
+
 bool parseMoonLabel(Reader& r, MoonLabel& out) {
     std::int64_t tmp = 0;
     std::string_view key;
@@ -481,6 +511,7 @@ bool decode(const char* data, std::size_t len, DecodedMsg& out) {
     else if (eqStr(out.t, "cappy"))          ok = parseCappy(r, out.cappy);
     else if (eqStr(out.t, "shine_scouts"))   ok = parseShineScouts(r, out.shine_scouts);
     else if (eqStr(out.t, "outstanding"))    ok = parseOutstanding(r, out.outstanding);
+    else if (eqStr(out.t, "talkatoo_pool"))  ok = parseTalkatooPool(r, out.talkatoo_pool);
     else {
         // Unknown type: leave out.t set so handleLine can warn. Don't bother
         // draining the rest of the object — caller treats unknown as ignored.

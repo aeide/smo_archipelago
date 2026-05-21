@@ -421,3 +421,34 @@ def test_outstanding_msg_serialises_entries_as_dicts():
     assert b"OutstandingEntry" not in raw
     assert b'"kingdom":"Snow"' in raw
     assert b'"count":3' in raw
+
+
+def test_talkatoo_pool_msg_enabled_round_trip():
+    """Talkatoo% per-kingdom AP-pool. Bridge ships one message per kingdom."""
+    from client.protocol import TalkatooPoolMsg
+    msg = TalkatooPoolMsg(
+        enabled=True,
+        kingdom="Cap",
+        moons=["Frog-Jumping Above the Fog", "Good Evening, Captain Toad!"],
+    )
+    parsed = protocol.decode(protocol.encode(msg))
+    assert parsed == {
+        "t": "talkatoo_pool",
+        "enabled": True,
+        "kingdom": "Cap",
+        "moons": ["Frog-Jumping Above the Fog", "Good Evening, Captain Toad!"],
+    }
+
+
+def test_talkatoo_pool_msg_disable_round_trip():
+    """Disable message: enabled=False with empty kingdom/moons clears Switch state."""
+    from client.protocol import TalkatooPoolMsg
+    msg = TalkatooPoolMsg(enabled=False, kingdom="", moons=[])
+    parsed = protocol.decode(protocol.encode(msg))
+    assert parsed["t"] == "talkatoo_pool"
+    assert parsed["enabled"] is False
+    # kingdom + moons may be stripped by _strip_none, but the wire decoder must
+    # tolerate either presence (empty) or absence — see ApProtocol.cpp:
+    # parseTalkatooPool resets defaults at the top of the function.
+    assert parsed.get("kingdom", "") == ""
+    assert parsed.get("moons", []) == []

@@ -308,6 +308,109 @@ bool ApState::tryTakePendingMoonLabel(char (&text_out)[kPendingMoonLabelCap]) {
     return true;
 }
 
+void ApState::writeTalkatooKingdom(int bit,
+                                   const char moons[][kCheckFieldCap],
+                                   std::size_t count) {
+    if (bit < 0 || static_cast<std::size_t>(bit) >= kTalkatooKingdomCount) {
+        SMOAP_LOG_WARN("[talkatoo] writeTalkatooKingdom: bit=%d out of range; dropping",
+                       bit);
+        return;
+    }
+    auto& pool = talkatoo_pools[bit];
+    // Seqlock: even=stable, odd=writing. Worker thread is the sole writer
+    // (ApClient::handleLine -> here), but frame-thread readers
+    // (TalkatooSpeechHook) load the count + entries inside a load-then-load
+    // bracket and retry on torn reads.
+    const auto seq0 = pool.seq.load(std::memory_order_relaxed);
+    pool.seq.store(seq0 + 1, std::memory_order_release);  // even -> odd (writing)
+    const std::size_t capped = (count < TalkatooKingdomPool::kMaxMoons)
+        ? count : TalkatooKingdomPool::kMaxMoons;
+    for (std::size_t i = 0; i < capped; ++i) {
+        // moons[i] is a kCheckFieldCap char buffer; the source is bounded
+        // by the wire parser. memcpy is safe — no allocator path.
+        std::memcpy(pool.moons[i], moons[i], kCheckFieldCap);
+        pool.moons[i][kCheckFieldCap - 1] = '\0';
+    }
+    // Zero the slot just past the last written entry so a stale longer pool
+    // doesn't leak (the reader uses moon_count, but a defensive blank guard
+    // helps debugging).
+    if (capped < TalkatooKingdomPool::kMaxMoons) {
+        pool.moons[capped][0] = '\0';
+    }
+    pool.moon_count = static_cast<std::uint8_t>(capped);
+    pool.seq.store(seq0 + 2, std::memory_order_release);  // odd -> even (stable)
+    // Enable the mode the first time any kingdom is written.
+    talkatoo_mode.store(true, std::memory_order_release);
+}
+
+void ApState::clearTalkatoo() {
+    // Disable mode FIRST so any concurrent reader sees "off" before we touch
+    // the per-kingdom buffers (the speech hook gates on talkatoo_mode at the
+    // entry point — once it's false, no further snapshots fire).
+    talkatoo_mode.store(false, std::memory_order_release);
+    for (auto& pool : talkatoo_pools) {
+        const auto seq0 = pool.seq.load(std::memory_order_relaxed);
+        pool.seq.store(seq0 + 1, std::memory_order_release);
+        pool.moon_count = 0;
+        // No need to wipe the name buffers — moon_count=0 makes them
+        // unreachable, and a future writeTalkatooKingdom() overwrites in
+        // place.
+        pool.seq.store(seq0 + 2, std::memory_order_release);
+    }
+    // Phase 4: also clear named_moons. The block invariant only applies in
+    // talkatoo_mode; clearing here means a future re-enable starts from a
+    // clean slate (no carry-over named bits from a previous session).
+    clearNamedMoons();
+}
+
+void ApState::markMoonNamed(int shine_uid) {
+    if (shine_uid < 0) return;
+    constexpr int kMaxBit = static_cast<int>(kNamedMoonsWordCount) * 64;
+    if (shine_uid >= kMaxBit) return;
+    const auto word_idx = static_cast<std::size_t>(shine_uid) / 64;
+    const auto bit = static_cast<std::uint64_t>(1) << (shine_uid % 64);
+    named_moons_bits[word_idx].fetch_or(bit, std::memory_order_relaxed);
+}
+
+bool ApState::isMoonNamed(int shine_uid) const {
+    if (shine_uid < 0) return false;
+    constexpr int kMaxBit = static_cast<int>(kNamedMoonsWordCount) * 64;
+    if (shine_uid >= kMaxBit) return false;
+    const auto word_idx = static_cast<std::size_t>(shine_uid) / 64;
+    const auto bit = static_cast<std::uint64_t>(1) << (shine_uid % 64);
+    return (named_moons_bits[word_idx].load(std::memory_order_relaxed) & bit) != 0;
+}
+
+void ApState::clearNamedMoons() {
+    for (auto& w : named_moons_bits) {
+        w.store(0, std::memory_order_relaxed);
+    }
+}
+
+std::size_t ApState::snapshotTalkatooKingdom(
+    int bit, char (*out_moons)[kCheckFieldCap], std::size_t out_cap) const {
+    if (bit < 0 || static_cast<std::size_t>(bit) >= kTalkatooKingdomCount) return 0;
+    if (!talkatoo_mode.load(std::memory_order_acquire)) return 0;
+    const auto& pool = talkatoo_pools[bit];
+    // Seqlock retry loop — bounded so a stuck writer doesn't hang the frame
+    // thread. In practice the worker writes one kingdom in microseconds; a
+    // single retry is enough.
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        const auto s1 = pool.seq.load(std::memory_order_acquire);
+        if (s1 & 1u) continue;  // writer mid-update
+        const std::size_t n_read = pool.moon_count;
+        const std::size_t n = (n_read < out_cap) ? n_read : out_cap;
+        for (std::size_t i = 0; i < n; ++i) {
+            std::memcpy(out_moons[i], pool.moons[i], kCheckFieldCap);
+            out_moons[i][kCheckFieldCap - 1] = '\0';
+        }
+        const auto s2 = pool.seq.load(std::memory_order_acquire);
+        if (s1 == s2) return n;
+        // Torn read — writer interleaved. Try again.
+    }
+    return 0;
+}
+
 void ApState::maybeApplyInboundKill() {
     if (!inbound_kill_pending.exchange(false, std::memory_order_acq_rel)) return;
     if (!deathlink_enabled.load(std::memory_order_relaxed)) {

@@ -95,7 +95,8 @@
             "Cascade Kingdom"
         ],
         "region": "Cascade Kingdom",
-        "requires": []
+        "requires": [],
+        "progression": true
     },
     {
         "name": "Cascade: Multi Moon Atop the Falls",
@@ -103,7 +104,8 @@
             "Cascade Kingdom"
         ],
         "region": "Cascade Kingdom",
-        "requires": []
+        "requires": [],
+        "progression": true
     },
     {
         "name": "Cascade: Chomp Through the Rocks",
@@ -284,7 +286,8 @@
             "Sand Kingdom"
         ],
         "region": "Sand Kingdom",
-        "requires": "{BulletBillSkip()}"
+        "requires": "{BulletBillSkip()}",
+        "progression": true
     },
     {
         "name": "Sand: The Hole in the Desert",
@@ -292,7 +295,8 @@
             "Sand Kingdom"
         ],
         "region": "Sand Kingdom",
-        "requires": "{SandPeace()}"
+        "requires": "{SandPeace()}",
+        "progression": true
     },
     {
         "name": "Sand: Overlooking the Desert Town",
@@ -796,7 +800,8 @@
             "Lake Kingdom"
         ],
         "region": "Lake Kingdom",
-        "requires": "{LakePeace()}"
+        "requires": "{LakePeace()}",
+        "progression": true
     },
     {
         "name": "Lake: Dorrie-Back Rider",
@@ -1039,7 +1044,8 @@
             "Wooded Kingdom"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{MazeSkip()}"
+        "requires": "{MazeSkip()}",
+        "progression": true
     },
     {
         "name": "Wooded: Path to the Secret Flower Field",
@@ -1055,7 +1061,8 @@
             "Wooded Kingdom"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{MazeSkip()} and {OptAll(|Sherm| or |Uproot|)}"
+        "requires": "{MazeSkip()} and {OptAll(|Sherm| or |Uproot|)}",
+        "progression": true
     },
     {
         "name": "Wooded: Behind the Rock Wall",
@@ -1644,7 +1651,8 @@
             "Metro Kingdom"
         ],
         "region": "Metro Kingdom",
-        "requires": "{OptOne(Sherm)}"
+        "requires": "{OptOne(Sherm)}",
+        "progression": true
     },
     {
         "name": "Metro: Drummer on Board!",
@@ -1693,7 +1701,8 @@
         ],
         "region": "Metro Kingdom",
         "requires": "{PostTrumpeter()} and {OptOne(Manhole)}",
-        "victory": true
+        "victory": true,
+        "progression": true
     },
     {
         "name": "Metro: Inside an Iron Girder",
@@ -2122,7 +2131,8 @@
             "post-metro"
         ],
         "region": "Snow Kingdom",
-        "requires": "{OptOne(Ty-foo)} or {OptOne(Shiverian Racer)}"
+        "requires": "{OptOne(Ty-foo)} or {OptOne(Shiverian Racer)}",
+        "progression": true
     },
     {
         "name": "Snow: Entrance to Shiveria",
@@ -2412,7 +2422,8 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": "{OptOne(Gushen)}"
+        "requires": "{OptOne(Gushen)}",
+        "progression": true
     },
     {
         "name": "Seaside: The Lighthouse Seal",
@@ -2421,7 +2432,8 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": "{Lighthouse()}"
+        "requires": "{Lighthouse()}",
+        "progression": true
     },
     {
         "name": "Seaside: The Hot Spring Seal",
@@ -2430,7 +2442,8 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": "{OptOne(Gushen)}"
+        "requires": "{OptOne(Gushen)}",
+        "progression": true
     },
     {
         "name": "Seaside: The Seal Above the Canyon",
@@ -2439,7 +2452,8 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": []
+        "requires": [],
+        "progression": true
     },
     {
         "name": "Seaside: The Glass Is Half Full!",
@@ -2448,7 +2462,8 @@
             "post-metro"
         ],
         "region": "Seaside Kingdom",
-        "requires": "{OptOne(Gushen)}"
+        "requires": "{OptOne(Gushen)}",
+        "progression": true
     },
     {
         "name": "Seaside: On the Cliff Overlooking the Beach",
@@ -2894,7 +2909,8 @@
             "post-metro"
         ],
         "region": "Luncheon Kingdom",
-        "requires": "{OptAll(|Lava Bubble| AND |Meat|)}"
+        "requires": "{OptAll(|Lava Bubble| AND |Meat|)}",
+        "progression": true
     },
     {
         "name": "Luncheon: Climb Up the Cascading Magma",
@@ -2912,7 +2928,8 @@
             "post-metro"
         ],
         "region": "Luncheon Kingdom",
-        "requires": "{LuncheonPeace()}"
+        "requires": "{LuncheonPeace()}",
+        "progression": true
     },
     {
         "name": "Luncheon: Piled on the Salt",
@@ -3338,7 +3355,8 @@
             "Ruined Kingdom"
         ],
         "region": "Ruined Kingdom",
-        "requires": []
+        "requires": [],
+        "progression": true
     },
     {
         "name": "Ruined: In the Ancient Treasure Chest",
@@ -3376,7 +3394,8 @@
             "Bowser's Kingdom"
         ],
         "region": "Bowser's Kingdom",
-        "requires": []
+        "requires": [],
+        "progression": true
     },
     {
         "name": "Bowser's: Smart Bombing",
@@ -3385,7 +3404,8 @@
             "Bowser's Kingdom"
         ],
         "region": "Bowser's Kingdom",
-        "requires": []
+        "requires": [],
+        "progression": true
     },
     {
         "name": "Bowser's: Big Broodal Battle",
@@ -3394,7 +3414,8 @@
             "Bowser's Kingdom"
         ],
         "region": "Bowser's Kingdom",
-        "requires": []
+        "requires": [],
+        "progression": true
     },
     {
         "name": "Bowser's: Showdown at Bowser's Castle",
@@ -3403,7 +3424,8 @@
             "Bowser's Kingdom"
         ],
         "region": "Bowser's Kingdom",
-        "requires": []
+        "requires": [],
+        "progression": true
     },
     {
         "name": "Bowser's: Behind the Big Wall",

@@ -15,8 +15,10 @@ python scripts/extract_shine_map.py --xci <SMO_1.0.0.xci>
 For example:
 ```pwsh
 python C:\Users\maxwe\Documents\smo_archipelago\scripts\extract_shine_map.py `
-    --nsp C:\Users\maxwe\Downloads\SMO_1.0.0.nsp
+    --nsp "C:\Users\maxwe\Desktop\Roms\Switch\Super Mario Odyssey [0100000000010000][v0][Base].nsp"
 ```
+
+The NSP path contains spaces and square brackets — always quote it.
 
 Self-bootstraps a Python 3.12 venv with `oead` at `scripts/.extract-venv/` (no Python 3.13 wheel exists for oead), runs `hactool` to extract RomFS (~5 GB cache at `.romfs-cache/`), then walks the BYML + MSBT files. NSP unpacks via the PFS0 partition (`hactool -t pfs0`); XCI unpacks via the HFS0 secure partition (`hactool -t xci --securedir=`). Same NCA layout downstream — the largest NCA is the program NCA and its RomFS is what we walk.
 
@@ -32,7 +34,7 @@ All four files contain verbatim Nintendo USen strings and **MUST stay gitignored
 
 ## Prerequisites
 
-- SMO 1.0.0 NSP **or** XCI at a known path (user's NSP lives at `C:\Users\maxwe\Downloads\SMO_1.0.0.nsp`, copyrighted — never commit).
+- SMO 1.0.0 NSP **or** XCI at a known path (user's NSP lives at `C:\Users\maxwe\Desktop\Roms\Switch\Super Mario Odyssey [0100000000010000][v0][Base].nsp`, copyrighted — never commit). Quote the path on the command line — it contains spaces and square brackets.
 - `prod.keys` at `C:\Users\maxwe\.switch\` (hactool default location). Switch keys are themselves IP-sensitive.
 - `title.keys` at the same location — **required for XCI** (cartridge dumps don't carry a ticket so hactool has to look up the titlekey by rights ID). NSPs ship the ticket inside the package; the extractor lifts it directly and `title.keys` is unused on that path.
 - hactool on PATH (or in a known location — script auto-finds).

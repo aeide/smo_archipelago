@@ -224,6 +224,98 @@ public:
     // event back to AP.
     bool synthetic_uncapture_this_frame = false;
 
+    // ---- Talkatoo% mode --------------------------------------------------
+    //
+    // talkatoo_mode: bridge ships `talkatoo_pool` messages with enabled=false
+    // to disable and enabled=true (one per kingdom) to enable. Acquire-loaded
+    // by the speech hook on every Talkatoo interaction — release-stored after
+    // any per-kingdom pool write so the consumer sees the data the moment it
+    // sees the flag. Default false (vanilla Talkatoo).
+    std::atomic<bool> talkatoo_mode{false};
+
+    // Per-kingdom AP-pool of moon display names. Indexed by kingdomBitFor()
+    // (0..16, matches ap_moons_kingdom[]). Worker thread (ApClient::handle
+    // Line on receipt of a talkatoo_pool message) writes; frame thread
+    // (TalkatooSpeechHook) reads. The seq counter is a classic seqlock:
+    // even = stable, odd = mid-write. Worker increments to odd before
+    // mutating, increments to even after. Frame-thread reader copies inside
+    // a load-then-load pair and retries on mismatch / odd. Sized to absorb
+    // the apworld's worst case (Sand has 62 moons today; cap 96 for growth).
+    //
+    // 17 × 96 × 64 = ~105 KiB BSS. Fixed buffers per the M6.1 allocator
+    // contract.
+    struct TalkatooKingdomPool {
+        static constexpr std::size_t kMaxMoons = kTalkatooMaxMoonsPerKingdom;
+        static constexpr std::size_t kNameCap = kCheckFieldCap;
+        char moons[kMaxMoons][kNameCap] = {};
+        std::uint8_t moon_count = 0;
+        std::atomic<std::uint32_t> seq{0};
+    };
+    static constexpr std::size_t kTalkatooKingdomCount = 17;
+    TalkatooKingdomPool talkatoo_pools[kTalkatooKingdomCount];
+
+    // Worker-thread write — applies one kingdom's pool. Pass kCheckFieldCap-
+    // sized name buffers; we copy up to `count` of them (capped at
+    // kTalkatooMaxMoonsPerKingdom). Idempotent: re-writing the same kingdom
+    // (HELLO replay across reconnects) just refreshes the buffer.
+    void writeTalkatooKingdom(int bit,
+                              const char moons[][kCheckFieldCap],
+                              std::size_t count);
+
+    // Worker-thread clear — resets all kingdoms to empty and flips
+    // talkatoo_mode off. Called on a TalkatooPool message with enabled=false.
+    void clearTalkatoo();
+
+    // ---- Phase 4: named-moon set (collection block) -------------------------
+    //
+    // The substitute hook (TalkatooSpeechHook) calls `markMoonNamed(shine_uid)`
+    // each time Talkatoo speaks a moon. The block path inside MoonGetHook calls
+    // `isMoonNamed(shine_uid)` before letting Orig flip the shine flag; in
+    // Talkatoo% mode, a moon that is NOT named is silently dropped — Mario's
+    // get-cinematic plays but the shine bit never sets, AP credit is skipped,
+    // and the moon respawns on save-reload (Option B / A3-fallback from the
+    // roadmap).
+    //
+    // Storage: a 2048-bit bitset indexed by shine_uid (unique per moon across
+    // all kingdoms in shine_table.h). 256 bytes BSS. No per-kingdom split
+    // needed since shine_uid is globally unique.
+    //
+    // Threading: written from the frame thread inside TalkatooSpeechHook's
+    // trampoline callback; read from the frame thread inside MoonGetHook's
+    // callback. Both are the game thread; the atomic wrappers are belt-and-
+    // braces for cross-frame visibility consistency with the other ApState
+    // bit-vectors.
+    //
+    // Persistence: in-memory only for this iteration. A save+reload re-empties
+    // named_moons (acceptable per the "must speak to Talkatoo first" invariant
+    // — re-entering a kingdom means re-talking to Talkatoo to re-name moons).
+    // A future iteration will mirror this state to the bridge via a new wire
+    // message so the set survives game restarts within a single AP session.
+    static constexpr std::size_t kNamedMoonsWordCount = 32;  // 32 * 64 = 2048
+    std::atomic<std::uint64_t> named_moons_bits[kNamedMoonsWordCount];
+
+    // Add a shine_uid to the named set. No-op for negative / out-of-range
+    // uids (e.g. when the display name didn't resolve via shine_lookup).
+    // Idempotent: re-naming the same moon is fine.
+    void markMoonNamed(int shine_uid);
+
+    // Query whether a shine_uid was named. Returns false for out-of-range
+    // uids so the block hook fails-closed (unknown uid → blocked iff mode is
+    // on, which means the moon isn't in shine_table.h at all — vanilla path).
+    bool isMoonNamed(int shine_uid) const;
+
+    // Reset the entire named set. Frame thread; called on disconnect /
+    // talkatoo_mode-off transition.
+    void clearNamedMoons();
+
+    // Frame-thread read — snapshots one kingdom's pool into the caller-owned
+    // arrays. Returns the count read (0 if the kingdom has no pool or the
+    // bit is out of range). The seqlock retries internally up to a small
+    // bound; a persistent torn read (writer stuck) returns 0.
+    std::size_t snapshotTalkatooKingdom(int bit,
+                                        char (*out_moons)[kCheckFieldCap],
+                                        std::size_t out_cap) const;
+
     // M7 deferred kill — CaptureStartHook's deny branch sets this instead of
     // calling the release inline; smoap::hooks::tickPendingUncapture() drains
     // it from drawMain after PlayerHackKeeper::isActiveHackStartDemo() returns

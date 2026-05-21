@@ -1,0 +1,41 @@
+name: Mario
+game: Spicy Meatball Overdrive
+description: SMO Talkatoo% mode end-to-end test (talkatoo_mode on, otherwise mirrors smo_loopback)
+
+Spicy Meatball Overdrive:
+  # Minimal accessibility so seed generation succeeds regardless of upstream
+  # apworld rule strictness — same rationale as smo_loopback.yaml.
+  accessibility: minimal
+  death_link: false
+
+  # The reason this seed exists: exercise the TalkatooSpeechHook substitution
+  # against a real Talkatoo% AP-pool. Bridge derives the pool from
+  # missing_locations ∪ checked_locations and ships one talkatoo_pool message
+  # per kingdom on Connected.
+  talkatoo_mode: true
+
+  # All category toggles default to on; we explicitly enable the big ones
+  # so the seed has a meaningful number of locations per kingdom.
+  capturesanity: true
+
+  # Per-kingdom Peace toggles (default true).
+  include_cap_peace_moons: true
+  include_cascade_peace_moons: true
+  include_sand_peace_moons: true
+  include_lake_peace_moons: true
+  include_wooded_peace_moons: true
+  include_lost_peace_moons: true
+  include_metro_peace_moons: true
+  include_snow_peace_moons: true
+  include_seaside_peace_moons: true
+  include_luncheon_peace_moons: true
+  include_bowsers_peace_moons: true
+  include_cloud_peace_moons: true
+
+  # Per-area annoying-cluster toggles (default true).
+  include_deep_woods_moons: true
+  include_minigame_moons: true
+  include_hint_art_moons: true
+  include_tourist_moons: true
+  include_long_course_moons: true
+  include_precision_capture_moons: true

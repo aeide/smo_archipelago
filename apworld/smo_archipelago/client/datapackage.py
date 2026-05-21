@@ -111,6 +111,12 @@ class DataPackage:
         self._location_categories: dict[str, list[str]] = {}
         # Per-kingdom Odyssey-power threshold parsed from regions.json.
         self._kingdom_exit_thresholds: dict[str, int] = {}
+        # Location names whose `progression: true` flag is set in
+        # locations.json. Phase 4's Talkatoo% block always lets these
+        # through (isProgressionShine bypass in MoonGetHook); Gap #1 also
+        # filters them out of the bridge-side talkatoo_pool so Talkatoo
+        # doesn't waste a hint slot naming a moon the player gets free.
+        self._progression_locations: set[str] = set()
 
         if apworld_data_dir is not None:
             self._load_apworld(apworld_data_dir)
@@ -131,6 +137,8 @@ class DataPackage:
                 name = entry.get("name")
                 if name:
                     self._location_categories[name] = entry.get("category", []) or []
+                    if entry.get("progression", False):
+                        self._progression_locations.add(name)
         if regions_path.exists():
             self._kingdom_exit_thresholds = _parse_kingdom_exit_thresholds(
                 regions_path.read_text(encoding="utf-8"))
@@ -161,6 +169,8 @@ class DataPackage:
                 name = entry.get("name")
                 if name:
                     target[name] = entry.get("category", []) or []
+                    if filename == "locations.json" and entry.get("progression", False):
+                        self._progression_locations.add(name)
         try:
             regions_text = data_root.joinpath("regions.json").read_text(encoding="utf-8")
         except (FileNotFoundError, OSError):
@@ -204,6 +214,17 @@ class DataPackage:
                                       kingdom=m.group(1).strip(),
                                       shine_id=m.group(2))
         return ClassifiedItem(ItemKind.OTHER, name)
+
+    def is_progression_location(self, name: str) -> bool:
+        """True iff `name` is flagged `progression: true` in locations.json.
+
+        Used by the bridge-side Talkatoo% pool builder to skip scenario-
+        advancing moons (Multi Moons, boss-fight clears, Seaside seals,
+        Bowser's chain) — those moons are always collectible via Phase 4's
+        isProgressionShine bypass, so naming them in Talkatoo's bubble
+        wastes a hint slot on a moon the player gets free anyway.
+        """
+        return name in self._progression_locations
 
     def kingdom_exit_thresholds(self) -> dict[str, int]:
         """Per-kingdom Odyssey-power threshold to leave for the next kingdom.

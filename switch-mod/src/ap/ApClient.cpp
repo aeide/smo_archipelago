@@ -1156,6 +1156,37 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
             ++applied;
         }
         SMOAP_LOG_INFO("[m6-outstanding] applied %zu kingdom balances", applied);
+    } else if (eq(m.t, "talkatoo_pool")) {
+        // Talkatoo% mode — bridge ships one message per kingdom on HELLO
+        // replay (and again whenever the user toggles mode), or a single
+        // enabled=false message to disable the feature entirely. The per-
+        // kingdom write uses a seqlock so the frame-thread speech hook
+        // can re-read without holding a lock.
+        auto& st = ApState::instance();
+        const auto& tp = m.talkatoo_pool;
+        if (!tp.enabled) {
+            SMOAP_LOG_INFO("[talkatoo] disable received — clearing pool state");
+            st.clearTalkatoo();
+        } else {
+            if (tp.kingdom[0] == '\0') {
+                SMOAP_LOG_WARN("[talkatoo] enable msg without kingdom — ignoring");
+            } else {
+                const std::uint8_t bit = smoap::game::kingdomBitFor(tp.kingdom);
+                if (bit >= 17) {
+                    SMOAP_LOG_WARN("[talkatoo] unknown kingdom='%s' moons=%zu",
+                                   tp.kingdom, tp.moon_count);
+                } else {
+                    st.writeTalkatooKingdom(bit, tp.moons, tp.moon_count);
+                    if (tp.truncated) {
+                        SMOAP_LOG_WARN("[talkatoo] kingdom=%s truncated at %zu moons "
+                                       "(bump kTalkatooMaxMoonsPerKingdom?)",
+                                       tp.kingdom, tp.moon_count);
+                    }
+                    SMOAP_LOG_INFO("[talkatoo] applied kingdom=%s moons=%zu",
+                                   tp.kingdom, tp.moon_count);
+                }
+            }
+        }
     } else {
         SMOAP_LOG_WARN("unknown message t=%s", m.t);
     }
