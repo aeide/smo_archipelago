@@ -168,3 +168,84 @@ def test_deploy_to_custom_folder_handles_permission_error(
     assert not result.ok
     assert "PermissionError" in result.error
     assert "Custom folder" in result.target
+
+
+# ---------------------------------------------------------------------------
+# Defensiveness pins — partial-write detection and contextual errors.
+# These guard the wizard's "did the deploy actually finish" gate. If a
+# future edit drops the size assertion in _copy_files, the wizard would
+# silently mark a half-deploy "complete" and the user's Switch would boot
+# with a truncated subsdk9.
+# ---------------------------------------------------------------------------
+
+
+def test_deploy_detects_partial_write(monkeypatch, tmp_path: Path) -> None:
+    """If shutil.copy2 returns without raising but the destination ends
+    up shorter than the source (a real failure mode on yanked SD cards
+    and AV-filtered file systems), the deploy must FAIL and report the
+    size mismatch — not silently mark itself complete."""
+    sources = _make_fake_build(tmp_path)
+    custom_root = tmp_path / "PartialDrive"
+    custom_root.mkdir()
+
+    import shutil as _shutil
+    real_copy2 = _shutil.copy2
+
+    def truncating_copy2(src, dst):
+        real_copy2(src, dst)
+        # Simulate "drive disconnected after copy started but before
+        # all bytes flushed" — file exists at dst but shorter than src.
+        with open(dst, "wb") as f:
+            f.write(b"truncated")
+
+    monkeypatch.setattr(_shutil, "copy2", truncating_copy2)
+
+    result = deploy_to_custom_folder(custom_root, sources)
+    assert not result.ok, "Partial write was not detected — deploy silently succeeded"
+    assert "Partial write" in result.error or "bytes" in result.error
+    # Source name must be in the error so the user knows what to re-copy.
+    assert "subsdk9" in result.error or "main.npdm" in result.error or "ap_config" in result.error
+
+
+def test_deploy_error_includes_source_and_dest_context(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    """The error string must identify which copy failed — both the
+    source filename and the destination path. Without this the user
+    sees just `OSError: [Errno 13] Permission denied` and has to dig
+    through the log to figure out which file failed."""
+    sources = _make_fake_build(tmp_path)
+    sd_root = tmp_path / "sd"
+    sd_root.mkdir()
+
+    import shutil as _shutil
+    monkeypatch.setattr(
+        _shutil, "copy2",
+        lambda src, dst: (_ for _ in ()).throw(
+            PermissionError("access denied")
+        ),
+    )
+    result = deploy_to_sd(sd_root, sources)
+    assert not result.ok
+    # Source filename present
+    assert "subsdk9" in result.error or "main.npdm" in result.error or "ap_config" in result.error
+    # Underlying OSError class preserved (so the wizard's status text
+    # surfaces the OS-level cause).
+    assert "PermissionError" in result.error
+
+
+def test_deploy_detects_missing_source(monkeypatch, tmp_path: Path) -> None:
+    """If a build output went missing between build verification and
+    deploy (e.g. user manually deleted from build dir), the copy step
+    must fail with a clear `Source file unreadable` message — not a
+    bare FileNotFoundError from copy2."""
+    sources = _make_fake_build(tmp_path)
+    # Delete the source after the dict was built — simulates the race.
+    sources["subsdk9"].unlink()
+    sd_root = tmp_path / "sd"
+    sd_root.mkdir()
+
+    result = deploy_to_sd(sd_root, sources)
+    assert not result.ok
+    assert "Source file unreadable" in result.error
+    assert "subsdk9" in result.error

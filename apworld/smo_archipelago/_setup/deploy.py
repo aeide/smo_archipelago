@@ -113,6 +113,13 @@ def _ryujinx_layout(ryujinx_root: Path) -> dict[str, Path]:
     }
 
 
+class DeployCopyError(OSError):
+    """`_copy_files` raises this in place of a bare OSError so the wizard's
+    error handler can display the source/destination context the user
+    needs to diagnose the failure (and so the OSError catch in the deploy
+    wrappers can dispatch on it without losing context)."""
+
+
 def _copy_files(
     sources: dict[str, Path],
     dests: dict[str, Path],
@@ -120,14 +127,60 @@ def _copy_files(
     """Copy each (source, dest) pair, creating parent dirs.
 
     Returns the list of (source, dest) actually copied for the wizard
-    summary. Raises on any IO error — caller wraps in try/except to
-    surface to the user with a Retry option.
+    summary. Raises `DeployCopyError` on any IO error, with the failing
+    pair embedded in the message — `shutil.copy2`'s default OSError
+    sometimes elides the destination path, which is the most useful
+    diagnostic on a Switch SD card deploy (wrong drive picked, drive
+    yanked mid-copy, AV write block).
+
+    After a successful copy each destination's size is asserted equal
+    to the source's size — `shutil.copy2` doesn't fsync and some Windows
+    file system filters can return early before the bytes have landed.
+    A size mismatch is treated as a copy failure so the wizard reports
+    the partial write instead of marking deploy "complete".
     """
     copied: list[tuple[Path, Path]] = []
     for key, src in sources.items():
         dst = dests[key]
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        try:
+            src_size = src.stat().st_size
+        except OSError as e:
+            raise DeployCopyError(
+                f"Source file unreadable before copy: {src} ({e}). "
+                f"Re-run the Build step to regenerate it."
+            ) from e
+        try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            raise DeployCopyError(
+                f"Could not create destination directory {dst.parent} "
+                f"for {key}: {e}. Check that the target drive is "
+                f"writable and has free space."
+            ) from e
+        try:
+            shutil.copy2(src, dst)
+        except OSError as e:
+            raise DeployCopyError(
+                f"Failed to copy {src.name} to {dst}: {e}. "
+                f"If this is an SD card, check it's still inserted and "
+                f"not write-protected; if Ryujinx, check it's not "
+                f"running with the mod file locked."
+            ) from e
+        try:
+            actual = dst.stat().st_size
+        except OSError as e:
+            raise DeployCopyError(
+                f"Copied {src.name} to {dst} but couldn't stat the "
+                f"result: {e}. The destination may have been deleted "
+                f"or the drive disconnected during the copy."
+            ) from e
+        if actual != src_size:
+            raise DeployCopyError(
+                f"Partial write: {src.name} is {src_size} bytes but "
+                f"{dst} is {actual} bytes. The drive ran out of space "
+                f"mid-copy or was disconnected. Free space (or "
+                f"reconnect the SD card) and re-run Deploy."
+            )
         copied.append((src, dst))
     return copied
 
@@ -147,11 +200,16 @@ def deploy_to_sd(sd_root: Path, build_outputs: dict[str, Path]) -> DeployResult:
             files=copied,
         )
     except (OSError, PermissionError) as e:
+        # Preserve the underlying exception class name (PermissionError,
+        # FileNotFoundError, OSError) alongside the DeployCopyError
+        # context so the user sees both "what kind of OS failure" and
+        # "which copy step it was".
+        cause = e.__cause__ if isinstance(e, DeployCopyError) and e.__cause__ else e
         return DeployResult(
             ok=False,
             target=f"SD card at {sd_root}",
             files=[],
-            error=f"{type(e).__name__}: {e}",
+            error=f"{type(cause).__name__}: {e}",
         )
 
 
@@ -169,11 +227,12 @@ def deploy_to_ryujinx(
             files=copied,
         )
     except (OSError, PermissionError) as e:
+        cause = e.__cause__ if isinstance(e, DeployCopyError) and e.__cause__ else e
         return DeployResult(
             ok=False,
             target=f"Ryujinx at {ryujinx_root}",
             files=[],
-            error=f"{type(e).__name__}: {e}",
+            error=f"{type(cause).__name__}: {e}",
         )
 
 
@@ -200,9 +259,10 @@ def deploy_to_custom_folder(
             files=copied,
         )
     except (OSError, PermissionError) as e:
+        cause = e.__cause__ if isinstance(e, DeployCopyError) and e.__cause__ else e
         return DeployResult(
             ok=False,
             target=f"Custom folder at {custom_root}",
             files=[],
-            error=f"{type(e).__name__}: {e}",
+            error=f"{type(cause).__name__}: {e}",
         )

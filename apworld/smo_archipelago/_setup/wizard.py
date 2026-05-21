@@ -48,6 +48,7 @@ from .build import (
     run_cmake_configure,
     run_extract_maps,
     run_sync_capture_table,
+    verify_map_hashes,
 )
 from .deploy import (
     DeployResult,
@@ -107,6 +108,60 @@ def wizard_log(line: str) -> None:
             f.write(f"[{time.strftime('%H:%M:%S')}] {line}\n")
     except OSError:
         pass  # best-effort; log losing a line shouldn't break the wizard
+
+
+# Cap how many times a single wizard page can re-run its worker before
+# we stop offering the Retry button. Picked so a flaky network or AV
+# scan can retry a handful of times without manual intervention, but a
+# persistently broken step (wrong NSP version, missing devkitPro, etc.)
+# eventually surfaces a clear "give up — fix the underlying cause"
+# message instead of letting the user click Retry forever. Counts reset
+# on a fresh page entry, so navigating Back→Forward gives a clean slate.
+MAX_STEP_ATTEMPTS = 5
+
+
+def _resolve_persisted_path(
+    state: dict[str, Any],
+    key: str,
+    on_line: Any = None,
+) -> Path | None:
+    """Pull a user-chosen tool path out of `setup_state.json` and verify
+    the file is still there.
+
+    The prereq page persists overrides for `hactool_path` and
+    `prodkeys_path` so the extract worker doesn't have to re-prompt on
+    each Retry. But the user can move those files between sessions
+    (re-mount their key drive, archive an old hactool build, etc.) —
+    passing a now-stale path to a subprocess produces a far less
+    actionable error than catching the staleness here and surfacing a
+    clear "this file is gone, re-check prereqs" message.
+
+    Returns the Path if it points at an existing file; None if the key
+    is unset, malformed, or the file is missing. The caller's normal
+    `None` codepath (PATH fallback for hactool, prod.keys default
+    location for keys) handles the "no override" case.
+    """
+    raw = state.get(key)
+    if raw is None:
+        return None
+    if not isinstance(raw, str) or not raw:
+        if on_line is not None:
+            on_line(
+                f"[wizard] ignored persisted {key}: expected a non-empty "
+                f"string in setup_state.json, got {type(raw).__name__}. "
+                f"Falling back to auto-detect."
+            )
+        return None
+    p = Path(raw)
+    if not p.is_file():
+        if on_line is not None:
+            on_line(
+                f"[wizard] persisted {key} no longer exists at {p}. "
+                f"Falling back to auto-detect — if extraction fails, "
+                f"re-run the prereq check to point at the new location."
+            )
+        return None
+    return p
 
 
 # ---------------------------------------------------------------------------
@@ -721,6 +776,12 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
             "last_output_ts": None,      # float
             "worker_thread": None,
             "heartbeat_thread": None,
+            # Bounded-retry counter — incremented at start_worker, reset on
+            # fresh page entry (on_pre_enter resets it before kicking off
+            # the first attempt). Caps the user's Retry clicks so a
+            # persistently broken extract eventually surfaces a "stop and
+            # diagnose" message instead of looping forever.
+            "attempt_count": 0,
         }
 
         def _log_to_file(line: str) -> None:
@@ -788,11 +849,46 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
             _state["last_output_ts"] = time.monotonic()
             # Open file log fresh per run; "w" truncates so each Retry
             # gets a clean log instead of compounding across attempts.
+            # If the log can't be opened (APPDATA read-only, disk full),
+            # surface to status.text — the previous behaviour of logging
+            # only via on_line meant the warning landed in the log box
+            # but the user kept staring at a "Extracting..." status with
+            # no indication anything was wrong.
             try:
                 _state["log_file"] = open(extract_log_path, "w", encoding="utf-8")
             except OSError as e:
                 _state["log_file"] = None
-                on_line(f"[wizard] could not open {extract_log_path}: {e}")
+                msg = (
+                    f"Could not open extract log at {extract_log_path}: {e}. "
+                    f"Extraction will still run, but output won't be "
+                    f"persisted to disk for later inspection. Check that "
+                    f"%APPDATA% is writable."
+                )
+                on_line(f"[wizard] {msg}")
+                from kivy.clock import Clock as _Clock
+                _Clock.schedule_once(
+                    lambda dt: status.setter("text")(status, msg)
+                )
+            # Validate the dump file still exists — the picker checked at
+            # the time of selection, but the user may have moved or
+            # deleted the file between then and clicking Start Extract,
+            # and otherwise the subprocess would fail far downstream with
+            # an opaque "couldn't read NSP" message.
+            if not dump.is_file():
+                msg = (
+                    f"Dump file no longer exists at {dump}. Go back to "
+                    f"the previous step and re-pick your NSP/XCI."
+                )
+                on_line(f"[wizard] {msg}")
+                from kivy.clock import Clock as _Clock
+                _Clock.schedule_once(
+                    lambda dt: status.setter("text")(status, msg)
+                )
+                _Clock.schedule_once(
+                    lambda dt: setattr(retry_btn, "disabled", False)
+                )
+                _close_log()
+                return
             status.text = f"Extracting from {dump.name}... (2-5 minutes typical)"
             on_line(f"[wizard] === extract run start: {time.strftime('%Y-%m-%d %H:%M:%S')} ===")
             on_line(f"[wizard] dump: {dump} (kind={dump.suffix.lstrip('.').lower() or 'nsp'})")
@@ -800,11 +896,11 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                 # Use the user-picked hactool path if the wizard's prereq
                 # page persisted one; extractor falls back to PATH otherwise.
                 state = load_setup_state()
-                hactool_override = (
-                    Path(state["hactool_path"]) if state.get("hactool_path") else None
+                hactool_override = _resolve_persisted_path(
+                    state, "hactool_path", on_line
                 )
-                prod_keys_override = (
-                    Path(state["prodkeys_path"]) if state.get("prodkeys_path") else None
+                prod_keys_override = _resolve_persisted_path(
+                    state, "prodkeys_path", on_line
                 )
                 on_line(f"[wizard] hactool override: {hactool_override}")
                 on_line(f"[wizard] prod.keys override: {prod_keys_override}")
@@ -844,12 +940,68 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                     "[wizard] subprocess returned 0 but shine_map.json / "
                     "capture_map.json are missing — treating as failure"
                 )
+            # Hash gate: the USen-locale extract is deterministic across
+            # every legitimate SMO 1.0.0 source (eShop NSP, cartridge,
+            # XCI, any valid ticket). A mismatch is a real "wrong dump"
+            # signal — typically a v1.1.0+ patched build, a different
+            # game, or a corrupted dump — so the wizard refuses to
+            # continue. If the user's source is genuinely 1.0.0 but
+            # produces different bytes, the fix is to dump cleanly with
+            # NXDumpTool from a clean retail source.
+            hash_ok = False
+            hash_hint = ""
+            if outputs_present:
+                try:
+                    checks = verify_map_hashes()
+                except Exception as e:  # pragma: no cover
+                    on_line(
+                        f"[wizard] hash check crashed: "
+                        f"{type(e).__name__}: {e} — treating as failure"
+                    )
+                    checks = []
+                    hash_hint = (
+                        "Hash check itself errored — re-run setup."
+                    )
+                if checks and all(c.match for c in checks):
+                    hash_ok = True
+                    on_line(
+                        "[wizard] hash check: maps match canonical "
+                        "SMO 1.0.0 USen fingerprint"
+                    )
+                else:
+                    mismatched = [c for c in checks if not c.match]
+                    for c in mismatched:
+                        on_line(
+                            f"[wizard] hash check: {c.filename} "
+                            f"differs from canonical "
+                            f"(expected {c.expected[:12]}…, "
+                            f"got {(c.actual or '<missing>')[:12]}…)"
+                        )
+                    if mismatched and not hash_hint:
+                        hash_hint = (
+                            "Maps don't match the canonical SMO 1.0.0 "
+                            "USen fingerprint. Confirm your dump is "
+                            "SMO 1.0.0 (not 1.1.0+ or a different game), "
+                            "then re-dump with NXDumpTool from a clean "
+                            "retail source and re-run Extract."
+                        )
             from kivy.clock import Clock as _Clock
             def finish(_dt):
-                if result.ok and outputs_present:
+                if result.ok and outputs_present and hash_ok:
                     status.text = "Extraction complete."
                     next_btn.disabled = False
                     retry_btn.disabled = True
+                elif result.ok and outputs_present and not hash_ok:
+                    # Files exist but don't match the canonical
+                    # fingerprint. Surface the actionable hint in the
+                    # status text so the user sees the fix without
+                    # scrolling the log.
+                    status.text = (
+                        hash_hint
+                        or "Extraction produced unexpected maps — "
+                           "see hash check lines above."
+                    )
+                    retry_btn.disabled = False
                 elif result.ok:
                     status.text = (
                         "Extraction reported success but output files are "
@@ -871,6 +1023,28 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                     pass
 
         def start_worker() -> None:
+            # Refuse to spawn yet another subprocess after MAX_STEP_ATTEMPTS
+            # consecutive failures on this page. Surfaces an actionable
+            # "look at the log, diagnose, and re-run setup" message
+            # instead of letting the user click Retry indefinitely on a
+            # configuration problem that won't fix itself by retrying.
+            if _state["attempt_count"] >= MAX_STEP_ATTEMPTS:
+                msg = (
+                    f"Extract failed {_state['attempt_count']} times in a "
+                    f"row. Full log: {extract_log_path}. Common causes: "
+                    f"wrong SMO version (need 1.0.0), corrupt NSP/XCI "
+                    f"dump, missing hactool or prod.keys. Fix the "
+                    f"underlying issue and re-open the wizard."
+                )
+                status.text = msg
+                on_line(f"[wizard] {msg}")
+                retry_btn.disabled = True
+                return
+            _state["attempt_count"] += 1
+            on_line(
+                f"[wizard] === attempt "
+                f"{_state['attempt_count']}/{MAX_STEP_ATTEMPTS} ==="
+            )
             log_lines.clear()
             log_box.text = ""
             next_btn.disabled = True
@@ -880,8 +1054,14 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
             _state["worker_thread"] = t
             t.start()
 
+        def _reset_and_start(*_):
+            # Fresh page entry resets the attempt counter so navigating
+            # Back→Forward doesn't immediately hit the cap.
+            _state["attempt_count"] = 0
+            start_worker()
+
         retry_btn.bind(on_release=lambda _i: start_worker())
-        s.bind(on_pre_enter=lambda _i: start_worker())
+        s.bind(on_pre_enter=_reset_and_start)
         return s
 
     # --- 5. Bridge IP
@@ -996,15 +1176,43 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
             from kivy.clock import Clock as _Clock
             _Clock.schedule_once(lambda dt: setattr(next_btn, "disabled", False))
 
+        # Bounded-retry counter for the build page. Same rationale as the
+        # extract page: a wedged cmake/ninja config issue (wrong devkitPro
+        # version, missing toolchain, etc.) won't fix itself by retrying,
+        # so eventually we surface a "diagnose and re-open setup" message
+        # instead of letting the user click Retry forever.
+        build_state: dict[str, Any] = {"attempt_count": 0}
+
         def start_worker() -> None:
+            if build_state["attempt_count"] >= MAX_STEP_ATTEMPTS:
+                msg = (
+                    f"Build failed {build_state['attempt_count']} times "
+                    f"in a row. Common causes: wrong devkitPro version, "
+                    f"missing Ninja in PATH, corrupt switch_mod sources. "
+                    f"Re-run the Re-check prereqs step, then re-open the "
+                    f"wizard."
+                )
+                update_status(msg)
+                on_line(f"[wizard] {msg}")
+                retry_btn.disabled = True
+                return
+            build_state["attempt_count"] += 1
+            on_line(
+                f"[wizard] === build attempt "
+                f"{build_state['attempt_count']}/{MAX_STEP_ATTEMPTS} ==="
+            )
             log_lines.clear()
             log_box.text = ""
             next_btn.disabled = True
             retry_btn.disabled = True
             threading.Thread(target=run_in_worker, daemon=True).start()
 
+        def _reset_and_start(*_):
+            build_state["attempt_count"] = 0
+            start_worker()
+
         retry_btn.bind(on_release=lambda _i: start_worker())
-        s.bind(on_pre_enter=lambda _i: start_worker())
+        s.bind(on_pre_enter=_reset_and_start)
         return s
 
     # --- 7. Deploy target

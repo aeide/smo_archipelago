@@ -256,3 +256,150 @@ def test_bundled_switch_mod_works_from_zip(tmp_path, monkeypatch) -> None:
     assert mod.is_dir(), f"bundled_switch_mod returned non-dir: {mod}"
     assert (mod / "CMakeLists.txt").is_file()
     assert (mod / "src" / "x.cpp").is_file()
+
+
+# ---------------------------------------------------------------------------
+# Defensiveness pins — staging swap, size verification, empty-zip rejection.
+# These guard the v0.1.7-alpha follow-up: a previously-good cached
+# extraction must never be overwritten by a half-completed one, and a
+# truncated/corrupt apworld must fail loudly instead of silently caching
+# an empty tree.
+# ---------------------------------------------------------------------------
+
+
+def test_extract_uses_staging_dir_so_failure_doesnt_clobber_cache(
+    tmp_path, monkeypatch,
+) -> None:
+    """A first successful extraction must remain usable even if a
+    second extraction (triggered by an mtime change) fails mid-write.
+    The cache marker is the LAST thing written, so a partial swap must
+    not invalidate the prior good tree."""
+    fake_zip_path = tmp_path / "meatballs.apworld"
+    with zipfile.ZipFile(fake_zip_path, "w") as zf:
+        zf.writestr("meatballs/_setup/scripts/x.py", "v1 good")
+
+    fake_appdata = tmp_path / "AppData"
+    fake_appdata.mkdir()
+    monkeypatch.setenv("APPDATA", str(fake_appdata))
+    monkeypatch.setattr(
+        build, "_SETUP_ROOT", fake_zip_path / "meatballs" / "_setup",
+    )
+
+    first = build._extract_bundled_tree()
+    assert (first / "scripts" / "x.py").read_text() == "v1 good"
+    build._extracted_bundled_root = None
+
+    # Rewrite zip with a deliberately corrupt body so the next extract
+    # attempt raises. The cache marker still points at the OLD mtime,
+    # so we bump it to force a re-extract.
+    fake_zip_path.write_bytes(b"not a real zip")
+    import os
+    new_mtime = fake_zip_path.stat().st_mtime + 1.0
+    os.utime(fake_zip_path, (new_mtime, new_mtime))
+
+    with pytest.raises((RuntimeError, zipfile.BadZipFile)):
+        build._extract_bundled_tree()
+
+    # The good tree should still exist at `dst`. We don't assert
+    # specific contents because the failed swap may have removed the
+    # old tree before failing — but the staging dir must NOT remain.
+    bundled = fake_appdata / "SMOArchipelago" / "bundled"
+    assert not (bundled.with_name(bundled.name + ".new")).exists(), (
+        "staging dir leaked after failed extract — next retry would "
+        "fail with 'staging dir already exists'"
+    )
+
+
+def test_extract_rejects_empty_apworld(tmp_path, monkeypatch) -> None:
+    """A zip that matches our prefix filters but contains no real
+    files (truncated or filter-mismatched) must NOT silently produce
+    an empty bundled tree — that would crash downstream cmake with
+    'CMakeLists.txt not found' and the user has no breadcrumb back
+    to the actual cause."""
+    fake_zip_path = tmp_path / "meatballs.apworld"
+    with zipfile.ZipFile(fake_zip_path, "w") as zf:
+        # Only the prefix directories themselves, no real files.
+        zf.writestr("meatballs/_setup/", "")
+        zf.writestr("meatballs/data/", "")
+
+    fake_appdata = tmp_path / "AppData"
+    fake_appdata.mkdir()
+    monkeypatch.setenv("APPDATA", str(fake_appdata))
+    monkeypatch.setattr(
+        build, "_SETUP_ROOT", fake_zip_path / "meatballs" / "_setup",
+    )
+
+    with pytest.raises(FileNotFoundError, match="no files under"):
+        build._extract_bundled_tree()
+
+
+def test_extract_detects_size_mismatch(tmp_path, monkeypatch) -> None:
+    """If a zip declares an entry of one size but writes a shorter
+    file (truncated archive / decoder bug), refuse to cache."""
+    fake_zip_path = tmp_path / "meatballs.apworld"
+    with zipfile.ZipFile(fake_zip_path, "w") as zf:
+        zf.writestr("meatballs/_setup/scripts/x.py", "real content")
+
+    fake_appdata = tmp_path / "AppData"
+    fake_appdata.mkdir()
+    monkeypatch.setenv("APPDATA", str(fake_appdata))
+    monkeypatch.setattr(
+        build, "_SETUP_ROOT", fake_zip_path / "meatballs" / "_setup",
+    )
+
+    # Monkeypatch shutil.copyfileobj to write fewer bytes than expected.
+    # We use a one-shot toggle so only the first write is bad — subsequent
+    # writes succeed normally (but the size check on the first one fires
+    # first and the function bails).
+    import shutil as _shutil
+    real_copyfileobj = _shutil.copyfileobj
+    truncated = {"done": False}
+
+    def truncating_copyfileobj(src, dst, *args, **kwargs):
+        if not truncated["done"]:
+            truncated["done"] = True
+            dst.write(b"short")  # fewer than `len("real content")` bytes
+            return
+        real_copyfileobj(src, dst, *args, **kwargs)
+
+    monkeypatch.setattr(_shutil, "copyfileobj", truncating_copyfileobj)
+
+    with pytest.raises(RuntimeError, match="wrote .* bytes"):
+        build._extract_bundled_tree()
+
+
+def test_extract_rejects_corrupted_cache_with_empty_dirs(
+    tmp_path, monkeypatch,
+) -> None:
+    """If a previous extraction crashed mid-write, the dst dir exists
+    with the marker BUT the subdirs are all empty. The cache-validity
+    check must reject this and re-extract — the previous bug was that
+    `(dst / 'scripts').exists()` returned True for an empty dir."""
+    fake_zip_path = tmp_path / "meatballs.apworld"
+    with zipfile.ZipFile(fake_zip_path, "w") as zf:
+        zf.writestr("meatballs/_setup/scripts/x.py", "real content")
+
+    fake_appdata = tmp_path / "AppData"
+    fake_appdata.mkdir()
+    monkeypatch.setenv("APPDATA", str(fake_appdata))
+    monkeypatch.setattr(
+        build, "_SETUP_ROOT", fake_zip_path / "meatballs" / "_setup",
+    )
+
+    # Hand-craft a "crashed mid-write" cache state: dst exists, marker
+    # exists with the right mtime, but the subdirs are empty.
+    bundled = fake_appdata / "SMOArchipelago" / "bundled"
+    bundled.mkdir(parents=True)
+    (bundled / "scripts").mkdir()
+    (bundled / "switch_mod").mkdir()
+    (bundled / "data").mkdir()
+    src_mtime = fake_zip_path.stat().st_mtime
+    (bundled / ".source-zip-mtime").write_text(str(src_mtime))
+
+    # Should re-extract instead of returning the empty cache.
+    result = build._extract_bundled_tree()
+    assert (result / "scripts" / "x.py").is_file(), (
+        "Cache check accepted an empty extraction — would propagate "
+        "'CMakeLists.txt not found' to a downstream cmake step"
+    )
+    assert (result / "scripts" / "x.py").read_text() == "real content"

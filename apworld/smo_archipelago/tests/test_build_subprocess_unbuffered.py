@@ -34,7 +34,7 @@ def test_run_extract_maps_passes_dash_u_to_python(tmp_path) -> None:
     itself as an argv arg."""
     captured: dict = {}
 
-    def fake_stream(cmd, *, cwd=None, env=None, on_line=None):
+    def fake_stream(cmd, *, cwd=None, env=None, on_line=None, **_kwargs):
         captured["cmd"] = cmd
         captured["env"] = env
         return build.BuildResult(ok=True, returncode=0, log="")
@@ -72,7 +72,7 @@ def test_run_extract_maps_sets_pythonunbuffered_env(tmp_path) -> None:
     reliably)."""
     captured: dict = {}
 
-    def fake_stream(cmd, *, cwd=None, env=None, on_line=None):
+    def fake_stream(cmd, *, cwd=None, env=None, on_line=None, **_kwargs):
         captured["env"] = env or {}
         return build.BuildResult(ok=True, returncode=0, log="")
 
@@ -107,7 +107,7 @@ def test_run_extract_maps_dispatches_nsp_flag_for_nsp(tmp_path) -> None:
     """
     captured: dict = {}
 
-    def fake_stream(cmd, *, cwd=None, env=None, on_line=None):
+    def fake_stream(cmd, *, cwd=None, env=None, on_line=None, **_kwargs):
         captured["cmd"] = cmd
         return build.BuildResult(ok=True, returncode=0, log="")
 
@@ -139,7 +139,7 @@ def test_run_extract_maps_dispatches_xci_flag_for_xci(tmp_path) -> None:
     """
     captured: dict = {}
 
-    def fake_stream(cmd, *, cwd=None, env=None, on_line=None):
+    def fake_stream(cmd, *, cwd=None, env=None, on_line=None, **_kwargs):
         captured["cmd"] = cmd
         return build.BuildResult(ok=True, returncode=0, log="")
 
@@ -167,7 +167,7 @@ def test_run_extract_maps_xci_dispatch_is_case_insensitive(tmp_path) -> None:
     to `--xci`. The extension check lowercases the suffix to handle this."""
     captured: dict = {}
 
-    def fake_stream(cmd, *, cwd=None, env=None, on_line=None):
+    def fake_stream(cmd, *, cwd=None, env=None, on_line=None, **_kwargs):
         captured["cmd"] = cmd
         return build.BuildResult(ok=True, returncode=0, log="")
 
@@ -194,7 +194,7 @@ def test_run_extract_maps_preserves_existing_env(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("MY_TEST_MARKER", "carry-me-through")
     captured: dict = {}
 
-    def fake_stream(cmd, *, cwd=None, env=None, on_line=None):
+    def fake_stream(cmd, *, cwd=None, env=None, on_line=None, **_kwargs):
         captured["env"] = env or {}
         return build.BuildResult(ok=True, returncode=0, log="")
 
@@ -291,7 +291,7 @@ def test_run_sync_capture_table_threads_explicit_paths(tmp_path) -> None:
       [stream] subprocess exited with code 1"""
     captured: dict = {}
 
-    def fake_stream(cmd, *, cwd=None, env=None, on_line=None):
+    def fake_stream(cmd, *, cwd=None, env=None, on_line=None, **_kwargs):
         captured["cmd"] = cmd
         return build.BuildResult(ok=True, returncode=0, log="")
 

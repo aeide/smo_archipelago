@@ -15,6 +15,7 @@ got installed (loose source for repo devs vs zip for end users).
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -118,6 +119,20 @@ def _find_apworld_zip(setup_root: Path) -> Path | None:
     return None
 
 
+def _staging_has_files(staging: Path) -> bool:
+    """True iff at least one of the expected subdirs landed non-empty —
+    used to reject a zip whose prefix filters matched no real entries
+    (a truncated or corrupt apworld)."""
+    for subdir in ("scripts", "switch_mod", "data"):
+        d = staging / subdir
+        try:
+            if d.is_dir() and any(d.iterdir()):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def _extract_bundled_tree() -> Path:
     """Extract the bundled `scripts/` + `switch_mod/` trees from inside
     `meatballs.apworld` to a real filesystem location, and return that location.
@@ -157,19 +172,66 @@ def _extract_bundled_tree() -> Path:
     # instead of using a stale cached copy.
     marker = dst / ".source-zip-mtime"
     src_mtime = apworld_zip.stat().st_mtime
+
+    # Cache freshness check. Bare directory existence
+    # (`(dst / "scripts").exists()`) is unsafe — a previous extraction
+    # that crashed mid-write leaves the directories in place but the
+    # entry-point files missing, and subsequent cmake / extract runs
+    # fail far downstream with confusing "file not found" errors.
+    #
+    # We don't pin a specific sentinel-file list because the bundled
+    # tree's contents depend on which `install_apworld.py --bundle-*`
+    # flags were passed when building the zip — a data-only zip
+    # legitimately has no `scripts/` or `switch_mod/`. Instead we
+    # require that AT LEAST ONE expected subdir is present and
+    # non-empty: that signals the previous extraction made it past
+    # mkdir into actually writing files. The per-function callers
+    # (`bundled_script`, `bundled_switch_mod`, `bundled_data_file`)
+    # then raise their own specific FileNotFoundError if their needed
+    # file is the one missing — that's already a clear "rebuild the
+    # apworld with --bundle-mod" message.
+    def _cache_looks_intact() -> bool:
+        for subdir in ("scripts", "switch_mod", "data"):
+            d = dst / subdir
+            try:
+                if d.is_dir() and any(d.iterdir()):
+                    return True
+            except OSError:
+                continue
+        return False
+
     if marker.exists():
         try:
             cached_mtime = float(marker.read_text(encoding="utf-8").strip())
-            if cached_mtime == src_mtime and (dst / "scripts").exists():
+            if cached_mtime == src_mtime and _cache_looks_intact():
                 _extracted_bundled_root = dst
                 return _extracted_bundled_root
         except (ValueError, OSError):
             pass  # corrupt marker — re-extract
 
-    # Stale or absent — wipe and re-extract.
-    if dst.exists():
-        shutil.rmtree(dst, ignore_errors=True)
-    dst.mkdir(parents=True, exist_ok=True)
+    # Stale or absent — wipe and re-extract. Use a NamedTemporaryFile-
+    # style "extract to <dst>.new, then swap" pattern so a crash mid-
+    # extraction can't poison the cache: the marker file is the LAST
+    # thing written, and only after the swap; until then any prior good
+    # extraction at `dst` remains usable on a retry.
+    staging = dst.with_name(dst.name + ".new")
+    if staging.exists():
+        try:
+            shutil.rmtree(staging)
+        except OSError as e:
+            raise RuntimeError(
+                f"Could not clear stale bundled-tree staging dir at "
+                f"{staging}: {e}. Close any program that might be "
+                f"holding files in this folder (Ryujinx, an antivirus "
+                f"realtime scan, Explorer windows) and re-run setup."
+            ) from e
+    try:
+        staging.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise RuntimeError(
+            f"Could not create bundled-tree staging dir at {staging}: "
+            f"{e}. Check that %APPDATA% is writable and has free space."
+        ) from e
 
     # We extract two subtrees from inside `meatballs.apworld`:
     #   meatballs/_setup/scripts/...  ->  <bundled>/scripts/...
@@ -186,25 +248,111 @@ def _extract_bundled_tree() -> Path:
         ("meatballs/_setup/", ""),     # extract sibling to "scripts/" + "switch_mod/"
         ("meatballs/data/", "data/"),  # extract at <bundled>/data/<filename>
     )
-    with zipfile.ZipFile(apworld_zip) as zf:
-        for info in zf.infolist():
-            name = info.filename
-            for src_prefix, dst_prefix in prefixes:
-                if not name.startswith(src_prefix):
-                    continue
-                rel = dst_prefix + name[len(src_prefix):]
-                if rel == dst_prefix:  # the prefix entry itself
-                    break
-                target = dst / rel
-                if info.is_dir() or name.endswith("/"):
-                    target.mkdir(parents=True, exist_ok=True)
-                    break
-                target.parent.mkdir(parents=True, exist_ok=True)
-                with zf.open(info) as src_f, open(target, "wb") as dst_f:
-                    shutil.copyfileobj(src_f, dst_f)
-                break  # name matched this prefix; don't try the next
+    current_target: Path | None = None
+    try:
+        with zipfile.ZipFile(apworld_zip) as zf:
+            for info in zf.infolist():
+                name = info.filename
+                for src_prefix, dst_prefix in prefixes:
+                    if not name.startswith(src_prefix):
+                        continue
+                    rel = dst_prefix + name[len(src_prefix):]
+                    if rel == dst_prefix:  # the prefix entry itself
+                        break
+                    target = staging / rel
+                    current_target = target
+                    if info.is_dir() or name.endswith("/"):
+                        target.mkdir(parents=True, exist_ok=True)
+                        break
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with zf.open(info) as src_f, open(target, "wb") as dst_f:
+                        shutil.copyfileobj(src_f, dst_f)
+                    # Post-write size assertion. ZIP's CRC is checked by
+                    # `zf.open` when the stream is fully consumed, but a
+                    # disk-full or AV-injected truncation between read
+                    # and `open(target, "wb")` write completion can leave
+                    # the destination shorter than expected without
+                    # raising. Catch that explicitly so we don't write
+                    # the marker and poison the cache.
+                    actual = target.stat().st_size
+                    if actual != info.file_size:
+                        raise RuntimeError(
+                            f"bundled tree extraction wrote {actual} "
+                            f"bytes for {rel} but the zip entry "
+                            f"declares {info.file_size}"
+                        )
+                    break  # name matched this prefix; don't try the next
+    except (OSError, zipfile.BadZipFile, RuntimeError) as e:
+        # Best-effort cleanup of the staging dir so the next retry
+        # starts fresh. The marker is NOT written, so the cache is
+        # unchanged — either the previous good extraction stays in
+        # place at `dst`, or no cache exists (first run) and the next
+        # call will retry from scratch.
+        try:
+            shutil.rmtree(staging, ignore_errors=True)
+        except Exception:
+            pass
+        loc = f" while writing {current_target}" if current_target else ""
+        raise RuntimeError(
+            f"Failed to extract bundled tree from {apworld_zip.name}"
+            f"{loc}: {type(e).__name__}: {e}. Common causes: disk full, "
+            f"antivirus blocking the write, or the .apworld zip is "
+            f"corrupt. Free space under %APPDATA%, then re-run setup."
+        ) from e
 
-    marker.write_text(str(src_mtime), encoding="utf-8")
+    # Verify the staged tree has SOMETHING in it before swapping in. A
+    # zip that matches our prefix filters but contains no actual files
+    # (e.g. an empty meatballs/_setup/ with no children) would silently
+    # produce an empty staging dir; swapping that in over a previously
+    # good cache would be worse than failing here.
+    if not _staging_has_files(staging):
+        try:
+            shutil.rmtree(staging, ignore_errors=True)
+        except Exception:
+            pass
+        raise FileNotFoundError(
+            f"bundled tree extracted from {apworld_zip.name} contains "
+            f"no files under scripts/, switch_mod/, or data/. The "
+            f"apworld zip is likely truncated or corrupt — re-download "
+            f"the release zip and try again."
+        )
+
+    # Swap-in: remove the old `dst` (if any), then rename staging→dst.
+    # On Windows a rename across a non-empty target is a hard error, so
+    # the rmtree has to come first. If it fails because the old tree is
+    # locked, surface the actionable cause rather than silently leaving
+    # the stale tree in place.
+    if dst.exists():
+        try:
+            shutil.rmtree(dst)
+        except OSError as e:
+            try:
+                shutil.rmtree(staging, ignore_errors=True)
+            except Exception:
+                pass
+            raise RuntimeError(
+                f"Could not remove old bundled tree at {dst}: {e}. "
+                f"Close any program holding files in that folder "
+                f"(Ryujinx, antivirus realtime scan, Explorer window) "
+                f"and re-run setup."
+            ) from e
+    try:
+        staging.rename(dst)
+    except OSError as e:
+        raise RuntimeError(
+            f"Could not finalize bundled tree at {dst}: {e}. The "
+            f"staged tree at {staging} is intact; you can rename it "
+            f"manually or re-run setup."
+        ) from e
+
+    try:
+        marker.write_text(str(src_mtime), encoding="utf-8")
+    except OSError as e:
+        raise RuntimeError(
+            f"Bundled tree extracted to {dst} but the cache marker "
+            f"could not be written: {e}. The next run will re-extract "
+            f"unnecessarily — non-fatal but wastes ~25 MB of writes."
+        ) from e
     _extracted_bundled_root = dst
     return _extracted_bundled_root
 
@@ -263,12 +411,53 @@ def bundled_data_file(name: str) -> Path:
     return p
 
 
+# Exit code we synthesize when the child gets killed for exceeding a
+# timeout. Picked from the "deliberately distinct from likely real
+# returncodes" range — child processes typically return 0–127 or signal
+# values 128–255. 124 mirrors `timeout(1)`'s convention on Linux.
+TIMEOUT_RETURNCODE = 124
+
+
+# Per-step subprocess timeouts. Two independent timers per step:
+#   wall — total wall-clock cap from spawn to exit
+#   stall — maximum time without any stdout line
+# Tuned so a healthy run is comfortably under wall and almost never
+# triggers stall, while a wedged hactool / cmake / ninja gets killed in
+# minutes instead of hanging the wizard indefinitely. Stall is usually
+# the more useful of the two for long builds — "5 minutes with no
+# output from ninja" is a much sharper signal of deadlock than "an hour
+# of wall-clock". Bumped upward when a step has known long-silence
+# phases (extract: hactool decrypts ~5 GB of NCAs silently; build:
+# devkitA64's C++ template instantiations can compile for minutes
+# without printing anything).
+_TIMEOUTS = {
+    # Extractor needs to bootstrap a Python 3.12 venv on first run
+    # (pip-installing oead — ~30-90s of network silence), then hactool
+    # decrypts every NCA. Generous limits because failing here forces
+    # the user to re-download a 5 GB NSP from a clean source.
+    "extract":           {"wall": 1800.0, "stall": 600.0},
+    # Tiny script, no network, no cross-compile — should finish in
+    # under a second on a warm cache, a few seconds cold.
+    "sync_capture":      {"wall": 120.0,  "stall": 60.0},
+    # CMake configure does network IO if the toolchain pulls anything
+    # (it doesn't currently, but might in the future); be slightly
+    # generous.
+    "cmake_configure":   {"wall": 600.0,  "stall": 180.0},
+    # Ninja build of switch-mod takes ~30-90s warm, ~3 min cold; a
+    # single template-heavy compilation unit can be silent for a long
+    # time so the stall cap is more lenient than wall would suggest.
+    "cmake_build":       {"wall": 1800.0, "stall": 600.0},
+}
+
+
 def _stream_subprocess(
     cmd: list[str],
     *,
     cwd: Path | None = None,
     env: dict[str, str] | None = None,
     on_line: ProgressFn | None = None,
+    wall_timeout_s: float | None = None,
+    stall_timeout_s: float | None = None,
 ) -> BuildResult:
     """Run a subprocess, streaming stdout + stderr line-by-line to
     `on_line` and accumulating the full text into `log` for failure diag.
@@ -280,7 +469,26 @@ def _stream_subprocess(
     wizard's file log + Kivy widget show what would have been run, even
     if the child produces zero output (which has been the failure mode
     we keep chasing in the extract step).
+
+    Two independent timeouts bound the child's lifetime so a wedged
+    subprocess can't hang the wizard forever:
+
+    - `wall_timeout_s` — total wall-clock cap from spawn to exit. None
+      means no cap (use only for known-fast operations).
+    - `stall_timeout_s` — maximum interval between stdout lines. None
+      means no cap. This is usually the more useful of the two for long
+      builds, since "no output for 5 minutes" is a much sharper signal
+      of a wedged hactool/cmake/ninja than total wall-clock time.
+
+    On timeout the child is SIGTERM'd; if it doesn't exit within 5s, it
+    gets SIGKILL'd. The result reports `ok=False`, `returncode=124`, and
+    a `log` entry explaining which timeout fired so the caller can
+    surface a precise message to the user.
     """
+    import queue as _queue
+    import threading as _threading
+    import time as _time
+
     log_lines: list[str] = []
 
     def _emit(line: str) -> None:
@@ -289,6 +497,10 @@ def _stream_subprocess(
             on_line(line)
 
     _emit(f"[stream] spawning: {cmd}")
+    if wall_timeout_s is not None:
+        _emit(f"[stream] wall timeout: {wall_timeout_s:.0f}s")
+    if stall_timeout_s is not None:
+        _emit(f"[stream] stall timeout: {stall_timeout_s:.0f}s")
 
     try:
         proc = subprocess.Popen(
@@ -308,9 +520,122 @@ def _stream_subprocess(
 
     _emit(f"[stream] spawned pid={proc.pid}; waiting for stdout...")
     assert proc.stdout is not None
-    for raw in proc.stdout:
-        _emit(raw.rstrip("\r\n"))
-    rc = proc.wait()
+
+    # Reader thread pumps stdout into a queue so the main loop can poll
+    # with a short timeout and decide whether to kill the child. Direct
+    # iteration over `proc.stdout` blocks forever on a wedged child;
+    # there's no public Python API to read with a timeout.
+    line_queue: "_queue.Queue[str | None]" = _queue.Queue()
+
+    def _reader() -> None:
+        try:
+            for raw in proc.stdout:  # type: ignore[union-attr]
+                line_queue.put(raw)
+        except Exception as e:
+            line_queue.put(f"[stream] reader thread crashed: {e}\n")
+        finally:
+            line_queue.put(None)  # sentinel
+
+    reader = _threading.Thread(target=_reader, daemon=True)
+    reader.start()
+
+    spawn_ts = _time.monotonic()
+    last_output_ts = spawn_ts
+    timeout_reason: str | None = None
+
+    while True:
+        try:
+            raw = line_queue.get(timeout=0.5)
+        except _queue.Empty:
+            raw = ""
+        if raw is None:
+            # Reader thread saw EOF — child closed stdout. Now wait for
+            # the child to actually exit so we can collect the return
+            # code. Bounded so a child that closes stdout but never
+            # exits doesn't hang us either.
+            break
+        if raw:
+            _emit(raw.rstrip("\r\n"))
+            last_output_ts = _time.monotonic()
+
+        now = _time.monotonic()
+        if wall_timeout_s is not None and (now - spawn_ts) > wall_timeout_s:
+            timeout_reason = (
+                f"wall-clock timeout exceeded "
+                f"({wall_timeout_s:.0f}s total cap)"
+            )
+            break
+        if stall_timeout_s is not None and (now - last_output_ts) > stall_timeout_s:
+            timeout_reason = (
+                f"stall timeout exceeded "
+                f"({stall_timeout_s:.0f}s with no subprocess output)"
+            )
+            break
+
+    if timeout_reason is not None:
+        _emit(f"[stream] killing pid={proc.pid}: {timeout_reason}")
+        try:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                _emit(f"[stream] pid={proc.pid} didn't exit within 5s of SIGTERM; SIGKILL'ing")
+                proc.kill()
+                try:
+                    proc.wait(timeout=5.0)
+                except subprocess.TimeoutExpired:
+                    _emit(
+                        f"[stream] pid={proc.pid} still running 5s after "
+                        f"SIGKILL — orphaning the process; check Task "
+                        f"Manager and end it manually before retrying"
+                    )
+        except (OSError, ProcessLookupError) as e:
+            _emit(f"[stream] terminate raised {type(e).__name__}: {e}")
+        # Drain remaining queue entries best-effort so the log captures
+        # any output the reader managed to push before we killed.
+        try:
+            while True:
+                raw = line_queue.get_nowait()
+                if raw is None:
+                    break
+                _emit(raw.rstrip("\r\n"))
+        except _queue.Empty:
+            pass
+        msg = f"[stream] {timeout_reason}; subprocess killed"
+        _emit(msg)
+        return BuildResult(
+            ok=False,
+            returncode=TIMEOUT_RETURNCODE,
+            log="\n".join(log_lines),
+        )
+
+    # Normal exit path: stdout EOF reached; wait briefly for the child
+    # to actually exit. If it doesn't exit within 5s, kill it — a
+    # process that closed stdout but won't return is just as wedged as
+    # one that hung mid-write.
+    try:
+        rc = proc.wait(timeout=5.0)
+    except subprocess.TimeoutExpired:
+        _emit(
+            f"[stream] pid={proc.pid} closed stdout but didn't exit "
+            f"within 5s; killing"
+        )
+        try:
+            proc.kill()
+            try:
+                rc = proc.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                _emit(
+                    f"[stream] pid={proc.pid} ignored SIGKILL; "
+                    f"orphaning — end it manually before retrying"
+                )
+                return BuildResult(
+                    ok=False,
+                    returncode=TIMEOUT_RETURNCODE,
+                    log="\n".join(log_lines),
+                )
+        except (OSError, ProcessLookupError):
+            rc = TIMEOUT_RETURNCODE
     _emit(f"[stream] subprocess exited with code {rc}")
     return BuildResult(ok=(rc == 0), returncode=rc, log="\n".join(log_lines))
 
@@ -334,6 +659,7 @@ def run_sync_capture_table(on_line: ProgressFn | None = None) -> BuildResult:
     items = bundled_data_file("items.json")
     out_header = bundled_switch_mod() / "src" / "ap" / "capture_table.h"
     capture_map = data_dir() / "capture_map.json"
+    t = _TIMEOUTS["sync_capture"]
     return _stream_subprocess(
         [
             *_python_invoker(), str(script),
@@ -342,6 +668,8 @@ def run_sync_capture_table(on_line: ProgressFn | None = None) -> BuildResult:
             "--capture-map", str(capture_map),
         ],
         on_line=on_line,
+        wall_timeout_s=t["wall"],
+        stall_timeout_s=t["stall"],
     )
 
 
@@ -403,7 +731,12 @@ def run_extract_maps(
     if hactool_path:
         args += ["--hactool", str(hactool_path)]
     env = {**os.environ, "PYTHONUNBUFFERED": "1"}
-    return _stream_subprocess(args, env=env, on_line=on_line)
+    t = _TIMEOUTS["extract"]
+    return _stream_subprocess(
+        args, env=env, on_line=on_line,
+        wall_timeout_s=t["wall"],
+        stall_timeout_s=t["stall"],
+    )
 
 
 def run_cmake_configure(
@@ -432,6 +765,7 @@ def run_cmake_configure(
     # `C:\Users\...` paths into `/c/cwd/C:/Users/...` because it treats
     # `:` as a path separator rather than a drive-letter marker.
     from .prereqs import resolved_cmake
+    t = _TIMEOUTS["cmake_configure"]
     return _stream_subprocess(
         [
             resolved_cmake(),
@@ -443,6 +777,8 @@ def run_cmake_configure(
         ],
         env=env,
         on_line=on_line,
+        wall_timeout_s=t["wall"],
+        stall_timeout_s=t["stall"],
     )
 
 
@@ -452,9 +788,12 @@ def run_cmake_build(on_line: ProgressFn | None = None) -> BuildResult:
     `%APPDATA%/SMOArchipelago/build/cmake/`."""
     # Same Windows-vs-msys2 cmake-binary rationale as run_cmake_configure.
     from .prereqs import resolved_cmake
+    t = _TIMEOUTS["cmake_build"]
     return _stream_subprocess(
         [resolved_cmake(), "--build", str(build_dir() / "cmake")],
         on_line=on_line,
+        wall_timeout_s=t["wall"],
+        stall_timeout_s=t["stall"],
     )
 
 
@@ -481,6 +820,69 @@ def maps_ready() -> bool:
     """True iff both extracted maps live in the per-user data dir."""
     d = data_dir()
     return (d / "shine_map.json").exists() and (d / "capture_map.json").exists()
+
+
+# SHA-256 of the deterministic extraction output from a canonical SMO 1.0.0
+# USen dump. These are opaque 256-bit fingerprints — they contain none of the
+# underlying Nintendo strings and cannot be reversed to recover them (same
+# rationale by which RetroArch / No-Intro / Dolphin ship hash databases of
+# copyrighted assets without infringing). The fingerprints exist only to flag
+# dump-version drift (localized release, future v1.x patch, corrupted dump);
+# they are NOT used to gate functionality — see `verify_map_hashes`.
+EXPECTED_MAP_SHA256: dict[str, str] = {
+    "shine_map.json":   "87184e27f21cfc7117231a27f025f6ae3a99300d76265b0615c6740f8326e5e7",
+    "capture_map.json": "798de7c816d74d10a4a19b1c7462f6b048084bd8bf29927be0651acee0e9ebad",
+}
+
+
+@dataclass
+class MapHashCheck:
+    """One entry per file in `verify_map_hashes` output."""
+    filename: str
+    expected: str
+    actual: str        # "" if the file was missing or unreadable
+    present: bool
+    match: bool
+
+
+def verify_map_hashes() -> list[MapHashCheck]:
+    """SHA-256 each extracted map and compare to the canonical fingerprint.
+
+    The extraction is deterministic across every legitimate SMO 1.0.0
+    source we support (eShop NSP, cartridge dump, XCI, any valid ticket).
+    Both maps come from the USen locale data which is identical across
+    region SKUs. So a hash mismatch is a real "your dump isn't what we
+    expect" signal — usually a wrong version (1.1.0 or later patch), a
+    different game, or a corrupted dump. The wizard uses this as a hard
+    gate after extraction.
+    """
+    import hashlib
+    d = data_dir()
+    out: list[MapHashCheck] = []
+    for name, expected in EXPECTED_MAP_SHA256.items():
+        p = d / name
+        if not p.exists():
+            out.append(MapHashCheck(
+                filename=name, expected=expected, actual="",
+                present=False, match=False,
+            ))
+            continue
+        try:
+            actual = hashlib.sha256(p.read_bytes()).hexdigest()
+        except OSError:
+            # File got locked / deleted between exists() and read_bytes() —
+            # surface as missing so the wizard prompts a retry rather than
+            # silently treating it as a hash mismatch with empty actual.
+            out.append(MapHashCheck(
+                filename=name, expected=expected, actual="",
+                present=False, match=False,
+            ))
+            continue
+        out.append(MapHashCheck(
+            filename=name, expected=expected, actual=actual,
+            present=True, match=(actual == expected),
+        ))
+    return out
 
 
 def build_ready() -> bool:
