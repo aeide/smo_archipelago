@@ -138,19 +138,9 @@ void CappyMessenger::tryPump(const void* scene) {
         const bool frames_ok = settle_frames_ >= kSceneSettleFrames;
         const bool time_ok   = elapsed_ms     >= kSceneSettleMs;
         if (!frames_ok || !time_ok) {
-            static std::int64_t s_last_wait_log_ms = 0;
-            if (now - s_last_wait_log_ms > 1000) {  // throttle to 1 Hz
-                s_last_wait_log_ms = now;
-                SMOAP_LOG_INFO("[cappy] waiting for scene settle "
-                               "(frames %u/%u, wallclock %lld/%lld ms); "
-                               "queue=%u scene=%p",
-                               static_cast<unsigned>(settle_frames_),
-                               static_cast<unsigned>(kSceneSettleFrames),
-                               static_cast<long long>(elapsed_ms),
-                               static_cast<long long>(kSceneSettleMs),
-                               static_cast<unsigned>(live_count_),
-                               scene);
-            }
+            // No log here; phase 19's stable build had the gate-body log
+            // silenced and we may be re-introducing the JIT trigger with
+            // a frame-rate log call here.
             return;
         }
     }
