@@ -93,7 +93,10 @@ public:
     // new floor — generous, but the worst-case visible cost is a 10s delay
     // before the first balloon shows after a scene transition, and items
     // queue cleanly in the meantime.
-    static constexpr std::uint32_t kSceneSettleFrames = 600;
+    // BISECT phase 19: bumped to 1M frames (~5 hours @ 60fps) so the
+    // settle-gate return in tryPump effectively never lifts. If still crashes,
+    // the gate's compare itself is the trigger.
+    static constexpr std::uint32_t kSceneSettleFrames = 1000000;
 
     // On-screen duration. Passed as the THIRD positional arg to
     // rs::tryShowCapMessagePriorityLow (which the decompiler signature
