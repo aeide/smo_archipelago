@@ -28,12 +28,13 @@ ItemKind fromWire(const std::string& s); // legacy overload — forwards to char
 
 // Switch -> Bridge ----------------------------------------------------------
 
-// Fixed-size char buffer used for Check string fields. libstdc++'s
-// std::string allocator path NULL-derefs in our subsdk9 context for any
-// string that exceeds SSO (~15 bytes), same root cause as the std::set
-// crash. Keeping checks allocation-free here means the frame thread can
-// produce them without touching the broken allocator. 64 bytes covers every
-// stage name, moon objectId, capture, and kingdom string SMO emits.
+// Fixed-size char buffer used for Check string fields. Originally sized
+// this way to dodge the M6.1 libstdc++ allocator hazard (std::string growth
+// past SSO ~15 bytes NULL-derefed in nn::os::GetTlsValue under the exlaunch
+// + devkitA64 build). Hakkun's musl + LLVM libc++ + HeapSourceDynamic lifted
+// the runtime hazard, but the wire-format shape is a committed contract and
+// stays fixed-buffer on both sides. 64 bytes covers every stage name, moon
+// objectId, capture, and kingdom string SMO emits.
 inline constexpr std::size_t kCheckFieldCap = 64;
 
 // Inbound-side caps. DecodedMsg fields use these — see comment on the
@@ -150,15 +151,11 @@ struct Log {
 // capture_map.json. The bridge is the source of truth for what AP knows; the
 // snapshot lets AP learn about anything collected while disconnected.
 //
-// M6 phase C — fixed-buffer storage. The encoder runs on the worker thread,
-// and the M6.1 allocator hazard (libstdc++'s allocator NULL-derefs in
-// nn::os::GetTlsValue on any std::string growth past SSO ~15 chars and any
-// std::vector growth) makes every wide stage_name (e.g. "WaterfallWorldHomeStage"
-// = 23 chars) plus every per-stage shines accumulation a latent crash. Prior
-// to enumerateOwnedShines emitting real data, this stayed dormant because the
-// stub emitted nothing; landing M6 phase C without converting these would
-// trip the deref the first time a stage with > ~3 owned shines was traversed.
-// All snapshot string fields are now char[kCheckFieldCap]; arrays use
+// M6 phase C — fixed-buffer storage. Originally shaped to dodge the M6.1
+// allocator hazard (libstdc++ NULL-derefed on std::string/std::vector growth
+// from the worker thread under the exlaunch + devkitA64 build); the Hakkun
+// cutover lifted that constraint, but the wire format is a committed contract
+// so snapshot string fields remain char[kCheckFieldCap] and arrays use
 // kSnapshotMax* caps with log-and-drop on overflow.
 
 inline constexpr std::size_t kSnapshotMaxShinesPerStage = 64;

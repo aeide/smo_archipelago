@@ -17,11 +17,12 @@
 namespace smoap::ap {
 
 // Allocation-free fixed-capacity open-addressing hash set used for session
-// dedupe of location-check hashes. std::set::insert ends up calling into
-// libstdc++'s _Rb_tree node allocator, which on devkitA64 hits a TLS path
-// (nn::os::GetTlsValue with an unallocated slot) that NULL-derefs in our
-// subsdk9 context. The set isn't on a critical hot path — checks fire at
-// game-event rate, capped by N — so linear-probing is fine.
+// dedupe of location-check hashes. Originally shaped this way to dodge the
+// M6.1 libstdc++/devkitA64 allocator hazard (std::set::insert reached for
+// nn::os::GetTlsValue against an unallocated slot and NULL-derefed). The
+// Hakkun cutover (LLVM libc++ + HeapSourceDynamic, 2026-05-21) lifted the
+// constraint, but the set isn't on a critical hot path — checks fire at
+// game-event rate, capped by N — so linear-probing keeps shipping.
 //
 // N must be a power of 2. With N = 4096 we get 32 KiB of storage and can
 // hold up to ~3000 unique checks before probing degrades. Real seeds top out

@@ -1,20 +1,22 @@
 // Mangled symbol catalog for hooks.
 //
-// All InstallAtSymbol() calls pull their mangled name from here so version
-// bumps are isolated to this single file. exlaunch resolves these via
-// nn::ro::LookupSymbol() at module load.
+// All HkTrampoline::installAtSym<>() and hk::ro::lookupSymbol calls pull
+// their mangled name from here so version bumps are isolated to this
+// single file. Sail's symbol DB (switch-mod/syms/*.sym) carries the same
+// names; the two must stay in sync.
 //
 // Provenance:
-//   - 3 of 8 symbols (drawMain, GameSystem::init, Scene::endInit) are byte-
-//     identical to the names lunakit hooks in src/program/main.cpp on SMO
-//     1.0.0. Verified working.
-//   - The other 5 (moon setter, capture startHack, scenario setter, save
-//     init, wedding demo) were computed from MonsterDruide1/OdysseyDecomp
-//     forward-declarations passed through aarch64-none-elf-g++. Itanium ABI
+//   - A handful of symbols (drawMain, GameSystem::init, Scene::endInit)
+//     are byte-identical to the names lunakit hooks on SMO 1.0.0.
+//   - The rest were computed from MonsterDruide1/OdysseyDecomp forward-
+//     declarations passed through aarch64-none-elf-g++. Itanium ABI
 //     mangling is deterministic from the signature alone, so these names
-//     are 1.0.0-correct as long as the decomp signatures match the runtime
-//     symbol — verify by nm against the combined cart+SMO-Downgrade-overlay
-//     binary before depending on them in M4+.
+//     are 1.0.0-correct as long as the decomp signatures match the
+//     runtime symbol.
+//
+// To add a new hook, follow the smo-symbol-discovery skill — it covers
+// the OdysseyDecomp forward-decl path, sail .sym entry, and the
+// llvm-nm fakesymbols.so verification step.
 
 #pragma once
 

@@ -23,8 +23,8 @@ jobs:
           submodules: false
 
       # Only vendor/Archipelago is needed for the Python suite. The C++
-      # exlaunch/lunakit-vendor submodules are AArch64-only and the host
-      # tests don't use them.
+      # switch-mod/sys (LibHakkun) and switch-mod/lib/OdysseyHeaders
+      # submodules are AArch64-only and the host tests don't use them.
       - name: Initialize Archipelago submodule
         run: git submodule update --init --depth 1 vendor/Archipelago
 
