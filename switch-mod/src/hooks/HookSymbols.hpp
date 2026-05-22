@@ -477,6 +477,40 @@ inline constexpr const char* kGameDataFunctionTryFindShineMessage =
     "_ZN16GameDataFunction19tryFindShineMessageEPKN2al9LiveActorEPKNS0_17IUseMessageSystemEii";
 
 // =============================================================================
+// Talkatoo% mode — pause-menu mark fix.
+// =============================================================================
+//
+// Phase 4 substitutes Talkatoo's speech bubble with AP-pool moon names but
+// leaves SMO's per-(world, idx) "this moon's name is revealed" state pointing
+// at the vanilla picker's choice. The pause-menu Power Moon list then marks
+// the wrong row. TalkatooMenuMarkHook.cpp fixes that with two trampolines:
+//
+//   1. GameDataFile::isOpenShineName(s32 world_id, s32 index) const — the
+//      getter the menu queries. We OR-in our AP-pool named set so the row
+//      corresponding to the moon Talkatoo actually said is the one marked.
+//
+//   2. GameDataFile::tryUnlockShineName(s32 world_id, s32 index) — the
+//      vanilla setter Talkatoo calls. We suppress writes in Talkatoo% mode
+//      so the vanilla picker's pick doesn't pollute the menu.
+//
+// Translating (world_id, index) → shine_uid uses GameDataFile::findShine,
+// resolved at install time as a function pointer (called with `this` as the
+// implicit first arg per the Itanium ABI; same pattern as addHackDictionary).
+// All three symbols verified present in SMO 1.0.0 main.nso 2026-05-22.
+
+// GameDataFile::isOpenShineName(s32 world_id, s32 index) const
+inline constexpr const char* kGameDataFileIsOpenShineName =
+    "_ZNK12GameDataFile15isOpenShineNameEii";
+
+// GameDataFile::tryUnlockShineName(s32 world_id, s32 index)  (non-const)
+inline constexpr const char* kGameDataFileTryUnlockShineName =
+    "_ZN12GameDataFile18tryUnlockShineNameEii";
+
+// GameDataFile::findShine(s32 world_id, s32 index) const → const HintInfo*
+inline constexpr const char* kGameDataFileFindShine =
+    "_ZNK12GameDataFile9findShineEii";
+
+// =============================================================================
 // Legacy / aliasing — kept so existing call sites don't break.
 // =============================================================================
 inline constexpr const char* kSeadGameSystemCtor       = kGameSystemInit;

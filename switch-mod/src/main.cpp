@@ -52,6 +52,9 @@ void installSaveLoadHook();
 // Phase 4 (block non-named moon collection) lives inside the existing
 // MoonGetHook (universal setGotShine chokepoint) — see MoonGetHook.cpp.
 void installTalkatooSpeechHook();
+// Talkatoo% mode: pause-menu mark fix (isOpenShineName getter +
+// tryUnlockShineName setter trampolines). See hooks/TalkatooMenuMarkHook.cpp.
+void installTalkatooMenuMarkHook();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
@@ -288,6 +291,9 @@ extern "C" void hkMain() {
 
     SMOAP_LOG_INFO("installing TalkatooSpeechHook (Phase 3 — tryFindShineMessage tramp + Poetter vtable filter)");
     smoap::hooks::installTalkatooSpeechHook();
+
+    SMOAP_LOG_INFO("installing TalkatooMenuMarkHook (pause-menu mark fix)");
+    smoap::hooks::installTalkatooMenuMarkHook();
 
 #ifdef SMOAP_HAS_DEBUG_RENDERER
     // Install the Nvn bootstrap trampoline so ImGuiBackendNvn auto-wires

@@ -77,3 +77,24 @@ _ZN11Application9sInstanceE
 _ZN2al16getStationedHeapEv
 _ZN4sead7ExpHeap6createEmRKNS_14SafeStringBaseIcEEPNS_4HeapEiNS5_13HeapDirectionEb
 _ZN4sead14SafeStringBaseIcEaSERKS1_
+
+// Talkatoo% pause-menu mark fix — TalkatooMenuMarkHook.cpp.
+//
+// Hook 1: GameDataFile::isOpenShineName(s32 world_id, s32 index) const.
+// Pause-menu Power Moon list queries this to draw the "name revealed"
+// indicator. In Talkatoo% mode we OR-in our AP-pool named set so the
+// moons we substituted in the speech bubble are marked as named in the
+// menu (vanilla path keeps marking collected / achievement-revealed
+// moons; we add our AP picks on top).
+//
+// Hook 2: GameDataFile::tryUnlockShineName(s32 world_id, s32 index).
+// Talkatoo's vanilla picker writes the per-(world, idx) "name revealed"
+// state via this setter. In Talkatoo% mode we suppress the write so the
+// menu doesn't mark moons the player never actually heard Talkatoo speak.
+//
+// Helper: GameDataFile::findShine(s32 world_id, s32 index) const →
+// HintInfo*. Used by Hook 1 to translate (world_id, idx) into the
+// stageName/objId pair shineUidByStageObj resolves to a shine_uid.
+_ZNK12GameDataFile15isOpenShineNameEii
+_ZN12GameDataFile18tryUnlockShineNameEii
+_ZNK12GameDataFile9findShineEii
