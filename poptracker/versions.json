@@ -1,6 +1,14 @@
 {
   "versions": [
     {
+      "package_version": "0.1.39-alpha",
+      "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.1.39-alpha/smo-poptracker-v0.1.39-alpha.zip",
+      "sha256": "9295a3873ff628718e46f0a9c54feb59b8684e42571eb62697853b670eedfaea",
+      "changelog": [
+        "fix(switch-mod): disable TalkatooMenuMarkHook \u2014 it breaks Talkatoo speech"
+      ]
+    },
+    {
       "package_version": "0.1.36-alpha",
       "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.1.36-alpha/smo-poptracker-v0.1.36-alpha.zip",
       "sha256": "6097d681fb6eccfb82e80afb5d454647531d5dc4d6e8da9bc6434001b398d683",
