@@ -65,3 +65,15 @@ _ZN16GameDataFunction19tryFindShineMessageEPKN2al9LiveActorEPKNS0_17IUseMessageS
 // (cutscenes, pause menu, hint UI), so without this we'd substitute moon
 // names project-wide.
 _ZTV7Poetter
+
+// --- ImGui debug overlay deps (ui::ApDebugConsole) ----------------------
+// Application::sInstance is the SEAD_SINGLETON_DISPOSER static that
+// Application::instance() reads. al::getStationedHeap is the stationed
+// heap source the overlay carves a 2 MiB ExpHeap out of. sead::ExpHeap::create
+// + sead::SafeStringBase<char>::operator= are needed by the ExpHeap
+// constructor (it stores the heap name as a SafeString). All taken from
+// Kgamer77/SMOO-Plus-Hakkun's working syms.
+_ZN11Application9sInstanceE
+_ZN2al16getStationedHeapEv
+_ZN4sead7ExpHeap6createEmRKNS_14SafeStringBaseIcEEPNS_4HeapEiNS5_13HeapDirectionEb
+_ZN4sead14SafeStringBaseIcEaSERKS1_

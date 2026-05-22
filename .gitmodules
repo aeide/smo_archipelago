@@ -7,15 +7,10 @@
 [submodule "switch-mod/lib/OdysseyHeaders"]
 	path = switch-mod/lib/OdysseyHeaders
 	url = https://github.com/MonsterDruide1/OdysseyHeaders.git
-# switch-mod/lib/imgui — future submodule for the on-Switch ImGui debug
-# overlay (scripts/setup_imgui_addons.py). Currently unused: the addon
-# code in switch-mod/src/ui/ApDebugConsole.* is compile-time-gated by
-# SMOAP_HAS_IMGUI which the top-level CMakeLists only defines when both
-# lib/imgui and sys/addons/ImGui/ exist. To enable: bump switch-mod/sys
-# to a LibHakkun ref that ships addons/ImGui (the upstream imgui branch
-# has restructured the sail + trampoline files in ways that break our
-# Windows-port patches — needs cherry-picking the addons onto our stdlib
-# pin or rebasing our patches on the imgui branch).
-# [submodule "switch-mod/lib/imgui"]
-# 	path = switch-mod/lib/imgui
-# 	url = https://github.com/ocornut/imgui.git
+# switch-mod/lib/imgui — pinned at v1.92.8 (2026-05). Used by the on-Switch
+# debug overlay (switch-mod/src/ui/ApDebugConsole.cpp) via LibHakkun's
+# addons/ImGui NVN backend. The CMakeLists.txt gates the overlay on the
+# presence of both lib/imgui/ and sys/addons/ImGui/ via SMOAP_HAS_DEBUG_RENDERER.
+[submodule "switch-mod/lib/imgui"]
+	path = switch-mod/lib/imgui
+	url = https://github.com/ocornut/imgui.git

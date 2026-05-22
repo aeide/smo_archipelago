@@ -75,16 +75,22 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 add_subdirectory(lib/OdysseyHeaders)
 target_link_libraries(${PROJECT_NAME} PRIVATE OdysseyHeaders)
 
-# Debug overlay: ImGui / Nvn addons are registered via HAKKUN_ADDONS in
-# config/config.cmake; LibHakkun's enable_addons() (invoked from
-# sys/cmake/module.cmake) handles add_subdirectory + link automatically.
-# We just expose `lib/imgui` for our own include path so ApDebugConsole.cpp's
-# `#include "imgui.h"` resolves, and gate the overlay code with
-# SMOAP_HAS_IMGUI so the build still works if the addons aren't present.
+# Debug overlay: ImGui / Nvn / DebugRenderer addons. Registered via
+# HAKKUN_ADDONS in config/config.cmake; LibHakkun's enable_addons()
+# (invoked from sys/cmake/module.cmake) handles add_subdirectory + link
+# automatically. Here we just expose include paths for ApDebugConsole.cpp
+# (imgui.h, hk/gfx/ImGuiBackendNvn.h, hk/gfx/DebugRenderer.h) and gate the
+# overlay code with SMOAP_HAS_DEBUG_RENDERER so the build still works if
+# the addons aren't present (e.g. lib/imgui submodule not yet checked out).
 if(EXISTS ${CMAKE_SOURCE_DIR}/lib/imgui/imgui.h AND
    EXISTS ${CMAKE_SOURCE_DIR}/sys/addons/ImGui/CMakeLists.txt)
-    target_include_directories(${PROJECT_NAME} PRIVATE lib/imgui)
-    add_compile_definitions(SMOAP_HAS_IMGUI=1)
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        lib/imgui
+        sys/addons/ImGui/include
+        sys/addons/Nvn/include
+        sys/addons/DebugRenderer/include
+    )
+    add_compile_definitions(SMOAP_HAS_DEBUG_RENDERER=1)
 endif()
 
 include(sys/cmake/module.cmake)

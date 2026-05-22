@@ -19,9 +19,14 @@
 #include "ui/CappyMessenger.hpp"
 #include "util/Log.hpp"
 
+#include "game/System/GameSystem.h"
+
+#ifdef SMOAP_HAS_DEBUG_RENDERER
+#  include "hk/gfx/ImGuiBackendNvn.h"
+#endif
+
 #include <cstdint>
 
-class GameSystem;
 class HakoniwaSequence;
 
 namespace smoap::hooks {
@@ -98,16 +103,28 @@ HkTrampoline<unsigned int, void*, unsigned long, unsigned long, int>
 
 // Hook 1: GameSystem::init runs during SMO startup. We do the socket
 // bring-up BEFORE orig (so our pool wins the one-shot Initialize race),
-// then call orig, then start the AP worker.
+// then call orig, then start the AP worker. Mirrors Kgamer77/SMOO-Plus-
+// Hakkun (which has the same nn::socket pre-orig hijack — confirmed in
+// their src/main.cpp).
 HkTrampoline<void, GameSystem*> gameSystemInitHook =
     hk::hook::trampoline([](GameSystem* self) -> void {
         SMOAP_LOG_INFO(">>> GameSystem::init hook FIRED");
 
-        // Socket init MUST land before orig — SMO's startup path calls
-        // nn::socket::Initialize from inside GameSystem::init.orig, and
-        // the second call would either assert ("already initialized")
-        // or silently leave us stuck with SMO's pool. Pattern from
-        // Kgamer77/SMOO-Plus-Hakkun:main.cpp.
+        // ImGui setup MUST land before orig. Kgamer77/SMOO-Plus-Hakkun
+        // calls imgui::setup() as the FIRST thing in its gameSystemInit
+        // pre-orig, before nn::socket::Initialize. Their imgui::setup
+        // creates the ExpHeap + wires the allocator + calls
+        // ImGuiBackendNvn::tryInitialize(). By initializing ImGui BEFORE
+        // SMO touches NVN, the addon's nvnDeviceInitialize override
+        // gets to call setDevice on an already-prepared backend. Our
+        // prior pattern (defer to first-draw lazy-init) hung at first
+        // drawMain.orig — putting init here matches their proven setup.
+        smoap::ui::initDebugConsole();
+
+        // Socket init MUST land before orig so our 6 MB pool wins the
+        // one-shot nn::socket::Initialize race. Pattern from Kgamer's
+        // gameSystemInit hook body. Without our larger pool the bridge's
+        // many-concurrent-connection scenarios run out of session slots.
         SMOAP_LOG_INFO("[init] nn::socket::Initialize (our pool, %lu+%lu bytes)",
                        kSocketPoolSize, kSocketAllocPoolSize);
         const unsigned int sock_rc = nn::socket::Initialize(
@@ -120,8 +137,7 @@ HkTrampoline<void, GameSystem*> gameSystemInitHook =
             SMOAP_LOG_INFO("[init] nn::socket::Initialize OK");
         }
         // Disarm SMO's eventual call so it can't double-init / clobber
-        // our pool. installAtSym requires the mangled name as a literal
-        // template arg.
+        // our pool.
         disableSocketInit.installAtSym<"_ZN2nn6socket10InitializeEPvmmi">();
 
         SMOAP_LOG_INFO(">>> calling GameSystem::init orig");
@@ -148,7 +164,7 @@ HkTrampoline<void, GameSystem*> gameSystemInitHook =
         });
 
         smoap::ui::initHud();
-        smoap::ui::initDebugConsole();
+        // initDebugConsole moved to pre-orig above (Kgamer pattern).
 
         SMOAP_LOG_INFO("<<< GameSystem::init hook complete");
     });
@@ -162,27 +178,10 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
             s_first = false;
             SMOAP_LOG_INFO(">>> drawMain hook FIRED (first frame)");
         }
-        // SD-card boot-log drain: no-op unless built with -DSMOAP_DEBUG_SD_LOG=ON.
-        // Drains the ring buffer once at frame ~300 (~5s).
         smoap::util::drainPendingToFile();
         drawMainHook.orig(self);
 
         if (self) {
-            // M6 phase B + Cappy Messenger: cache curScene + GameDataHolder
-            // pointers from HakoniwaSequence's known field offsets.
-            //
-            // CRITICAL: al::Scene multiply-inherits from NerveExecutor,
-            // IUseAudioKeeper, IUseCamera, IUseSceneObjHolder. The
-            // IUseSceneObjHolder subobject sits at a non-zero offset within
-            // Scene (after the other three bases' subobjects). rs::
-            // isActiveCapMessage and rs::tryShowCapMessagePriorityLow take
-            // const al::IUseSceneObjHolder*, and they do vtable dispatch on
-            // that pointer. Passing a raw al::Scene* without the static_cast
-            // adjustment makes them read the wrong vtable -> NULL-deref,
-            // surfacing as an ARMeilleure JIT translator fault under Ryujinx.
-            // Production exlaunch always did this adjustment; the phase-3b
-            // port skipped it on the assumption that "the pointer passes
-            // through unchanged" — which is wrong for multiple inheritance.
             constexpr std::size_t kCurSceneOffset       = 0xB0;
             constexpr std::size_t kGameDataHolderOffset = 0xB8;
             const auto* base = reinterpret_cast<const std::uint8_t*>(self);
@@ -289,6 +288,20 @@ extern "C" void hkMain() {
 
     SMOAP_LOG_INFO("installing TalkatooSpeechHook (Phase 3 — tryFindShineMessage tramp + Poetter vtable filter)");
     smoap::hooks::installTalkatooSpeechHook();
+
+#ifdef SMOAP_HAS_DEBUG_RENDERER
+    // Install the Nvn bootstrap trampoline so ImGuiBackendNvn auto-wires
+    // its device/cmdbuf the moment NVN comes up. `installHooks(false)` =
+    // don't auto-call tryInitialize (we do that lazily on first overlay
+    // draw, after NVN device is ready). Matches Kgamer77/SMOO-Plus-Hakkun.
+    //
+    // Re-enabled after the LibHakkun bump to 9892726b. Our prior patched
+    // relocator (page-aligned 4 KiB slots) was the prime suspect for the
+    // first-NVN-init hang. Upstream's compact packed slots should let
+    // ARMeilleure translate the cross-module trampoline cleanly.
+    SMOAP_LOG_INFO("installing ImGuiBackendNvn bootstrap hook (manual init)");
+    hk::gfx::ImGuiBackendNvn::instance()->installHooks(false);
+#endif
 
     SMOAP_LOG_INFO("=== hkMain END (waiting for GameSystem::init to fire) ===");
 }
