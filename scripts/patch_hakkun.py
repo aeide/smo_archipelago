@@ -41,6 +41,14 @@ Patches applied:
      connect (genuinely IN-direction) keep their `const A&` parameters via
      `inFdInAddress`; this fix mirrors the OUT-direction pattern that
      getPeerName/getSockName already use. Worth upstreaming.
+
+  9. (forward-compat) sys/tools/nso.py composition refactor: rewrite
+     `class NsoSegment(struct.Struct)` / `class NsoHeader(struct.Struct)`
+     to own a struct.Struct instead of inheriting from one. The no-arg
+     subclass instantiation breaks on Python 3.14 (`TypeError: Struct()
+     missing required argument 'format' (pos 1)`) because Argument
+     Clinic moved the format requirement into __new__. Composition is
+     durable across every CPython version. Worth upstreaming.
 """
 
 import os
@@ -508,6 +516,131 @@ def main() -> int:
             "            requires(std::is_convertible<A*, SocketAddr*>::value)\n"
             "        ValueOrResult<Ret> recvFrom(s32 fd, Span<u8> buffer, s32 flags, A& address) {\n",
             sentinel="SMO_HAKKUN_PATCH_8",
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # Patch 9: nso.py composition-over-inheritance.
+    # ------------------------------------------------------------------
+    # Upstream tools/nso.py writes `class NsoSegment(struct.Struct)` /
+    # `class NsoHeader(struct.Struct)` with no-arg constructors that call
+    # super().__init__(format) inside __init__. That pattern relies on
+    # struct.Struct.__new__ accepting a no-arg call (so the subclass can
+    # provide format later, in __init__). Python 3.14 reimplemented
+    # struct.Struct with Argument Clinic, making `format` strictly
+    # required in __new__'s signature. The no-arg subclass instantiation
+    # `NsoHeader()` now raises at __new__ before __init__ ever runs:
+    #
+    #     TypeError: Struct() missing required argument 'format' (pos 1)
+    #
+    # Symptom: cmake's link-rule step `python sys/tools/elf2nso.py`
+    # crashes with that traceback at NsoHeader() on line 64 of elf2nso.py.
+    # Even with build_switchmod.py's PATH pin to Python 3.12 (the
+    # wizard-verified interpreter where lz4 lives), a user whose system
+    # has Python 3.14 elsewhere can hit this via any number of leak paths
+    # (a stale bundled tree, an inherited PATH that wins the resolution,
+    # py launcher misconfiguration). The robust fix is to defend the
+    # script itself.
+    #
+    # The patch rewrites both classes to use composition (own a
+    # struct.Struct instead of inheriting from one). Public interface
+    # (.size, .format, .unpack_from, .load, .save) and constructor
+    # shape are preserved, so elf2nso.py works unchanged. The new
+    # implementation is durable across every CPython version because
+    # it never relies on struct.Struct's constructor signature — it
+    # treats struct.Struct as a tool, not a base class.
+    #
+    # Full-file replacement (file is ~100 lines, self-contained). If
+    # upstream changes nso.py, the patch will fail loud at patch_file's
+    # "old text not found" check and we revisit.
+    _NSO_OLD = (
+        "import struct\n"
+        "\n"
+        "class NsoSegment(struct.Struct):\n"
+        "    def __init__(self):\n"
+        "        super().__init__('<3I')\n"
+        "\n"
+        "        self.file_offset = 0\n"
+        "        self.memory_offset = 0\n"
+        "        self.decompressed_size = 0\n"
+        "\n"
+        "    def load(self, data, pos):\n"
+        "        (self.file_offset,\n"
+        "         self.memory_offset,\n"
+        "         self.decompressed_size) = self.unpack_from(data, pos)\n"
+        "\n"
+        "    def save(self):\n"
+        "        return struct.pack(\n"
+        "            self.format,\n"
+        "            self.file_offset,\n"
+        "            self.memory_offset,\n"
+        "            self.decompressed_size,\n"
+        "        )\n"
+        "\n"
+        "\n"
+        "class NsoHeader(struct.Struct):\n"
+        "    def __init__(self):\n"
+        "        super().__init__('<4I12xI12xI12xI32s3I28s3Q32s32s32s')\n"
+    )
+    _NSO_NEW = (
+        "# SMO_HAKKUN_PATCH_9: composition over inheritance.\n"
+        "#\n"
+        "# Upstream wrote these classes as `class X(struct.Struct)` with\n"
+        "# a no-arg constructor that called super().__init__(format). That\n"
+        "# pattern relies on struct.Struct.__new__ accepting zero args.\n"
+        "# Python 3.14 made `format` strictly required in Struct.__new__\n"
+        "# (Argument Clinic rewrite), so the no-arg subclass instantiation\n"
+        "# now raises `TypeError: Struct() missing required argument\n"
+        "# 'format' (pos 1)` at __new__ before __init__ runs. Composition\n"
+        "# preserves the public interface (.size, .format, .unpack_from,\n"
+        "# .load, .save) without depending on Struct's constructor shape,\n"
+        "# so it works on every CPython version (3.10 through 3.14+).\n"
+        "import struct\n"
+        "\n"
+        "class NsoSegment:\n"
+        "    _fmt = struct.Struct('<3I')\n"
+        "    size = _fmt.size\n"
+        "    format = _fmt.format\n"
+        "\n"
+        "    def __init__(self):\n"
+        "        self.file_offset = 0\n"
+        "        self.memory_offset = 0\n"
+        "        self.decompressed_size = 0\n"
+        "\n"
+        "    def unpack_from(self, data, pos):\n"
+        "        return self._fmt.unpack_from(data, pos)\n"
+        "\n"
+        "    def load(self, data, pos):\n"
+        "        (self.file_offset,\n"
+        "         self.memory_offset,\n"
+        "         self.decompressed_size) = self.unpack_from(data, pos)\n"
+        "\n"
+        "    def save(self):\n"
+        "        return struct.pack(\n"
+        "            self.format,\n"
+        "            self.file_offset,\n"
+        "            self.memory_offset,\n"
+        "            self.decompressed_size,\n"
+        "        )\n"
+        "\n"
+        "\n"
+        "class NsoHeader:\n"
+        "    _fmt = struct.Struct('<4I12xI12xI12xI32s3I28s3Q32s32s32s')\n"
+        "    size = _fmt.size\n"
+        "    format = _fmt.format\n"
+        "\n"
+        "    def unpack_from(self, data, pos):\n"
+        "        return self._fmt.unpack_from(data, pos)\n"
+        "\n"
+        "    def __init__(self):\n"
+    )
+    report(
+        "nso.py composition (3.14 Struct.__new__ fix)",
+        patch_file(
+            os.path.join(HAKKUN, "tools", "nso.py"),
+            _NSO_OLD,
+            _NSO_NEW,
+            sentinel="SMO_HAKKUN_PATCH_9",
         ),
     )
 
