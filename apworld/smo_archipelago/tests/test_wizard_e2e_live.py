@@ -249,9 +249,13 @@ def test_full_wizard_install_against_real_network(
 
     # Walk the bundled switch_mod and partition files. Known build-output
     # roots (mirroring release_audit.SWITCH_MOD_OUTPUT_ROOTS) are
-    # unconditionally allowed; everything else must be in the zip
-    # manifest. Anything outside both is a leak that the build introduced.
+    # unconditionally allowed; SWITCH_MOD_ALLOWED_SOURCE_WRITES carves out
+    # the gitignored sync_capture_table / sync_shine_table outputs that
+    # land in src/ap/ (which is outside the build-output roots but is a
+    # documented, required artifact — release_audit.audit_switch_mod uses
+    # the same allowlist). Everything else must be in the zip manifest.
     output_roots = release_audit.SWITCH_MOD_OUTPUT_ROOTS  # ("build", "sys/sail/build", "lib/std")
+    allowed_source_writes = release_audit.SWITCH_MOD_ALLOWED_SOURCE_WRITES
     unexpected: list[str] = []
     for p in bundled_switch_mod.rglob("*"):
         if not p.is_file():
@@ -260,6 +264,8 @@ def test_full_wizard_install_against_real_network(
         if any(rel == r or rel.startswith(r + "/") for r in output_roots):
             continue
         if "/__pycache__/" in rel or rel.startswith("__pycache__/"):
+            continue
+        if rel in allowed_source_writes:
             continue
         if rel in expected_sources:
             continue
