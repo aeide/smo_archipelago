@@ -114,7 +114,12 @@ jobs:
     name: Clean Windows install + audit
     needs: build-apworld
     runs-on: windows-2022
-    timeout-minutes: 30
+    # Cold-cache LLVM download+extract alone takes ~30 min on windows-2022;
+    # warm-cache the whole job runs in under 10. 60-min budget gives margin
+    # for the one cold-cache run per cache key, then every subsequent tag is
+    # fast. (The original 30-min cap canceled v0.1.33-alpha mid-LLVM download
+    # and prevented the cache from ever being saved — chicken-and-egg.)
+    timeout-minutes: 60
     if: startsWith(github.ref, 'refs/tags/v')
     env:
       # Pin the vendored toolchain dirs the same way the wizard does
