@@ -442,7 +442,7 @@ jobs:
 
       - name: Open PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_FOR_RELEASES }}
           TAG: ${{ github.ref_name }}
         run: |
           set -e
