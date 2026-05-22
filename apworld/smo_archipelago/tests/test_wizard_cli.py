@@ -458,6 +458,75 @@ def test_run_extract_fails_when_subprocess_returns_zero_but_maps_missing(
     assert outcome.maps_present is False
 
 
+def test_run_extract_short_circuits_when_maps_already_hash_correctly(
+    monkeypatch, tmp_path,
+) -> None:
+    """Fast path: when canonical maps already exist and every hash
+    matches, run_extract skips the (slow) extractor subprocess entirely
+    and returns success without touching dump_path. This is what lets
+    the wizard's NSP page accept a missing/stale dump for users who
+    already have valid extracted maps from a prior install."""
+    invocations: list[Any] = []
+
+    def fake_run(dump, **kw):
+        invocations.append(dump)
+        return _FakeBuildResult(ok=True, returncode=0)
+
+    monkeypatch.setattr("_setup.build.run_extract_maps", fake_run)
+    monkeypatch.setattr("_setup.build.maps_ready", lambda: True)
+    monkeypatch.setattr(
+        "_setup.build.verify_map_hashes",
+        lambda: [
+            _FakeHashCheck("shine_map.json", "x" * 64, "x" * 64,
+                           present=True, match=True),
+            _FakeHashCheck("capture_map.json", "y" * 64, "y" * 64,
+                           present=True, match=True),
+        ],
+    )
+    # dump_path doesn't exist — the short-circuit must fire BEFORE the
+    # dump_path validation, otherwise a re-run with stale state would
+    # spuriously fail.
+    outcome = run_extract(tmp_path / "no_such.nsp")
+    assert outcome.ok is True
+    assert outcome.hash_ok is True
+    assert outcome.maps_present is True
+    assert len(outcome.hash_checks) == 2
+    assert invocations == [], (
+        "subprocess must not be spawned when canonical maps already match"
+    )
+
+
+def test_run_extract_short_circuit_disabled_when_verify_hash_false(
+    monkeypatch, tmp_path,
+) -> None:
+    """`verify_hash=False` is the opt-out path used by tests against
+    synthetic data — it must NOT inherit the short-circuit, otherwise
+    we'd silently skip extraction on stale leftover maps under a test
+    that explicitly wanted to exercise the subprocess path."""
+    fake_dump = tmp_path / "smo.nsp"
+    fake_dump.write_bytes(b"")
+    invocations: list[Any] = []
+
+    def fake_run(dump, **kw):
+        invocations.append(dump)
+        return _FakeBuildResult(ok=True, returncode=0)
+
+    monkeypatch.setattr("_setup.build.run_extract_maps", fake_run)
+    monkeypatch.setattr("_setup.build.maps_ready", lambda: True)
+    monkeypatch.setattr(
+        "_setup.build.verify_map_hashes",
+        lambda: [
+            _FakeHashCheck("shine_map.json", "x" * 64, "x" * 64,
+                           present=True, match=True),
+        ],
+    )
+    outcome = run_extract(fake_dump, verify_hash=False)
+    assert outcome.ok is True
+    assert invocations == [fake_dump], (
+        "verify_hash=False must run the subprocess regardless of map state"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Phase: build
 # ---------------------------------------------------------------------------

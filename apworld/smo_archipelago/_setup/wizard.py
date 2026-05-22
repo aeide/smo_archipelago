@@ -1079,8 +1079,21 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
         nav, _, next_btn = _nav_row(lambda: goto("prereqs"),
                                     lambda: goto("extract"))
         # If we restored a valid dump path from saved state, the user can
-        # advance immediately without re-Browsing.
-        next_btn.disabled = initial_dump_path is None
+        # advance immediately without re-Browsing. Same if the canonical
+        # maps already exist in %APPDATA% with matching hashes — the
+        # extract page will short-circuit anyway, so don't force a dump
+        # pick just to walk past this screen. The predicate is delegated
+        # to wizard_cli so the GUI doesn't reimplement the hash gate.
+        from . import wizard_cli as _wizard_cli
+        maps_already_good = _wizard_cli.canonical_maps_present()
+        if maps_already_good:
+            path_input.text = (
+                f"{path_input.text}\n"
+                f"(canonical maps already extracted — dump pick is optional)"
+                if initial_dump_path else
+                "(canonical maps already extracted — dump pick is optional)"
+            )
+        next_btn.disabled = initial_dump_path is None and not maps_already_good
 
         def on_browse(_i) -> None:
             # `Utils.open_filename` is the same helper Launcher.open_patch
@@ -1249,9 +1262,17 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                     )
 
         def run_in_worker() -> None:
-            dump = wizard_state["dump_path"]
+            dump = wizard_state.get("dump_path")
             import time
             _state["last_output_ts"] = time.monotonic()
+            # Fast path: canonical maps already extracted and hashed
+            # correctly. wizard_cli.run_extract short-circuits in this
+            # case, so the dump pick is genuinely optional — used by the
+            # NSP page to let the user advance without re-Browsing. The
+            # predicate is delegated to wizard_cli so the hash gate
+            # stays single-sourced (see canonical_maps_present docstring).
+            from . import wizard_cli as _wizard_cli
+            short_circuit = _wizard_cli.canonical_maps_present()
             # Open file log fresh per run; "w" truncates so each Retry
             # gets a clean log instead of compounding across attempts.
             # If the log can't be opened (APPDATA read-only, disk full),
@@ -1278,10 +1299,16 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
             # we surface a clearer status message here than its terse
             # log line — and the Kivy retry button needs to be enabled
             # without scheduling the heartbeat thread for nothing.
-            if not dump.is_file():
+            # Skip the dump-exists gate when the short-circuit is going
+            # to fire; run_extract won't touch dump_path in that case.
+            if not short_circuit and (dump is None or not dump.is_file()):
                 msg = (
                     f"Dump file no longer exists at {dump}. Go back to "
                     f"the previous step and re-pick your NSP/XCI."
+                ) if dump is not None else (
+                    "No dump picked and canonical maps not present. "
+                    "Go back to the previous step and pick your "
+                    "SMO 1.0.0 NSP/XCI."
                 )
                 on_line(f"[wizard] {msg}")
                 from kivy.clock import Clock as _Clock
@@ -1293,9 +1320,19 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                 )
                 _close_log()
                 return
-            status.text = f"Extracting from {dump.name}... (2-5 minutes typical)"
+            if short_circuit:
+                status.text = (
+                    "Verifying extracted maps against canonical fingerprint..."
+                )
+            else:
+                status.text = (
+                    f"Extracting from {dump.name}... (2-5 minutes typical)"
+                )
             on_line(f"[wizard] === extract run start: {time.strftime('%Y-%m-%d %H:%M:%S')} ===")
-            on_line(f"[wizard] dump: {dump} (kind={dump.suffix.lstrip('.').lower() or 'nsp'})")
+            if dump is not None:
+                on_line(f"[wizard] dump: {dump} (kind={dump.suffix.lstrip('.').lower() or 'nsp'})")
+            else:
+                on_line("[wizard] no dump picked — relying on short-circuit")
             try:
                 # Use the user-picked hactool path if the wizard's prereq
                 # page persisted one; extractor falls back to PATH otherwise.
@@ -1322,7 +1359,7 @@ def run_setup_wizard(smoap_path: str | None = None) -> bool:
                 # the returned ExtractOutcome.
                 from . import wizard_cli
                 outcome = wizard_cli.run_extract(
-                    dump,
+                    dump if dump is not None else Path(""),
                     hactool_override=hactool_override,
                     prod_keys_override=prod_keys_override,
                     callback=_on_event,

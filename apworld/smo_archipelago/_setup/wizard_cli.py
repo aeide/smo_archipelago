@@ -72,6 +72,31 @@ ALL_PHASES: tuple[str, ...] = (
 )
 
 
+def canonical_maps_present() -> bool:
+    """True iff both extracted maps live in `%APPDATA%/SMOArchipelago/data/`
+    AND every map's SHA-256 matches the canonical SMO 1.0.0 USen
+    fingerprint in `EXPECTED_MAP_SHA256`.
+
+    Exposed at the wizard_cli layer (rather than imported from `.build`
+    directly by the GUI) to keep the "is extraction needed?" predicate
+    in one place — wizard.py's NSP page short-circuits past the dump
+    pick when this returns True, and `run_extract` short-circuits past
+    the subprocess when it returns True at extract time. The drift
+    guards in `test_wizard_delegates_to_cli.py` forbid the wizard from
+    calling `maps_ready` / `verify_map_hashes` directly for the same
+    reason — the predicate has to stay symmetrical with the gate
+    inside `run_extract`.
+    """
+    from .build import maps_ready, verify_map_hashes
+    if not maps_ready():
+        return False
+    try:
+        checks = verify_map_hashes()
+    except Exception:
+        return False
+    return bool(checks) and all(c.match for c in checks)
+
+
 def _emit(cb: EventCallback | None, event: str, *, t0: float, **fields: Any) -> None:
     """Build an event dict and hand it to the callback (if any).
 
@@ -341,12 +366,50 @@ def run_extract(
     fail because it signals a non-1.0.0 / non-USen / corrupted dump.
     Tests sometimes need `verify_hash=False` to drive the extract on
     synthetic data; production CI should never set this.
+
+    Short-circuit: if `verify_hash=True` AND the maps already live in
+    `%APPDATA%/SMOArchipelago/data/` AND every map's SHA-256 already
+    matches `EXPECTED_MAP_SHA256`, we skip the (slow) subprocess and
+    return success immediately. Saves 2-5 minutes on every wizard re-run
+    against an unchanged dump and lets users navigate past the extract
+    page without re-picking the dump when the maps survived from a
+    prior install.
     """
     from .build import maps_ready, run_extract_maps, verify_map_hashes
 
     anchor = t0 if t0 is not None else time.monotonic()
     _emit(callback, "phase_start", phase=PHASE_EXTRACT, t0=anchor,
           dump=str(dump_path))
+
+    if verify_hash and maps_ready():
+        try:
+            pre_checks = verify_map_hashes()
+        except Exception as e:
+            _emit(callback, "log", phase=PHASE_EXTRACT, t0=anchor,
+                  line=f"[wizard_cli] pre-extract hash check crashed: "
+                       f"{type(e).__name__}: {e}")
+            pre_checks = []
+        if pre_checks and all(c.match for c in pre_checks):
+            for c in pre_checks:
+                _emit(
+                    callback, "hash_check",
+                    t0=anchor, filename=c.filename, match=c.match,
+                    present=c.present,
+                    expected=c.expected, actual=c.actual,
+                )
+            _emit(callback, "log", phase=PHASE_EXTRACT, t0=anchor,
+                  line="[wizard_cli] maps already present and hashes "
+                       "match canonical SMO 1.0.0 USen fingerprint — "
+                       "skipping extraction")
+            _emit(callback, "maps_present", t0=anchor, present=True)
+            _emit(callback, "phase_end", phase=PHASE_EXTRACT, t0=anchor, ok=True)
+            return ExtractOutcome(
+                ok=True,
+                returncode=0,
+                maps_present=True,
+                hash_ok=True,
+                hash_checks=list(pre_checks),
+            )
 
     if not dump_path.is_file():
         _emit(callback, "log", phase=PHASE_EXTRACT, t0=anchor,
