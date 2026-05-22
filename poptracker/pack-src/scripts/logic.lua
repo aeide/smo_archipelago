@@ -28,6 +28,7 @@ OPTIONS = OPTIONS or {
   include_long_course_moons     = true,
   include_precision_capture_moons = true,
   goal                          = 0,      -- first victory variant
+  talkatoo_mode                 = false,
 }
 
 -- ---------- core lookups

@@ -50,10 +50,13 @@ function onClear(slot_data)
 
   if slot_data then
     -- Each apworld option key arrives as 0/1 (Toggle / DefaultOnToggle) or
-    -- an integer (Choice — e.g. `goal`). Booleans get normalized; numerics
-    -- pass through so is_goal(N) can compare directly against OPTIONS.goal.
+    -- an integer (Choice — e.g. `goal`). Use the default in OPTIONS as a
+    -- schema: numeric defaults stay numeric (so is_goal(N) can compare via
+    -- tonumber), everything else collapses to bool the way is_opt expects.
     for k, v in pairs(slot_data) do
-      if v == 0 or v == false or v == "0" then
+      if type(OPTIONS[k]) == "number" then
+        OPTIONS[k] = tonumber(v) or OPTIONS[k]
+      elseif v == 0 or v == false or v == "0" then
         OPTIONS[k] = false
       elseif v == 1 or v == true or v == "1" then
         OPTIONS[k] = true
