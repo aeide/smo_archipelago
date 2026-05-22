@@ -159,11 +159,12 @@ Module ships as `subsdk9` at `sd:/atmosphere/contents/0100000000010000/exefs/sub
 
 A fresh `.claude/worktrees/<name>/` (or `git worktree add`) is missing three pieces the build needs. Do all three up-front, in this order — each fails differently and step 3 reads files written by step 2:
 
-1. **Init `switch-mod/sys` (LibHakkun) + `switch-mod/lib/OdysseyHeaders` submodules** (the wrapper script applies the Windows-port patches before the first compile):
+1. **Init the three switch-mod submodules** (LibHakkun, OdysseyHeaders, Dear ImGui — the wrapper script applies the Windows-port patches before the first compile):
    ```pwsh
-   git -C <worktree> submodule update --init --recursive switch-mod/sys switch-mod/lib/OdysseyHeaders
+   git -C <worktree> submodule update --init --recursive `
+       switch-mod/sys switch-mod/lib/OdysseyHeaders switch-mod/lib/imgui
    ```
-   Skipping → cmake configure fails on missing `sys/cmake/toolchain.cmake`.
+   Skipping `sys` → cmake configure fails on missing `sys/cmake/toolchain.cmake`. Skipping `lib/imgui` → cmake configure fails with `Cannot find source file: switch-mod/lib/imgui/imgui.cpp` (the `sys/addons/ImGui` target the on-Switch debug overlay added in commit `8bea80b`).
 
 2. **Copy generated data files** (gitignored, per-machine — extracted from a Nintendo NSP via the `smo-extract-data` skill; copy from main checkout is faster):
    ```pwsh
