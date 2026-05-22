@@ -54,7 +54,16 @@ def localappdata_tools_root() -> Path:
     """Per-user LOCALAPPDATA root for portable toolchain installs. Distinct
     from `appdata_root()` because LOCALAPPDATA is roaming-profile-excluded
     (a domain user wouldn't want a ~4 GB toolchain following them across
-    machines) and tools are machine-specific anyway."""
+    machines) and tools are machine-specific anyway.
+
+    Honors `SMOAP_LOCALAPPDATA_ROOT` as an override -- used by the live
+    e2e wizard test (test_wizard_e2e_live.py) to redirect LLVM + WinLibs
+    installs into a tempdir so a real-network install run doesn't touch
+    the user's real `%LOCALAPPDATA%\\SMOArchipelago\\`. Set ONLY in
+    test/CI/harness contexts; the wizard must never set this."""
+    override = os.environ.get("SMOAP_LOCALAPPDATA_ROOT")
+    if override:
+        return Path(override)
     base = os.environ.get("LOCALAPPDATA")
     if base:
         return Path(base) / "SMOArchipelago"

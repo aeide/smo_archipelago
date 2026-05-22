@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from _setup import appdata_root
+from _setup.prereqs import localappdata_tools_root
 
 
 def test_appdata_root_honors_override_env_var(tmp_path: Path, monkeypatch) -> None:
@@ -60,3 +61,32 @@ def test_appdata_root_empty_override_falls_through(
     result = appdata_root()
 
     assert result == appdata_base / "SMOArchipelago"
+
+
+def test_localappdata_root_honors_override_env_var(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """SMOAP_LOCALAPPDATA_ROOT overrides LOCALAPPDATA. Used by the live
+    e2e wizard test to sandbox LLVM + WinLibs installs."""
+    override = tmp_path / "localappdata_sandbox"
+    monkeypatch.setenv("SMOAP_LOCALAPPDATA_ROOT", str(override))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "should_not_be_used"))
+
+    result = localappdata_tools_root()
+
+    assert result == override
+    assert not (tmp_path / "should_not_be_used").exists()
+
+
+def test_localappdata_root_falls_back_to_localappdata(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Without the override, the production %LOCALAPPDATA%/SMOArchipelago
+    path is used."""
+    monkeypatch.delenv("SMOAP_LOCALAPPDATA_ROOT", raising=False)
+    localappdata_base = tmp_path / "localappdata"
+    monkeypatch.setenv("LOCALAPPDATA", str(localappdata_base))
+
+    result = localappdata_tools_root()
+
+    assert result == localappdata_base / "SMOArchipelago"
