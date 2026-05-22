@@ -511,6 +511,41 @@ inline constexpr const char* kGameDataFileFindShine =
     "_ZNK12GameDataFile9findShineEii";
 
 // =============================================================================
+// OdysseyRescue — Lost Kingdom softlock prevention.
+// =============================================================================
+//
+// Lost Kingdom physically grounds the Odyssey on arrival and blocks
+// backtracking. In our randomizer the moons required to release it can
+// land anywhere in the pre-arrival reachable set, so a player who rushes
+// in may arrive with 0 Lost AP credits and no way back to grab the unswept
+// upstream checks → permanent softlock. Fix mirrors
+// Kgamer77/SuperMarioOdysseyArchipelago v1.2's updatePlayerInfo():
+// per-frame sweep on drawMain (throttled ~60 frames) that detects the
+// crashHome state and force-repairs via SMO's own named GameDataFunction::
+// entry points.
+//
+// Ruined Kingdom is intentionally NOT patched. Ruined moons are filler
+// (no apworld gate on Bowser entry), so vanilla flow can take Mario from
+// Ruined to Bowser via the post-Lord-of-Lightning autopilot cinematic
+// without any randomizer-side intervention.
+//
+// All 5 manglings verified via aarch64-none-elf-g++ -c on forward-decls
+// matching MonsterDruide1/OdysseyDecomp src/System/GameDataFunction.h. The
+// unlockWorld mangling is byte-identical to the one our project had
+// pre-c85a27b cleanup ("remove AP-driven kingdom-unlock plumbing").
+
+inline constexpr const char* kGameDataFunctionIsCrashHome =
+    "_ZN16GameDataFunction11isCrashHomeE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionRepairHome =
+    "_ZN16GameDataFunction10repairHomeE20GameDataHolderWriter";
+inline constexpr const char* kGameDataFunctionUnlockWorld =
+    "_ZN16GameDataFunction11unlockWorldE20GameDataHolderWriteri";
+inline constexpr const char* kGameDataFunctionGetWorldIndexClash =
+    "_ZN16GameDataFunction18getWorldIndexClashEv";
+inline constexpr const char* kGameDataFunctionGetCurrentStageName =
+    "_ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor";
+
+// =============================================================================
 // Instant seed growth — bypass the wait on seed-flower moons.
 // =============================================================================
 //
