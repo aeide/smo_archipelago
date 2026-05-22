@@ -1,11 +1,11 @@
 ---
 name: smo-host-tests
-description: Build and run the SMO switch-mod C++ host tests (test_json, test_protocol, test_cappy_messenger, test_shine_lookup) on Windows. Use when the user mentions "host tests", "test_json", "test_protocol", "test_cappy_messenger", "test_shine_lookup", "switch-mod tests", or asks to run/build C++ tests for switch-mod/. Covers the msys2 mingw64 PATH dance + the host-side ApState::nowMs stub the CappyMessenger settle gate depends on.
+description: Build and run the SMO switch-mod C++ host tests (test_json, test_protocol, test_cappy_messenger, test_msg_font_safe, test_shine_lookup) on Windows. Use when the user mentions "host tests", "test_json", "test_protocol", "test_cappy_messenger", "test_msg_font_safe", "test_shine_lookup", "switch-mod tests", or asks to run/build C++ tests for switch-mod/. Covers the msys2 mingw64 PATH dance + the host-side ApState::nowMs stub the CappyMessenger settle gate depends on.
 ---
 
 # Switch-mod host tests (C++)
 
-The Switch mod ships four host-runnable tests covering the JSON encoder, wire protocol, CappyMessenger speech-bubble logic, and shine_lookup (Phase 4 named-set indexing). They run on the host (Windows) compiled with standalone msys2 mingw64 g++. devkitPro doesn't ship a host compiler (its aarch64-target g++ can only emit Switch binaries).
+The Switch mod ships five host-runnable tests covering the JSON encoder, wire protocol, CappyMessenger speech-bubble logic, MessageFont38 sanitization, and shine_lookup (Phase 4 named-set indexing). They run on the host (Windows) compiled with standalone msys2 mingw64 g++. devkitPro doesn't ship a host compiler (its aarch64-target g++ can only emit Switch binaries).
 
 ## Compiler location
 
@@ -29,10 +29,21 @@ g++ -std=c++20 -Wall -Wextra -O0 -g `
 .\test_protocol.exe
 
 # test_cappy_messenger (filter rules, settle gate, label substitution)
+# Links MsgFontSafe.cpp because formatCappyMsg + enqueueSystem now route
+# through sanitizeForMsgFont — see test_msg_font_safe for the deep
+# coverage of glyph-substitution behavior.
 g++ -std=c++20 -Wall -Wextra -O0 -g -DSMOAP_HOST_TEST `
     switch-mod/tests/test_cappy_messenger.cpp switch-mod/src/ui/CappyMessenger.cpp `
+    switch-mod/src/util/MsgFontSafe.cpp `
     -Iswitch-mod/src -o test_cappy_messenger.exe
 .\test_cappy_messenger.exe
+
+# test_msg_font_safe (MessageFont38 glyph-coverage sanitizer — substitution
+# table, smart-quote folding, Latin-1 ASCII-fold, buffer-cap safety)
+g++ -std=c++20 -Wall -Wextra -O0 -g -DSMOAP_HOST_TEST `
+    switch-mod/tests/test_msg_font_safe.cpp switch-mod/src/util/MsgFontSafe.cpp `
+    -Iswitch-mod/src -o test_msg_font_safe.exe
+.\test_msg_font_safe.exe
 
 # test_shine_lookup (shine_uid resolution, named-set indexing)
 g++ -std=c++20 -Wall -Wextra -O0 -g -DSMOAP_HOST_TEST `
@@ -41,7 +52,7 @@ g++ -std=c++20 -Wall -Wextra -O0 -g -DSMOAP_HOST_TEST `
 .\test_shine_lookup.exe
 ```
 
-Expected: each exe exits 0 with `All tests passed` (or per-case `PASS` lines for `test_cappy_messenger`). `test_json` covers encoder/LineBuffer/overflow/round-trip; `test_protocol` covers every wire-protocol message type with truncation + overlong-field edge cases; `test_cappy_messenger` covers filter rules + scene-settle gate + label substitution + queue-overflow; `test_shine_lookup` covers `shineUidByStageObj` / `shineUidByDisplayName` / `isProgressionShine` + the named-moons bit indexing.
+Expected: each exe exits 0 with `All tests passed` (or per-case `PASS` lines for `test_cappy_messenger`). `test_json` covers encoder/LineBuffer/overflow/round-trip; `test_protocol` covers every wire-protocol message type with truncation + overlong-field edge cases; `test_cappy_messenger` covers filter rules + scene-settle gate + label substitution + queue-overflow; `test_msg_font_safe` covers the MessageFont38 sanitizer (15 missing-ASCII substitutions, smart-quote / Latin-1 / em-dash / ellipsis behavior, buffer-cap safety); `test_shine_lookup` covers `shineUidByStageObj` / `shineUidByDisplayName` / `isProgressionShine` + the named-moons bit indexing.
 
 ## The ApState::nowMs host-test stub
 
@@ -58,7 +69,7 @@ Monotonic, deterministic, no Switch headers needed. If a new test needs the same
 ## Cleanup
 
 ```pwsh
-Remove-Item -Force test_json.exe, test_protocol.exe, test_cappy_messenger.exe, test_shine_lookup.exe
+Remove-Item -Force test_json.exe, test_protocol.exe, test_cappy_messenger.exe, test_msg_font_safe.exe, test_shine_lookup.exe
 ```
 
 ## When to add a new test
@@ -66,6 +77,7 @@ Remove-Item -Force test_json.exe, test_protocol.exe, test_cappy_messenger.exe, t
 - New wire-protocol message type or field → add to `test_protocol.cpp`.
 - New JSON encoder feature → add to `test_json.cpp`.
 - New CappyMessenger filter rule, settle-gate edge case, or substitution behavior → add to `test_cappy_messenger.cpp`.
+- New MessageFont38 substitution rule / sanitizer behavior → add to `test_msg_font_safe.cpp` (regenerate the coverage data with `scripts/inspect_smo_font.py` first if a SMO version bump changed the font).
 - New shine_table.h column / shine_lookup helper → add to `test_shine_lookup.cpp`.
 
 Pattern from M6.1: any field that holds a string in the Switch wire-protocol must be a fixed `char[N]` — the worker thread can NOT use `std::string` historically (libstdc++ allocator NULL-derefs in the exlaunch-era subsdk9). Hakkun's musl + LLVM libc++ + HeapSourceDynamic addon lifts the restriction at runtime, but the fixed-buffer pattern stays in the wire format because the message shapes are committed contracts. Tests should cover the truncation behavior at the N boundary.

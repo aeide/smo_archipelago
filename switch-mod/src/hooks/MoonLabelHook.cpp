@@ -10,6 +10,7 @@
 
 #include "../ap/ApState.hpp"
 #include "../util/Log.hpp"
+#include "../util/MsgFontSafe.hpp"
 
 namespace smoap::hooks {
 
@@ -32,6 +33,16 @@ void applyPendingLabel(void* self, std::size_t layout_offset) {
     }
     if (buf[0] == '\0') return;
 
+    // Sanitize for MessageFont38 coverage. The bridge can deliver moon
+    // labels formatted as e.g. "Got Cascade Power Moon!" — under normal
+    // operation that's pure ASCII (our items.json content), but the same
+    // path also surfaces "Got X from PlayerName!" reconcile labels where
+    // PlayerName came from AP. Sharing the sanitizer with CappyMessenger
+    // keeps the two paths from drifting on glyph coverage.
+    char safe_buf[smoap::ap::kPendingMoonLabelCap];
+    smoap::util::sanitizeForMsgFont(buf, safe_buf, sizeof(safe_buf));
+    if (safe_buf[0] == '\0') return;
+
     auto* layout_actor = *reinterpret_cast<void* const*>(
         reinterpret_cast<const std::uint8_t*>(self) + layout_offset);
     if (layout_actor == nullptr) {
@@ -43,8 +54,8 @@ void applyPendingLabel(void* self, std::size_t layout_offset) {
         reinterpret_cast<std::uint8_t*>(layout_actor) + 8);
 
     SMOAP_LOG_INFO("[moon_label] applying text='%s' on pane '%s' (layout=%p)",
-                   buf, kPaneName, iuse_layout);
-    g_set_pane_string_format(iuse_layout, kPaneName, "%s", buf);
+                   safe_buf, kPaneName, iuse_layout);
+    g_set_pane_string_format(iuse_layout, kPaneName, "%s", safe_buf);
 }
 
 HkTrampoline<void, void*> moonGetLabelRegularHook =

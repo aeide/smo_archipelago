@@ -47,6 +47,7 @@
 #include "../ap/shine_lookup.hpp"
 #include "../game/KingdomUnlock.hpp"
 #include "../util/Log.hpp"
+#include "../util/MsgFontSafe.hpp"
 #include "HookSymbols.hpp"
 
 namespace smoap::hooks {
@@ -94,19 +95,50 @@ constexpr std::size_t kUtfBufCount = 4;
 char16_t g_utf_buffers[kUtfBufCount][smoap::ap::kCheckFieldCap + 1] = {};
 std::atomic<std::size_t> g_utf_buf_cursor{0};
 
-// Promote an ASCII-printable string into one of the static UTF-16 buffers.
-// SMO's display names are USen ASCII (no multibyte characters), so byte
-// widening is correct. Truncates at kCheckFieldCap-1 to leave a null cell.
+// Sanitize a moon display name for MessageFont38 + widen into one of the
+// static UTF-16 buffers. Most apworld moon names are pure ASCII (our
+// locations.json), but the sanitizer handles the corner where a future
+// edit pulls in Latin-1 accents from upstream's MSBT — Talkatoo's bubble
+// uses the same font as Cappy's, so the same glyph coverage applies.
+//
+// After sanitize, every output byte is either ASCII (which widens to U+
+// 00XX trivially) or one of the 9 native non-ASCII passthrough codepoints
+// (©Åáèéíó—…). For those we decode the UTF-8 back to a 16-bit codepoint
+// rather than passing through individual bytes — Nintendo's text engine
+// reads char16_t, not UTF-8.
 const char16_t* asciiToUtf16BufStatic(const char* src) {
+    char safe[smoap::ap::kCheckFieldCap + 1];
+    smoap::util::sanitizeForMsgFont(src, safe, sizeof(safe));
+
     const auto slot = g_utf_buf_cursor.fetch_add(1, std::memory_order_relaxed)
                       % kUtfBufCount;
     char16_t* dst = g_utf_buffers[slot];
+
     std::size_t i = 0;
-    while (src[i] != '\0' && i < smoap::ap::kCheckFieldCap) {
-        dst[i] = static_cast<char16_t>(static_cast<unsigned char>(src[i]));
-        ++i;
+    std::size_t out = 0;
+    while (safe[i] != '\0' && out < smoap::ap::kCheckFieldCap) {
+        const auto b0 = static_cast<unsigned char>(safe[i]);
+        if (b0 < 0x80) {
+            dst[out++] = static_cast<char16_t>(b0);
+            ++i;
+        } else if ((b0 & 0xE0) == 0xC0 && safe[i + 1] != '\0') {
+            const auto b1 = static_cast<unsigned char>(safe[i + 1]);
+            dst[out++] = static_cast<char16_t>(((b0 & 0x1F) << 6) | (b1 & 0x3F));
+            i += 2;
+        } else if ((b0 & 0xF0) == 0xE0
+                   && safe[i + 1] != '\0' && safe[i + 2] != '\0') {
+            const auto b1 = static_cast<unsigned char>(safe[i + 1]);
+            const auto b2 = static_cast<unsigned char>(safe[i + 2]);
+            dst[out++] = static_cast<char16_t>(
+                ((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F));
+            i += 3;
+        } else {
+            // Defensive: sanitizer should never emit a malformed sequence,
+            // but if it did, skip the byte rather than UB.
+            ++i;
+        }
     }
-    dst[i] = 0;
+    dst[out] = 0;
     return dst;
 }
 

@@ -164,8 +164,17 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -O0 -g -DSMOAP_HOST_TEST \
             switch-mod/tests/test_cappy_messenger.cpp \
             switch-mod/src/ui/CappyMessenger.cpp \
+            switch-mod/src/util/MsgFontSafe.cpp \
             -Iswitch-mod/src -o test_cappy_messenger
           ./test_cappy_messenger
+
+      - name: Build + run test_msg_font_safe
+        run: |
+          g++ -std=c++20 -Wall -Wextra -O0 -g -DSMOAP_HOST_TEST \
+            switch-mod/tests/test_msg_font_safe.cpp \
+            switch-mod/src/util/MsgFontSafe.cpp \
+            -Iswitch-mod/src -o test_msg_font_safe
+          ./test_msg_font_safe
 
       # shine_table.h is gitignored (joins committed locations.json with
       # the gitignored extracted shine_map.json; see CLAUDE.md). CI has

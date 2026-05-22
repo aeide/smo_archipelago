@@ -10,6 +10,7 @@
 // (per-item, not per-frame).
 #include "../ap/ApState.hpp"
 #include "../util/Log.hpp"
+#include "../util/MsgFontSafe.hpp"
 
 namespace smoap::ui {
 
@@ -87,14 +88,12 @@ void CappyMessenger::enqueueSystem(const char* text) {
         return;
     }
     Entry& e = queue_[tail_];
-    // Verbatim copy — no "Got X from Y!" wrapping for system messages. Same
-    // fixed-buffer pattern as Entry::text initialization; no allocator path.
-    std::size_t i = 0;
-    while (i + 1 < sizeof(e.text) && text[i] != '\0') {
-        e.text[i] = text[i];
-        ++i;
-    }
-    e.text[i] = '\0';
+    // Sanitize for MessageFont38's glyph coverage. System messages are
+    // currently authored in plain ASCII (connect/disconnect bubbles) so
+    // the sanitizer is mostly defense-in-depth here — but consistent with
+    // formatCappyMsg's behavior, which lets us replace either path with
+    // user-supplied text in the future without re-auditing the font.
+    smoap::util::sanitizeForMsgFont(text, e.text, sizeof(e.text));
     e.live = true;
     tail_ = (tail_ + 1) % kQueueCap;
     ++live_count_;
@@ -380,8 +379,22 @@ int formatCappyMsg(char* buf, std::size_t cap, const smoap::ap::Item& item) {
     shortenItemNameForBubble(
         item.name[0] == '\0' ? "?" : item.name,
         short_name, sizeof(short_name));
-    const char* name = short_name;
-    const char* sender = item.from[0] == '\0' ? "?" : item.from;
+
+    // Sanitize for MessageFont38's glyph coverage. The slot name is the
+    // primary attack surface — AP-server slot names can include smart
+    // quotes, square brackets, Latin-1 accents, pipes, etc., none of which
+    // have glyphs in the speech-bubble font. The shortener output is
+    // already controlled (our items.json) but sanitizing both keeps the
+    // post-fit-check length accounting consistent.
+    char safe_name[64];
+    char safe_sender[sizeof(item.from)];
+    smoap::util::sanitizeForMsgFont(short_name, safe_name, sizeof(safe_name));
+    smoap::util::sanitizeForMsgFont(
+        item.from[0] == '\0' ? "?" : item.from,
+        safe_sender, sizeof(safe_sender));
+
+    const char* name = safe_name[0] == '\0' ? "?" : safe_name;
+    const char* sender = safe_sender[0] == '\0' ? "?" : safe_sender;
 
     // Synthetic-sender sentinels — when the bridge tags the from-field with
     // one of these, drop the "from <sender>" suffix entirely: the message
