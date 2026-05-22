@@ -125,9 +125,9 @@ std::atomic<bool> g_logged_first_poetter{false};
 // vanilla moon name. They're intentionally non-vanilla so a single
 // substitution is unambiguously visible in the speech bubble.
 constexpr const char* kHardcodedProbe[3] = {
-    "BK Moon #1",
-    "BK Moon #2",
-    "BK Moon #3",
+    "BK Moon 1",
+    "BK Moon 2",
+    "BK Moon 3",
 };
 
 // Per-kingdom Talkatoo visit counter. The substitute hook in the AP-pool
