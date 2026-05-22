@@ -928,8 +928,7 @@ async def test_set_capturesanity_enabled_flips_replay_on_next_hello():
 @pytest.mark.asyncio
 async def test_push_capturesanity_replay_can_run_standalone():
     """SMOContext calls push_capturesanity_replay() from its AP Connected
-    handler so a Switch that already HELLO'd before slot_data arrived
-    (the SNI-style two-stage gate makes this the common case) gets
+    handler so a Switch that already HELLO'd before slot_data arrived gets
     unlocked without waiting for a save-load."""
     state = BridgeState()
 
@@ -1173,15 +1172,9 @@ async def test_hello_refuses_when_mod_ver_older_than_client_ver():
     async def on_check(_): return None
     async def on_goal(): ...
 
-    ready_calls: list[None] = []
-
-    async def on_switch_ready() -> None:
-        ready_calls.append(None)
-
     sw = SwitchServer(
         "127.0.0.1", 0, state, on_check, on_goal,
         client_ver="0.2.0",
-        on_switch_ready=on_switch_ready,
     )
     server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
     sw._server = server
@@ -1202,9 +1195,6 @@ async def test_hello_refuses_when_mod_ver_older_than_client_ver():
         assert "0.1.0" in ack["err"]
         # Older Switch mod → advise re-running /setup.
         assert "/setup" in ack["err"]
-        # Two-stage AP gate must stay parked — never promote on a rejection.
-        await asyncio.sleep(0.05)
-        assert ready_calls == []
         # The bridge closes the socket; EOF arrives promptly.
         try:
             async with asyncio.timeout(2.0):
@@ -1274,15 +1264,9 @@ async def test_hello_accepts_matching_versions_and_advertises_client_ver():
     async def on_check(_): return None
     async def on_goal(): ...
 
-    ready_calls: list[None] = []
-
-    async def on_switch_ready() -> None:
-        ready_calls.append(None)
-
     sw = SwitchServer(
         "127.0.0.1", 0, state, on_check, on_goal,
         client_ver="0.1.0",
-        on_switch_ready=on_switch_ready,
     )
     server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
     sw._server = server
@@ -1299,8 +1283,6 @@ async def test_hello_accepts_matching_versions_and_advertises_client_ver():
         assert ack["ok"] is True
         assert ack["client_ver"] == "0.1.0"
         assert state.switch_conn == "ready"
-        await asyncio.sleep(0.05)
-        assert ready_calls == [None]
     finally:
         writer.close()
         try:

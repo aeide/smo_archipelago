@@ -234,10 +234,6 @@ async def main(args: argparse.Namespace) -> None:
         on_death=ctx.report_death,
         deathlink_enabled=cfg.deathlink.enabled,
         compose_moon_label=ctx.compose_moon_label_for_location,
-        # SNI-style two-stage gate: SMOContext.connect() defers AP dial
-        # until the Switch is up; this callback promotes the pending
-        # request the moment HELLO arrives.
-        on_switch_ready=ctx._on_switch_ready,
         # M6 phase D: route incoming PaySnapshotMsg through ctx. The
         # handler folds per-kingdom PayShineNum into BridgeState and
         # re-derives outstanding via compute_outstanding(); ctx pushes
@@ -298,14 +294,8 @@ async def main(args: argparse.Namespace) -> None:
     await discovery.start()
     # AP connection is opt-in. A Launcher click (which passes no args)
     # leaves AP disconnected — the user clicks Connect / types /connect
-    # when ready, and SMOContext.connect() then runs the SNI-style
-    # two-stage gate that defers the websocket dial until the Switch is
-    # up. The Connect bar is prefilled from server_addr via
+    # when ready. The Connect bar is prefilled from server_addr via
     # CommonContext.suggested_address so the user just has to confirm.
-    #
-    # An explicit `--connect addr` is routed through the same gate so the
-    # headless / scripted flow behaves identically — boot the Switch
-    # (real or fake) and the queued dial fires.
     if args.connect:
         asyncio.create_task(ctx.connect(), name="initial-connect")
 

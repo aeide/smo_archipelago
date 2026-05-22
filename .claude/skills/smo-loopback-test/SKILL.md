@@ -88,11 +88,11 @@ python C:\Users\maxwe\Documents\smo_archipelago\scripts\switch_smoke_test.py
 
 Run with SMOClient already up (no AP needed; the Client's SwitchServer accepts the fake-Switch connection on `:17777`).
 
-## Two-stage connect gate
+## Connect behavior
 
-SMOClient does NOT auto-dial AP on launch. Clicking Connect parks the request until the Switch HELLOs (SNI-style). All AP dials route through `SMOContext.connect()` — see the "Two-stage connect gate" row in CLAUDE.md's decisions table for the full architecture + test coverage.
+SMOClient does NOT auto-dial AP on launch (default host is unset to avoid `archipelago.gg` "Connection refused" before the user configures anything), but Click-Connect dials AP immediately whether or not the Switch is up. The user can validate creds and watch items flow before booting SMO. The earlier SNI-style gate that parked the dial until HELLO was removed 2026-05-22 — see the "Eager AP dial" row in CLAUDE.md's decisions table.
 
-For the loopback flow above, the fake-Switch driver (`switch_smoke_test.py`) sends HELLO immediately, so AP connection proceeds normally. For real Switch testing, boot SMO first — Connect won't complete until then.
+For the loopback flow above, AP connection proceeds the moment Connect fires, regardless of when `switch_smoke_test.py` sends HELLO.
 
 ## Settings overrides
 

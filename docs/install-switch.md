@@ -111,11 +111,13 @@ The M3 build delivers:
 1. Launch SMOClient on the PC (Archipelago Launcher → "SMO Client", or
    double-click any `.meatballsap`).
 2. Confirm the SMOClient log shows `Switch listen: 0.0.0.0:17777`.
-3. Click Connect (or pre-fill via `--connect <host>:<port>`). The status
-   should show "waiting for Switch" because of the two-stage gate.
+3. Click Connect (or pre-fill via `--connect <host>:<port>`). AP connects
+   immediately — items the server has already routed to your slot stream
+   into the log, so you can verify creds before the Switch is up.
 4. Launch SMO on the Switch.
 5. Within 1-2 seconds SMOClient should log `switch HELLO: mod=0.1.0+…
-   smo=1.0.0` and AP should connect.
+   smo=1.0.0` and the post-HELLO replay forwards any items received so
+   far to the Switch.
 
 ## Failure-mode table
 

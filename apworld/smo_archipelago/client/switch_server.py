@@ -78,7 +78,6 @@ CheckHandler = Callable[[dict], Awaitable["int | None"]]  # returns AP loc_id or
 GoalHandler = Callable[[], Awaitable[None]]
 DeathHandler = Callable[[int], Awaitable[None]]
 LabelComposer = Callable[[int], "str | None"]              # loc_id -> label text
-SwitchReadyHandler = Callable[[], Awaitable[None]]         # fired post-HELLO
 # M6 phase D — PaySnapshotHandler(totals=dict[str, int]) -> None.
 # `totals` is keyed by AP-form kingdom name (dispatcher does the
 # Switch→AP translation). Handler folds into BridgeState and re-derives
@@ -207,7 +206,6 @@ class SwitchServer:
         on_death: DeathHandler | None = None,
         deathlink_enabled: bool = False,
         compose_moon_label: LabelComposer | None = None,
-        on_switch_ready: SwitchReadyHandler | None = None,
         on_pay_snapshot: PaySnapshotHandler | None = None,
         get_outstanding_entries: OutstandingProvider | None = None,
         capturesanity_enabled: bool = True,
@@ -225,7 +223,6 @@ class SwitchServer:
         self._on_death = on_death
         self._deathlink_enabled = deathlink_enabled
         self._compose_label = compose_moon_label
-        self._on_switch_ready = on_switch_ready
         self._on_pay_snapshot = on_pay_snapshot
         self._get_outstanding = get_outstanding_entries
         self._client_ver = client_ver
@@ -583,9 +580,7 @@ class SwitchServer:
         On rebind: send `KickMsg(reason="unbound")` to the previously-active
         Switch and run the full post-HELLO replay sequence against the
         newly-active one (OutstandingMsg + non-Moon ItemMsg backlog +
-        shine palette + ApStateMsg + capturesanity unlocks). Re-fires
-        `_on_switch_ready` so a pending two-stage AP dial (SNI-style)
-        re-engages with the new active.
+        shine palette + ApStateMsg + capturesanity unlocks).
 
         device_id=None unbinds the current active (rare; mostly for tests
         and shutdown paths).
@@ -742,7 +737,7 @@ class SwitchServer:
             log.info("switch %r connected from %s (active)", effective_id, peer)
             await self._send_hello_ack(conn)
             self._state.set_switch_conn("ready")
-            await self._run_post_hello_replay(conn, fire_on_ready=True)
+            await self._run_post_hello_replay(conn)
         else:
             log.info(
                 "switch %r connected from %s (inactive — active is %r)",
@@ -863,12 +858,7 @@ class SwitchServer:
             client_ver=self._client_ver or None,
         ))
 
-    async def _run_post_hello_replay(
-        self,
-        conn: _SwitchConn,
-        *,
-        fire_on_ready: bool = False,
-    ) -> None:
+    async def _run_post_hello_replay(self, conn: _SwitchConn) -> None:
         """Replay state to a newly-active Switch.
 
         Same sequence as the legacy `_on_hello` tail (M6-D outstanding,
@@ -876,11 +866,6 @@ class SwitchServer:
         ApStateMsg). Idempotent — re-running on rebind is safe because
         OutstandingMsg carries authoritative per-kingdom balance and
         non-Moon items skip on the mod side via dedupe.
-
-        `fire_on_ready=True` invokes the `_on_switch_ready` callback at
-        the end so a deferred AP dial (SNI-style two-stage gate) promotes.
-        The active-toggle path skips it because AP is typically already
-        up at that point (and `_on_switch_ready` is a no-op when so).
         """
         # M6 phase D — push authoritative per-kingdom balance BEFORE the
         # item replay, but only if compute_outstanding has a reading.
@@ -938,14 +923,6 @@ class SwitchServer:
                     {"shine_uid": uid, "palette": p} for uid, p in chunk
                 ]))
         await self._send_to_conn(conn, ApStateMsg(conn=self._state.ap_conn))
-
-        # Fire the post-HELLO callback last (auto-bind only). SMOContext
-        # uses it to promote a pending AP dial (SNI-style two-stage gate).
-        if fire_on_ready and self._on_switch_ready is not None:
-            try:
-                await self._on_switch_ready()
-            except Exception:
-                log.exception("on_switch_ready callback failed")
 
     async def _dispatch_from(self, conn: _SwitchConn, msg: dict) -> None:
         """Route a message from a specific Switch.

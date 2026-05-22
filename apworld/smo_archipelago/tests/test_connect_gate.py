@@ -1,10 +1,11 @@
-"""Tests for the SNI-style two-stage connect gate in SMOContext.
+"""Tests for SMOContext.connect / disconnect behavior.
 
-The user clicks Connect (or types /connect / passes --connect); the AP
-websocket dial is deferred until the Switch HELLOs (`on_switch_ready`).
-This avoids the old "Connection refused on launch" behavior where the
-client auto-dialed `cfg.ap.host` before the user had touched anything,
-and matches how SNIClient gates AP connection on SNES presence.
+Earlier builds parked the AP dial behind a Switch-presence gate (SNI-style):
+the user clicked Connect and we deferred the websocket dial until the Switch
+HELLO'd. That blocked the user from validating creds without booting SMO, so
+the gate was ripped. These tests now pin the new behavior: Connect dials AP
+immediately, disconnect cleans up regardless of Switch presence, and a Switch
+HELLO has no AP-side side effect.
 """
 
 from __future__ import annotations
@@ -14,17 +15,12 @@ from pathlib import Path
 
 import pytest
 
-# In-tree worktrees may not have the submodule initialized; fall back to
-# the main checkout. Walks up looking for any vendor/Archipelago — matches
-# how the other AP-dependent tests resolve the dep, but with the extra
-# fallback so worktree-based dev still runs the gate test.
+
 def _find_archipelago() -> Path | None:
     for parent in Path(__file__).resolve().parents:
         cand = parent / "vendor" / "Archipelago"
         if (cand / "CommonClient.py").exists():
             return cand
-        # Worktrees live at <repo>/.claude/worktrees/<name>/ — try the
-        # main checkout one level above the worktree root.
         worktrees = parent.parent
         if worktrees.name == "worktrees":
             main_cand = worktrees.parent.parent / "vendor" / "Archipelago"
@@ -56,8 +52,7 @@ from client.state import BridgeState  # noqa: E402
 
 
 class _StubSwitch:
-    """Just enough surface area for the gate: `is_connected()` flip + the
-    sends SMOContext might invoke on a fully-up path."""
+    """Just enough surface area for connect/disconnect testing."""
 
     def __init__(self, connected: bool = False) -> None:
         self._connected = connected
@@ -109,108 +104,65 @@ def _make_ctx(switch_connected: bool) -> tuple[SMOContext, BridgeState, _StubSwi
     return ctx, state, sw
 
 
-def _stub_super_connect(ctx: SMOContext, sink: list[str]) -> None:
-    """Replace CommonContext.connect on the instance with a recorder.
-    We bypass the real websocket dial since we're only checking gating."""
+async def _record(sink, address):
+    sink.append(address)
 
-    async def fake(address=None):
-        sink.append(address)
 
-    # Bind as the parent method so super().connect() reaches it.
-    ctx.__class__.__mro__  # noqa: B018 — sanity that MRO has parent
+async def _record_bool(sink, val):
+    sink.append(val)
 
-    import types
-    # Patch CommonContext.connect at the class level for the duration of
-    # the test. Restored implicitly when the test process exits; tests
-    # are isolated enough that one fake leaking would be obvious.
-    CommonContext.connect = fake  # type: ignore[assignment]
+
+# ---- eager dial -----------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_connect_defers_when_switch_not_present(monkeypatch):
-    ctx, state, _sw = _make_ctx(switch_connected=False)
-    super_calls: list[str | None] = []
-    monkeypatch.setattr(CommonContext, "connect", lambda self, address=None: _record(super_calls, address))
-
-    await ctx.connect("localhost:38281")
-
-    assert super_calls == []  # gate held — no websocket attempt
-    assert ctx._pending_ap_address == "localhost:38281"
-    assert ctx.server_address == "localhost:38281"  # GUI prefill persists
-    assert state.ap_conn == "waiting_for_switch"
-
-
-@pytest.mark.asyncio
-async def test_connect_proceeds_when_switch_already_present(monkeypatch):
-    ctx, state, _sw = _make_ctx(switch_connected=True)
+async def test_connect_dials_immediately_without_switch(monkeypatch):
+    """No Switch attached → Connect still dials AP. Lets the user validate
+    creds (and watch items flow into the log) before booting SMO."""
+    ctx, _state, _sw = _make_ctx(switch_connected=False)
     super_calls: list[str | None] = []
     monkeypatch.setattr(CommonContext, "connect", lambda self, address=None: _record(super_calls, address))
 
     await ctx.connect("localhost:38281")
 
     assert super_calls == ["localhost:38281"]
-    assert ctx._pending_ap_address is None
+    assert ctx.server_address == "localhost:38281"  # GUI prefill persists
+
+
+@pytest.mark.asyncio
+async def test_connect_dials_immediately_with_switch(monkeypatch):
+    """Switch already up → same path, dial AP. (No branching on switch state.)"""
+    ctx, _state, _sw = _make_ctx(switch_connected=True)
+    super_calls: list[str | None] = []
+    monkeypatch.setattr(CommonContext, "connect", lambda self, address=None: _record(super_calls, address))
+
+    await ctx.connect("localhost:38281")
+
+    assert super_calls == ["localhost:38281"]
     assert ctx.server_address == "localhost:38281"
 
 
 @pytest.mark.asyncio
-async def test_on_switch_ready_promotes_pending(monkeypatch):
+async def test_connect_clears_intentional_disconnect_flag(monkeypatch):
+    """CommonContext sets disconnected_intentionally=True on a manual /disconnect;
+    a subsequent Connect must clear it or the reconnect loop refuses to fire."""
     ctx, _state, _sw = _make_ctx(switch_connected=False)
-    super_calls: list[str | None] = []
-    monkeypatch.setattr(CommonContext, "connect", lambda self, address=None: _record(super_calls, address))
-
-    await ctx.connect("localhost:38281")
-    assert super_calls == []
-
-    # Switch HELLOs.
-    await ctx._on_switch_ready()
-
-    assert super_calls == ["localhost:38281"]
-    assert ctx._pending_ap_address is None
-
-
-@pytest.mark.asyncio
-async def test_on_switch_ready_noop_without_pending(monkeypatch):
-    ctx, _state, _sw = _make_ctx(switch_connected=False)
-    super_calls: list[str | None] = []
-    monkeypatch.setattr(CommonContext, "connect", lambda self, address=None: _record(super_calls, address))
-
-    await ctx._on_switch_ready()
-
-    assert super_calls == []
-
-
-@pytest.mark.asyncio
-async def test_disconnect_clears_pending(monkeypatch):
-    ctx, state, _sw = _make_ctx(switch_connected=False)
     monkeypatch.setattr(CommonContext, "connect", lambda self, address=None: _record([], address))
-    super_disconnect_calls: list[bool] = []
-    monkeypatch.setattr(
-        CommonContext,
-        "disconnect",
-        lambda self, allow_autoreconnect=False: _record_bool(super_disconnect_calls, allow_autoreconnect),
-    )
+    ctx.disconnected_intentionally = True
 
     await ctx.connect("localhost:38281")
-    assert ctx._pending_ap_address == "localhost:38281"
-    assert state.ap_conn == "waiting_for_switch"
 
-    await ctx.disconnect()
+    assert ctx.disconnected_intentionally is False
 
-    assert ctx._pending_ap_address is None
-    assert state.ap_conn == "disconnected"
-    # Pending cancellation also drops Switch HELLO into the no-op branch.
-    super_calls: list[str | None] = []
-    monkeypatch.setattr(CommonContext, "connect", lambda self, address=None: _record(super_calls, address))
-    await ctx._on_switch_ready()
-    assert super_calls == []
+
+# ---- disconnect -----------------------------------------------------------
 
 
 @pytest.mark.asyncio
 async def test_disconnect_from_ready_pushes_ap_state_to_switch(monkeypatch):
-    """Disconnect while AP was 'ready' broadcasts 'disconnected' to the
-    Switch so the CappyMessenger fires a 'Disconnected from Archipelago'
-    bubble on the ready -> disconnected transition."""
+    """Disconnect while AP was 'ready' broadcasts 'disconnected' to the Switch
+    so the CappyMessenger fires a 'Disconnected from Archipelago' bubble on
+    the ready -> disconnected transition."""
     ctx, state, sw = _make_ctx(switch_connected=True)
     monkeypatch.setattr(
         CommonContext,
@@ -218,7 +170,6 @@ async def test_disconnect_from_ready_pushes_ap_state_to_switch(monkeypatch):
         lambda self, allow_autoreconnect=False: _record_bool([], allow_autoreconnect),
     )
 
-    # Simulate a live AP session — bypass the actual Connected handler.
     state.set_ap_conn("ready")
     sw.ap_states.clear()
 
@@ -230,9 +181,8 @@ async def test_disconnect_from_ready_pushes_ap_state_to_switch(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_disconnect_when_already_disconnected_is_silent(monkeypatch):
-    """A no-op disconnect (already in the 'disconnected' state) must not
-    push another ap_state to the Switch — keeps reconnect-loop churn from
-    spamming the bubble queue."""
+    """A no-op disconnect (already 'disconnected') must not push another
+    ap_state to the Switch — keeps reconnect-loop churn off the bubble queue."""
     ctx, state, sw = _make_ctx(switch_connected=True)
     monkeypatch.setattr(
         CommonContext,
@@ -246,7 +196,7 @@ async def test_disconnect_when_already_disconnected_is_silent(monkeypatch):
     await ctx.disconnect()
     await ctx.disconnect()
 
-    assert sw.ap_states == []  # idempotency: zero pushes
+    assert sw.ap_states == []
 
 
 @pytest.mark.asyncio
@@ -266,18 +216,7 @@ async def test_disconnect_without_switch_does_not_explode(monkeypatch):
     assert state.ap_conn == "disconnected"
 
 
-# ---- async lambda helpers (monkeypatch needs a coroutine factory) -----
-
-
-async def _record(sink, address):
-    sink.append(address)
-
-
-async def _record_bool(sink, val):
-    sink.append(val)
-
-
-# ---- last-server prefill -----------------------------------------------
+# ---- last-server prefill --------------------------------------------------
 #
 # CommonClient persists `last_server_address` to ~/.archipelago/
 # _persistent_storage.yaml on every successful Connected, and

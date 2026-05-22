@@ -245,13 +245,6 @@ class SMOContext(CommonContext):
         # send_shine_scouts). None disables the wire push; LocationInfo
         # still updates BridgeState so HELLO replays carry the cache.
         self.send_shine_scouts = None
-        # SNI-style two-stage gate: when the user clicks Connect (or types
-        # /connect addr) before the Switch has HELLO'd, we stash the
-        # requested address here, log a "waiting for Switch" notice, and
-        # defer the actual websocket dial until on_switch_ready fires.
-        # None means "no pending request" (either nothing requested yet, or
-        # already promoted to a real connection).
-        self._pending_ap_address: str | None = None
         # Seed's games list from the last RoomInfo we received. Stashed by
         # prepare_data_package (CommonContext calls it with the games set
         # from RoomInfo before server_auth). Used by server_auth to
@@ -280,84 +273,32 @@ class SMOContext(CommonContext):
     # ----------------------------------------------------------- AP overrides
 
     async def connect(self, address: str | None = None) -> None:
-        """Two-stage gated connect.
+        """Dial AP immediately. No Switch-presence gate.
 
-        Behaves like CommonContext.connect when the Switch is already up.
-        Otherwise stashes the requested address as `_pending_ap_address`,
-        logs a "waiting for Switch" line, and defers the websocket dial
-        until the Switch HELLOs (see `_on_switch_ready`).
-
-        We still set `self.server_address` synchronously so the GUI's
-        Connect bar shows the user's chosen target.
+        Earlier builds parked the dial until the Switch HELLO'd (SNI-style
+        gate), which prevented the user from validating creds before booting
+        SMO. The dial is cheap and CommonContext's reconnect loop tolerates
+        the AP-up / Switch-down state: items arrive into BridgeState and
+        get replayed to the Switch on its eventual HELLO.
         """
         if address is None:
             address = self.server_address
-        # Mirror CommonContext.connect's semantics: the user wants this to
-        # become the live target. Persist it for the GUI prefill and clear
-        # the "user explicitly disconnected" flag so reconnect-loops behave.
         self.server_address = address
         self.disconnected_intentionally = False
-        if self.switch is not None and self.switch.is_connected():
-            self._pending_ap_address = None
-            await super().connect(address)
-            return
-        # Switch not up — defer the dial. If we already had an AP socket
-        # (e.g. user clicked Connect again after the Switch dropped out),
-        # tear it down first so the connection state matches what the user
-        # actually sees ("waiting for Switch" with no live AP).
-        if self.server is not None:
-            await super().disconnect(allow_autoreconnect=False)
-        self._pending_ap_address = address
-        self.state.set_ap_conn("waiting_for_switch")
-        log.info(
-            "Waiting for Switch connection to connect to the multiworld "
-            "at %s (boot Ryujinx / your Switch — the dial fires when the "
-            "mod HELLOs).", address or "(no address set)",
-        )
+        await super().connect(address)
 
     async def disconnect(self, allow_autoreconnect: bool = False) -> None:
-        """Clear any pending two-stage gate, then disconnect normally.
+        """Broadcast 'disconnected' to the Switch, then disconnect normally.
 
-        Without this clear, a /disconnect issued while waiting for the
-        Switch would leave the pending address armed — the next Switch
-        HELLO would then fire an AP dial the user thought they cancelled.
-
-        Also broadcasts the "disconnected" state to the Switch so the
-        in-game CappyMessenger fires a "Disconnected from Archipelago"
-        bubble on the ready -> disconnected transition. Idempotency-guarded:
-        a no-op disconnect (already in "disconnected") does NOT re-emit,
-        keeping reconnect-loop churn off the bubble queue.
+        Idempotency-guarded: a no-op disconnect (already in 'disconnected')
+        does NOT re-emit, keeping reconnect-loop churn off the bubble queue.
         """
-        if self._pending_ap_address is not None:
-            log.info("cancelling pending AP connect (was waiting for Switch)")
-            self._pending_ap_address = None
         prev_ap_conn = self.state.ap_conn
         if prev_ap_conn != "disconnected":
             self.state.set_ap_conn("disconnected")
             if self.switch is not None:
                 await self.switch.send_ap_state("disconnected")
         await super().disconnect(allow_autoreconnect=allow_autoreconnect)
-
-    async def _on_switch_ready(self) -> None:
-        """SwitchServer post-HELLO callback. Promotes a pending AP connect.
-
-        No-op when:
-          - no AP connect was queued (user hasn't clicked Connect yet, or
-            already connected), or
-          - the AP socket is already up (e.g. Switch reconnected mid-session).
-        """
-        if self._pending_ap_address is None:
-            return
-        if self.server is not None:
-            # Already connected — Switch just reconnected. Clear the pending
-            # slot defensively so a future disconnect/reconnect doesn't see
-            # stale state.
-            self._pending_ap_address = None
-            return
-        address = self._pending_ap_address
-        self._pending_ap_address = None
-        log.info("Switch connected; promoting deferred AP connect to %s", address)
-        await super().connect(address)
 
     async def prepare_data_package(self, relevant_games, remote_data_package_checksums):
         """Stash the seed's games list so server_auth can validate against it.
@@ -732,19 +673,14 @@ class SMOContext(CommonContext):
                     # value set by hello_ack).
                     self.switch.set_deathlink_enabled(dl_enabled)
                     await self.switch.push_deathlink_helloack()
-                # Flush synthetic unlocks NOW for an already-running
-                # Switch — the SNI-style two-stage gate means the Switch
-                # HELLO usually fires BEFORE this Connected handler, so
-                # its initial replay ran with the default (locked) flag
-                # and missed the unlocks. push_capturesanity_replay is a
-                # no-op when capturesanity is on or no Switch is
-                # connected.
+                # Flush synthetic unlocks for an already-running Switch
+                # that HELLO'd before this Connected handler — its initial
+                # replay ran with the default (locked) flag. No-op when
+                # capturesanity is on or no Switch is connected.
                 await self.switch.push_capturesanity_replay()
                 # Talkatoo% mode: stash the slot flag and ship the per-
-                # kingdom AP-pool to the Switch. Same SNI-style gate as
-                # capturesanity — the HELLO usually fires before Connected,
-                # so the initial replay carried no pool. push_talkatoo_pool
-                # is a no-op when the payload isn't set yet.
+                # kingdom AP-pool. push_talkatoo_pool is a no-op when the
+                # payload isn't set yet.
                 self.talkatoo_mode = bool(slot_data.get("talkatoo_mode", 0))
                 # Phase 5 (Gap #3): apworld ships a per-kingdom sphere-safe
                 # order so Talkatoo never names a moon the player can't
