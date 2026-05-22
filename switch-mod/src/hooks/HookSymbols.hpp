@@ -511,6 +511,45 @@ inline constexpr const char* kGameDataFileFindShine =
     "_ZNK12GameDataFile9findShineEii";
 
 // =============================================================================
+// OdysseyRescue — Lost + Ruined Kingdom softlock prevention.
+// =============================================================================
+//
+// Both kingdoms physically ground the Odyssey on arrival and block
+// backtracking. In our randomizer the next-kingdom-required moons can land
+// anywhere in the pre-arrival reachable set, so a player who rushes in may
+// arrive with 0 AP credits and no way back to grab the unswept upstream
+// checks → permanent softlock. Fix mirrors Kgamer77/SuperMarioOdysseyArchipelago
+// v1.2's updatePlayerInfo(): per-frame sweep on drawMain (throttled ~60
+// frames) that detects the broken state and force-repairs via SMO's own
+// named GameDataFunction:: entry points.
+//
+// All 10 manglings verified via aarch64-none-elf-g++ -c on forward-decls
+// matching MonsterDruide1/OdysseyDecomp src/System/GameDataFunction.h, and
+// the unlockWorld / isUnlockedWorld names were already in the project
+// pre-c85a27b cleanup with the same manglings.
+
+inline constexpr const char* kGameDataFunctionIsCrashHome =
+    "_ZN16GameDataFunction11isCrashHomeE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionRepairHome =
+    "_ZN16GameDataFunction10repairHomeE20GameDataHolderWriter";
+inline constexpr const char* kGameDataFunctionCrashHome =
+    "_ZN16GameDataFunction9crashHomeE20GameDataHolderWriter";
+inline constexpr const char* kGameDataFunctionUnlockWorld =
+    "_ZN16GameDataFunction11unlockWorldE20GameDataHolderWriteri";
+inline constexpr const char* kGameDataFunctionIsBossAttackedHome =
+    "_ZN16GameDataFunction18isBossAttackedHomeE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionRepairHomeByCrashedBoss =
+    "_ZN16GameDataFunction23repairHomeByCrashedBossE20GameDataHolderWriter";
+inline constexpr const char* kGameDataFunctionIsRepairHomeByCrashedBoss =
+    "_ZN16GameDataFunction25isRepairHomeByCrashedBossE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionGetWorldIndexClash =
+    "_ZN16GameDataFunction18getWorldIndexClashEv";
+inline constexpr const char* kGameDataFunctionGetWorldIndexSky =
+    "_ZN16GameDataFunction16getWorldIndexSkyEv";
+inline constexpr const char* kGameDataFunctionGetCurrentStageName =
+    "_ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor";
+
+// =============================================================================
 // Legacy / aliasing — kept so existing call sites don't break.
 // =============================================================================
 inline constexpr const char* kSeadGameSystemCtor       = kGameSystemInit;
