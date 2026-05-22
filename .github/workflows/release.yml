@@ -97,8 +97,10 @@ jobs:
 
   clean-windows-audit:
     # Heavyweight install + build + audit on a fresh windows-2022 runner.
-    # Tags only — PRs don't pay this cost; the cheaper PATH-strip variant
-    # in test.yml is what runs on PR.
+    # Tags only — PRs don't get a Windows build (the PR-time PATH-strip
+    # sibling was removed 2026-05-22; cold-cache LLVM extract took longer
+    # than the 20-min PR job budget). For pre-release sanity-checks,
+    # workflow_dispatch this against a release-candidate tag.
     #
     # The audit is the load-bearing check: release_audit.py walks
     # %APPDATA%\SMOArchipelago\ and the switch-mod tree post-build and
