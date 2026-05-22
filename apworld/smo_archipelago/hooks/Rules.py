@@ -23,10 +23,6 @@ def SandPeace(world: World, multiworld: MultiWorld, state: CollectionState, play
         return "|Bullet Bill| and |Knucklotec's Fist|"
     return True
 
-def IntoTheLake(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player enter the lake kingdom lake"""
-    return True
-
 def LakePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do lake peace"""
     return True

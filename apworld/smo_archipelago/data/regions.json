@@ -14,35 +14,17 @@
         "requires": "{KingdomMoons(Cascade,5)}",
         "connects_to": [
             "Cap Kingdom",
-            "Post-Sand"
-        ]
-    },
-    "Post-Sand": {
-        "requires": "{SandPeace()}",
-        "connects_to": [
             "Lake Kingdom"
         ]
     },
     "Lake Kingdom": {
         "requires": "{KingdomMoons(Sand,16)}",
         "connects_to": [
-            "Post-Lake"
-        ]
-    },
-    "Post-Lake": {
-        "requires": "{LakePeace()}",
-        "connects_to": [
             "Wooded Kingdom"
         ]
     },
     "Wooded Kingdom": {
         "requires": "{KingdomMoons(Lake,8)}",
-        "connects_to": [
-            "Post-Wooded"
-        ]
-    },
-    "Post-Wooded": {
-        "requires": "{WoodedPeace()}",
         "connects_to": [
             "Lost Kingdom"
         ]
@@ -67,35 +49,17 @@
     "Metro Kingdom": {
         "requires": "{PostNightMetro()}",
         "connects_to": [
-            "Post-Metro"
-        ]
-    },
-    "Post-Metro": {
-        "requires": "{MetroPeace()}",
-        "connects_to": [
             "Snow Kingdom"
         ]
     },
     "Snow Kingdom": {
         "requires": "{KingdomMoons(Metro,20)}",
         "connects_to": [
-            "Post-Snow"
-        ]
-    },
-    "Post-Snow": {
-        "requires": "{SnowPeace()}",
-        "connects_to": [
             "Seaside Kingdom"
         ]
     },
     "Seaside Kingdom": {
         "requires": "{KingdomMoons(Snow,10)}",
-        "connects_to": [
-            "Post-Seaside"
-        ]
-    },
-    "Post-Seaside": {
-        "requires": "{SeasidePeace()}",
         "connects_to": [
             "Very Early Luncheon"
         ]
@@ -107,19 +71,13 @@
         ]
     },
     "Luncheon Kingdom": {
-        "requires": "{PostEarlyLuncheon()} and {KingdomMoons(Seaside,10)}",
+        "requires": "{KingdomMoons(Seaside,10)}",
         "connects_to": [
             "Ruined Kingdom"
         ]
     },
     "Ruined Kingdom": {
-        "requires": "{LuncheonPeace()} and {KingdomMoons(Luncheon,18)}",
-        "connects_to": [
-            "Pokino"
-        ]
-    },
-    "Pokino": {
-        "requires": "{YamlDisabled(capturesanity)} or |Pokio|",
+        "requires": "{KingdomMoons(Luncheon,18)}",
         "connects_to": [
             "Bowser's Kingdom"
         ]
@@ -127,11 +85,16 @@
     "Bowser's Kingdom": {
         "requires": "{KingdomMoons(Ruined,3)}",
         "connects_to": [
-            "Moon Kingdom"
+            "Moon Kingdom",
+            "Pokino"
         ]
     },
+    "Pokino": {
+        "requires": "{YamlDisabled(capturesanity)} or |Pokio|",
+        "connects_to": []
+    },
     "Moon Kingdom": {
-        "requires": "{BowserPeace()} and {KingdomMoons(Bowser's,8)}",
+        "requires": "{KingdomMoons(Bowser's,8)}",
         "connects_to": []
     }
 }

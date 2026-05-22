@@ -165,8 +165,8 @@ class SMOWorld(World):
     # wired so the region graph stays connected; only the locations are
     # cleared. Order matches the regions.json chain after Metro.
     FESTIVAL_REGIONS_TO_EMPTY = (
-        "Post-Metro", "Snow Kingdom", "Post-Snow",
-        "Seaside Kingdom", "Post-Seaside", "Very Early Luncheon",
+        "Snow Kingdom",
+        "Seaside Kingdom", "Very Early Luncheon",
         "Luncheon Kingdom", "Ruined Kingdom", "Pokino",
         "Bowser's Kingdom", "Moon Kingdom",
     )

@@ -236,8 +236,8 @@
             "Cascade Kingdom",
             "post-metro"
         ],
-        "region": "Post-Metro",
-        "requires": "{SnowSeasidePeace()}"
+        "region": "Snow Kingdom",
+        "requires": "{OptOne(Ty-foo)}"
     },
     {
         "name": "Cascade: A Tourist in the Cascade Kingdom",
@@ -791,8 +791,8 @@
         "category": [
             "Sand Kingdom"
         ],
-        "region": "Sand Kingdom",
-        "requires": "{IntoTheLake()} and {MazeSkip()}"
+        "region": "Lake Kingdom",
+        "requires": ""
     },
     {
         "name": "Lake: Broodals Over the Lake",
@@ -826,7 +826,7 @@
             "Lake Peace"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {OptOne(Zipper)}"
+        "requires": "{OptOne(Zipper)}"
     },
     {
         "name": "Lake: What's in the Box?",
@@ -835,7 +835,7 @@
             "Into the Lake"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()}"
+        "requires": ""
     },
     {
         "name": "Lake: On the Lakeshore",
@@ -844,7 +844,7 @@
             "Ground Pound"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {OptOne(Ground Pound)}"
+        "requires": "{OptOne(Ground Pound)}"
     },
     {
         "name": "Lake: From the Broken Pillar",
@@ -852,7 +852,7 @@
             "Lake Kingdom"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {CheepCheepOrGroundPound()}"
+        "requires": "{CheepCheepOrGroundPound()}"
     },
     {
         "name": "Lake: Treasure in the Spiky Waterway",
@@ -860,7 +860,7 @@
             "Lake Kingdom"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {SwimOrCheepCheep()}"
+        "requires": "{SwimOrCheepCheep()}"
     },
     {
         "name": "Lake: Lake Gardening: Spiky Passage Seed",
@@ -895,7 +895,7 @@
             "Lake Kingdom"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {SwimOrCheepCheep()}"
+        "requires": "{SwimOrCheepCheep()}"
     },
     {
         "name": "Lake: Taking Notes: Dive and Swim",
@@ -938,7 +938,7 @@
             "Lake Peace"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()}"
+        "requires": ""
     },
     {
         "name": "Lake: Let's Go Swimming, Captain Toad!",
@@ -946,7 +946,7 @@
             "Lake Kingdom"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {CheepCheepOrGroundPound()}"
+        "requires": "{CheepCheepOrGroundPound()}"
     },
     {
         "name": "Lake: Shopping in Lake Lamode",
@@ -954,7 +954,7 @@
             "Lake Kingdom"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()}"
+        "requires": ""
     },
     {
         "name": "Lake: A Successful Repair Job",
@@ -972,7 +972,7 @@
             "Lake Peace"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()}"
+        "requires": ""
     },
     {
         "name": "Lake: Unzip the Chasm",
@@ -981,7 +981,7 @@
             "Lake Peace"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {OptOne(Zipper)}"
+        "requires": "{OptOne(Zipper)}"
     },
     {
         "name": "Lake: Super-Secret Zipper",
@@ -990,7 +990,7 @@
             "Lake Peace"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {OptOne(Zipper)}"
+        "requires": "{OptOne(Zipper)}"
     },
     {
         "name": "Lake: Jump, Grab, Cling, and Climb",
@@ -999,7 +999,7 @@
             "Long Course"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {SwimOrCheepCheep()}"
+        "requires": "{SwimOrCheepCheep()}"
     },
     {
         "name": "Lake: Jump, Grab, and Climb Some More",
@@ -1008,7 +1008,7 @@
             "Long Course"
         ],
         "region": "Lake Kingdom",
-        "requires": "{IntoTheLake()} and {SwimOrCheepCheep()}"
+        "requires": "{SwimOrCheepCheep()}"
     },
     {
         "name": "Lake: Secret Path to Lake Lamode!",
@@ -1017,8 +1017,8 @@
             "Snow/Seaside Peace",
             "post-metro"
         ],
-        "region": "Post-Metro",
-        "requires": "{SnowSeasidePeace()}"
+        "region": "Seaside Kingdom",
+        "requires": "{OptOne(Gushen)}"
     },
     {
         "name": "Lake: Found with Lake Kingdom Art",
@@ -1446,8 +1446,8 @@
             "Snow/Seaside Peace",
             "post-metro"
         ],
-        "region": "Post-Metro",
-        "requires": "{MazeSkip()} and {SnowSeasidePeace()}"
+        "region": "Metro Kingdom",
+        "requires": ""
     },
     {
         "name": "Wooded: Found with Wooded Kingdom Art",
@@ -2396,16 +2396,6 @@
         "requires": "{SnowPeace()}"
     },
     {
-        "name": "Snow: Secret Path to Shiveria!",
-        "category": [
-            "Snow Kingdom",
-            "Bowser Peace",
-            "post-metro"
-        ],
-        "region": "Moon Kingdom",
-        "requires": "{BowserPeace()}"
-    },
-    {
         "name": "Snow: Found with Snow Kingdom Art",
         "category": [
             "Snow Kingdom",
@@ -2871,8 +2861,8 @@
             "Seaside Kingdom",
             "post-metro"
         ],
-        "region": "Seaside Kingdom",
-        "requires": "{OptOne(Gushen)}"
+        "region": "Bowser's Kingdom",
+        "requires": ""
     },
     {
         "name": "Seaside: Found with Seaside Kingdom Art",
@@ -3984,7 +3974,7 @@
             "Capture"
         ],
         "region": "Lake Kingdom",
-        "requires": "({IntoTheLake()}) AND |Zipper|"
+        "requires": "|Zipper|"
     },
     {
         "name": "Capture: Cheep Cheep",
@@ -3992,7 +3982,7 @@
             "Capture"
         ],
         "region": "Lake Kingdom",
-        "requires": "({IntoTheLake()}) AND |Cheep Cheep|"
+        "requires": "|Cheep Cheep|"
     },
     {
         "name": "Capture: Puzzle Part",
@@ -4000,7 +3990,7 @@
             "Capture"
         ],
         "region": "Lake Kingdom",
-        "requires": "({IntoTheLake()}) AND |Puzzle Part|"
+        "requires": "|Puzzle Part|"
     },
     {
         "name": "Capture: Poison Piranha Plant",
