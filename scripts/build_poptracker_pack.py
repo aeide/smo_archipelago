@@ -563,6 +563,25 @@ def location_out_of_festival_scope(loc: dict) -> bool:
     return False
 
 
+# ---------- talkatoo% gate
+
+def location_blocked_by_talkatoo(loc: dict) -> bool:
+    """True if Talkatoo% mode would prevent collection of this location.
+
+    Mirrors MoonGetHook.cpp's `talkatoo-block` branch: a moon is blocked iff
+    it's an AP-tracked moon that lacks `progression: true`. Captures use a
+    different hook and aren't gated; victory locations fire via CreditsStartHook
+    or are flagged progression and bypass the block."""
+    name = loc.get("name", "")
+    if name.startswith("Capture:"):
+        return False
+    if loc.get("victory"):
+        return False
+    if loc.get("progression"):
+        return False
+    return ":" in name  # any "<Kingdom>: <moon>" entry is a moon
+
+
 # ---------- kingdom display grouping
 
 # Order is the linear-chain order from regions.json.
@@ -847,6 +866,12 @@ def emit_locations(
         # OPTIONS.goal=0 so these stay visible as normal.
         if location_out_of_festival_scope(loc):
             own_dnf = _and_term(own_dnf, "$is_goal|0")
+        # Talkatoo% gate: non-progression moons become collectible only when
+        # Talkatoo names them (3 per kingdom, rotating). The pack doesn't
+        # track Talkatoo's current window, so we hide all blockable moons
+        # when talkatoo_mode is on — story moons and captures stay visible.
+        if location_blocked_by_talkatoo(loc):
+            own_dnf = _and_term(own_dnf, "$is_opt_off|talkatoo_mode")
         rules = dnf_to_access_rules(own_dnf)
         section: dict[str, Any] = {"name": loc["name"], "item_count": 1}
         if rules:
@@ -1205,6 +1230,27 @@ def self_test() -> int:
           VICTORY_TO_GOAL_OPTION["Arrive in the Mushroom Kingdom"] == 0)
     check("goal mapping festival=1",
           VICTORY_TO_GOAL_OPTION["Metro: A Traditional Festival!"] == 1)
+
+    # Talkatoo% gate: only non-progression, non-victory, non-capture moons.
+    check("talkatoo blocks plain moon",
+          location_blocked_by_talkatoo(
+              {"name": "Sand: Inside the Stone Cage", "region": "Sand Kingdom"}))
+    check("talkatoo skips story moon",
+          not location_blocked_by_talkatoo(
+              {"name": "Cascade: Our First Power Moon",
+               "region": "Cascade Kingdom", "progression": True}))
+    check("talkatoo skips capture",
+          not location_blocked_by_talkatoo(
+              {"name": "Capture: Bullet Bill", "region": "Sand Kingdom"}))
+    check("talkatoo skips victory moon",
+          not location_blocked_by_talkatoo(
+              {"name": "Metro: A Traditional Festival!",
+               "region": "Metro Kingdom",
+               "victory": True, "progression": True}))
+    check("talkatoo skips credits goal",
+          not location_blocked_by_talkatoo(
+              {"name": "Arrive in the Mushroom Kingdom",
+               "region": "Moon Kingdom", "victory": True}))
 
     if failures:
         print("FAIL:", file=sys.stderr)

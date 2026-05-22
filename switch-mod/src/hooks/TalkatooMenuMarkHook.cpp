@@ -103,21 +103,29 @@ HkTrampoline<bool, const void*, int, int> isOpenShineNameHook =
         return named;
     });
 
-HkTrampoline<void, void*, int, int> tryUnlockShineNameHook =
-    hk::hook::trampoline([](void* self, int world_id, int index) {
+// IMPORTANT: declare the trampoline as bool-returning. The vanilla
+// `GameDataFile::tryUnlockShineName(world, idx)` returns bool ("true if
+// newly named, false if already named") and `Poetter::exeWait` uses that
+// return value as a "did the pick succeed?" signal. A void-typed trampoline
+// here leaks garbage in W0; when it lands on false, Poetter retries other
+// indices, eventually exhausts the kingdom, and says "No more hints now"
+// — never reaching `tryFindShineMessage`, so our substitute hook never fires.
+HkTrampoline<bool, void*, int, int> tryUnlockShineNameHook =
+    hk::hook::trampoline([](void* self, int world_id, int index) -> bool {
         const bool talkatoo_mode_on =
             smoap::ap::ApState::instance().talkatoo_mode.load(
                 std::memory_order_acquire);
         if (!talkatoo_mode_on) {
-            tryUnlockShineNameHook.orig(self, world_id, index);
-            return;
+            return tryUnlockShineNameHook.orig(self, world_id, index);
         }
 
         // Suppress: Talkatoo's vanilla picker is the only routine path
         // into this setter (achievements and collection use other
         // mechanisms). Skipping Orig leaves the menu state alone so the
         // only marks are the ones our isOpenShineName hook OR-in from
-        // ApState::named_moons_bits.
+        // ApState::named_moons_bits. Return true so Poetter::exeWait
+        // treats the pick as a newly-named moon and proceeds to call
+        // tryFindShineMessage (where our substitute hook lives).
         bool expected = false;
         if (g_logged_first_tryunlock.compare_exchange_strong(
                 expected, true, std::memory_order_relaxed)) {
@@ -126,6 +134,7 @@ HkTrampoline<void, void*, int, int> tryUnlockShineNameHook =
                            "under talkatoo_mode",
                            world_id, index);
         }
+        return true;
     });
 
 }  // namespace
