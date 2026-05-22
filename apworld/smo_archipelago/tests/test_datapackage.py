@@ -134,7 +134,10 @@ def test_kingdom_exit_thresholds_from_real_apworld(dp: DataPackage):
 
     These mirror the in-game leave-thresholds and are what the Odyssey tab
     shows next to the per-kingdom moons-received counter. Ungated kingdoms
-    (Cap, Cloud, Mushroom, Moon, Dark/Darker Side) are absent."""
+    (Cap, Cloud, Ruined, Mushroom, Moon, Dark/Darker Side) are absent.
+    Ruined is ungated by design — its moons are filler and entry to
+    Bowser's Kingdom has no per-kingdom moon requirement; Ruined exists
+    for the Lord-of-Lightning boss fight only."""
     thresholds = dp.kingdom_exit_thresholds()
     assert thresholds["Cascade"] == 5
     assert thresholds["Sand"] == 16
@@ -145,8 +148,7 @@ def test_kingdom_exit_thresholds_from_real_apworld(dp: DataPackage):
     assert thresholds["Snow"] == 10
     assert thresholds["Seaside"] == 10
     assert thresholds["Luncheon"] == 18
-    assert thresholds["Ruined"] == 3
     assert thresholds["Bowser's"] == 8
     # Ungated kingdoms — no `{KingdomMoons(X,N)}` clause references them.
-    for k in ("Cap", "Cloud", "Mushroom", "Moon"):
+    for k in ("Cap", "Cloud", "Ruined", "Mushroom", "Moon"):
         assert k not in thresholds
