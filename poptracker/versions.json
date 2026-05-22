@@ -1,6 +1,37 @@
 {
   "versions": [
     {
+      "package_version": "0.1.36-alpha",
+      "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.1.36-alpha/smo-poptracker-v0.1.36-alpha.zip",
+      "sha256": "6097d681fb6eccfb82e80afb5d454647531d5dc4d6e8da9bc6434001b398d683",
+      "changelog": [
+        "fix(release-audit): honor SWITCH_MOD_ALLOWED_SOURCE_WRITES in e2e test",
+        "fix(switch-mod): repin LibHakkun to main HEAD, unblock clean Windows build",
+        "simplify: treat Ruined as boss-fight-only, demote moons to filler",
+        "feat(switch-mod): fix Lost + Ruined Kingdom Odyssey-grounded softlock",
+        "docs(smo-build): add switch-mod/lib/imgui to fresh-worktree submodule init",
+        "Gitignore shine_table.h + wire sync_shine into build pipeline (#205)",
+        "feat(switch-mod): collapse seed-pot wait via rs::getGrowFlowerTime hook (#203)",
+        "fix(talkatoo): restore \u00e9 escapes in 2 moon names (unintentional churn)",
+        "docs: trim retired history from CLAUDE.md + skills, move dev venv to repo root",
+        "fix(switch-mod): drop stuck Cappy bubbles + demote per-frame tryShow logs",
+        "feat(switch-mod): fix Talkatoo% pause-menu mark to track AP-pool picks",
+        "chore: remove HAKKUN.md migration runbook (cutover complete)",
+        "fix(talkatoo): expand progression list from 22 to 38 scenario-advancing moons",
+        "feat(switch-mod): ship on-Switch ImGui debug overlay with Karla TTF",
+        "chore(switch-mod): bump LibHakkun pin, retire 5 patches that got upstreamed",
+        "feat(switch-mod): replace UDP broadcast with subnet sweep over BRIDGE_HOST's /24",
+        "install_hooks: write to SHARED git config so main + worktrees enforce",
+        "docs: reframe Talkatoo Gap #2 from descoped \u2192 explicit non-goal",
+        "release-gate: replace stub-build harness with live e2e wizard install test",
+        "docs(claude.md): mark Talkatoo% Phase 5 + Gap #1 as shipped",
+        "fix(hactool): move install out of bundled/ so apworld refresh doesn't wipe it",
+        "PopTracker auto-update: add v0.1.35-alpha to versions.json",
+        "refactor(client): dial AP eagerly on Connect; remove Switch-presence gate",
+        "local pre-tag audit: tempdir-sandboxed harness + pre-push hook"
+      ]
+    },
+    {
       "package_version": "0.1.35-alpha",
       "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.1.35-alpha/smo-poptracker-v0.1.35-alpha.zip",
       "sha256": "51462568e68ead9bb2692a041a47a0731238417eb0e8b0f5852c2da422021fe8",
