@@ -214,9 +214,48 @@ def after_create_items(item_pool: list, world: World, multiworld: MultiWorld, pl
 def before_set_rules(world: World, multiworld: MultiWorld, player: int):
     pass
 
+# Locations whose Multi Moon / Power Moon can become PERMANENTLY UNOBTAINABLE on
+# SMO 1.0.0 via documented sequence-break tricks. Marked `filler_only: true` in
+# locations.json so the AP fill never places a progression item there — a player
+# who hits the skip wouldn't be able to send the check, and a soft-lock would be
+# unrecoverable on 1.0.0.
+#
+# Why these two (both Cascade Kingdom, 1.0.0-only):
+#  - "Our First Power Moon": First Moon Skip (smo.wiki/First_Moon_Skip) — on
+#    1.0.0 the Madame Broode loading zone is active before the first moon
+#    spawns. Defeating her without first collecting it permanently invalidates
+#    the moon's cutscene; trying to collect it later crashes the game and the
+#    moon never registers in the save.
+#  - "Multi Moon Atop the Falls": Broode Skip (smo.wiki/Broode_Skip) — collect
+#    5 regular Power Moons via the 2P warp-painting trick and you can leave
+#    Cascade without ever fighting Madame Broode. On 1.0.0 the Multi Moon is
+#    then unobtainable for the rest of the save (1.0.1+ auto-awards it on
+#    return; we target 1.0.0).
+#
+# Every other kingdom: per Mario Wiki Missable_content and the 1.0.0 / 1.0.1
+# patch notes, no other moon is permanently missable in normal play or via
+# documented 1.0.0 skips. The Cookatiel-fight / Big-Pot pair in Luncheon shares
+# QuestNo 2->3 (only one collection advances scenario_no), but both moons stay
+# physically collectible in either order, so neither is missable.
+def _apply_filler_only_rules(world: World, multiworld: MultiWorld, player: int) -> None:
+    filler_only_names = {
+        loc["name"] for loc in world.location_table
+        if loc.get("filler_only", False)
+    }
+    if not filler_only_names:
+        return
+    from worlds.generic.Rules import add_item_rule
+    for region in multiworld.regions:
+        if region.player != player:
+            continue
+        for location in region.locations:
+            if location.name in filler_only_names:
+                add_item_rule(location, lambda item: not item.advancement)
+
+
 # Called after rules for accessing regions and locations are created, in case you want to see or modify that information.
 def after_set_rules(world: World, multiworld: MultiWorld, player: int):
-    pass
+    _apply_filler_only_rules(world, multiworld, player)
 
 # The item name to create is provided before the item is created, in case you want to make changes to it
 def before_create_item(item_name: str, world: World, multiworld: MultiWorld, player: int) -> str:

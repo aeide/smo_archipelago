@@ -96,7 +96,8 @@
         ],
         "region": "Cascade Kingdom",
         "requires": [],
-        "progression": true
+        "progression": true,
+        "filler_only": true
     },
     {
         "name": "Cascade: Multi Moon Atop the Falls",
@@ -105,7 +106,8 @@
         ],
         "region": "Cascade Kingdom",
         "requires": [],
-        "progression": true
+        "progression": true,
+        "filler_only": true
     },
     {
         "name": "Cascade: Chomp Through the Rocks",
