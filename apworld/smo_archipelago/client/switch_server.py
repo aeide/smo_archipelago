@@ -74,6 +74,84 @@ _SWITCH_LEVEL_MAP = {
 # CappyMessenger queues at most 8 anyway; this threshold trips first.
 RECONCILE_CAPPY_BURST_THRESHOLD = 5
 
+
+def _classify_snapshot_for_user_confirm(
+    entries: "list[dict]",
+    goal_reached: bool,
+    resolve_entry_to_loc_id: "EntryResolver | None",
+    get_already_checked_loc_ids: "AlreadyCheckedProvider | None",
+    is_goal_finished: "GoalFinishedProbe | None",
+) -> "tuple[bool, int, int]":
+    """Decide whether a snapshot should be auto-applied or held for /confirm_snapshot.
+
+    Returns ``(auto_confirm, new_count, already_count)``.
+
+    The Switch-side `save_was_loaded && CappyMessenger::hasDispatchedSinceReset()`
+    gate proves only that Mario is in a live gameplay scene with save data
+    fully resident — NOT that the player picked this save for this AP run.
+    User report 2026-05-23: an existing 8-moon save auto-loaded after a Switch
+    reboot and the snapshot credited 3 moons to AP before the user could click
+    "New Game". LocationChecks are persisted server-side; once sent the user
+    must `/forfeit` to unwind.
+
+    Auto-confirm (``True``) when the snapshot is a no-op against current AP
+    state — empty New-Game snapshot, reconnect-mid-session where every entry
+    already deduped against ``locations_checked``, or a `goal_reached=True`
+    snapshot whose goal we already reported this session.
+
+    Hold (``False``) when at least one entry resolves to a brand-new AP
+    location, or when ``goal_reached=True`` and we haven't reported it.
+
+    Back-compat: when ``resolve_entry_to_loc_id`` isn't wired (legacy / test
+    harnesses constructed without the kwarg), returns ``auto_confirm=True``
+    so existing behavior is preserved.
+    """
+    if resolve_entry_to_loc_id is None:
+        return True, 0, 0
+
+    if get_already_checked_loc_ids is not None:
+        try:
+            already = set(get_already_checked_loc_ids())
+        except Exception:
+            log.exception("get_already_checked_loc_ids failed; treating as empty")
+            already = set()
+    else:
+        already = set()
+
+    new_count = 0
+    already_count = 0
+    for entry in entries:
+        # Snapshot-derived captures are dropped before forwarding (see
+        # _dispatch_snapshot_entries) — exclude them from the gate counts
+        # so a save with only captures still auto-confirms.
+        if entry.get("kind") == "capture":
+            continue
+        try:
+            loc_id = resolve_entry_to_loc_id(entry)
+        except Exception:
+            log.exception("resolve_entry_to_loc_id raised for entry=%r", entry)
+            loc_id = None
+        if loc_id is None:
+            continue
+        if loc_id in already:
+            already_count += 1
+        else:
+            new_count += 1
+
+    goal_is_new = False
+    if goal_reached:
+        if is_goal_finished is not None:
+            try:
+                goal_is_new = not bool(is_goal_finished())
+            except Exception:
+                log.exception("is_goal_finished raised; treating goal as new")
+                goal_is_new = True
+        else:
+            goal_is_new = True
+
+    auto_confirm = (new_count == 0) and not goal_is_new
+    return auto_confirm, new_count, already_count
+
 CheckHandler = Callable[[dict], Awaitable["int | None"]]  # returns AP loc_id or None
 GoalHandler = Callable[[], Awaitable[None]]
 DeathHandler = Callable[[int], Awaitable[None]]
@@ -107,6 +185,20 @@ ReconcileItemBuilder = Callable[[int], "ItemMsg | None"]
 # player either checked it live or saw it announced on a previous reconnect).
 # Implemented in SMOContext as `lambda: set(self.locations_checked)`.
 AlreadyCheckedProvider = Callable[[], "set[int]"]
+# Bridge-side /confirm_snapshot gate — `(entry) -> loc_id | None`: pure
+# resolution of a single snapshot entry to its AP location_id without any I/O
+# or state mutation. Mirrors SMOContext.report_check's resolution logic but
+# diverges on side effects — used only to decide whether a snapshot would
+# credit any NEW AP location (and therefore should be held for the operator
+# to confirm via /confirm_snapshot).
+EntryResolver = Callable[[dict], "int | None"]
+# Bridge-side /confirm_snapshot gate — `() -> bool`: True iff the goal has
+# already been reported for the current AP session. Combined with the
+# snapshot's `goal_reached` meta flag to decide whether a goal-reaching
+# snapshot would credit a fresh goal (hold) or just redundantly reconfirm
+# a goal we already shipped (auto-confirm). Implemented in SMOContext as
+# `lambda: self._goal_reported`.
+GoalFinishedProbe = Callable[[], bool]
 # UI notification — fired whenever the set of connected Switches OR the
 # active selection changes. Synchronous callback (typically schedules a
 # Kivy refresh on the next polling tick). Wired by SMOContext / gui.py.
@@ -213,6 +305,8 @@ class SwitchServer:
         is_ap_ready: ApReadyProbe | None = None,
         build_reconcile_cappy_item: ReconcileItemBuilder | None = None,
         get_already_checked_loc_ids: AlreadyCheckedProvider | None = None,
+        resolve_entry_to_loc_id: EntryResolver | None = None,
+        is_goal_finished: GoalFinishedProbe | None = None,
         client_ver: str = "",
     ):
         self._host = host
@@ -231,6 +325,8 @@ class SwitchServer:
         self._is_ap_ready = is_ap_ready
         self._build_reconcile_cappy_item = build_reconcile_cappy_item
         self._get_already_checked = get_already_checked_loc_ids
+        self._resolve_entry_to_loc_id = resolve_entry_to_loc_id
+        self._is_goal_finished = is_goal_finished
         # Per-device_id connection registry. Replaces the legacy single
         # `_writer` slot. Exactly one entry's id is in `_active_device_id`
         # at any time; that one forwards telemetry to AP and receives
@@ -256,6 +352,20 @@ class SwitchServer:
         # buffering they hit the same "no AP id" race as the snapshot.
         # Drained by drain_pending_snapshot() alongside the snapshot.
         self._pending_live_checks: list[dict] = []
+        # Bridge-side /confirm_snapshot gate (2026-05-23). When the
+        # classifier ("would this snapshot credit any NEW AP location?")
+        # returns auto_confirm=False, the snapshot lands here instead of
+        # being forwarded. The operator types /confirm_snapshot in
+        # SMOClient to release it, or /reject_snapshot to discard.
+        # `_held_*_from_reconcile` preserves the original from_reconcile
+        # flag so the Cappy-burst threshold + reconcile-Cappy path keep
+        # the right behavior across the confirm.
+        # Last-write-wins: a fresh state_end / drain replaces whatever was
+        # held so a "now I actually clicked New Game" snapshot can
+        # supersede the earlier wrong-save hold.
+        self._held_snapshot_entries: "list[dict] | None" = None
+        self._held_snapshot_goal: bool = False
+        self._held_snapshot_from_reconcile: bool = False
         # M6 phase C reconcile — loc_ids freshly dispatched from a snapshot
         # drain (i.e. NOT already in locations_checked when drain began).
         # Each waits for its scout to land via LocationInfo absorption; when
@@ -1100,7 +1210,127 @@ class SwitchServer:
                 len(entries),
             )
             return
-        await self._dispatch_snapshot_entries(entries, goal_reached, from_reconcile=False)
+        await self._gate_or_dispatch_snapshot(entries, goal_reached, from_reconcile=False)
+
+    async def _gate_or_dispatch_snapshot(
+        self,
+        entries: "list[dict]",
+        goal_reached: bool,
+        from_reconcile: bool,
+    ) -> None:
+        """Route a snapshot through the /confirm_snapshot gate.
+
+        Wrapper around `_dispatch_snapshot_entries` that classifies first.
+        Auto-confirms a snapshot that wouldn't credit any new AP location
+        (empty New-Game state, reconnect-mid-session where everything is
+        already in `locations_checked`, redundant goal_reached on an
+        already-goaled slot). Otherwise stashes the entries on the held
+        slot and waits for the operator's /confirm_snapshot.
+        """
+        auto_confirm, new_count, already_count = _classify_snapshot_for_user_confirm(
+            entries,
+            goal_reached,
+            self._resolve_entry_to_loc_id,
+            self._get_already_checked,
+            self._is_goal_finished,
+        )
+        if auto_confirm:
+            log.info(
+                "[confirm-gate] auto-confirming snapshot (new=%d already=%d goal=%s)",
+                new_count, already_count, goal_reached,
+            )
+            # Auto-confirm supersedes any prior held snapshot — a fresh
+            # state_end is authoritative for current Switch state. New
+            # Game produces an empty snapshot that auto-confirms; without
+            # this clear, the previously-held wrong-save entries would
+            # outlive their intent and a later /confirm_snapshot would
+            # credit stale moons.
+            self._held_snapshot_entries = None
+            self._held_snapshot_goal = False
+            self._held_snapshot_from_reconcile = False
+            await self._dispatch_snapshot_entries(
+                entries, goal_reached, from_reconcile=from_reconcile,
+            )
+            return
+
+        was_holding = self._held_snapshot_entries is not None
+        self._held_snapshot_entries = list(entries)
+        self._held_snapshot_goal = bool(goal_reached)
+        self._held_snapshot_from_reconcile = from_reconcile
+        verb = "replaced" if was_holding else "held"
+        log.warning(
+            "[confirm-gate] snapshot %s — pending /confirm_snapshot "
+            "(new=%d already=%d goal_reached=%s). "
+            "Type /confirm_snapshot to apply, /reject_snapshot to discard.",
+            verb, new_count, already_count, goal_reached,
+        )
+        self._state.add_log(
+            f"[confirm-gate] Switch reported {new_count} new "
+            f"LocationCheck(s) + {already_count} already-credited"
+            f"{', goal_reached=true' if goal_reached else ''}. "
+            "Held pending /confirm_snapshot — if you intended this save "
+            "for this AP run, type /confirm_snapshot. Otherwise back out "
+            "to the title screen and load the correct save (or start "
+            "New Game) so a fresh snapshot supersedes this one."
+        )
+
+    async def confirm_pending_snapshot(self) -> bool:
+        """Apply the held snapshot through the normal dispatch path.
+
+        Returns True when a snapshot was released, False when nothing was
+        held. Wired to /confirm_snapshot in SMOClientCommandProcessor.
+        """
+        if self._held_snapshot_entries is None:
+            return False
+        entries = self._held_snapshot_entries
+        goal_reached = self._held_snapshot_goal
+        from_reconcile = self._held_snapshot_from_reconcile
+        self._held_snapshot_entries = None
+        self._held_snapshot_goal = False
+        self._held_snapshot_from_reconcile = False
+        log.info(
+            "[confirm-gate] confirming held snapshot (%d entries goal=%s)",
+            len(entries), goal_reached,
+        )
+        await self._dispatch_snapshot_entries(
+            entries, goal_reached, from_reconcile=from_reconcile,
+        )
+        return True
+
+    def reject_pending_snapshot(self) -> bool:
+        """Discard the held snapshot without forwarding.
+
+        Returns True when something was discarded. Wired to /reject_snapshot.
+        Synchronous because the discard is just clearing local state.
+        """
+        if self._held_snapshot_entries is None:
+            return False
+        log.info(
+            "[confirm-gate] rejecting held snapshot (%d entries goal=%s)",
+            len(self._held_snapshot_entries), self._held_snapshot_goal,
+        )
+        self._held_snapshot_entries = None
+        self._held_snapshot_goal = False
+        self._held_snapshot_from_reconcile = False
+        return True
+
+    def held_snapshot_summary(self) -> "tuple[int, int, bool] | None":
+        """Report what is currently held, for /smo_status display.
+
+        Returns (new_count, already_count, goal_reached) or None when nothing
+        is held. Re-classifies on demand — the held entries are the same
+        ones that would be applied by confirm_pending_snapshot.
+        """
+        if self._held_snapshot_entries is None:
+            return None
+        _, new_count, already_count = _classify_snapshot_for_user_confirm(
+            self._held_snapshot_entries,
+            self._held_snapshot_goal,
+            self._resolve_entry_to_loc_id,
+            self._get_already_checked,
+            self._is_goal_finished,
+        )
+        return new_count, already_count, self._held_snapshot_goal
 
     async def _dispatch_snapshot_entries(
         self,
@@ -1156,6 +1386,10 @@ class SwitchServer:
         self._pending_live_checks = []
         if live_checks:
             log.info("draining %d buffered live checks", len(live_checks))
+            # Live checks are gameplay events the player actually triggered
+            # while online — they're not subject to the wrong-save gate.
+            # The save-load-with-no-prior-checks path can only produce a
+            # state_end, never a live `check`.
             await self._dispatch_snapshot_entries(
                 live_checks, goal_reached=False, from_reconcile=True,
             )
@@ -1166,7 +1400,9 @@ class SwitchServer:
         self._pending_snapshot_entries = None
         self._pending_snapshot_goal = False
         log.info("draining %d buffered snapshot entries", len(entries))
-        await self._dispatch_snapshot_entries(entries, goal_reached, from_reconcile=True)
+        await self._gate_or_dispatch_snapshot(
+            entries, goal_reached, from_reconcile=True,
+        )
 
     async def try_fire_reconcile_cappy(self) -> None:
         """Pump pending reconciled loc_ids through the Cappy speech bubble."""

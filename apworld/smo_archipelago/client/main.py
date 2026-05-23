@@ -262,6 +262,18 @@ async def main(args: argparse.Namespace) -> None:
         # captured once before each drain to gate Cappy-bubble synthesis on
         # "wasn't there already". Re-replays of known checks skip Cappy.
         get_already_checked_loc_ids=lambda: set(ctx.locations_checked),
+        # /confirm_snapshot gate — pure resolution of a single snapshot
+        # entry into its AP loc_id without I/O / state mutation. Lets the
+        # gate count how many entries would credit a NEW AP location and
+        # therefore should be held for operator confirmation. Without this
+        # the gate falls back to legacy auto-confirm (pre-2026-05-23
+        # behavior — every snapshot forwarded immediately).
+        resolve_entry_to_loc_id=ctx.resolve_entry_to_loc_id,
+        # /confirm_snapshot gate — combined with the snapshot's
+        # `goal_reached` meta to decide whether a goal-reaching snapshot is
+        # a fresh goal (hold) or a redundant reconfirmation of one we
+        # already shipped this session (auto-confirm).
+        is_goal_finished=lambda: ctx._goal_reported,
         # Version policing: compared against the Switch mod's HELLO mod_ver.
         # Mismatch refuses the connection with a clear hello_ack(ok=false)
         # + an [version mismatch] log line surfaced in the Kivy UI naming

@@ -136,6 +136,59 @@ class SMOClientCommandProcessor(ClientCommandProcessor):
         self.output(f"sent inbound KillMsg source={source!r} cause={cause!r}")
         return True
 
+    def _cmd_confirm_snapshot(self) -> bool:
+        """Apply the held Switch state snapshot to AP.
+
+        The bridge holds any save-load snapshot that would credit at least
+        one NEW AP location (or report a fresh goal we haven't sent yet).
+        This protects against the wrong-save-auto-loaded case — see the log
+        line `[confirm-gate] snapshot held` and the on-Switch hint to
+        back out and pick the right save.
+
+        Use this when you HAVE confirmed the held snapshot's save is the
+        one you want for this AP run.
+        """
+        ctx: SMOContext = self.ctx  # type: ignore[assignment]
+        if ctx.switch is None:
+            self.output("(no Switch connected — nothing to confirm)")
+            return False
+        summary = ctx.switch.held_snapshot_summary()
+        if summary is None:
+            self.output("(no held snapshot — nothing to confirm)")
+            return False
+        new_count, already_count, goal = summary
+        self.output(
+            f"applying held snapshot: {new_count} new + {already_count} "
+            f"already-credited, goal_reached={goal}"
+        )
+        async_start(ctx.switch.confirm_pending_snapshot(), name="cmd confirm_snapshot")
+        return True
+
+    def _cmd_reject_snapshot(self) -> bool:
+        """Discard the held Switch state snapshot without applying.
+
+        Use this when the held snapshot belongs to a save you DIDN'T mean
+        to load. After rejecting, back out to the title screen, load the
+        correct save (or start New Game) — the next snapshot supersedes
+        anything previously held.
+        """
+        ctx: SMOContext = self.ctx  # type: ignore[assignment]
+        if ctx.switch is None:
+            self.output("(no Switch connected — nothing to reject)")
+            return False
+        summary = ctx.switch.held_snapshot_summary()
+        if summary is None:
+            self.output("(no held snapshot — nothing to reject)")
+            return False
+        new_count, already_count, goal = summary
+        if ctx.switch.reject_pending_snapshot():
+            self.output(
+                f"discarded held snapshot ({new_count} new + "
+                f"{already_count} already-credited, goal_reached={goal})"
+            )
+            return True
+        return False
+
     def _cmd_setup(self) -> bool:
         """Open the setup wizard in a new window.
 
@@ -1071,6 +1124,39 @@ class SMOContext(CommonContext):
         if self._goal_location_name is not None and loc_name == self._goal_location_name:
             await self.report_goal()
         return loc_id
+
+    def resolve_entry_to_loc_id(self, entry: dict) -> int | None:
+        """Pure mirror of `report_check`'s resolution path.
+
+        Used by SwitchServer's /confirm_snapshot gate to decide whether a
+        snapshot would credit any NEW AP location. Does NOT mutate state
+        (no `_switch_reported_loc_ids.add`, no `locations_checked.add`),
+        does NOT send to AP, does NOT fire goal.
+
+        Returns the resolved AP location_id, or None when the entry can't
+        be mapped (unknown shine, capture for an unknown hack, missing
+        canonical fields).
+        """
+        kind = entry.get("kind") or "moon"
+        kingdom = entry.get("kingdom")
+        shine_id = entry.get("shine_id")
+        cap = entry.get("cap")
+        stage_name = entry.get("stage_name")
+        object_id = entry.get("object_id")
+        shine_uid = entry.get("shine_uid")
+        hack_name = entry.get("hack_name")
+
+        if kind == "moon" and (stage_name or object_id):
+            res = self.shine_map.resolve(stage_name, object_id, shine_uid)
+            if res is None:
+                return None
+            kingdom = res.kingdom
+            shine_id = res.shine_id
+        elif kind == "capture" and hack_name:
+            cap = self.capture_map.resolve(hack_name) or hack_name
+
+        loc_name = self._reconstruct_location_name(kind, kingdom, shine_id, cap)
+        return self.dp.location_name_to_id.get(loc_name)
 
     def compose_moon_label_for_location(self, loc_id: int) -> str | None:
         """Channel A: synthesize the in-game cutscene label for `loc_id`.
