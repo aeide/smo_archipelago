@@ -88,7 +88,9 @@
       "Bash(DEVKITPRO='C:/devkitPro' '/c/Program Files/CMake/bin/cmake.exe' --install build --verbose)",
       "PowerShell(Get-Volume *)",
       "WebFetch(domain:gbatemp.net)",
-      "WebFetch(domain:blog.ryujinx.org)"
+      "WebFetch(domain:blog.ryujinx.org)",
+      "mcp__05831ed6-7a41-46a5-a574-baf3e133a6ac__search_files",
+      "mcp__05831ed6-7a41-46a5-a574-baf3e133a6ac__download_file_content"
     ]
   }
 }

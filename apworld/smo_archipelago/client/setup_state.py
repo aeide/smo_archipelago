@@ -12,6 +12,9 @@ import os
 from pathlib import Path
 
 
+MAPS_SENTINEL_FILENAME = ".maps-updated"
+
+
 def _user_data_dir() -> Path:
     """Per-user data dir for wizard-generated maps.
 
@@ -50,3 +53,42 @@ def _resolve_map_path(explicit: str, filename: str) -> Path | None:
         return user_data
     here = Path(__file__).resolve().parent / "data" / filename
     return here if here.exists() else None
+
+
+def _sentinel_path() -> Path:
+    """Path the wizard touches after a successful extract, and that the
+    running SMOClient stats on AP-Connect to decide whether to reload
+    its in-memory shine_map / capture_map.
+
+    Co-located with the extracted maps (`%APPDATA%/SMOArchipelago/`)
+    rather than the `data/` subdir so a stale extraction run can't leave
+    the sentinel orphaned in a directory the wizard would later wipe.
+    """
+    return _user_data_dir().parent / MAPS_SENTINEL_FILENAME
+
+
+def touch_maps_sentinel() -> None:
+    """Stamp `<%APPDATA%>/SMOArchipelago/.maps-updated` with `mtime=now`.
+
+    Called by `_setup/wizard_cli.py` after every successful extraction
+    (whether the subprocess actually ran or the hash-match short-circuit
+    fired) so a long-running SMOClient picks up the just-extracted maps
+    on its next AP-Connect without needing a restart.
+    """
+    p = _sentinel_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.touch()
+
+
+def maps_sentinel_mtime() -> float | None:
+    """Sentinel mtime in seconds, or None when the file does not exist.
+
+    Returning None lets SMOClient distinguish "wizard never ran on this
+    machine" (skip reload) from "wizard ran but mtime hasn't advanced
+    since our last load" (also skip reload).
+    """
+    p = _sentinel_path()
+    try:
+        return p.stat().st_mtime
+    except FileNotFoundError:
+        return None

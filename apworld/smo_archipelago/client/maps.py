@@ -72,6 +72,36 @@ class ShineMap:
     def load(self, path: Path) -> None:
         self._load_text(path.read_text(encoding="utf-8"), source=str(path))
 
+    def reload(self, path: Path) -> int:
+        """Atomically replace the in-memory table from `path`.
+
+        Distinct from `load()` because `load()` accumulates (intentional
+        for the construction-time package + filesystem layered load).
+        Mutates in place so existing references (e.g. closures captured
+        by SwitchServer / SMOContext) see the new content.
+
+        If the new file fails to parse, the in-memory table is left
+        UNCHANGED — a malformed reload must not wipe a working in-memory
+        copy. The exception is propagated for the caller to log.
+
+        Returns the loaded entry count. `0` means the file parsed but
+        had no valid entries; callers may decide not to keep an
+        otherwise-good map replaced with an empty one.
+        """
+        # Parse + populate a throwaway instance FIRST so the in-memory
+        # tables only get clobbered on success. The instance is local;
+        # we copy its tables into self at the end.
+        staging = ShineMap()
+        staging._load_text(path.read_text(encoding="utf-8"), source=str(path))
+        self._by_pair = staging._by_pair
+        self._by_uid = staging._by_uid
+        self._uid_by_location = staging._uid_by_location
+        self._source = path
+        return len(self._by_pair)
+
+    def __len__(self) -> int:
+        return len(self._by_pair)
+
     def _load_text(self, text: str, *, source: str) -> None:
         entries = json.loads(text)
         if not isinstance(entries, list):
@@ -162,6 +192,21 @@ class CaptureMap:
 
     def load(self, path: Path) -> None:
         self._load_text(path.read_text(encoding="utf-8"), source=str(path))
+
+    def reload(self, path: Path) -> int:
+        """Atomically replace the in-memory table — see `ShineMap.reload`.
+
+        Malformed input leaves the existing table intact and re-raises.
+        """
+        staging = CaptureMap()
+        staging._load_text(path.read_text(encoding="utf-8"), source=str(path))
+        self._table = staging._table
+        self._reverse = staging._reverse
+        self._source = path
+        return len(self._table)
+
+    def __len__(self) -> int:
+        return len(self._table)
 
     def _load_text(self, text: str, *, source: str) -> None:
         entries = json.loads(text)

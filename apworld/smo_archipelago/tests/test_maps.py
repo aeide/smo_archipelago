@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from client.maps import CaptureMap, MoonResolution, ShineMap
 
 
@@ -138,3 +140,113 @@ def test_capture_map_reverse_none_input() -> None:
     m = CaptureMap()
     assert m.cap_to_hack(None) is None
     assert m.cap_to_hack("") is None
+
+
+def test_shine_map_len_reports_loaded_entry_count(tmp_path: Path) -> None:
+    p = _write(tmp_path, "shine.json", [
+        {"stage_name": "X1", "object_id": "Y1", "kingdom": "Cap", "shine_id": "M1"},
+        {"stage_name": "X2", "object_id": "Y2", "kingdom": "Cap", "shine_id": "M2"},
+    ])
+    assert len(ShineMap(p)) == 2
+    assert len(ShineMap()) == 0
+
+
+def test_capture_map_len_reports_loaded_entry_count(tmp_path: Path) -> None:
+    p = _write(tmp_path, "cap.json", [
+        {"hack_name": "Kuribo", "cap": "Goomba"},
+    ])
+    assert len(CaptureMap(p)) == 1
+    assert len(CaptureMap()) == 0
+
+
+def test_shine_map_reload_atomically_replaces_table(tmp_path: Path) -> None:
+    """`reload` clears the existing in-memory table before loading the
+    new one — distinct from `load` which accumulates (used by the
+    construction-time package + filesystem layered load)."""
+    old = _write(tmp_path, "old.json", [
+        {"stage_name": "OldStage", "object_id": "OldObj",
+         "kingdom": "Cap", "shine_id": "Old Moon"},
+    ])
+    m = ShineMap(old)
+    assert m.resolve("OldStage", "OldObj") is not None
+
+    new = _write(tmp_path, "new.json", [
+        {"stage_name": "NewStage", "object_id": "NewObj",
+         "kingdom": "Sand", "shine_id": "New Moon"},
+    ])
+    n = m.reload(new)
+    assert n == 1
+    # Old entry must be GONE — not accumulated.
+    assert m.resolve("OldStage", "OldObj") is None
+    res = m.resolve("NewStage", "NewObj")
+    assert res is not None
+    assert res.kingdom == "Sand"
+
+
+def test_capture_map_reload_atomically_replaces_table(tmp_path: Path) -> None:
+    old = _write(tmp_path, "old.json", [
+        {"hack_name": "Kuribo", "cap": "Goomba"},
+    ])
+    m = CaptureMap(old)
+    assert m.cap_to_hack("Goomba") == "Kuribo"
+
+    new = _write(tmp_path, "new.json", [
+        {"hack_name": "Pukupuku", "cap": "Cheep Cheep"},
+    ])
+    n = m.reload(new)
+    assert n == 1
+    # Old reverse entry must be GONE — falls through to identity passthrough.
+    assert m.cap_to_hack("Goomba") == "Goomba"
+    assert m.cap_to_hack("Cheep Cheep") == "Pukupuku"
+
+
+def test_shine_map_reload_preserves_instance_identity(tmp_path: Path) -> None:
+    """In-place mutation matters: SwitchServer captures `capture_map.iter_all`
+    as a bound method at construction time. If reload swapped the instance,
+    the closure would still hold the old (empty) one."""
+    old = _write(tmp_path, "old.json", [])
+    m = ShineMap(old)
+    orig_id = id(m)
+    new = _write(tmp_path, "new.json", [
+        {"stage_name": "S", "object_id": "O", "kingdom": "Cap", "shine_id": "X"},
+    ])
+    m.reload(new)
+    assert id(m) == orig_id
+    assert len(m) == 1
+
+
+def test_shine_map_reload_leaves_state_intact_on_malformed_input(
+    tmp_path: Path,
+) -> None:
+    """A malformed reload must NOT wipe the in-memory map — otherwise
+    a user who accidentally truncates shine_map.json would lose their
+    working SMOClient state on the next reload trigger."""
+    good = _write(tmp_path, "good.json", [
+        {"stage_name": "S", "object_id": "O", "kingdom": "Cap", "shine_id": "M"},
+    ])
+    m = ShineMap(good)
+    assert len(m) == 1
+
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not valid json", encoding="utf-8")
+    with pytest.raises(Exception):
+        m.reload(bad)
+    # State preserved.
+    assert len(m) == 1
+    assert m.resolve("S", "O") is not None
+
+
+def test_capture_map_reload_leaves_state_intact_on_malformed_input(
+    tmp_path: Path,
+) -> None:
+    good = _write(tmp_path, "good.json", [
+        {"hack_name": "Kuribo", "cap": "Goomba"},
+    ])
+    m = CaptureMap(good)
+    assert len(m) == 1
+    bad = tmp_path / "bad.json"
+    bad.write_text("xxx", encoding="utf-8")
+    with pytest.raises(Exception):
+        m.reload(bad)
+    assert len(m) == 1
+    assert m.cap_to_hack("Goomba") == "Kuribo"

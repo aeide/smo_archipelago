@@ -402,6 +402,7 @@ def run_extract(
                        "match canonical SMO 1.0.0 USen fingerprint — "
                        "skipping extraction")
             _emit(callback, "maps_present", t0=anchor, present=True)
+            _touch_maps_sentinel_safe(callback, anchor)
             _emit(callback, "phase_end", phase=PHASE_EXTRACT, t0=anchor, ok=True)
             return ExtractOutcome(
                 ok=True,
@@ -457,6 +458,8 @@ def run_extract(
         hash_ok = True
 
     ok = result.ok and maps_present and hash_ok
+    if ok:
+        _touch_maps_sentinel_safe(callback, anchor)
     _emit(callback, "phase_end", phase=PHASE_EXTRACT, t0=anchor, ok=ok)
     return ExtractOutcome(
         ok=ok,
@@ -465,6 +468,37 @@ def run_extract(
         hash_ok=hash_ok,
         hash_checks=list(hash_checks),
     )
+
+
+def _touch_maps_sentinel_safe(callback: "EventCallback | None",
+                              anchor: float) -> None:
+    """Best-effort stamp of `<%APPDATA%>/SMOArchipelago/.maps-updated`.
+
+    A long-running SMOClient checks this mtime on AP-Connect to decide
+    whether to reload its in-memory shine_map / capture_map. Touching it
+    here lets the user re-run the wizard mid-session and pick up the new
+    maps on the next reconnect without restarting SMOClient. Failures
+    are non-fatal — the lazy-reload miss path in `SMOContext.report_check`
+    catches the same case the next time a moon is collected.
+    """
+    try:
+        # Imported lazily so the headless wizard CLI keeps no implicit
+        # dependency on the client/ subpackage at import time. Two-form
+        # import: in the runtime apworld zip, _setup is
+        # `worlds.meatballs._setup` and `..client.setup_state` resolves;
+        # under tests/conftest.py the apworld root is on sys.path so
+        # `client` is a top-level package and the dotted form raises
+        # "attempted relative import beyond top-level package".
+        try:
+            from ..client.setup_state import touch_maps_sentinel
+        except ImportError:
+            from client.setup_state import touch_maps_sentinel  # type: ignore[no-redef]
+        touch_maps_sentinel()
+    except Exception as e:
+        _emit(callback, "log", phase=PHASE_EXTRACT, t0=anchor,
+              line=f"[wizard_cli] failed to touch maps-updated sentinel: "
+                   f"{type(e).__name__}: {e} (SMOClient will still pick "
+                   f"up new maps lazily on the next missed shine lookup)")
 
 
 def run_build(
