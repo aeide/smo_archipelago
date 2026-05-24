@@ -51,12 +51,17 @@ _SCOUT_CHUNK_SIZE = 200
 log = logging.getLogger(__name__)
 
 # Dedicated logger for forwarded Switch-side log lines. Surfaces in the
-# Kivy "Switch" tab (gui.py logging_pairs already routes the "SMO" name
-# there). Kept distinct from `log` above so the SMOClient's PC-side
-# diagnostics (logger "client.switch_server") stay scoped to the
-# "Archipelago" tab while Switch-forwarded noise lands where the user
-# expects it.
+# Kivy "Odyssey" tab (gui.py wires the "SMO" logger into the right-hand
+# UILog there). Kept distinct from `log` above so Switch-forwarded noise
+# stays out of the SMOClient PC-side log stream.
 _switch_log = logging.getLogger("SMO")
+
+# Logger that drives the "Archipelago" tab (gui.py:
+# logging_pairs = [("Client", "Archipelago")]). Use this for messages the
+# user MUST see — e.g. the held-snapshot prompt asking them to type
+# /confirm_snapshot or /reject_snapshot. `log` (module-scoped) and
+# `_state.add_log` (BridgeState buffer) don't reach either UILog tab.
+_client_log = logging.getLogger("Client")
 
 _SWITCH_LEVEL_MAP = {
     "debug": logging.DEBUG,
@@ -1264,15 +1269,20 @@ class SwitchServer:
             "Type /confirm_snapshot to apply, /reject_snapshot to discard.",
             verb, new_count, already_count, goal_reached,
         )
-        self._state.add_log(
-            f"[confirm-gate] Switch reported {new_count} new "
-            f"LocationCheck(s) + {already_count} already-credited"
-            f"{', goal_reached=true' if goal_reached else ''}. "
-            "Held pending /confirm_snapshot — if you intended this save "
-            "for this AP run, type /confirm_snapshot. Otherwise back out "
-            "to the title screen and load the correct save (or start "
-            "New Game) so a fresh snapshot supersedes this one."
+        goal_clause = ", goal_reached=true" if goal_reached else ""
+        prompt = (
+            f"Switch loaded a save with {new_count} new moon(s) + "
+            f"{already_count} already-credited{goal_clause} — held to "
+            "protect against the wrong save auto-loading. "
+            "Type /confirm_snapshot to apply, or /reject_snapshot to "
+            "discard and load a different save."
         )
+        # Surface in the Archipelago tab — `log` (module logger) and
+        # `_state.add_log` (BridgeState buffer) don't render there, and
+        # the user reasonably expects the prompt where the slash commands
+        # respond.
+        _client_log.warning(prompt)
+        self._state.add_log(f"[confirm-gate] {prompt}")
 
     async def confirm_pending_snapshot(self) -> bool:
         """Apply the held snapshot through the normal dispatch path.

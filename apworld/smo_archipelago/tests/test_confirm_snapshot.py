@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 
 import pytest
 
@@ -296,6 +297,100 @@ def _wrong_save_snapshot_msgs() -> list:
         StateChunkMsg(stage_name="_meta", captures=[], goal_reached=False),
         StateEndMsg(),
     ]
+
+
+@pytest.mark.asyncio
+async def test_held_snapshot_logs_to_client_logger():
+    """The held-snapshot prompt MUST land on the "Client" logger — that's
+    what gui.py wires into the Archipelago tab via
+    `logging_pairs = [("Client", "Archipelago")]`. The user reported on
+    2026-05-24 that /confirm_snapshot correctly blocks the snapshot but
+    no message appeared in the Archipelago tab telling them what to do —
+    `log.warning(...)` (module logger) and `state.add_log(...)` (state
+    buffer) don't reach either UILog tab.
+    """
+    state = BridgeState()
+
+    async def on_check(msg):
+        return None
+
+    async def on_goal():
+        pass
+
+    sw = SwitchServer(
+        "127.0.0.1", 0, state, on_check, on_goal,
+        resolve_entry_to_loc_id=_make_resolver({
+            ("WaterfallWorldHomeStage", "MoonOurFirst"): 1001,
+            ("WaterfallWorldHomeStage", "MoonStoneChomp"): 1002,
+            ("WaterfallWorldHomeStage", "MoonTimerChallenge1"): 1003,
+        }),
+        get_already_checked_loc_ids=lambda: set(),
+        is_goal_finished=lambda: False,
+    )
+    server, port = await _start_local_server(sw)
+
+    client_logger = logging.getLogger("Client")
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg(mod_ver="0.1.0", smo_ver="1.0.0")))
+        await _drain_messages(reader, n=3, timeout=2.0)
+        with _capture_logger(client_logger) as records:
+            for m in _wrong_save_snapshot_msgs():
+                writer.write(protocol.encode(m))
+            await writer.drain()
+            await asyncio.sleep(0.2)
+
+        # At least one WARNING-level record on the Client logger that
+        # names both slash commands the user needs to run.
+        prompts = [
+            r for r in records
+            if r.levelno >= logging.WARNING
+            and "/confirm_snapshot" in r.getMessage()
+            and "/reject_snapshot" in r.getMessage()
+        ]
+        assert prompts, (
+            f"no held-snapshot prompt on Client logger; got "
+            f"{[(r.levelname, r.getMessage()) for r in records]}"
+        )
+        # And the count from the wire payload is in the rendered text.
+        assert "3" in prompts[0].getMessage()
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+class _capture_logger:
+    """Attach a list-collecting handler to `logger` for the duration of
+    the `with` block. Mirrors `caplog` semantics but without the pytest
+    fixture indirection (these tests are async and the gate fires from
+    inside SwitchServer's asyncio task — easier to attach directly)."""
+
+    def __init__(self, logger: logging.Logger) -> None:
+        self.logger = logger
+        self.records: list[logging.LogRecord] = []
+        self._handler: logging.Handler | None = None
+        self._prev_level: int | None = None
+
+    def __enter__(self) -> list[logging.LogRecord]:
+        records = self.records
+        class _Capture(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                records.append(record)
+        self._handler = _Capture(level=logging.DEBUG)
+        self._prev_level = self.logger.level
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(self._handler)
+        return self.records
+
+    def __exit__(self, *exc) -> None:
+        if self._handler is not None:
+            self.logger.removeHandler(self._handler)
+        if self._prev_level is not None:
+            self.logger.setLevel(self._prev_level)
 
 
 @pytest.mark.asyncio
