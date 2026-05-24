@@ -1241,3 +1241,80 @@ def test_main_text_mode_renders_without_json_dict_repr(
             continue
         if ln.startswith("{") and ln.endswith("}"):
             pytest.fail(f"text mode emitted JSON: {ln!r}")
+
+
+# ---------------------------------------------------------------------------
+# Maps-updated sentinel — written by run_extract on success
+# ---------------------------------------------------------------------------
+
+def test_run_extract_touches_sentinel_after_hash_short_circuit(
+    monkeypatch, tmp_path,
+) -> None:
+    """The fast path (maps already hash-correct) must still stamp the
+    sentinel — that's the signal a long-running SMOClient needs to
+    decide whether to reload its in-memory maps on the next AP-Connect."""
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    monkeypatch.setattr("_setup.build.maps_ready", lambda: True)
+    monkeypatch.setattr(
+        "_setup.build.verify_map_hashes",
+        lambda: [
+            _FakeHashCheck("shine_map.json", "x" * 64, "x" * 64,
+                           present=True, match=True),
+        ],
+    )
+    outcome = run_extract(tmp_path / "no_such.nsp")
+    assert outcome.ok is True
+    sentinel = tmp_path / "SMOArchipelago" / ".maps-updated"
+    assert sentinel.exists()
+
+
+def test_run_extract_touches_sentinel_after_subprocess_success(
+    monkeypatch, tmp_path,
+) -> None:
+    """The slow path (subprocess actually ran) also stamps the sentinel
+    once the post-extract hash check confirms canonical fingerprint."""
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    fake_dump = tmp_path / "smo.nsp"
+    fake_dump.write_bytes(b"")
+    monkeypatch.setattr(
+        "_setup.build.run_extract_maps",
+        lambda dump, **kw: _FakeBuildResult(ok=True, returncode=0),
+    )
+    # First check (pre-extract) finds no maps; post-extract has them.
+    state = {"called": 0}
+    def _maps_ready() -> bool:
+        state["called"] += 1
+        return state["called"] > 1
+    monkeypatch.setattr("_setup.build.maps_ready", _maps_ready)
+    monkeypatch.setattr(
+        "_setup.build.verify_map_hashes",
+        lambda: [
+            _FakeHashCheck("shine_map.json", "x" * 64, "x" * 64,
+                           present=True, match=True),
+        ],
+    )
+    outcome = run_extract(fake_dump)
+    assert outcome.ok is True
+    sentinel = tmp_path / "SMOArchipelago" / ".maps-updated"
+    assert sentinel.exists()
+
+
+def test_run_extract_does_not_touch_sentinel_on_failure(
+    monkeypatch, tmp_path,
+) -> None:
+    """A failed extract (subprocess error, missing maps, or hash
+    mismatch) must NOT stamp the sentinel — otherwise SMOClient would
+    reload the still-empty / still-wrong maps from disk on the next
+    Connected and overwrite a working in-memory copy."""
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    fake_dump = tmp_path / "smo.nsp"
+    fake_dump.write_bytes(b"")
+    monkeypatch.setattr(
+        "_setup.build.run_extract_maps",
+        lambda dump, **kw: _FakeBuildResult(ok=True, returncode=0),
+    )
+    monkeypatch.setattr("_setup.build.maps_ready", lambda: False)
+    outcome = run_extract(fake_dump, verify_hash=False)
+    assert outcome.ok is False
+    sentinel = tmp_path / "SMOArchipelago" / ".maps-updated"
+    assert not sentinel.exists()

@@ -246,6 +246,8 @@ class SMOContext(CommonContext):
         deathlink_enabled: bool = False,
         display_enabled: bool = True,
         colors_config: ColorsConfig | None = None,
+        shine_map_path: str = "",
+        capture_map_path: str = "",
     ):
         super().__init__(server_address, password)
         self.tags = {"AP"} | ({"DeathLink"} if deathlink_enabled else set())
@@ -253,6 +255,23 @@ class SMOContext(CommonContext):
         self.dp = datapackage
         self.shine_map = shine_map
         self.capture_map = capture_map
+        # Explicit host.yaml / CLI override paths for the maps. Kept so
+        # `reload_maps` can re-run the same `_resolve_map_path` precedence
+        # mid-session (host.yaml > %APPDATA% > bundled). Empty string ⇒
+        # "no explicit override; fall through to auto-discovery."
+        self._shine_map_explicit = shine_map_path
+        self._capture_map_explicit = capture_map_path
+        # Sentinel mtime as of the last reload attempt. None ⇒ no reload
+        # has run yet this session, so the next AP-Connect reload
+        # treats any sentinel presence as "new" and reloads. Updated
+        # whenever `reload_maps` runs to completion (whether or not it
+        # actually swapped in new content).
+        self._maps_sentinel_mtime: float | None = None
+        # One-shot guard for the user-visible "shine map looks stale"
+        # warning surfaced from `report_check`'s miss path. Re-armed
+        # whenever `reload_maps` succeeds in loading new entries so the
+        # warning can fire again if a future extraction is also lossy.
+        self._warned_stale_shine_map: bool = False
         self.deathlink_enabled = deathlink_enabled
         # Default True (= captures are AP-gated, current behavior) until
         # the AP Connected handler flips it from slot_data. UI uses this
@@ -661,8 +680,138 @@ class SMOContext(CommonContext):
             cappy_from = sender_name
         return ref, classification, sender_name, cappy_from
 
+    def reload_maps(self, *, force: bool = False) -> tuple[bool, bool]:
+        """Re-resolve shine_map / capture_map paths and load any new content.
+
+        Called from two sites that together close the "user ran wizard
+        but never restarted SMOClient" loop the 2026-05-23 logs caught:
+
+          - `_handle_ap_package('Connected')` (sentinel-driven): the
+            wizard touches `<%APPDATA%>/SMOArchipelago/.maps-updated`
+            after a successful extract; if that mtime is newer than
+            what we loaded last (or we've never loaded), try a reload.
+
+          - `report_check`'s shine_map miss path (force-driven): a moon
+            collection that can't resolve is a stronger signal than the
+            sentinel — the maps on disk may have been placed manually
+            without the wizard. `force=True` skips the mtime gate.
+
+        Reload mutates the existing ShineMap / CaptureMap instances
+        in place (see `ShineMap.reload`) so closures captured by
+        SwitchServer (e.g. `capture_map.iter_all`) see the new content
+        without needing to be re-wired.
+
+        A populated in-memory map is NOT replaced by an empty on-disk
+        copy — `_reload_one` peeks at the file's entry count and
+        bails before the atomic swap if it would nuke working state.
+        Protects against a user accidentally truncating the JSON
+        during iteration.
+
+        Returns `(shine_reloaded, capture_reloaded)` so callers can
+        decide whether to log a user-visible message.
+        """
+        from .setup_state import _resolve_map_path, maps_sentinel_mtime
+
+        sentinel = maps_sentinel_mtime()
+        if not force:
+            # Skip the reload when the sentinel hasn't advanced — both
+            # the "wizard never ran" case (sentinel is None and
+            # _maps_sentinel_mtime is also None) and the "wizard ran
+            # but not since our last reload" case (same mtime) end up
+            # here. The miss-path call passes force=True to bypass this
+            # because a missed lookup is a stronger signal than mtime.
+            if sentinel is None and self._maps_sentinel_mtime is None:
+                return (False, False)
+            if (sentinel is not None
+                    and self._maps_sentinel_mtime is not None
+                    and sentinel <= self._maps_sentinel_mtime):
+                return (False, False)
+
+        shine_reloaded = self._reload_one("shine_map", "shine_map.json",
+                                          self._shine_map_explicit, self.shine_map)
+        cap_reloaded = self._reload_one("capture_map", "capture_map.json",
+                                        self._capture_map_explicit, self.capture_map)
+
+        # Always advance the sentinel watermark, even when nothing
+        # changed — otherwise force=False would keep re-running the
+        # filesystem stat + load every Connected against the same
+        # already-loaded content.
+        if sentinel is not None:
+            self._maps_sentinel_mtime = sentinel
+
+        # Re-arm the one-shot user warning if we loaded any new shine
+        # entries — a future miss against a still-incomplete table
+        # deserves to be surfaced again.
+        if shine_reloaded and len(self.shine_map) > 0:
+            self._warned_stale_shine_map = False
+
+        return (shine_reloaded, cap_reloaded)
+
+    def _reload_one(self, label: str, filename: str, explicit: str,
+                    target: "ShineMap | CaptureMap") -> bool:
+        """Shared per-map reload mechanics for reload_maps.
+
+        Returns True iff `target` was mutated to hold different content.
+        Refuses to replace a populated table with an empty on-disk copy
+        (defensive — a truncated JSON should not nuke a working map).
+        Achieves the no-clobber guarantee by peeking at the file's
+        entry count BEFORE calling `target.reload`, since `reload` is
+        the atomic-swap primitive and unconditionally commits.
+        """
+        import json
+        from .setup_state import _resolve_map_path
+
+        path = _resolve_map_path(explicit, filename)
+        if path is None or not path.exists():
+            return False
+        before = len(target)
+        if before > 0:
+            # Cheap peek to avoid the no-clobber path: count parseable
+            # entries, skip the actual reload if the new file is empty
+            # and we'd be nuking working state.
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                log.exception("reload_maps: %s pre-parse from %s failed",
+                              label, path)
+                return False
+            if isinstance(raw, list) and len(raw) == 0:
+                log.warning(
+                    "%s on disk at %s is empty; refusing to replace "
+                    "%d in-memory entries. Verify the file isn't truncated.",
+                    label, path, before,
+                )
+                return False
+        try:
+            after = target.reload(path)
+        except Exception:
+            log.exception("reload_maps: %s reload from %s failed",
+                          label, path)
+            return False
+        return (after != before) or (before == 0 and after > 0)
+
     async def _handle_ap_package(self, cmd: str, args: dict) -> None:
         if cmd == "Connected":
+            # Sentinel-driven map reload BEFORE anything that depends on
+            # shine_map / capture_map content: the scout-warmup palette
+            # derivation below needs shine_uid coverage, and the snapshot
+            # drain that runs at the end of this handler needs working
+            # location-id resolution. If the user ran the wizard between
+            # SMOClient launch and now, the in-memory maps are still the
+            # (often empty) ones loaded at startup; this reload picks up
+            # the freshly-extracted JSON.
+            shine_new, cap_new = self.reload_maps()
+            if shine_new or cap_new:
+                bits = []
+                if shine_new:
+                    bits.append(f"shine_map ({len(self.shine_map)} entries)")
+                if cap_new:
+                    bits.append(f"capture_map ({len(self.capture_map)} entries)")
+                self.output(
+                    "Reloaded " + " and ".join(bits)
+                    + " from %APPDATA%/SMOArchipelago/data/ "
+                    "(wizard ran since SMOClient started)."
+                )
             self._populate_datapackage_from_self()
             self.state.set_ap_conn("ready")
             # Slot-change reset (load-bearing). When SMOClient stays
@@ -1080,15 +1229,52 @@ class SMOContext(CommonContext):
         if kind == "moon" and (stage_name or object_id):
             res = self.shine_map.resolve(stage_name, object_id, shine_uid)
             if res is None:
-                log.warning(
-                    "no shine_map entry for stage=%r object=%r uid=%r — "
-                    "add an entry to apworld/smo_archipelago/client/data/shine_map.json",
-                    stage_name, object_id, shine_uid,
-                )
-                self.state.add_log(
-                    f"[unknown moon] stage={stage_name} object={object_id} uid={shine_uid}"
-                )
-                return None
+                # Lazy reload — the wizard may have written maps to
+                # %APPDATA% while SMOClient was running but the
+                # sentinel-driven Connected reload either hasn't seen a
+                # new mtime yet or the maps got placed manually without
+                # touching it. Force=True bypasses the mtime gate.
+                shine_new, cap_new = self.reload_maps(force=True)
+                if shine_new:
+                    log.info(
+                        "shine_map reloaded from disk (%d entries) after "
+                        "missed (%r, %r); retrying resolve",
+                        len(self.shine_map), stage_name, object_id,
+                    )
+                    res = self.shine_map.resolve(stage_name, object_id, shine_uid)
+                if res is None:
+                    log.warning(
+                        "no shine_map entry for stage=%r object=%r uid=%r — "
+                        "add an entry to apworld/smo_archipelago/client/data/shine_map.json",
+                        stage_name, object_id, shine_uid,
+                    )
+                    self.state.add_log(
+                        f"[unknown moon] stage={stage_name} object={object_id} uid={shine_uid}"
+                    )
+                    # One-shot user-visible warning so the player sees this
+                    # in the Kivy chat panel — the log.warning above goes
+                    # only to the file. Re-armed by `reload_maps` whenever
+                    # a fresh extraction loads new content.
+                    if not self._warned_stale_shine_map:
+                        self._warned_stale_shine_map = True
+                        if len(self.shine_map) == 0:
+                            self.output(
+                                "Cannot send moon checks: shine_map.json is empty. "
+                                "Run /setup → extract step (or re-run if it already "
+                                "completed) and reconnect. Until then, every moon you "
+                                "collect will be lost (the Switch sent it but SMOClient "
+                                "can't translate it to an AP location id)."
+                            )
+                        else:
+                            self.output(
+                                f"Cannot resolve moon (stage={stage_name}, "
+                                f"object={object_id}). shine_map.json has "
+                                f"{len(self.shine_map)} entries but none match. "
+                                "Re-run /setup → extract step against a fresh SMO "
+                                "1.0.0 USen dump; this moon will need to be "
+                                "recollected once the map is updated."
+                            )
+                    return None
             kingdom = res.kingdom
             shine_id = res.shine_id
         elif kind == "capture" and hack_name:

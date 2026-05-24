@@ -84,3 +84,49 @@ def test_user_data_dir_falls_back_on_non_windows(monkeypatch) -> None:
     result = _user_data_dir()
     assert result.name == "data"
     assert result.parent.name == "SMOArchipelago"
+
+
+def test_touch_maps_sentinel_creates_file_and_returns_mtime(
+    isolated_appdata: Path,
+) -> None:
+    """Wizard touches the sentinel after a successful extract; SMOClient
+    stats it on AP-Connect to decide whether to reload its maps."""
+    from client.setup_state import (
+        maps_sentinel_mtime,
+        touch_maps_sentinel,
+        _sentinel_path,
+    )
+
+    # Initially absent → mtime is None.
+    assert maps_sentinel_mtime() is None
+    assert not _sentinel_path().exists()
+
+    touch_maps_sentinel()
+    p = _sentinel_path()
+    assert p.exists()
+    assert p.parent == isolated_appdata  # %APPDATA%/SMOArchipelago/
+    first = maps_sentinel_mtime()
+    assert first is not None
+
+    # Idempotent: second touch advances mtime, doesn't error.
+    import os, time
+    later = first + 5
+    os.utime(p, (later, later))
+    assert maps_sentinel_mtime() == later
+
+
+def test_touch_maps_sentinel_creates_parent_dir(
+    monkeypatch, tmp_path: Path,
+) -> None:
+    """Sentinel must be writable even on a fresh machine where neither
+    %APPDATA%/SMOArchipelago/ nor its `data/` subdir exists yet — the
+    wizard's prereqs phase may have skipped directly to extract."""
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    from client.setup_state import (
+        maps_sentinel_mtime,
+        touch_maps_sentinel,
+    )
+    # Nothing exists yet — not even SMOArchipelago/.
+    assert not (tmp_path / "SMOArchipelago").exists()
+    touch_maps_sentinel()
+    assert maps_sentinel_mtime() is not None

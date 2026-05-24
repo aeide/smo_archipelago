@@ -212,6 +212,15 @@ async def main(args: argparse.Namespace) -> None:
         # M-color: thread the ColorsConfig in so LocationInfo handling can
         # derive per-shine palette indices and push them to the Switch.
         colors_config=cfg.colors,
+        # Threaded through so SMOContext.reload_maps can re-run the same
+        # `_resolve_map_path` precedence on AP-Connect (sentinel-driven)
+        # or on the first missed shine lookup (force=True). Without these,
+        # a user who runs the setup wizard while SMOClient is open keeps
+        # the empty maps loaded at startup and can receive items but never
+        # send moon checks — see CLAUDE.md "Status" and the 2026-05-23
+        # bridge logs that prompted this fix.
+        shine_map_path=cfg.bridge.shine_map_path,
+        capture_map_path=cfg.bridge.capture_map_path,
     )
     ctx.auth = cfg.ap.slot or None
 
