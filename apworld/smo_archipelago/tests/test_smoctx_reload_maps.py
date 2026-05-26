@@ -67,9 +67,20 @@ _LOC_ID = 13404070123
 
 @pytest.fixture
 def isolated_appdata(monkeypatch, tmp_path: Path) -> Path:
-    """Isolate APPDATA so the sentinel + maps don't touch the real user dir."""
+    """Isolate APPDATA so the sentinel + maps don't touch the real user dir.
+
+    Also pre-creates empty stub map files so _resolve_map_path's step-3
+    client/data/ fallback never fires — without the stubs, a developer who
+    has run the extractor would have real shine_map.json / capture_map.json
+    in client/data/, and those would leak into tests that expect empty maps.
+    """
     monkeypatch.setenv("APPDATA", str(tmp_path))
-    return tmp_path / "SMOArchipelago"
+    appdata = tmp_path / "SMOArchipelago"
+    data_dir = appdata / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "shine_map.json").write_text("[]", encoding="utf-8")
+    (data_dir / "capture_map.json").write_text("[]", encoding="utf-8")
+    return appdata
 
 
 def _write_json(path: Path, entries: Any) -> Path:
