@@ -1,6 +1,23 @@
 {
   "versions": [
     {
+      "package_version": "0.2.3-beta",
+      "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.2.3-beta/smo-poptracker-v0.2.3-beta.zip",
+      "sha256": "cf80ddebcb044c6aa5e2c453ebbd5f027a38fee84fcd725e7316405e2c381dd5",
+      "changelog": [
+        "fix: /confirm_snapshot reads server-known checked_locations (#241)",
+        "feat: AP-aware moon labels in Crazy Cap shops (#242)",
+        "feat: restore Ruined Kingdom Odyssey gate (3-moon Bowser unlock)",
+        "chore: normalize all text files to LF and lock via .gitattributes",
+        "fix: cover both hack_names for Puzzle Part / Picture Match Part captures",
+        "fix: gate Wooded Peace on Uproot and OR multi-kingdom capture paths",
+        "docs: strip historical comments from Python and C++ code",
+        "docs: slim CLAUDE.md and skills for near-complete bugfix phase",
+        "fix(scripts): repoint release-audit venv probe from bridge\\.venv to .venv",
+        "PopTracker auto-update: add v0.2.2-beta to versions.json"
+      ]
+    },
+    {
       "package_version": "0.2.2-beta",
       "download_url": "https://github.com/mdietz94/smo_archipelago/releases/download/v0.2.2-beta/smo-poptracker-v0.2.2-beta.zip",
       "sha256": "742037ad4f970ea64349f32ddb15639012e25576f1a50c22af17fba279d51546",
