@@ -45,6 +45,8 @@ def MazeSkip(world: World, multiworld: MultiWorld, state: CollectionState, playe
 
 def WoodedPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get world peace in wooded kingdom"""
+    if is_option_enabled(multiworld, player, "capturesanity"):
+        return "|Uproot|"
     return True
 
 def ShermOrLongJump(world: World, multiworld: MultiWorld, state: CollectionState, player: int):

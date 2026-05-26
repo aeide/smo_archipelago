@@ -1214,7 +1214,7 @@
             "Wooded Peace"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{WoodedPeace()}"
+        "requires": "{WoodedPeace()} and {OptOne(Sherm)}"
     },
     {
         "name": "Wooded: Shopping in Steam Gardens",
@@ -1254,7 +1254,7 @@
             "Wooded Kingdom"
         ],
         "region": "Wooded Kingdom",
-        "requires": "{WoodedPeace()}"
+        "requires": "{WoodedPeace()} and {OptOne(Uproot)}"
     },
     {
         "name": "Wooded: Rolling Rock in the Deep Woods",
@@ -3968,7 +3968,7 @@
             "Capture"
         ],
         "region": "Sand Kingdom",
-        "requires": "({OptAll(|Bullet Bill| AND |Knucklotec's Fist|)}) AND |Mini Rocket|"
+        "requires": "|Mini Rocket| AND ({OptAll(|Bullet Bill| AND |Knucklotec's Fist|)} OR {KingdomMoons(Lake,8)} OR {PostNightMetro()})"
     },
     {
         "name": "Capture: Glydon",
@@ -3976,7 +3976,7 @@
             "Capture"
         ],
         "region": "Sand Kingdom",
-        "requires": "({OptAll(|Bullet Bill| AND |Knucklotec's Fist|)}) AND |Glydon|"
+        "requires": "|Glydon| AND ({OptAll(|Bullet Bill| AND |Knucklotec's Fist|)} OR {KingdomMoons(Wooded,16)} OR {KingdomMoons(Luncheon,18)})"
     },
     {
         "name": "Capture: Lakitu",
@@ -3984,7 +3984,7 @@
             "Capture"
         ],
         "region": "Sand Kingdom",
-        "requires": "({OptAll(|Bullet Bill| AND |Knucklotec's Fist|)}) AND |Lakitu|"
+        "requires": "|Lakitu| AND ({OptAll(|Bullet Bill| AND |Knucklotec's Fist|)} OR {KingdomMoons(Sand,16)})"
     },
     {
         "name": "Capture: Zipper",

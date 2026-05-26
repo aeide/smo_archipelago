@@ -98,7 +98,10 @@ end
 
 function lake_peace()  return true end
 
-function wooded_peace() return true end
+function wooded_peace()
+  if capturesanity_off() then return true end
+  return has_one("uproot")
+end
 
 function metro_peace()
   if capturesanity_off() then return true end
