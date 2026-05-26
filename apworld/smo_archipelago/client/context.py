@@ -430,6 +430,20 @@ class SMOContext(CommonContext):
         super().on_package(cmd, args)
         asyncio.create_task(self._handle_ap_package(cmd, args))
 
+    def output(self, text: str) -> None:
+        """Mirror `CommandProcessor.output` on the context.
+
+        CommonContext does not define `output`, but production code in
+        this class (e.g. the wizard-ran-mid-session reload notice in
+        `_handle_ap_package('Connected')`) calls `self.output(...)` to
+        surface a user-visible message. Without this method that path
+        crashes with `AttributeError` the first time `reload_maps()`
+        returns True. Routed through the `Client` logger so the message
+        lands in the Archipelago tab — same surface Archipelago's own
+        `_cmd_*` outputs use.
+        """
+        logging.getLogger("Client").info(text)
+
     def on_print_json(self, args: dict) -> None:
         super().on_print_json(args)
         text = args.get("text") or _flatten_print_json(args.get("data", []))
@@ -1360,6 +1374,25 @@ class SMOContext(CommonContext):
         if self._goal_location_name is not None and loc_name == self._goal_location_name:
             await self.report_goal()
         return loc_id
+
+    def already_checked_loc_ids(self) -> set[int]:
+        """Union of server-known and locally-sent AP location ids.
+
+        Backs the /confirm_snapshot gate (so a snapshot re-enumerating
+        prior-session checks dedupes against the AP server's authoritative
+        record) and the M6-C Cappy-bubble pre_checked set. Must be a union:
+          * `checked_locations` — server state delivered in the Connected
+            packet (`CommonClient.py` line 1041) and `RoomUpdate` (line
+            1075). Carries cross-session history. Reading only the local
+            set `locations_checked` (which starts empty every launch) made
+            the gate prompt to /confirm_snapshot on every reload of a save
+            the server already knew everything about.
+          * `locations_checked` — local state of checks shipped this
+            session. Covers the brief window where we've sent a
+            LocationChecks but the corresponding RoomUpdate hasn't echoed
+            back yet.
+        """
+        return self.checked_locations | self.locations_checked
 
     def resolve_entry_to_loc_id(self, entry: dict) -> int | None:
         """Pure mirror of `report_check`'s resolution path.
