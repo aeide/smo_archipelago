@@ -110,6 +110,12 @@ class _StubSwitch:
     def set_shop_labels(self, entries: list) -> None:
         pass
 
+    async def push_shop_labels(self) -> None:
+        # _derive_and_push_shop_labels() pairs set_shop_labels() with an async
+        # push_shop_labels() (see switch_server). No-op for the loopback
+        # assertions, but the method must exist or _handle_ap_package raises.
+        pass
+
     def set_talkatoo_pool(self, enabled: bool, kingdoms: dict[str, list[str]]) -> None:
         # SMOContext._handle_ap_package("Connected", ...) computes the Talkatoo
         # AP-pool from this slot's locations and pushes it. No-op for the
