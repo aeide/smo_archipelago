@@ -433,26 +433,6 @@ class SMOWorld(World):
 
         return slot_data
 
-    def generate_output(self, output_directory: str):
-        # `.meatballsap` is the only per-player artifact this apworld ships. It's
-        # the entry point the Launcher routes to launch_smo_client when
-        # double-clicked, triggering either the first-run wizard or a
-        # pre-filled SMOClient launch. See _setup/smoap_file.py for schema.
-        #
-        # server_address is intentionally empty: the generator doesn't know
-        # where the user will host (could be local, archipelago.gg, a
-        # friend's box, ...). SMOClient prompts via the GUI Connect bar
-        # when it's empty; the user can manually set it post-gen by editing
-        # the file if they want a perpetual default.
-        base = self.multiworld.get_out_file_name_base(self.player)
-        from ._setup.smoap_file import SmoapFile
-        smoap = SmoapFile(
-            slot_name=self.multiworld.get_player_name(self.player),
-            seed_name=str(getattr(self.multiworld, "seed_name", "") or ""),
-            server_address="",
-        )
-        smoap.write(Path(output_directory) / f"{base}.meatballsap")
-
     def write_spoiler(self, spoiler_handle):
         before_write_spoiler(self, self.multiworld, spoiler_handle)
 
