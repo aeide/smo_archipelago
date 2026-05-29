@@ -117,7 +117,13 @@ _ZNK12GameDataFile9findShineEii
 // v1.2's updatePlayerInfo() fix: per-frame sweep that calls repairHome /
 // unlockWorld whenever isCrashHome or isBossAttackedHome holds.
 //
-// All 10 manglings produced via aarch64-none-elf-g++ on forward-decls matching
+// Bowser's Kingdom is NOT force-unlocked (getWorldIndexSky /
+// isRepairHomeByCrashedBoss removed 2026-05-29): pre-unlocking "Sky" while in
+// Ruined makes SMO's post-boss autopilot skip Bowser and warp to Moon. Forward
+// progression is left to vanilla + the regions.json {KingdomMoons(Ruined,3)}
+// gate. Only the 8 manglings the repair/backtrack paths use remain.
+//
+// All 8 manglings produced via aarch64-none-elf-g++ on forward-decls matching
 // MonsterDruide1/OdysseyDecomp src/System/GameDataFunction.h. The unlockWorld
 // name was already in the project pre-c85a27b cleanup and resurrected with
 // its original mangling.
@@ -127,9 +133,7 @@ _ZN16GameDataFunction9crashHomeE20GameDataHolderWriter
 _ZN16GameDataFunction11unlockWorldE20GameDataHolderWriteri
 _ZN16GameDataFunction18isBossAttackedHomeE22GameDataHolderAccessor
 _ZN16GameDataFunction23repairHomeByCrashedBossE20GameDataHolderWriter
-_ZN16GameDataFunction25isRepairHomeByCrashedBossE22GameDataHolderAccessor
 _ZN16GameDataFunction18getWorldIndexClashEv
-_ZN16GameDataFunction16getWorldIndexSkyEv
 _ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor
 
 // GrowSeedInstantHook: rs::getGrowFlowerTime(const al::LiveActor*,

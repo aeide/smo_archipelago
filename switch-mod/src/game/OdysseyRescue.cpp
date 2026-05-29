@@ -9,7 +9,6 @@
 #include "../ap/ApState.hpp"
 #include "../hooks/HookSymbols.hpp"
 #include "../util/Log.hpp"
-#include "KingdomUnlock.hpp"
 
 namespace smoap::game {
 
@@ -28,7 +27,6 @@ using CrashHomeFn                 = void        (*)(GameDataHolderWriter);
 using UnlockWorldFn               = void        (*)(GameDataHolderWriter, int);
 using IsBossAttackedHomeFn        = bool        (*)(GameDataHolderAccessor);
 using RepairHomeByCrashedBossFn   = void        (*)(GameDataHolderWriter);
-using IsRepairHomeByCrashedBossFn = bool        (*)(GameDataHolderAccessor);
 using GetWorldIndexFn             = int         (*)();
 using GetCurrentStageNameFn       = const char* (*)(GameDataHolderAccessor);
 
@@ -39,9 +37,7 @@ struct ResolvedFns {
     UnlockWorldFn               unlockWorld               = nullptr;
     IsBossAttackedHomeFn        isBossAttackedHome        = nullptr;
     RepairHomeByCrashedBossFn   repairHomeByCrashedBoss   = nullptr;
-    IsRepairHomeByCrashedBossFn isRepairHomeByCrashedBoss = nullptr;
     GetWorldIndexFn             getWorldIndexClash        = nullptr;
-    GetWorldIndexFn             getWorldIndexSky          = nullptr;
     GetCurrentStageNameFn       getCurrentStageName       = nullptr;
 };
 
@@ -79,13 +75,8 @@ void installOdysseyRescueSymbols() {
     ok &= resolveOne(g_fns.repairHomeByCrashedBoss,
         smoap::sym::kGameDataFunctionRepairHomeByCrashedBoss,
         "repairHomeByCrashedBoss");
-    ok &= resolveOne(g_fns.isRepairHomeByCrashedBoss,
-        smoap::sym::kGameDataFunctionIsRepairHomeByCrashedBoss,
-        "isRepairHomeByCrashedBoss");
     ok &= resolveOne(g_fns.getWorldIndexClash,
         smoap::sym::kGameDataFunctionGetWorldIndexClash, "getWorldIndexClash");
-    ok &= resolveOne(g_fns.getWorldIndexSky,
-        smoap::sym::kGameDataFunctionGetWorldIndexSky, "getWorldIndexSky");
     ok &= resolveOne(g_fns.getCurrentStageName,
         smoap::sym::kGameDataFunctionGetCurrentStageName,
         "getCurrentStageName");
@@ -102,16 +93,65 @@ void runOdysseySoftlockSweep() {
     GameDataHolderAccessor acc{gdh};
     GameDataHolderWriter   wr {gdh};
 
-    // Log throttles — we expect the inner branches to be no-ops on virtually
-    // every call once the player leaves Lost/Ruined; the only interesting
-    // events are state transitions. Logging every 600 calls (= 10s at 60fps
-    // throttle of 1 call/s × 60 frames) gives us a heartbeat without spam.
+    // Log throttles — the inner branches are no-ops on virtually every call
+    // once the player leaves Lost/Ruined; only state transitions are worth
+    // logging. Logging every 600 calls (≈10s at the caller's ~1 call/s
+    // throttle × 60 frames) gives a heartbeat without spam.
     static int s_lost_log = 0;
     static int s_ruined_log = 0;
-    static int s_bossEdge_log = 0;
 
-    // --- Lost Kingdom ---
-    // Wrecked Odyssey state: detect via isCrashHome, force repair + unlock.
+    // --- Ruined Kingdom (MUST run before the Lost block below) ---
+    // On arrival the Lord of Lightning grabs the Odyssey (isBossAttackedHome)
+    // and blocks BOTH forward and backward flight. To let a player who rushed
+    // in with an unswept upstream fly BACK and collect the moons that gate this
+    // kingdom, convert the boss-attacked grounding into the generic "crashed"
+    // grounding: repairHomeByCrashedBoss clears the boss-attack flag, crashHome
+    // moves it to the crashed state, and the Lost block's else-branch below
+    // repairHome()s it to a flyable state within THIS SAME pass. Ordering is
+    // load-bearing — if the pass ended on crashHome the Odyssey would sit
+    // grounded between throttled passes (~1s windows). Mirrors
+    // Kgamer77/SuperMarioOdysseyArchipelago v1.2 updatePlayerInfo(), whose
+    // Ruined block likewise precedes its Lost block.
+    //
+    // We deliberately do NOT unlockWorld(Sky) here. "Sky" is SMO's internal
+    // name for Bowser's Kingdom; force-unlocking it while Mario is still in
+    // Ruined makes SMO's post-Lord-of-Lightning autopilot treat Bowser as
+    // already cleared and warp straight to the next still-locked world (Moon),
+    // skipping Bowser. Forward progression to Bowser is left to vanilla (the
+    // post-boss cinematic unlocks it on actual boss defeat) and is gated in AP
+    // logic by regions.json's {KingdomMoons(Ruined,3)}. Before the boss is
+    // beaten Bowser is not on the map, so the freed Odyssey can only fly
+    // BACKWARD — exactly the softlock escape we want.
+    //
+    // Ruined's home stage reports as either "AttackWorldHomeStage" or
+    // "BossRaidWorldHomeStage" depending on subsystem — match both.
+    if (g_fns.isBossAttackedHome(acc)) {
+        const char* stage = g_fns.getCurrentStageName(acc);
+        const bool is_ruined = stage && (
+            std::strcmp(stage, "BossRaidWorldHomeStage") == 0 ||
+            std::strcmp(stage, "AttackWorldHomeStage") == 0);
+        if (is_ruined) {
+            if ((s_ruined_log++ % 600) == 0) {
+                SMOAP_LOG_INFO(
+                    "OdysseyRescue: Ruined bossAttackedHome (stage=%s) → "
+                    "repairByCrashedBoss + crashHome (backtrack enabled; "
+                    "Bowser unlock left to vanilla)",
+                    stage ? stage : "<null>");
+            }
+            g_fns.repairHomeByCrashedBoss(wr);
+            g_fns.crashHome(wr);
+        } else {
+            // Defensive: boss-attacked home outside Ruined shouldn't happen,
+            // but repair so the player isn't stranded.
+            g_fns.repairHome(wr);
+        }
+    }
+
+    // --- Lost Kingdom (also the Ruined crashed→flyable converter) ---
+    // Wrecked Odyssey state in Lost: force repair + unlock so the player can
+    // backtrack to Wooded. The else-branch ALSO completes the Ruined block
+    // above — when crashHome left the Ruined home in the crashed state, this
+    // repairHome() makes it flyable in the same pass.
     if (g_fns.isCrashHome(acc)) {
         const char* stage = g_fns.getCurrentStageName(acc);
         if (stage && std::strcmp(stage, "ClashWorldHomeStage") == 0) {
@@ -122,71 +162,10 @@ void runOdysseySoftlockSweep() {
             g_fns.repairHome(wr);
             g_fns.unlockWorld(wr, g_fns.getWorldIndexClash());
         } else {
-            // Defensive: crashed home outside Lost shouldn't happen, but if a
-            // mid-cinematic state ever crashes the home elsewhere, repair so
-            // the player isn't stranded.
+            // Crashed home outside Lost: either our own Ruined crashHome (the
+            // intended hand-off) or a stray mid-cinematic crash — repair either
+            // way so the player isn't stranded.
             g_fns.repairHome(wr);
-        }
-    }
-
-    // --- Ruined Kingdom ---
-    // Boss-attacked Odyssey state: detect via isBossAttackedHome, force
-    // repair-by-crashed-boss + crash transition. Kgamer77's commented-out
-    // moon-count branch for Ruined crashed; we ship only the unconditional
-    // repair path that did work for them. Ruined's home stage reports as
-    // either "AttackWorldHomeStage" or "BossRaidWorldHomeStage" depending
-    // on the subsystem — match both so the specific repair path fires
-    // regardless of which one the runtime reports.
-    if (g_fns.isBossAttackedHome(acc)) {
-        const char* stage = g_fns.getCurrentStageName(acc);
-        const bool is_ruined = stage && (
-            std::strcmp(stage, "BossRaidWorldHomeStage") == 0 ||
-            std::strcmp(stage, "AttackWorldHomeStage") == 0);
-        if (is_ruined) {
-            if ((s_ruined_log++ % 600) == 0) {
-                SMOAP_LOG_INFO(
-                    "OdysseyRescue: Ruined bossAttackedHome (stage=%s) → "
-                    "repairByCrashedBoss + crashHome",
-                    stage ? stage : "<null>");
-            }
-            g_fns.repairHomeByCrashedBoss(wr);
-            g_fns.crashHome(wr);
-        } else {
-            g_fns.repairHome(wr);
-        }
-    }
-
-    // --- Bowser unlock edge case (Kgamer77 v1.2 — apworld-gated) ---
-    // Kgamer77's v1.2 unconditionally calls unlockWorld(Sky) whenever
-    // isRepairHomeByCrashedBoss holds — that bypassed our apworld's
-    // KingdomMoons(Ruined, 3) gate in regions.json, letting the player fly
-    // to Bowser after defeating Lord of Lightning with 0 Ruined AP credits.
-    // Gate the force-unlock on the same 3-credit threshold the apworld
-    // logic graph enforces, so vanilla-style "have enough moons" still
-    // gates forward progression while backtracking (handled by the Ruined
-    // block above clearing the boss-attacked state) stays free.
-    if (g_fns.isRepairHomeByCrashedBoss(acc)) {
-        const std::uint8_t ruined_bit = kingdomBitFor("Ruined");
-        int ruined_credits = -1;
-        if (ruined_bit < 17) {
-            ruined_credits = smoap::ap::ApState::instance()
-                .ap_moons_kingdom[ruined_bit].load(std::memory_order_relaxed);
-        }
-        if (ruined_credits >= 3) {
-            if ((s_bossEdge_log++ % 600) == 0) {
-                SMOAP_LOG_INFO(
-                    "OdysseyRescue: isRepairHomeByCrashedBoss + ruined_credits=%d "
-                    "→ unlock Sky (apworld gate met)", ruined_credits);
-            }
-            g_fns.unlockWorld(wr, g_fns.getWorldIndexSky());
-        } else {
-            if ((s_bossEdge_log++ % 600) == 0) {
-                SMOAP_LOG_INFO(
-                    "OdysseyRescue: isRepairHomeByCrashedBoss but "
-                    "ruined_credits=%d < 3 — leaving Bowser locked "
-                    "(apworld KingdomMoons(Ruined, 3) gate not yet met)",
-                    ruined_credits);
-            }
         }
     }
 }

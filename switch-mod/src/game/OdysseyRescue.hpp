@@ -20,18 +20,30 @@
 // via SMO's own GameDataFunction:: entry points. Unlike Kgamer77 we don't
 // gate on local moon counts — the user wants free warp regardless of how
 // many local moons they've collected.
+//
+// Two deliberate departures from Kgamer77:
+//   1. The Ruined block runs BEFORE the Lost block. Ruined's repair path
+//      hands off through crashHome → the Lost else-branch's repairHome, and
+//      that conversion must complete within a single pass or the Odyssey sits
+//      grounded between throttled passes. (Kgamer77 already orders them this
+//      way; an interim revision of ours did not.)
+//   2. We do NOT force-unlock Bowser's Kingdom ("Sky"). Pre-unlocking it makes
+//      SMO's post-Lord-of-Lightning autopilot skip Bowser and warp to Moon.
+//      Forward progression to Bowser stays vanilla and is gated in AP logic by
+//      regions.json's {KingdomMoons(Ruined,3)}. The Ruined repair exists purely
+//      so the player can fly BACKWARD before the boss is beaten.
 
 #pragma once
 
 namespace smoap::game {
 
-// Resolve the 10 GameDataFunction symbols via hk::ro::lookupSymbol and cache
+// Resolve the 8 GameDataFunction symbols via hk::ro::lookupSymbol and cache
 // function pointers in module-local statics. Call from hkMain after sail's
 // nn::ro plumbing is up (i.e., alongside the existing
 // installDepositKingdomLookupSymbol / installPayShineSnapshotSymbol calls).
 //
 // If any symbol fails to resolve, the sweep self-disables (logs once on each
-// call attempt). All 10 names live in switch-mod/src/hooks/HookSymbols.hpp
+// call attempt). All 8 names live in switch-mod/src/hooks/HookSymbols.hpp
 // under the "OdysseyRescue" header; mirrored in
 // switch-mod/syms/game/SmoApSymbols.sym.
 void installOdysseyRescueSymbols();

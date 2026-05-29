@@ -536,7 +536,16 @@ inline constexpr const char* kGameDataFileFindShine =
 // frames) that detects the broken state and force-repairs via SMO's own
 // named GameDataFunction:: entry points.
 //
-// All 10 manglings verified via aarch64-none-elf-g++ -c on forward-decls
+// NOTE: we intentionally do NOT force-unlock Bowser's Kingdom. Kgamer77's
+// reference calls unlockWorld(getWorldIndexSky()) once the Ruined boss-attack
+// clears, but "Sky" is Bowser's Kingdom internally and pre-unlocking it makes
+// SMO's post-boss autopilot skip past Bowser straight to Moon. Forward
+// progression to Bowser is left to vanilla and gated in AP logic by
+// regions.json's {KingdomMoons(Ruined,3)}. Hence getWorldIndexSky /
+// isRepairHomeByCrashedBoss are no longer resolved (removed 2026-05-29);
+// only the 8 manglings the repair/backtrack paths use remain.
+//
+// All 8 manglings verified via aarch64-none-elf-g++ -c on forward-decls
 // matching MonsterDruide1/OdysseyDecomp src/System/GameDataFunction.h, and
 // the unlockWorld / isUnlockedWorld names were already in the project
 // pre-c85a27b cleanup with the same manglings.
@@ -553,12 +562,8 @@ inline constexpr const char* kGameDataFunctionIsBossAttackedHome =
     "_ZN16GameDataFunction18isBossAttackedHomeE22GameDataHolderAccessor";
 inline constexpr const char* kGameDataFunctionRepairHomeByCrashedBoss =
     "_ZN16GameDataFunction23repairHomeByCrashedBossE20GameDataHolderWriter";
-inline constexpr const char* kGameDataFunctionIsRepairHomeByCrashedBoss =
-    "_ZN16GameDataFunction25isRepairHomeByCrashedBossE22GameDataHolderAccessor";
 inline constexpr const char* kGameDataFunctionGetWorldIndexClash =
     "_ZN16GameDataFunction18getWorldIndexClashEv";
-inline constexpr const char* kGameDataFunctionGetWorldIndexSky =
-    "_ZN16GameDataFunction16getWorldIndexSkyEv";
 inline constexpr const char* kGameDataFunctionGetCurrentStageName =
     "_ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor";
 
