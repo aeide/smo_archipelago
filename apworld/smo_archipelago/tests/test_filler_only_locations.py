@@ -1,12 +1,8 @@
 """Filler-only location audit: locations.json `filler_only: true` flags vs the
-authoritative list of locations that must never hold a progression item.
+authoritative list of permanently-missable locations on SMO 1.0.0.
 
-The hook in hooks/World.py::_apply_filler_only_rules forbids progression items
-from landing at any location marked `filler_only: true` in locations.json.
-Two distinct reasons put a location on that list:
-
-(1) Permanently-missable on SMO 1.0.0. Two documented Cascade sequence breaks
-    can leave a Power Moon unobtainable for the rest of the save:
+Why this exists. On SMO 1.0.0 (our target version), two documented sequence
+breaks can leave a Cascade Kingdom Power Moon permanently unobtainable:
 
   - Broode Skip (https://smo.wiki/Broode_Skip) — collect 5 Cascade Power Moons
     via the 2P warp-painting trick, leave Cascade without fighting Madame
@@ -18,25 +14,17 @@ Two distinct reasons put a location on that list:
     cutscene reference becomes invalid, the game crashes on a later attempt,
     and the moon never registers in the save.
 
-  If AP placed a progression item at either location, a player who hit either
-  skip would be permanently soft-locked with no recovery path.
-
-(2) Ruined Kingdom's non-dragon checks. The Ruined Multi-Moon is pinned to its
-    vanilla location ("Ruined: Battle with the Lord of Lightning!") via
-    `place_item` in locations.json, so beating the dragon always repairs the
-    Odyssey and clears the {KingdomMoons(Ruined,3)} gate to Bowser's by itself.
-    The other three Ruined checks (treasure chest + the two roulette-tower
-    moons) are not needed for progression, so they are forced filler — keeping
-    progression off them means nothing the player needs can hide behind the
-    Mini-Rocket-gated roulette tower, and it matches the design intent that the
-    dragon is the only load-bearing Ruined check.
+If AP placed a progression item at either location, a player who hit either
+skip would be permanently soft-locked with no recovery path. The hook in
+hooks/World.py::_apply_filler_only_rules forbids progression items from
+landing at any location marked `filler_only: true` in locations.json.
 
 Every other kingdom — per Mario Wiki Missable_content and the 1.0.0 / 1.0.1
 patch notes — has NO permanently-missable moons in normal play or via
 documented 1.0.0 sequence breaks. The Cookatiel-fight / Big-Pot pair in
 Luncheon shares scenario_no 2->3 (only one collection advances the scenario),
 but both moons stay physically collectible in either order, so neither is
-missable. If a new filler-only case is discovered, add the location to
+missable. If a new missable case is discovered, add the location to
 EXPECTED_FILLER_ONLY here AND tag it in locations.json.
 
 Pure-data: no Archipelago imports, no Switch dependency. Runs in the standard
@@ -52,14 +40,8 @@ APWORLD_ROOT = Path(__file__).resolve().parents[1]
 
 
 EXPECTED_FILLER_ONLY = frozenset({
-    # (1) Permanently-missable on 1.0.0 (see module docstring).
     "Cascade: Our First Power Moon",
     "Cascade: Multi Moon Atop the Falls",
-    # (2) Ruined non-dragon checks — Multi-Moon is pinned to the dragon, so the
-    #     rest are filler by design (see module docstring).
-    "Ruined: In the Ancient Treasure Chest",
-    "Ruined: Roulette Tower: Climbed",
-    "Ruined: Roulette Tower: Stopped",
 })
 
 
