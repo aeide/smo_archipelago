@@ -35,6 +35,11 @@ void installMoonGetHook();
 void installDeathHook();
 void installShineNumGetHook();
 void installShineNumByWorldGetHook();
+// randomize_kingdom_gates: substitute the rolled Odyssey leave-thresholds
+// (ApState::kingdom_gate, shipped via the kingdom_gates wire message) into
+// the game's findUnlockShineNum reads. See hooks/UnlockShineNumHook.cpp.
+void installUnlockShineNumHook();
+void installUnlockShineNumByWorldIdHook();
 void installAddHackDictionaryHook();
 void installAddPayShineHook();
 void installAddPayShineAllHook();
@@ -258,6 +263,10 @@ extern "C" void hkMain() {
     smoap::hooks::installDeathHook();
     smoap::hooks::installShineNumGetHook();
     smoap::hooks::installShineNumByWorldGetHook();
+
+    SMOAP_LOG_INFO("installing kingdom-gate hooks (randomize_kingdom_gates)");
+    smoap::hooks::installUnlockShineNumHook();
+    smoap::hooks::installUnlockShineNumByWorldIdHook();
 
     SMOAP_LOG_INFO("resolving M6-phase-B capture-grant symbols");
     smoap::game::installCaptureGrantSymbols();

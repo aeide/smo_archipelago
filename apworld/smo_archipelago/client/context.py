@@ -921,6 +921,15 @@ class SMOContext(CommonContext):
                     for k, v in raw_order.items()
                 }
                 await self._derive_and_push_talkatoo_pool()
+                # randomize_kingdom_gates: stash the rolled per-kingdom
+                # leave-thresholds (absent/empty -> clear back to vanilla,
+                # so reconnecting to a non-rolled seed can't leak stale
+                # gates from a previous session) and ship to the Switch.
+                raw_gates = slot_data.get("kingdom_gates") or {}
+                self.switch.set_kingdom_gates({
+                    str(k): int(v) for k, v in raw_gates.items()
+                })
+                await self.switch.push_kingdom_gates()
                 # Shop moon label substitution. Depends on the datapackage
                 # being hot (loc_name_to_id) AND scout cache lookups
                 # working — both are true by the time we reach here.

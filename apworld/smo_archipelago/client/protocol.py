@@ -567,6 +567,49 @@ class TalkatooPoolMsg:
 
 
 @dataclass
+class KingdomGateEntry:
+    """One per-kingdom rolled gate inside a KingdomGatesMsg.
+
+    `kingdom` is shipped in on-Switch form (to_dict applies
+    kingdom_ap_to_switch, mirroring OutstandingEntry) so the Switch parser
+    hands it straight to kingdomBitFor() without translation. `gate` is the
+    rolled leave-threshold (>= 1).
+    """
+    kingdom: str = ""
+    gate: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kingdom": kingdom_ap_to_switch(self.kingdom) or self.kingdom,
+            "gate": self.gate,
+        }
+
+
+@dataclass
+class KingdomGatesMsg:
+    """randomize_kingdom_gates — bridge -> Switch rolled leave-thresholds.
+
+    Sent on AP Connected (slot_data["kingdom_gates"]) and re-shipped on
+    every HELLO replay. FULL-OVERWRITE semantics like shop_labels: the
+    Switch clears its entire gate table on receipt, then applies `entries`.
+    Kingdoms absent from the message therefore revert to vanilla (the
+    UnlockShineNum hook passes through to orig when its slot is -1).
+    An empty `entries` list is meaningful — it clears everything back to
+    vanilla (option off / seed without rolled gates).
+
+    Wire-size: <= 17 kingdoms x ~30 bytes — nowhere near the 8 KiB line cap.
+    """
+    t: str = "kingdom_gates"
+    entries: list[KingdomGateEntry] = field(default_factory=list)
+
+    def to_wire(self) -> dict[str, Any]:
+        return {
+            "t": self.t,
+            "entries": [e.to_dict() for e in self.entries],
+        }
+
+
+@dataclass
 class MoonLabelMsg:
     """M6 phase A.5 — Channel A: replace the moon-get cutscene's pane text
     with AP-aware text. Bridge sends this in the same TCP push as the

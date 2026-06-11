@@ -11,7 +11,7 @@ from ..Locations import SMOLocation
 from ..Data import game_table, item_table, location_table, region_table
 
 # These helper methods allow you to determine if an option has been set, or what its value is, for any player in the multiworld
-from ..Helpers import is_location_enabled, get_option_value
+from ..Helpers import is_location_enabled, is_option_enabled, get_option_value
 
 # calling logging.info("message") anywhere below in this file will output the message to both console and log file
 import logging
@@ -116,7 +116,15 @@ def after_create_regions(world: World, multiworld: MultiWorld, player: int):
     if hasattr(multiworld, "clear_location_cache"):
         multiworld.clear_location_cache()
 
-def _demote_surplus_kingdom_moons(item_pool: list) -> None:
+# Pure roll helpers for randomize_kingdom_gates live in kingdom_gates.py
+# (AP-free, directly importable by the test suite — same pattern as
+# talkatoo_order.py).
+from ..kingdom_gates import pool_gate_capacities, roll_kingdom_gates
+
+
+def _demote_surplus_kingdom_moons(item_pool: list,
+                                  gates: dict[str, int] | None = None,
+                                  prefer_demoting_multimoons: bool = False) -> None:
     """Demote surplus per-kingdom progression moons to useful in place.
 
     Items.json marks every kingdom moon as `progression: true`, but each
@@ -124,17 +132,45 @@ def _demote_surplus_kingdom_moons(item_pool: list) -> None:
     reachable. The surplus contributes nothing to reachability but blocks
     adjust_filler_items from trimming the pool when toggles drop the
     location count — it pops fillers/traps/useful but never progression.
+
+    `gates` defaults to the static KINGDOM_MOON_GATES table; the
+    randomize_kingdom_gates option passes the per-seed rolled table instead
+    so the kept-as-progression subset always covers the rolled threshold.
     """
-    for kingdom, threshold in KINGDOM_MOON_GATES.items():
+    if gates is None:
+        gates = KINGDOM_MOON_GATES
+    for kingdom, threshold in gates.items():
+        # Ruined exemption: its pool is tiny (1 Multi-Moon + 4 Power Moons)
+        # and it gates the entire post-game chain (Bowser's -> Moon ->
+        # victory). Demoting any of its moons to useful drops them out of
+        # the reachability-guaranteed progression fill, which makes the
+        # chain tail fragile (observed as remaining_fill FillErrors at
+        # Bowser's/Moon locations). Five always-progression items cost the
+        # trim machinery nothing.
+        if kingdom == "Ruined":
+            continue
         pm_name = f"{kingdom} Kingdom Power Moon"
         mm_name = f"{kingdom} Kingdom Multi-Moon"
         prog_mms = [it for it in item_pool
                     if it.name == mm_name and it.classification == ItemClassification.progression]
         prog_pms = [it for it in item_pool
                     if it.name == pm_name and it.classification == ItemClassification.progression]
-        # MMs first since each is worth 3 effective; minimize kept count.
-        mms_kept = min(len(prog_mms), threshold // 3)
-        pms_kept = min(len(prog_pms), max(0, threshold - 3 * mms_kept))
+        if prefer_demoting_multimoons:
+            # multi_moon_shuffle strategy: Power Moons are the progression
+            # backbone; Multi-Moons are kept progression only when the PMs
+            # alone can't cover the gate. Demoted (useful) MMs are what lets
+            # the MM<->MM-location matching fill freely — in particular the
+            # filler_only "Cascade: Multi Moon Atop the Falls" can only hold
+            # a non-progression Multi-Moon.
+            pms_kept = min(len(prog_pms), threshold)
+            remainder = threshold - pms_kept
+            mms_kept = min(len(prog_mms),
+                           (remainder + 2) // 3) if remainder > 0 else 0
+        else:
+            # Upstream strategy: MMs first since each is worth 3 effective;
+            # minimize kept count.
+            mms_kept = min(len(prog_mms), threshold // 3)
+            pms_kept = min(len(prog_pms), max(0, threshold - 3 * mms_kept))
         for it in prog_mms[mms_kept:]:
             it.classification = ItemClassification.useful
         for it in prog_pms[pms_kept:]:
@@ -190,6 +226,17 @@ def _trim_kingdom_moons_to_options(item_pool: list, multiworld: MultiWorld, play
 
 # The item pool after starting items are processed but before filler is added, in case you want to see the raw item pool at that stage
 def before_create_items_filler(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
+    # multi_moon_shuffle: there are 14 Multi-Moon items but only 13 fillable
+    # multi_moon locations — "Metro: A Traditional Festival!" is the festival
+    # goal's victory location and never holds a real item. Drop ONE Metro
+    # Multi-Moon (Metro has two) so the MM<->MM-location matching is exactly
+    # solvable; adjust_filler_items tops the freed slot back up with filler.
+    # Holds under the festival goal too (7 items <-> 7 MM locations).
+    if is_option_enabled(multiworld, player, "multi_moon_shuffle"):
+        for i, it in enumerate(item_pool):
+            if it.name == "Metro Kingdom Multi-Moon":
+                item_pool.pop(i)
+                break
     # Apply the per-kingdom moon-count caps before adjust_filler_items runs
     # in create_items: the trim leaves locations > items, which then triggers
     # adjust_filler_items' top-up branch (filler / traps). Runs before
@@ -199,10 +246,30 @@ def before_create_items_filler(item_pool: list, world: World, multiworld: MultiW
 
 # The complete item pool prior to being set for generation is provided here, in case you want to make changes to it
 def after_create_items(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
+    # randomize_kingdom_gates: roll the per-kingdom leave thresholds with the
+    # multiworld's seeded RNG. Rolled AFTER the moon-count trim (which ran in
+    # before_create_items_filler) so capacities reflect the final pool, and
+    # BEFORE demotion so the kept-progression subset covers the rolled gate.
+    # Rules.KingdomMoons reads world.rolled_kingdom_gates to override the
+    # static N from regions.json; before_fill_slot_data ships it to the client.
+    gates = None
+    if is_option_enabled(multiworld, player, "randomize_kingdom_gates"):
+        gates = roll_kingdom_gates(
+            world.random, KINGDOM_MOON_GATES,
+            pool_gate_capacities(item_pool, KINGDOM_MOON_GATES))
+        world.rolled_kingdom_gates = gates
+        # Surface the rolls in the generation log — without this, a fill
+        # failure gives no way to correlate against the rolled thresholds.
+        logging.info("randomize_kingdom_gates rolled: %s", gates)
     # See _demote_surplus_kingdom_moons for the why. Runs in every mode so
     # the default goal still benefits from the demotion (which is what the
-    # `all_off` peace-toggle scenarios rely on).
-    _demote_surplus_kingdom_moons(item_pool)
+    # `all_off` peace-toggle scenarios rely on). Under multi_moon_shuffle the
+    # strategy flips to PM-first so demoted Multi-Moons exist to satisfy the
+    # MM<->MM-location matching (see _apply_multi_moon_rules).
+    _demote_surplus_kingdom_moons(
+        item_pool, gates,
+        prefer_demoting_multimoons=is_option_enabled(
+            multiworld, player, "multi_moon_shuffle"))
     return item_pool
 
 # Called before rules for accessing regions and locations are created.
@@ -248,9 +315,41 @@ def _apply_filler_only_rules(world: World, multiworld: MultiWorld, player: int) 
                 add_item_rule(location, lambda item: not item.advancement)
 
 
+def _apply_multi_moon_rules(world: World, multiworld: MultiWorld, player: int) -> None:
+    """multi_moon_shuffle: Multi-Moon items only on `multi_moon: true`
+    locations, and vice versa — a closed 14<->14 matching (the pinned Ruined
+    Multi-Moon is one fixed point of it; the other 13 float).
+
+    Rules are additive with any existing item rule on the location
+    (add_item_rule ANDs): notably "Cascade: Multi Moon Atop the Falls" is
+    also filler_only, so it can only take a DEMOTED (non-progression)
+    Multi-Moon — the demotion in after_create_items always leaves several.
+    Event locations (Victory) have no multi_moon flag and reject MM items
+    like every other non-MM location; the Victory event item passes.
+    """
+    from worlds.generic.Rules import add_item_rule
+
+    def is_mm_item(item) -> bool:
+        return item.name.endswith(" Multi-Moon")
+
+    mm_location_names = {
+        loc["name"] for loc in world.location_table if loc.get("multi_moon")
+    }
+    for region in multiworld.regions:
+        if region.player != player:
+            continue
+        for location in region.locations:
+            if location.name in mm_location_names:
+                add_item_rule(location, is_mm_item)
+            else:
+                add_item_rule(location, lambda item: not is_mm_item(item))
+
+
 # Called after rules for accessing regions and locations are created, in case you want to see or modify that information.
 def after_set_rules(world: World, multiworld: MultiWorld, player: int):
     _apply_filler_only_rules(world, multiworld, player)
+    if is_option_enabled(multiworld, player, "multi_moon_shuffle"):
+        _apply_multi_moon_rules(world, multiworld, player)
 
 # The item name to create is provided before the item is created, in case you want to make changes to it
 def before_create_item(item_name: str, world: World, multiworld: MultiWorld, player: int) -> str:
@@ -270,6 +369,12 @@ def after_generate_basic(world: World, multiworld: MultiWorld, player: int):
 
 # This is called before slot data is set and provides an empty dict ({}), in case you want to modify it before the world fills it
 def before_fill_slot_data(slot_data: dict, world: World, multiworld: MultiWorld, player: int) -> dict:
+    # Rolled kingdom gates (randomize_kingdom_gates option). Consumed by the
+    # client/Switch mod for display + future in-game gate sync; absent when
+    # the option is off (clients treat absence as vanilla gates).
+    rolled = getattr(world, "rolled_kingdom_gates", None)
+    if rolled:
+        slot_data["kingdom_gates"] = dict(rolled)
     return slot_data
 
 # This is called after slot data is set and provides the slot data at the time, in case you want to check and modify it after the world fills it

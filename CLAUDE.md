@@ -81,7 +81,7 @@ Pattern invariants worth knowing even without reading the milestone narratives:
 ## Repository layout
 
 ```
-C:\Users\maxwe\Documents\smo_archipelago\
+E:\smo_archipelago\
   README.md                      Project overview
   CLAUDE.md                      ← this file
   LICENSE                        MIT
@@ -225,12 +225,11 @@ C:\Users\maxwe\Documents\smo_archipelago\
 
 | Path | Purpose |
 |---|---|
-| `C:\Users\maxwe\.switch\prod.keys` | Console keys (hactool default location). Also `dev.keys` |
-| `D:\switch\` | User's microSD — DO NOT write large files here, it's the actual SD card |
+| `C:\Users\devon\prod.keys` | Console keys (passed to the wizard as prod.keys override; hactool default is `C:\Users\devon\.switch\prod.keys`) |
 | `<SMO 1.0.0 NSP>` | User-supplied game dump (copyrighted — never commit, path not stored in repo). Re-extract via `python scripts\extract_shine_map.py --nsp <SMO 1.0.0 NSP>` when needed (see `.claude/skills/smo-symbol-discovery/SKILL.md`). |
-| `C:\Users\maxwe\AppData\Roaming\Ryujinx\` | Ryujinx install + mods + logs |
-| `C:\Users\maxwe\Documents\ryujinx-1.3.3\` | Ryujinx executable |
-| `C:\Users\maxwe\.claude\projects\C--Users-maxwe-Documents-smo-archipelago\memory\` | Auto-memory directory |
+| `E:\Ryubin\` | Ryubing (Ryujinx fork) executable folder |
+| `C:\Users\devon\AppData\Roaming\Ryujinx\mods\contents\0100000000010000\` | Ryubing mods dir for SMO — wizard deploy target |
+| `E:\smo_archipelago\.venv` | Repo-root venv (Archipelago deps + pytest + pytest-asyncio) |
 
 ## Skills
 
@@ -248,7 +247,7 @@ For anything not covered by a skill, [docs/milestones.md](docs/milestones.md) is
 ## Test commands worth knowing (Python)
 
 ```pwsh
-cd C:\Users\maxwe\Documents\smo_archipelago
+cd E:\smo_archipelago
 .\.venv\Scripts\python -m pytest apworld\smo_archipelago\tests\ -v
 ```
 

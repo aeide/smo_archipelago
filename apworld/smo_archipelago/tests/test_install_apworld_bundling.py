@@ -35,7 +35,17 @@ import pytest
 # REPO is the actual checkout root: tests/ → smo_archipelago/ → apworld/ → REPO.
 REPO = Path(__file__).resolve().parents[3]
 INSTALL_SCRIPT = REPO / "scripts" / "install_apworld.py"
-OUTPUT_PATH = REPO / "vendor" / "Archipelago" / "custom_worlds" / "meatballs.apworld"
+# Test installs are redirected via --out so they NEVER rewrite the real
+# installed zip at vendor/Archipelago/custom_worlds/meatballs.apworld.
+# Rewriting it mid-pytest-run invalidates zipimport's process-wide TOC cache
+# for that path — every later `worlds.meatballs` member import (e.g. the
+# test_launch_routing suite) then dies with 'bad local file header' even
+# though the on-disk zip is valid. It also leaves the user's installed zip
+# downgraded to whatever flags the last test used (an unbundled zip breaks
+# the wizard's next /setup build).
+import tempfile
+
+OUTPUT_PATH = Path(tempfile.mkdtemp(prefix="smoap-install-test-")) / "meatballs.apworld"
 HAKKUN_SENTINEL = REPO / "switch-mod" / "sys" / "hakkun" / "include" / "hk"
 ODYSSEY_SENTINEL = REPO / "switch-mod" / "lib" / "OdysseyHeaders" / "CMakeLists.txt"
 
@@ -59,9 +69,13 @@ needs_switch_mod_submodule = pytest.mark.skipif(
 
 
 def _run_install(args: list[str]) -> tuple[int, str, str]:
-    """Invoke install_apworld.py with `args`, returning (rc, stdout, stderr)."""
+    """Invoke install_apworld.py with `args`, returning (rc, stdout, stderr).
+
+    Always appends `--out OUTPUT_PATH` (a tempdir) — see the OUTPUT_PATH
+    comment for why test installs must never write the real installed zip.
+    """
     result = subprocess.run(
-        [sys.executable, str(INSTALL_SCRIPT), *args],
+        [sys.executable, str(INSTALL_SCRIPT), *args, "--out", str(OUTPUT_PATH)],
         capture_output=True,
         text=True,
         cwd=str(REPO),

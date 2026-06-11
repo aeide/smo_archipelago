@@ -33,6 +33,8 @@ from .protocol import (
     ItemMsg,
     KickMsg,
     KillMsg,
+    KingdomGateEntry,
+    KingdomGatesMsg,
     MoonLabelMsg,
     OutstandingMsg,
     PongMsg,
@@ -384,6 +386,14 @@ class SwitchServer:
         # this, the Switch's ApState::talkatoo_pools[bit] would retain
         # stale entries that Talkatoo would keep re-suggesting.
         self._talkatoo_ever_shipped: set[str] = set()
+        # randomize_kingdom_gates rolled thresholds. Set by SMOContext on AP
+        # Connected from slot_data["kingdom_gates"] (AP-form kingdom names ->
+        # rolled gate ints). Full-overwrite on the Switch per push.
+        # `_kingdom_gates_configured` disambiguates "never set" (HELLO before
+        # AP Connected — push is a no-op) from "deliberately vanilla" (empty
+        # dict, push sends a clear so a seed swap can't leak stale gates).
+        self._kingdom_gates_configured: bool = False
+        self._kingdom_gates: dict[str, int] = {}
         # Shop label table. Built by SMOContext after AP Connected (via
         # set_shop_labels) by looking up each "<Kingdom>: Shopping in X"
         # location's scouted item through compose_moon_label_for_location.
@@ -645,6 +655,35 @@ class SwitchServer:
                 moons=list(moons),
             ))
         self._talkatoo_ever_shipped = current_kingdoms
+
+    def set_kingdom_gates(self, gates: dict[str, int]) -> None:
+        """Stash the rolled kingdom leave-thresholds (randomize_kingdom_gates).
+
+        `gates` keys are AP-form kingdom names ("Cascade", "Bowser's");
+        KingdomGateEntry.to_dict applies kingdom_ap_to_switch at send time.
+        Stored verbatim so HELLO replays re-ship across Switch reconnects.
+        Caller should follow up with push_kingdom_gates() so an already-
+        attached Switch picks up the table immediately. Empty dict is
+        meaningful — it clears the Switch back to vanilla gates (option
+        off, or a reconnect to a seed without rolled gates).
+        """
+        self._kingdom_gates = {k: int(v) for k, v in (gates or {}).items()}
+        self._kingdom_gates_configured = True
+
+    async def push_kingdom_gates(self) -> None:
+        """Send the stashed rolled gates to the active Switch.
+
+        Single full-overwrite message (the Switch clears its table, then
+        applies the entries — absent kingdoms revert to vanilla). No-op when
+        set_kingdom_gates has never been called (HELLO before AP Connected —
+        the context handler re-pushes once slot_data lands).
+        """
+        if not getattr(self, "_kingdom_gates_configured", False):
+            return
+        await self._send(KingdomGatesMsg(entries=[
+            KingdomGateEntry(kingdom=k, gate=v)
+            for k, v in self._kingdom_gates.items()
+        ]))
 
     def set_shop_labels(self, entries: list[dict]) -> None:
         """Stash the per-shop label entries for shipping to the Switch.
@@ -1057,6 +1096,12 @@ class SwitchServer:
         # table yet (Switch HELLO before AP Connected — the context
         # handler re-pushes after the datapackage + scout cache land).
         await self.push_shop_labels()
+
+        # randomize_kingdom_gates: ship the rolled per-kingdom leave
+        # thresholds so the UnlockShineNum hook lies consistently with the
+        # AP logic. No-op when SMOContext hasn't delivered slot_data yet
+        # (the Connected handler re-pushes once it lands).
+        await self.push_kingdom_gates()
 
         # Shine palette replay (per-uid). Routed through _send so it
         # targets the active conn — but during the post-HELLO sequence we

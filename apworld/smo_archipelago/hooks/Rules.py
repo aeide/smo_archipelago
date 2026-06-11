@@ -173,6 +173,14 @@ def KingdomMoons(world: World, multiworld: MultiWorld, state: CollectionState, p
         n = int(str(n).strip())
     except (ValueError, TypeError):
         return False
+
+    # randomize_kingdom_gates: hooks/World.py.after_create_items stores the
+    # per-seed rolled table on the world iff the option is enabled; regions
+    # .json's literal N is overridden here so the data file stays vanilla.
+    rolled = getattr(world, "rolled_kingdom_gates", None)
+    if rolled is not None and kingdom in rolled:
+        n = rolled[kingdom]
+
     if n <= 0:
         return True
 

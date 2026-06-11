@@ -409,6 +409,28 @@ struct Outstanding {
     std::size_t entry_count = 0;
 };
 
+// randomize_kingdom_gates — bridge -> Switch rolled per-kingdom Odyssey
+// leave-thresholds. Sent on AP Connected and re-shipped on every HELLO
+// replay. FULL-OVERWRITE semantics (mirrors shop_labels): the receiver
+// resets ALL gate slots to -1 (vanilla) and then applies `entries`, so an
+// empty message reverts everything to vanilla and a seed swap can't leak
+// stale gates. `gate` values are >= 1; the UnlockShineNumHook passes
+// through to orig() for any kingdom whose slot is still -1.
+//
+// Fixed-buffer storage (same M6.1 allocator-safety contract every inbound
+// struct uses). Wire size: <= 17 entries x ~30 bytes — trivially under the
+// 8 KiB line cap.
+struct KingdomGateEntry {
+    char kingdom[kCheckFieldCap] = {};
+    int gate = -1;
+};
+
+struct KingdomGates {
+    static constexpr std::size_t kMaxEntries = 17;
+    KingdomGateEntry entries[kMaxEntries]{};
+    std::size_t entry_count = 0;
+};
+
 // Talkatoo% mode — one TalkatooPool message per kingdom. Bridge sends N
 // messages (one per kingdom) on HELLO replay when slot_data has
 // talkatoo_mode=true, plus a single disable message (enabled=false) when
@@ -517,6 +539,7 @@ struct DecodedMsg {
     Cappy cappy{};
     ShineScouts shine_scouts{};
     Outstanding outstanding{};
+    KingdomGates kingdom_gates{};
     TalkatooPool talkatoo_pool{};
     ShopLabels shop_labels{};
 };

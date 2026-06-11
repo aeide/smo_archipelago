@@ -163,7 +163,8 @@
         "category": [
             "Moon",
             "post-metro"
-        ]
+        ],
+        "progression": true
     },
     {
         "name": "Ruined Kingdom Multi-Moon",

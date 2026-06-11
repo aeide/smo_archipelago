@@ -442,6 +442,21 @@ public:
     // ap_moons_kingdom[bit] is the per-kingdom credit count.
     std::atomic<int> ap_moons_kingdom[17] = {};
 
+    // randomize_kingdom_gates — rolled Odyssey leave-thresholds, indexed by
+    // kingdomBitFor() (0..16, same indexing as ap_moons_kingdom). -1 means
+    // "vanilla" (UnlockShineNumHook passes through to orig). Worker thread
+    // writes on receipt of a kingdom_gates message (full overwrite: reset
+    // all slots to -1, then apply entries); frame-thread hook reads.
+    // Plain per-slot atomics — each gate is independent, no cross-slot
+    // consistency needed (a one-frame mixed view during overwrite is
+    // harmless: every individual value is either old-valid or new-valid).
+    std::atomic<int> kingdom_gate[17];
+
+    void resetKingdomGates() {
+        for (auto& g : kingdom_gate)
+            g.store(-1, std::memory_order_relaxed);
+    }
+
     // M7 Path A — sticky "Mario has actually traveled to this kingdom"
     // bitmask, indexed by kingdomBitForWorldId (0..16). Populated ONLY from
     // stage-transition hooks (TryChangeDemoWorldWarp + TryChangeWorldWarpHole
@@ -678,6 +693,9 @@ private:
         // Fill the palette table with the "no override" sentinel so a shine
         // we've never scouted just runs orig() and keeps its stage default.
         for (auto& slot : shine_palette) slot = kNoPaletteOverride;
+        // kingdom_gate[] defaults to -1 ("vanilla") — array NSDMI can't
+        // express a non-zero fill, so it happens here.
+        resetKingdomGates();
     }
 
     // Drain inbound_kill_pending; called from applyOnFrame.

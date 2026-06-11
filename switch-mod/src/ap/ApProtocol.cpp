@@ -431,6 +431,37 @@ bool parseOutstanding(Reader& r, Outstanding& out) {
     return true;
 }
 
+bool parseKingdomGates(Reader& r, KingdomGates& out) {
+    // Mirrors parseOutstanding: an `entries` array of per-kingdom objects.
+    // Overflow past kMaxEntries (17) is silently dropped — the bridge sends
+    // at most one entry per kingdom; a duplicate would be a bridge bug.
+    out.entry_count = 0;
+    std::string_view key;
+    while (r.nextField(key)) {
+        if (key == "entries") {
+            if (!r.enterArray()) return false;
+            while (r.hasMoreInArray()) {
+                if (!r.enterObject()) return false;
+                KingdomGateEntry entry;
+                std::string_view k2;
+                while (r.nextField(k2)) {
+                    if      (k2 == "kingdom") { if (!readIntoField(r, entry.kingdom)) return false; }
+                    else if (k2 == "gate")    { if (!readIntoInt(r, entry.gate)) return false; }
+                    else                      { return false; }
+                }
+                if (!r.exitObject()) return false;
+                if (out.entry_count < KingdomGates::kMaxEntries) {
+                    out.entries[out.entry_count++] = entry;
+                }
+            }
+            if (!r.exitArray()) return false;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool parseCappy(Reader& r, Cappy& out) {
     std::string_view key;
     while (r.nextField(key)) {
@@ -542,6 +573,7 @@ bool decode(const char* data, std::size_t len, DecodedMsg& out) {
     else if (eqStr(out.t, "cappy"))          ok = parseCappy(r, out.cappy);
     else if (eqStr(out.t, "shine_scouts"))   ok = parseShineScouts(r, out.shine_scouts);
     else if (eqStr(out.t, "outstanding"))    ok = parseOutstanding(r, out.outstanding);
+    else if (eqStr(out.t, "kingdom_gates"))  ok = parseKingdomGates(r, out.kingdom_gates);
     else if (eqStr(out.t, "talkatoo_pool"))  ok = parseTalkatooPool(r, out.talkatoo_pool);
     else if (eqStr(out.t, "shop_labels"))    ok = parseShopLabels(r, out.shop_labels);
     else {

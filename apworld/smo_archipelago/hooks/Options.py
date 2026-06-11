@@ -159,6 +159,29 @@ class TalkatooMode(Toggle):
 # to today. tests/test_kingdom_moon_count.py keeps these values in sync with
 # items.json + KINGDOM_MOON_GATES.
 
+class MultiMoonShuffle(DefaultOnToggle):
+    """Shuffle Multi-Moons only among the vanilla Multi-Moon locations
+    (story boss fights). Single-moon checks then always pay out single moons
+    or other items — picking up a random ledge moon can no longer grant a
+    3-moon payout. One Metro Multi-Moon is dropped from the pool to balance
+    the matching ("A Traditional Festival!" is the festival victory location
+    and can't hold an item). Turn off to let Multi-Moons land anywhere
+    (upstream behavior). The Ruined Kingdom Multi-Moon stays pinned to its
+    vanilla location either way (softlock guard: Ruined permits no
+    backtracking)."""
+    display_name = "Multi-Moon Shuffle"
+
+class RandomizeKingdomGates(Toggle):
+    """Randomize the number of moons needed to leave each kingdom. Each gate
+    moves within [vanilla - 5, vanilla + 5], floored at 1 (Cascade's vanilla 5
+    can land anywhere in 1..10), while the TOTAL across all kingdoms is
+    preserved at the vanilla 124 — an easier early gate is paid for by a
+    pricier one elsewhere. Gates are clamped to what the kingdom's Moon item
+    pool can supply, so combining this with low per-kingdom moon-count caps
+    stays generable (clamped kingdoms reduce the preserved total). The rolled
+    gates ship in slot_data as `kingdom_gates` for the client and Switch mod."""
+    display_name = "Randomize Kingdom Moon Gates"
+
 class CascadeMoonCount(Range):
     """Number of Cascade Kingdom Power Moons (and Multi-Moons) in the AP item pool.
     Reducing this replaces the dropped Cascade moons with filler — the AP checks
@@ -278,6 +301,8 @@ def before_options_defined(options: dict) -> dict:
     options["goal"] = Goal
     options["capturesanity"] = Capturesanity
     options["talkatoo_mode"] = TalkatooMode
+    options["randomize_kingdom_gates"] = RandomizeKingdomGates
+    options["multi_moon_shuffle"] = MultiMoonShuffle
     # Per-kingdom Peace toggles
     options["include_cap_peace_moons"] = IncludeCapPeaceMoons
     options["include_cascade_peace_moons"] = IncludeCascadePeaceMoons

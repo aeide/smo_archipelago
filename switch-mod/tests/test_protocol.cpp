@@ -685,6 +685,54 @@ TEST(decode_outstanding_multiple_kingdoms) {
     EXPECT_EQ_I(m.outstanding.entries[2].count, 0);
 }
 
+// randomize_kingdom_gates — kingdom_gates wire message ----------------------
+
+TEST(decode_kingdom_gates_empty) {
+    // Empty entries is meaningful: full-overwrite semantics mean "revert
+    // everything to vanilla" on the apply side.
+    DecodedMsg m;
+    EXPECT(decodeFrom(R"({"t":"kingdom_gates","entries":[]})", m));
+    EXPECT_EQ_S(m.t, "kingdom_gates");
+    EXPECT_EQ_I(m.kingdom_gates.entry_count, 0u);
+}
+
+TEST(decode_kingdom_gates_multiple_kingdoms) {
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"kingdom_gates","entries":[)"
+        R"({"kingdom":"Cascade","gate":7},)"
+        R"({"kingdom":"Sand","gate":21},)"
+        R"({"kingdom":"Lake","gate":1}]})",
+        m));
+    EXPECT_EQ_I(m.kingdom_gates.entry_count, 3u);
+    EXPECT_EQ_S(m.kingdom_gates.entries[0].kingdom, "Cascade");
+    EXPECT_EQ_I(m.kingdom_gates.entries[0].gate, 7);
+    EXPECT_EQ_S(m.kingdom_gates.entries[1].kingdom, "Sand");
+    EXPECT_EQ_I(m.kingdom_gates.entries[1].gate, 21);
+    EXPECT_EQ_S(m.kingdom_gates.entries[2].kingdom, "Lake");
+    EXPECT_EQ_I(m.kingdom_gates.entries[2].gate, 1);
+}
+
+TEST(decode_kingdom_gates_caps_at_max_entries) {
+    std::string body = R"({"t":"kingdom_gates","entries":[)";
+    constexpr std::size_t kOver = KingdomGates::kMaxEntries + 2;
+    for (std::size_t i = 0; i < kOver; ++i) {
+        if (i > 0) body += ',';
+        body += R"({"kingdom":"Cap","gate":3})";
+    }
+    body += "]}";
+    DecodedMsg m;
+    EXPECT(decodeFrom(body.c_str(), m));
+    EXPECT_EQ_I(m.kingdom_gates.entry_count, KingdomGates::kMaxEntries);
+}
+
+TEST(decode_kingdom_gates_unknown_field_rejected) {
+    DecodedMsg m;
+    EXPECT(!decodeFrom(
+        R"({"t":"kingdom_gates","entries":[{"kingdom":"Cap","gate":3,"bogus":1}]})",
+        m));
+}
+
 TEST(decode_outstanding_caps_at_max_entries) {
     // Build a synthetic message with kMaxEntries + 2 entries; decoder must
     // accept up to the cap and silently drop the rest (no error, partial OK).

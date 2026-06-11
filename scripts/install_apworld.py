@@ -122,6 +122,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
              "moon/capture maps from the user's NSP and sync the capture "
              "bit-index table.",
     )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write the .apworld zip to this path instead of the default "
+             "vendor/Archipelago/custom_worlds/meatballs.apworld. Used by the "
+             "test suite so test installs never clobber the real installed "
+             "zip (rewriting it mid-pytest-run leaves zipimport's process-"
+             "wide TOC cache stale, and every later import from the zip "
+             "fails with 'bad local file header').",
+    )
     return p.parse_args(argv)
 
 
@@ -252,7 +263,9 @@ def main(argv: list[str] | None = None) -> int:
                   file=sys.stderr)
             return 2
 
-    with zipfile.ZipFile(DST, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+    dst = args.out if args.out is not None else DST
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(dst, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for p in apworld_files:
             # Inside the zip, paths must be `meatballs/...` so Archipelago
             # imports it as `worlds.meatballs` (line 196 of
@@ -278,20 +291,23 @@ def main(argv: list[str] | None = None) -> int:
                 Path("meatballs") / "_setup" / "scripts" / p.name,
             )
 
-    for legacy in LEGACY_DSTS:
-        if legacy.exists():
-            legacy.unlink()
-            print(f"     removed stale {legacy.name}")
+    # Legacy-zip cleanup only applies to a real install into custom_worlds;
+    # an --out (test) run must not touch the live Archipelago directory.
+    if args.out is None:
+        for legacy in LEGACY_DSTS:
+            if legacy.exists():
+                legacy.unlink()
+                print(f"     removed stale {legacy.name}")
 
     total_files = len(apworld_files) + len(bundled_mod_files) + len(bundled_script_files)
-    size_kb = DST.stat().st_size / 1024
+    size_kb = dst.stat().st_size / 1024
     extras = []
     if args.bundle_mod:
         extras.append(f"+{len(bundled_mod_files)} mod")
     if args.bundle_scripts:
         extras.append(f"+{len(bundled_script_files)} script")
     extras_str = (" " + " ".join(extras)) if extras else ""
-    print(f"OK: wrote {DST} ({total_files} files{extras_str}, {size_kb:.1f} KiB)")
+    print(f"OK: wrote {dst} ({total_files} files{extras_str}, {size_kb:.1f} KiB)")
     return 0
 
 

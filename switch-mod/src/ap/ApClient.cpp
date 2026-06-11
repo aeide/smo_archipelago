@@ -1000,6 +1000,29 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
                            "(bump kShopLabelMax?)", sl.entry_count);
         }
         SMOAP_LOG_INFO("[shop-labels] applied %zu entries", sl.entry_count);
+    } else if (eq(m.t, "kingdom_gates")) {
+        // randomize_kingdom_gates — full overwrite: reset every slot to -1
+        // (vanilla), then apply the rolled values. Empty entries therefore
+        // reverts the whole table, so reconnecting to a non-rolled seed
+        // can't leak gates from a previous session.
+        auto& st = ApState::instance();
+        st.resetKingdomGates();
+        const auto& kg = m.kingdom_gates;
+        std::size_t applied = 0;
+        for (std::size_t i = 0; i < kg.entry_count; ++i) {
+            const auto& e = kg.entries[i];
+            if (e.kingdom[0] == '\0' || e.gate < 0) continue;
+            const std::uint8_t bit = smoap::game::kingdomBitFor(e.kingdom);
+            if (bit >= 17) {
+                SMOAP_LOG_WARN("[kingdom-gates] unknown kingdom='%s' gate=%d",
+                               e.kingdom, e.gate);
+                continue;
+            }
+            st.kingdom_gate[bit].store(e.gate, std::memory_order_relaxed);
+            ++applied;
+        }
+        SMOAP_LOG_INFO("[kingdom-gates] applied %zu rolled gates "
+                       "(%zu entries)", applied, kg.entry_count);
     } else if (eq(m.t, "talkatoo_pool")) {
         // Talkatoo% mode — bridge ships one message per kingdom on HELLO
         // replay (and again whenever the user toggles mode), or a single

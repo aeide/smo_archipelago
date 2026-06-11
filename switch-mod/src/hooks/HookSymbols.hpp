@@ -157,6 +157,22 @@ inline constexpr const char* kPlayerHitPointDataKill =
 inline constexpr const char* kGameDataFunctionGetCurrentShineNum =
     "_ZN16GameDataFunction18getCurrentShineNumE22GameDataHolderAccessor";
 
+// GameDataFunction::findUnlockShineNum(bool* isGameClear, GameDataHolderAccessor)
+// GameDataFunction::findUnlockShineNumByWorldId(bool*, GameDataHolderAccessor, s32)
+// The game's "moons the Odyssey needs to leave this kingdom" reads — both
+// wrap GameDataHolder::findUnlockShineNum(bool* isCountTotal, s32 worldId).
+// Hooked by UnlockShineNumHook.cpp for randomize_kingdom_gates: substitutes
+// the bridge-shipped rolled threshold (ApState::kingdom_gate[bit], -1 =
+// vanilla pass-through). Provenance: OdysseyHeaders game/System/
+// GameDataFunction.h:306-307; mangling follows the same pattern as the
+// getCurrentShineNum entry above (verify against main.nso dynsym via
+// `llvm-nm --dynamic main.nso | grep findUnlockShineNum` before shipping —
+// a missing symbol aborts module init at sail loadSymbols).
+inline constexpr const char* kGameDataFunctionFindUnlockShineNum =
+    "_ZN16GameDataFunction18findUnlockShineNumEPb22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionFindUnlockShineNumByWorldId =
+    "_ZN16GameDataFunction27findUnlockShineNumByWorldIdEPb22GameDataHolderAccessori";
+
 // GameDataFunction::getGotShineNum(GameDataHolderAccessor, s32 file_id)
 // CAVEAT (M6 phase D audit): the int parameter is `file_id` (save-slot index,
 // default -1), NOT a world id, per OdysseyDecomp src/System/GameDataFunction.h.

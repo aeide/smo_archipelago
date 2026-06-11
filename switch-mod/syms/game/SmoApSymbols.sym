@@ -23,6 +23,16 @@ _ZN16GameDataFunction11addPayShineE20GameDataHolderWriteri
 _ZN16GameDataFunction21addPayShineCurrentAllE20GameDataHolderWriter
 _ZN16GameDataFunction26getCurrentWorldIdNoDevelopE22GameDataHolderAccessor
 _ZN16GameDataFunction14getPayShineNumE22GameDataHolderAccessori
+
+// randomize_kingdom_gates (UnlockShineNumHook): the game's "moons needed to
+// leave this kingdom" reads. Both wrap GameDataHolder::findUnlockShineNum
+// (bool* isCountTotal, s32 worldId); hooked at the GameDataFunction wrapper
+// level (function-boundary symbols, same family as getCurrentShineNum
+// above). Signatures from OdysseyHeaders game/System/GameDataFunction.h
+// lines 306-307. Verify against main.nso dynsym before shipping (see
+// smo-symbol-discovery trap #3 — a missing symbol aborts module init).
+_ZN16GameDataFunction18findUnlockShineNumEPb22GameDataHolderAccessor
+_ZN16GameDataFunction27findUnlockShineNumByWorldIdEPb22GameDataHolderAccessori
 _ZN16GameDataFunction17addHackDictionaryE20GameDataHolderWriterPKc
 _ZN16GameDataFunction23isExistInHackDictionaryE22GameDataHolderAccessorPKc
 _ZN23StageSceneStateGetShine10exeDemoGetEv

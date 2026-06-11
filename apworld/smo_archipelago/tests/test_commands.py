@@ -71,6 +71,8 @@ class _StubSwitch:
         self.push_talkatoo_calls: int = 0
         self.shop_label_calls: list[list[dict]] = []
         self.push_shop_label_calls: int = 0
+        self.kingdom_gates_calls: list[dict[str, int]] = []
+        self.push_kingdom_gates_calls: int = 0
 
     async def send_item(self, item: ItemMsg) -> None:
         self.items.append(item)
@@ -114,6 +116,14 @@ class _StubSwitch:
 
     async def push_shop_labels(self) -> None:
         self.push_shop_label_calls += 1
+
+    def set_kingdom_gates(self, gates: dict[str, int]) -> None:
+        # randomize_kingdom_gates: Connected stashes the rolled per-kingdom
+        # leave-thresholds from slot_data (empty dict = clear to vanilla).
+        self.kingdom_gates_calls.append({k: int(v) for k, v in gates.items()})
+
+    async def push_kingdom_gates(self) -> None:
+        self.push_kingdom_gates_calls += 1
 
     async def drain_pending_snapshot(self) -> None:
         """M6 phase C reconcile path — Connected calls this. The real
@@ -321,6 +331,54 @@ async def test_connected_handler_honors_slot_data_talkatoo_mode_on():
     # itself happened.
     assert kingdoms == {}
     assert sw.push_talkatoo_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_connected_handler_pushes_kingdom_gates_to_switch():
+    """slot_data["kingdom_gates"] (randomize_kingdom_gates option) is
+    forwarded to the Switch verbatim, in AP-form kingdom names (the wire
+    encoder applies the Bowser's->Bowser rename at send time)."""
+    ctx = SMOContext(
+        server_address=None, password=None,
+        state=BridgeState(),
+        datapackage=DataPackage(),
+        shine_map=ShineMap(),
+        capture_map=CaptureMap(),
+    )
+    ctx.auth = "Mario"
+    sw = _StubSwitch()
+    ctx.switch = sw  # type: ignore[assignment]
+
+    await ctx._handle_ap_package("Connected", {
+        "slot_data": {"capturesanity": 0,
+                      "kingdom_gates": {"Cascade": 7, "Bowser's": 12}},
+    })
+
+    assert sw.kingdom_gates_calls == [{"Cascade": 7, "Bowser's": 12}]
+    assert sw.push_kingdom_gates_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_connected_handler_clears_kingdom_gates_when_absent():
+    """A seed WITHOUT rolled gates must actively clear (empty dict), so a
+    reconnect after a rolled-gate session reverts the Switch to vanilla."""
+    ctx = SMOContext(
+        server_address=None, password=None,
+        state=BridgeState(),
+        datapackage=DataPackage(),
+        shine_map=ShineMap(),
+        capture_map=CaptureMap(),
+    )
+    ctx.auth = "Mario"
+    sw = _StubSwitch()
+    ctx.switch = sw  # type: ignore[assignment]
+
+    await ctx._handle_ap_package("Connected", {
+        "slot_data": {"capturesanity": 0},
+    })
+
+    assert sw.kingdom_gates_calls == [{}]
+    assert sw.push_kingdom_gates_calls == 1
 
 
 @pytest.mark.asyncio
