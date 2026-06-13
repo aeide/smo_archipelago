@@ -540,6 +540,23 @@ inline constexpr const char* kGameDataFileFindShine =
     "_ZNK12GameDataFile9findShineEii";
 
 // =============================================================================
+// P1 — Cap Kingdom coin grant.
+// =============================================================================
+//
+// Resolved at first use via hk::ro::lookupSymbol + function pointer (same
+// pattern as addHackDictionary) so a missing dynsym entry produces a one-time
+// WARN + no-op instead of aborting sail loadSymbols at module init.
+//
+// VERIFY: llvm-nm --dynamic main.nso | grep addCoin  (must hit)
+// If the symbol is absent from 1.0.0 dynsym use delta-polling
+// GameDataHolder::mCoinNum via DrawMainHook instead.
+
+// GameDataFunction::addCoin(GameDataHolderWriter writer, s32 count)
+// Source: MonsterDruide1/OdysseyDecomp lib/OdysseyHeaders/game/System/GameDataFunction.h:265
+inline constexpr const char* kGameDataFunctionAddCoin =
+    "_ZN16GameDataFunction7addCoinE20GameDataHolderWriteri";
+
+// =============================================================================
 // OdysseyRescue — Lost Kingdom softlock prevention.
 // =============================================================================
 //

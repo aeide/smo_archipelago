@@ -622,6 +622,19 @@ public:
     // or the symbol failed to resolve — caller skips push.
     bool buildPaySnapshot(PendingPaySnapshot& out) const;
 
+    // P1 — Cap Kingdom coin grant.
+    //
+    // Bridge sends `coin_grant` with a cumulative lifetime total (Cap moons
+    // received x 100 coins each). The worker thread stores it here; the frame
+    // thread reads it in applyCoinGrant() and calls addCoin(delta).
+    //
+    // pending_coin_grant_total: written by worker, read by frame thread.
+    // coins_applied: high-water mark, frame thread only (no atomic needed).
+    // add_coin_fn: lazily resolved via hk::ro::lookupSymbol on first use.
+    std::atomic<int> pending_coin_grant_total{0};
+    int coins_applied = 0;
+    void* add_coin_fn = nullptr;
+
     // Local AP slot name — captured by ApClient when the bridge sends
     // hello_ack. Fixed buffer rather than std::string to avoid subsdk9's
     // libstdc++ allocator NULL-deref (see project_libstdcpp_allocator_broken_in_subsdk9.md).
@@ -680,6 +693,8 @@ public:
     // next frame; items whose grant succeeds emit their deferred Cappy
     // message and pop. Frame-thread only.
     void flushPendingCaptureGrants();
+    // P1: apply pending Cap coin grant to GameDataFunction::addCoin.
+    void applyCoinGrant();
 
     // Hash a Check message body for dedupe purposes.
     static std::uint64_t hashCheck(const Check&);

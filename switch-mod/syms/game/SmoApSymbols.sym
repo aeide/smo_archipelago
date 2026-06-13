@@ -157,3 +157,15 @@ _ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor
 // 0 from this wrapper as a deliberate RESET (clears the planted state +
 // the seed item). See hooks/GrowSeedInstantHook.cpp.
 _ZN2rs17getGrowFlowerTimeEPKN2al9LiveActorEPKNS0_11PlacementIdE
+
+//
+// P1 — Cap Kingdom coin grant.
+// GameDataFunction::addCoin(GameDataHolderWriter writer, s32 count)
+// Source: MonsterDruide1/OdysseyDecomp lib/OdysseyHeaders/game/System/GameDataFunction.h:265
+// Mangling derived from addPayShine's identical parameter shape
+// (GameDataHolderWriter, s32 -> i on aarch64 LP64):
+//   addPayShine -> _ZN16GameDataFunction11addPayShineE20GameDataHolderWriteri
+//   addCoin     -> _ZN16GameDataFunction 7addCoin    E20GameDataHolderWriteri
+// VERIFY before shipping: llvm-nm --dynamic main.nso | grep addCoin
+// If absent from dynsym the module will abort at sail loadSymbols.
+_ZN16GameDataFunction7addCoinE20GameDataHolderWriteri

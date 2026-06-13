@@ -502,6 +502,19 @@ struct ShopLabels {
     bool truncated = false;
 };
 
+// P1 — Cap Kingdom coin grant (Bridge -> Switch).
+//
+// Sent on every HELLO replay and immediately whenever a new Cap Kingdom
+// Power Moon arrives from AP. `total` is the CUMULATIVE LIFETIME balance
+// (Cap Kingdom Power Moon items received x 100 coins each), NOT a delta.
+// The Switch tracks `coins_applied` as a high-water mark and calls
+// addCoin(total - coins_applied) so replaying the same total is a no-op --
+// same idempotent pattern as OutstandingMsg (M6 phase D).
+// Multi-Moons count as 3 in the lifetime balance (300 coins).
+struct CoinGrant {
+    int total = 0;
+};
+
 // (de)serialization --------------------------------------------------------
 // Implementations in ApProtocol.cpp use util/Json.hpp (no STL exceptions).
 //
@@ -542,6 +555,7 @@ struct DecodedMsg {
     KingdomGates kingdom_gates{};
     TalkatooPool talkatoo_pool{};
     ShopLabels shop_labels{};
+    CoinGrant coin_grant{};
 };
 bool decode(const char* data, std::size_t len, DecodedMsg& out);
 

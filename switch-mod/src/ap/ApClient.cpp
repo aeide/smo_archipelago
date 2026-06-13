@@ -1054,6 +1054,17 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
                 }
             }
         }
+    } else if (eq(m.t, "coin_grant")) {
+        // P1 — Cap Kingdom coin grant. Store the cumulative lifetime total;
+        // applyCoinGrant() on the frame thread applies the delta via addCoin.
+        // total=0 is a no-op (bridge never sends it when 0).
+        const int total = m.coin_grant.total;
+        if (total > 0) {
+            ApState::instance().pending_coin_grant_total.store(
+                total, std::memory_order_relaxed);
+            SMOAP_LOG_INFO("[p1-coins] coin_grant total=%d queued for frame thread",
+                           total);
+        }
     } else {
         SMOAP_LOG_WARN("unknown message t=%s", m.t);
     }

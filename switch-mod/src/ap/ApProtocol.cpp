@@ -546,6 +546,15 @@ bool parseMoonLabel(Reader& r, MoonLabel& out) {
     return true;
 }
 
+bool parseCoinGrant(Reader& r, CoinGrant& out) {
+    std::string_view key;
+    while (r.nextField(key)) {
+        if (key == "total") { if (!readIntoInt(r, out.total)) return false; }
+        else                { return false; }
+    }
+    return true;
+}
+
 }  // namespace
 
 bool decode(const char* data, std::size_t len, DecodedMsg& out) {
@@ -576,6 +585,7 @@ bool decode(const char* data, std::size_t len, DecodedMsg& out) {
     else if (eqStr(out.t, "kingdom_gates"))  ok = parseKingdomGates(r, out.kingdom_gates);
     else if (eqStr(out.t, "talkatoo_pool"))  ok = parseTalkatooPool(r, out.talkatoo_pool);
     else if (eqStr(out.t, "shop_labels"))    ok = parseShopLabels(r, out.shop_labels);
+    else if (eqStr(out.t, "coin_grant"))     ok = parseCoinGrant(r, out.coin_grant);
     else {
         // Unknown type: leave out.t set so handleLine can warn. Don't bother
         // draining the rest of the object — caller treats unknown as ignored.

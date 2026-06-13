@@ -204,6 +204,7 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
         smoap::ap::ApState::instance().applyOnFrame();
         smoap::game::reconcileCaptureDictionary();
         smoap::ap::ApState::instance().flushPendingCaptureGrants();
+        smoap::ap::ApState::instance().applyCoinGrant();
         smoap::hooks::tickPendingUncapture();
 
         // Lost Kingdom softlock sweep — see game/OdysseyRescue.hpp. Throttled

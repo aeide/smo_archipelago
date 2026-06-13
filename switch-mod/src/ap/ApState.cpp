@@ -10,6 +10,8 @@
 #include "../hooks/DeathHook.hpp"
 #include "../ui/CappyMessenger.hpp"
 #include "../util/Log.hpp"
+#include "../hooks/HookSymbols.hpp"
+#include <hk/ro/RoUtil.h>
 #include "../util/MsgFontSafe.hpp"
 
 #include <cstring>
@@ -200,6 +202,52 @@ void ApState::flushPendingCaptureGrants() {
                                                       /*suppress=*/false);
         pending_capture_grant.popDiscard();
     }
+}
+
+void ApState::applyCoinGrant() {
+    // P1 — Cap Kingdom coin grant. Called on the frame thread once per draw.
+    // Reads the pending cumulative total set by the worker thread on receipt
+    // of a `coin_grant` wire message. Calls addCoin(delta) where
+    // delta = total - coins_applied (high-water mark), so the same total
+    // arriving twice is a no-op (idempotent pattern matching OutstandingMsg).
+    //
+    // Prerequisite: GameDataHolder must be cached (game_data_holder_cache) and
+    // addCoin must be resolvable. If either is missing we log once and bail;
+    // the next-frame retry will succeed after the scene loads.
+    const int total = pending_coin_grant_total.load(std::memory_order_relaxed);
+    if (total <= coins_applied) return;
+
+    void* holder = game_data_holder_cache.load(std::memory_order_relaxed);
+    if (!holder) {
+        SMOAP_LOG_DEBUG("[p1-coins] applyCoinGrant deferred (no GameDataHolder yet)");
+        return;
+    }
+
+    if (!add_coin_fn) {
+        const auto addr = hk::ro::lookupSymbol(smoap::sym::kGameDataFunctionAddCoin);
+        if (!addr) {
+            // Symbol absent from main.nso dynsym — soft-fail so the mod still
+            // loads. Log once (next frames: total == coins_applied still fails
+            // the guard above so we come back here but addr stays 0 until
+            // fixed). Set coins_applied = total to silence the per-frame retry.
+            SMOAP_LOG_WARN("[p1-coins] addCoin symbol not found in main.nso — "
+                           "Cap coins will not be applied. Verify mangling and "
+                           "rebuild with corrected SmoApSymbols.sym.");
+            coins_applied = total;  // suppress repeated warn
+            return;
+        }
+        add_coin_fn = reinterpret_cast<void*>(addr);
+        SMOAP_LOG_INFO("[p1-coins] addCoin resolved @ 0x%lx", addr);
+    }
+
+    struct GameDataHolderWriter { void* mData; };
+    using AddCoinFn = void (*)(GameDataHolderWriter, int);
+    const auto fn = reinterpret_cast<AddCoinFn>(add_coin_fn);
+    const int delta = total - coins_applied;
+    fn(GameDataHolderWriter{holder}, delta);
+    coins_applied = total;
+    SMOAP_LOG_INFO("[p1-coins] addCoin delta=%d total=%d (coins_applied now %d)",
+                   delta, total, coins_applied);
 }
 
 void ApState::maybeApplyInboundKill() {
