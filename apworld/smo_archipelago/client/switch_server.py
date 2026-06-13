@@ -28,6 +28,7 @@ from .protocol import (
     ApStateMsg,
     CappyMsg,
     CheckedReplayMsg,
+    CoinGrant,
     ErrMsg,
     HelloAckMsg,
     ItemMsg,
@@ -590,6 +591,29 @@ class SwitchServer:
         """
         await self._send(msg)
 
+    async def push_coin_grant(self) -> None:
+        """Send the current Cap Kingdom coin total to the active Switch.
+
+        Derives `total` from BridgeState.compute_cap_coin_total() (lifetime
+        Cap Kingdom Power Moons received x 100 coins each). No-op when total
+        is 0 -- there is nothing to grant and the Switch starts at 0 already.
+
+        Idempotent: the Switch tracks its own `coins_applied` high-water mark
+        and only calls addCoin(total - coins_applied). Sending the same total
+        twice is always a no-op on the Switch side.
+
+        Called from:
+          - _run_post_hello_replay (HELLO replay, after push_kingdom_gates)
+          - context.py after a Cap Kingdom Power Moon item arrives from AP
+        """
+        total = self._state.compute_cap_coin_total()
+        log.info("[p1-coins] push_coin_grant: total=%d active=%s",
+                 total, self._active_device_id)
+        if total == 0:
+            return
+        await self._send(CoinGrant(total=total))
+        log.info("[p1-coins] coin_grant sent: total=%d", total)
+
     def set_talkatoo_pool(self, enabled: bool, kingdoms: dict[str, list[str]]) -> None:
         """Stash the Talkatoo% per-kingdom AP-pool payload.
 
@@ -1103,6 +1127,11 @@ class SwitchServer:
         # (the Connected handler re-pushes once it lands).
         await self.push_kingdom_gates()
 
+        # P1 coin grant: Cap Kingdom Power Moons convert to 100 coins each
+        # instead of spending the Odyssey hatch. Running lifetime total so
+        # the Switch applies only the delta on reconnect (idempotent).
+        await self.push_coin_grant()
+
         # Shine palette replay (per-uid). Routed through _send so it
         # targets the active conn — but during the post-HELLO sequence we
         # may be replaying to a connection that's about to become active.
@@ -1513,7 +1542,4 @@ class SwitchServer:
             try:
                 await self.send_item(item)
             except Exception:
-                log.exception("send_item failed for reconcile loc_id=%s", loc_id)
-            fired.append(loc_id)
-        for loc_id in fired:
-            self._reconcile_cappy_pending.discard(loc_id)
+                log.exc

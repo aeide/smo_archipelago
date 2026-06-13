@@ -593,6 +593,7 @@ class SMOContext(CommonContext):
 
         initial_mirror_len = len(self.state.received_items)
         moon_received_this_batch = False
+        cap_moon_received_this_batch = False
 
         for i, ni in enumerate(items):
             pos = ap_index + i
@@ -609,6 +610,8 @@ class SMOContext(CommonContext):
             )
             if ref.kind == ItemKind.MOON.value and ref.kingdom:
                 moon_received_this_batch = True
+                if ref.kingdom == "Cap":
+                    cap_moon_received_this_batch = True
             if self.switch is not None:
                 await self.switch.send_item(ItemMsg(
                     kind=ref.kind,
@@ -626,6 +629,13 @@ class SMOContext(CommonContext):
             # No-op when no PaySnapshotMsg has arrived yet (Switch on
             # title screen).
             await self._push_outstanding_to_switch()
+        log.info("[p1-coins] cap_moon_received_this_batch=%s switch=%s",
+                 cap_moon_received_this_batch, self.switch is not None)
+        if cap_moon_received_this_batch and self.switch is not None:
+            # P1: Cap Kingdom Power Moons grant coins instead of spending
+            # the Odyssey hatch. Push the updated lifetime total so the
+            # Switch applies the delta (addCoin(total - coins_applied)).
+            await self.switch.push_coin_grant()
 
     def _parse_received_item(self, ni):
         """Decode a NetworkItem (dict or namedtuple) into
@@ -1685,8 +1695,4 @@ def _flatten_print_json(data: list) -> str:
     """Concatenate AP PrintJSON 'data' segments into a plain string."""
     out: list[str] = []
     for seg in data:
-        if isinstance(seg, dict):
-            out.append(seg.get("text", ""))
-        else:
-            out.append(str(seg))
-    return "".join(out)
+    
