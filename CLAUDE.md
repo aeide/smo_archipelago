@@ -68,6 +68,10 @@ Non-obvious constraints that will silently break things if violated:
 
 ## Status
 
+**v2 plan progress (2026-06-13):** P0, P1 (Python side), and P2 complete. P0 (CSV ingestion & data foundation) complete. `scripts/import_moon_requirements.py` parses the community-authored "Moon Ability Requirements" CSV (775 moons, 3-rows-per-moon blocks, Methods 1–5) into `apworld/smo_archipelago/data/moon_requirements.json` (keyed by CSV name; `location_name` field gives matched locations.json canonical name; 435/435 current locations matched, 340 unmatched are post-game/Mushroom/Dark Side content not yet in the apworld) and `apworld/smo_archipelago/data/subareas.json` (131 subareas with kingdom assignments and location-name lists). Vocabulary normalised to enums (`none/single/double/cap_return/backflip/gpj/triple/long_jump`, cap-throw set, other-required set). One name-override entry: `"Inverted Pyramid: Upper Interior: Hidden Room in the Inverted Pyramid"` → `"Sand: Hidden Room in the Inverted Pyramid"`. 13 new tests in `test_moon_requirements.py` all pass. The CSV file (`Public SMO Randomizer Moon Ability Requirements - Moons.csv`) lives in the repo root and is Devon's authored work (safe to commit). The `.pytest_cache` directory in `tests/` is a stale Windows artifact — use `--ignore=<path>/.pytest_cache -p no:cacheprovider` when running tests from Linux. P2 (remove capturesanity checks + starting captures) complete: `before_is_category_enabled` returns False for "Capture" category (hooks/Helpers.py); all 24 capturesanity branches removed from Rules.py; Frog + Chain Chomp added to items.json (now 44 captures); `FIXED_STARTER_CAPTURES + _precollect_starting_captures()` in hooks/World.py precollects Frog, Chain Chomp, + 1 random capture via `push_precollected` each seed; `Capturesanity` option deprecated-in-place (docstring + display_name changed); 13 new tests in `test_starting_captures.py` all pass. Switch-mod `CaptureStartHook.cpp` deferred (needs smo-build session). Run `scripts/sync_capture_table.py` before next switch-mod build (Frog + Chain Chomp are new). P1 Python side complete (2026-06-13): `CoinGrant` dataclass in `client/protocol.py` (`t=coin_grant`, `total` = lifetime Cap moons × 100); `compute_cap_coin_total()` in `client/state.py` (reads `moons_received_by_kingdom["Cap"] * 100`, thread-safe, clamped); `push_coin_grant()` in `client/switch_server.py` (no-op when total=0, called from `_run_post_hello_replay` after `push_kingdom_gates` + from `_process_received_items` when `cap_moon_received_this_batch`); documented in `docs/wire-protocol.md`; 25 new tests in `test_coin_grant.py` all pass. P1 Switch side complete (2026-06-13): `CoinGrant` struct + `parseCoinGrant()` in `ApProtocol.hpp/cpp`; `_ZN16GameDataFunction7addCoinE20GameDataHolderWriteri` added to `SmoApSymbols.sym` + `kGameDataFunctionAddCoin` constant in `HookSymbols.hpp`; `ApState::pending_coin_grant_total` (atomic), `coins_applied` high-water mark, `add_coin_fn` lazy pointer, and `applyCoinGrant()` in `ApState.hpp/cpp` (lazy `hk::ro::lookupSymbol` pattern matching `addHackDictionary`); `coin_grant` dispatch in `ApClient.cpp`; `applyCoinGrant()` wired into per-frame loop in `main.cpp`. Symbol verified present in SMO 1.0.0 dynsym via LZ4-decompress + raw string search (`scripts/check_nso_symbols.py`). Committed as `be993cc`. Next: build switch-mod + Ryujinx test (`smo-build` skill), then P3+.
+
+**Devon-fork features (2026-06-11/12):** `randomize_kingdom_gates` (sum-preserving ±5 rolls, total pinned to vanilla 124; rolled gates flow slot_data → `kingdom_gates` wire msg → `ApState::kingdom_gate[]` → `UnlockShineNumHook` so the in-game Odyssey cost matches logic), `multi_moon_shuffle` (default on; 13 MM items ↔ 13 `multi_moon`-tagged boss locations, PM-first demotion variant, one Metro MM dropped — "A Traditional Festival!" is the festival victory location and holds no item), Ruined moons promoted to progression + demotion-exempt (gated-kingdom moons MUST be progression or the reachability sweep can't satisfy their gate — guard test in test_randomize_kingdom_gates.py), and **peace-gated Moon Rocks** (`MoonRockHook`: openable after per-kingdom story completion instead of game clear; NEVER force while the moon-rock scenario is active — the vanilla rock-open is a scenario-jump stage reload whose re-init must take the wreckage/commit branch; mid-story forcing without the peace gate skips kingdom bosses and strands story-MM checks). Cap-peace-from-start experiment concluded OFF — scenario numbers are recomputed from quest state at every load; see MoonRockHook.cpp header. Moon-rock moons are NOT yet AP locations (phase 2: source names from the upstream manual-apworld lineage, never the romfs dump). `install_apworld.py --out` exists so the bundling tests never clobber the real installed zip (zipimport TOC staleness presented as 'bad local file header').
+
 Shipped as v0.1.x-alpha (see `git tag`). M0–M7 complete, real-Switch deploy validated end-to-end, PopTracker pack ships alongside the apworld zip on every tagged release. M8 polish: **on-Switch ImGui debug overlay shipped 2026-05-22** (`switch-mod/src/ui/ApDebugConsole.cpp`) — via upstream LibHakkun's `Nvn`/`ImGui`/`DebugRenderer` addons; renders the discovery report + last ~200 log lines when SMOClient is unreachable for >5s, hides on TCP-up. Cappy speech-bubble notifications still ship alongside (connect/disconnect/save-load status). Per-classification moon recolor via `Shine::init` post-trampoline, M7 demo-end retime. Talkatoo% mode shipped 2026-05-21 — substitutes Talkatoo's speech bubble with AP-pool moon names, blocks collection of non-named moons, exempts 22 audited scenario-advancing moons. Talkatoo follow-up gaps: [docs/handoff-talkatoo.md](docs/handoff-talkatoo.md). Per-milestone narratives (provenance for every wire-protocol decision, failed-iteration history): [docs/milestones.md](docs/milestones.md). Original implementation plan: `C:\Users\maxwe\.claude\plans\after-much-work-i-tender-thompson.md`.
 
 Pattern invariants worth knowing even without reading the milestone narratives:
@@ -192,63 +196,4 @@ E:\smo_archipelago\
     build_poptracker_pack.py     PopTracker pack generator
     build_switchmod.py           One-shot Switch-mod build wrapper (LLVM 19 + sail +
                                  LibHakkun Windows-port patches; see smo-build skill)
-    patch_hakkun.py              Applies the 5 remaining Windows-port patches to the
-                                 pinned LibHakkun submodule (idempotent)
-    setup_imgui_addons.py        Copies LibHakkun's Nvn/ImGui/DebugRenderer addon sources
-                                 into the build tree alongside Dear ImGui
-    setup_sail_winpath.py        One-time sail host-binary compile via msys2 mingw64
-    fix_hakkun_symlinks.py       Stub for converting OdysseyHeaders symlinks (no-op currently)
-    .extract-venv/               Auto-created Python 3.12 venv (gitignored)
-  docs/
-    architecture.md              Two-tier diagram, threading, responsibilities
-    wire-protocol.md             Wire-format reference
-    build-windows.md             Toolchain install
-    extract-moon-data.md         How to generate shine_map.json + capture_map.json
-    install-switch.md            SD card layout, troubleshooting
-    first-time-setup.md          End-user setup walkthrough (paired with the wizard)
-    release-process.md           Tag → CI release workflow notes
-    changing-servers.md          End-user server-switch flow
-    milestones.md                Deep per-milestone narrative — provenance for every
-                                 decision that lives load-bearing in current code.
-    TALKATOO.md                  Talkatoo% mode design notes.
-    handoff-talkatoo.md          Talkatoo% Gap #2 non-goal record.
-  .github/workflows/             release.yml (tag-triggered), test.yml (CI), dependabot.yaml
-  vendor/                        For submodules (Archipelago goes here)
-  third_party/                   Local clones — gitignored (may be empty in fresh checkouts)
-  poptracker/
-    pack-src/                    Hand-authored: manifest, init.lua, logic.lua (Lua ports of
-                                 Rules.py), autotracking.lua, layouts.
-    build/                       Generated; gitignored.
-```
-
-## External paths (outside the repo)
-
-| Path | Purpose |
-|---|---|
-| `C:\Users\devon\prod.keys` | Console keys (passed to the wizard as prod.keys override; hactool default is `C:\Users\devon\.switch\prod.keys`) |
-| `<SMO 1.0.0 NSP>` | User-supplied game dump (copyrighted — never commit, path not stored in repo). Re-extract via `python scripts\extract_shine_map.py --nsp <SMO 1.0.0 NSP>` when needed (see `.claude/skills/smo-symbol-discovery/SKILL.md`). |
-| `E:\Ryubin\` | Ryubing (Ryujinx fork) executable folder |
-| `C:\Users\devon\AppData\Roaming\Ryujinx\mods\contents\0100000000010000\` | Ryubing mods dir for SMO — wizard deploy target |
-| `E:\smo_archipelago\.venv` | Repo-root venv (Archipelago deps + pytest + pytest-asyncio) |
-
-## Skills
-
-Project skills live in `.claude/skills/`. They auto-load when triggered by their description keywords:
-
-- **smo-build** — build switch-mod via scripts/build_switchmod.py (LLVM 19 + sail + LibHakkun patches), deploy to Ryujinx/Switch, capture_table sync, worktree gotchas, fresh-worktree setup, the SMO-already-inits-socket rule.
-- **smo-loopback-test** — AP loopback E2E without booting SMO (3-pane setup + scripted pytest path).
-- **smo-host-tests** — 5 C++ host tests (test_json, test_protocol, test_cappy_messenger, test_msg_font_safe, test_shine_lookup) via msys2 mingw64 g++ + the ApState::nowMs stub pattern.
-- **smo-symbol-discovery** — add new hook targets; OdysseyDecomp forward-decls + aarch64 mangling + sail .sym + llvm-nm `fakesymbols.so` verification.
-- **smo-extract-data** — regenerate `shine_map.json` + `capture_map.json` from a 1.0.0 NSP.
-- **smo-poptracker** — build / iterate / debug the PopTracker pack.
-
-For anything not covered by a skill, [docs/milestones.md](docs/milestones.md) is the deep-dive: it captures pattern decisions (Channel-A scout pre-warm, the three-layer hook pattern from M7 Path A, the worker-thread allocator hardening from M6.1) that successor work tends to need.
-
-## Test commands worth knowing (Python)
-
-```pwsh
-cd E:\smo_archipelago
-.\.venv\Scripts\python -m pytest apworld\smo_archipelago\tests\ -v
-```
-
-The repo-root `.venv` lives in the main checkout (not in worktrees) — Archipelago's deps are a superset of what SMOClient needs. For switch-mod C++ host tests, use the `smo-host-tests` skill. For the cross-build, use the `smo-build` skill.
+    patch_hakkun.py              Applies the 5 remaining Windows-port patches to 
