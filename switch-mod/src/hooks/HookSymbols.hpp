@@ -120,6 +120,26 @@ inline constexpr const char* kPlayerHackKeeperIsActiveHackStartDemo =
 inline constexpr const char* kGameDataFileSetMainScenarioNo =
     "_ZN12GameDataFile17setMainScenarioNoEi";
 
+// --- Scenario queries (consumed by MoonRockHook peace-gate) ---
+// Itanium ABI manglings constructed from the call signatures in
+// MoonRockHook.cpp. getMoonRockScenarioNo is verified against the vendored
+// OdysseyHeaders decl (WorldList.h:40 `s32 getMoonRockScenarioNo(s32) const`).
+// The three GameDataFile getters are NOT in the vendored headers, so their
+// names/const-ness are best-effort from the standard OdysseyDecomp convention
+// (all const member getters taking a world-id s32). MoonRockHook's resolve()
+// degrades to vanilla (with a `[moon-rock] ... lookup FAILED` log line) if any
+// of these doesn't resolve at runtime — so a wrong mangling is non-fatal and
+// self-diagnosing. If one fails, confirm the real name via scripts/
+// check_nso_symbols.py against SMO 1.0.0 main.nso and fix here.
+inline constexpr const char* kGameDataFileIsClearWorldMainScenario =
+    "_ZNK12GameDataFile24isClearWorldMainScenarioEi";
+inline constexpr const char* kGameDataFileGetScenarioNo =
+    "_ZNK12GameDataFile13getScenarioNoEi";
+inline constexpr const char* kGameDataFileGetMainScenarioNo =
+    "_ZNK12GameDataFile17getMainScenarioNoEi";
+inline constexpr const char* kWorldListGetMoonRockScenarioNo =
+    "_ZNK9WorldList21getMoonRockScenarioNoEi";
+
 // --- Save data load ---
 // GameDataFile::initializeData()
 // Source: MonsterDruide1/OdysseyDecomp src/System/GameDataFile.h:202

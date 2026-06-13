@@ -610,8 +610,27 @@ class KingdomGatesMsg:
 
 
 @dataclass
+class CoinGrant:
+    """Bridge -> Switch: grant coins for Cap Kingdom Power Moons received.
+
+    `total` is the cumulative lifetime balance (number of Cap Kingdom
+    Power Moon items received x 100 coins each), NOT a per-message delta.
+    The Switch tracks its own `coins_applied` high-water mark and calls
+    `GameDataFunction::addCoin(total - coins_applied)` on each receipt, so
+    replaying the same `total` twice is always a no-op -- same idempotent
+    pattern as OutstandingMsg (M6 phase D).
+
+    Sent on every HELLO replay (_run_post_hello_replay -> push_coin_grant)
+    and immediately whenever `compute_cap_coin_total` rises (i.e. a new Cap
+    Kingdom Power Moon item arrives from AP).
+    """
+    t: str = "coin_grant"
+    total: int = 0
+
+
+@dataclass
 class MoonLabelMsg:
-    """M6 phase A.5 — Channel A: replace the moon-get cutscene's pane text
+    """M6 phase A.5 - Channel A: replace the moon-get cutscene's pane text
     with AP-aware text. Bridge sends this in the same TCP push as the
     handshake reply to a CheckMsg so it arrives before the cutscene starts.
 

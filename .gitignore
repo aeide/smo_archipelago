@@ -49,6 +49,9 @@ apworld/smo_archipelago/client/data/capture_map_review.json
 apworld/smo_archipelago/tests/seeds/out/
 .romfs-cache/
 scripts/.extract-venv/
+# Moon-rock audit report: contains romfs-derived strings (IsMoonRock-flagged
+# shine names). Regenerate via scripts/audit_moon_rock_locations.py.
+scripts/.moon_rock_audit.json
 
 # PopTracker pack build artifacts (generated from apworld data; re-run
 # scripts/build_poptracker_pack.py to regenerate).

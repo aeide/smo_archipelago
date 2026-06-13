@@ -212,6 +212,22 @@
         "filler": true
     },
     {
+        "name": "Frog",
+        "category": [
+            "Capture"
+        ],
+        "count": 1,
+        "progression": false
+    },
+    {
+        "name": "Chain Chomp",
+        "category": [
+            "Capture"
+        ],
+        "count": 1,
+        "progression": false
+    },
+    {
         "name": "Paragoomba",
         "category": [
             "Capture"

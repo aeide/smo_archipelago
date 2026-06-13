@@ -113,10 +113,8 @@ class IncludePrecisionCaptureMoons(DefaultOnToggle):
     display_name = "Include Precision Capture Moons"
 
 class Capturesanity(Toggle):
-    """Shuffle all captures into the pool.
-    Each 'Capture: X' location only grants its check once you've received the matching X capture
-    item — capturing an enemy you haven't unlocked yanks Mario back out and grants no credit."""
-    display_name = "Capturesanity"
+    """Deprecated in v2 — has no effect. Kept for YAML back-compatibility."""
+    display_name = "Capturesanity (Deprecated)"
 
 class Goal(Choice):
     """Choose your victory condition.

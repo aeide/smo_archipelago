@@ -1542,4 +1542,7 @@ class SwitchServer:
             try:
                 await self.send_item(item)
             except Exception:
-                log.exc
+                log.exception("send_item failed for reconcile loc_id=%s", loc_id)
+            fired.append(loc_id)
+        for loc_id in fired:
+            self._reconcile_cappy_pending.discard(loc_id)

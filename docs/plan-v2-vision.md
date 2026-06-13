@@ -322,4 +322,80 @@ the M7 three-layer lesson (catch upstream of the visible state change).
 ### P7 — Entrance shuffle  *(Opus 4.8; the headline feature, last because it consumes P0+P6)*
 
 - apworld: entrance pool = all subarea entrances minus Devon's storyline exclusion list
-  (`data/entrance_exclusions.json` — Devon authors; Top-Hat Tower, Invert
+  (`data/entrance_exclusions.json` — Devon authors; Top-Hat Tower, Inverted Pyramid, etc.).
+  Because every exit returns to the entry door, shuffle is a simple bijection
+  door → subarea (no two-way pairing problem): subarea moons are reachable iff the door's
+  kingdom/region is reachable AND the subarea's own requirements hold. Regions: door-regions
+  from P0's `subareas.json`; reachability sweep like the kingdom-gates guard.
+- slot_data → new `entrance_map` wire msg → `ApState` fixed-size table (respect the committed
+  fixed-buffer wire patterns).
+- Switch: hook the stage-change path (`GameDataHolder::changeNextStage` /
+  `ChangeStageInfo` consumption — symbol discovery needed): on subarea entry, remap
+  (stage, entrance-id) per table and record the origin; on subarea exit, override the return
+  destination with the recorded origin. Persist origin across save-load within a subarea
+  (SaveLoadHook surface) so save+quit inside a subarea doesn't strand Mario.
+- Risks to investigate first (a short Opus spike before committing to design):
+  cross-kingdom subarea loads (different kingdom's stage from another kingdom — likely fine,
+  subareas are separate stages, but verify scenario/time-of-day state), multi-moon story
+  subareas (excluded anyway), checkpoint-flag side effects, Talkatoo%/moon-rock interactions.
+- This phase re-uses the M7 "lie to the game" three-layer pattern for any UI that previews
+  destinations.
+
+---
+
+## Cross-cutting rules for every phase
+
+- Wire changes are additive; never reshape committed fixed-buffer contracts.
+- New moons/items: edit items.json/locations.json by hand, never bulk-import from romfs.
+- After items.json/locations.json edits: re-run `sync_capture_table.py` / `sync_shine_table.py`.
+- Re-read CLAUDE.md "Load-bearing invariants" at session start; update CLAUDE.md Status and
+  docs/milestones.md at session end. Bundle via `install_apworld.py --out` in tests.
+- Model guidance: Sonnet 4.6 for apworld/Python/data/tests; Opus 4.8 for switch-mod symbol
+  discovery, new hooks, and the P7 spike. Always start switch-mod sessions with the
+  **smo-build** and **smo-symbol-discovery** skills.
+
+---
+
+## Manual-start guide (Devon, easiest first)
+
+Where to look if you want to hand-implement pieces while out of Claude usage. Ordered by
+difficulty; each item is self-contained.
+
+**1. Entrance exclusion list (no code).** Write `data/entrance_exclusions.json` — every
+storyline entrance to keep vanilla (Top-Hat Tower, Inverted Pyramid, Ice Cave, Ruined Dragon
+arena, …). P7 consumes it as-is; having it ready unblocks design questions early.
+
+**2. Starting captures.** `apworld/smo_archipelago/hooks/World.py` — look for where
+precollected/start-inventory items are pushed (manual-AP worlds use
+`multiworld.push_precollected(world.create_item(name))` in `after_create_items` /
+`before_generate_basic` hooks). Add Frog + Chain Chomp + one `world.random.choice` from the
+capture list. While testing, check whether the first Spark Pylon out of Cap Kingdom is a
+cutscene trigger or a real capture — if real, Spark Pylon becomes a 4th fixed starter.
+The Switch side already unlocks captures it receives
+(`AddHackDictionaryHook.cpp` / `game/CaptureGate.cpp`), including the map-menu list.
+
+**3. CSV importer.** `scripts/import_moon_requirements.py` from scratch: 3 rows per moon,
+columns E–I are Methods 1–5, row pattern is jump-height / cap-throws / other-required, col B
+name, col C captures-that-work. Pure Python, testable with pytest next to the other suites.
+Even just the name-reconciliation report against `data/locations.json` is valuable.
+
+**4. Capturesanity removal.** `hooks/Options.py` (`Capturesanity` class),
+`hooks/Locations.py` + `data/locations.json`/`categories.json` (where capture locations are
+generated), `switch-mod/src/hooks/CaptureStartHook.cpp` (stops sending checks). Grep Rules.py
+for `capturesanity` to find the rule branches that flip.
+
+**5. Per-kingdom moon colors.** Client: `client/scout_cache.py` + `client/display.py`
+(classification → palette index) and `client/maps.py` (kingdom lookup). Switch:
+`switch-mod/src/hooks/ShineAppearanceHook.cpp` — add kingdom rows to `kPaletteColors3D/Dot`.
+Wire: the palette index already travels in `ShineScoutsMsg` (`client/protocol.py`,
+`docs/wire-protocol.md`).
+
+**6. Cap moons → coins.** Client: item-receive path in `client/context.py` /
+`client/switch_server.py` (follow how capture items become wire msgs); add a count-based
+coin message. Switch: needs a new symbol (coin add) — read
+`.claude/skills/smo-symbol-discovery/SKILL.md` first; this is the first item that requires
+the full symbol workflow, which is why it's last on the manual list despite being "small".
+
+**Don't start manually:** ability gating (P4) and entrance shuffle (P7) — both are
+symbol-discovery + trampoline-heavy and depend on decisions earlier phases settle. Read
+`docs/milestones.md` M7 Path A and Phase 4 sections before touching either.

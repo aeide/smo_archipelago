@@ -29,6 +29,13 @@ SHARED_PEACE_CATEGORY = "Snow/Seaside Peace"
 def before_is_category_enabled(multiworld: MultiWorld, player: int, category_name: str) -> Optional[bool]:
     from ..Helpers import is_option_enabled
 
+    # Capturesanity locations are retired in v2. "Capture: X" locations are
+    # never generated regardless of the capturesanity option value. Capture
+    # *items* remain and are handled via starting-inventory and (in P3)
+    # Mushroom Kingdom moon funding.
+    if category_name == "Capture":
+        return False
+
     if category_name == SHARED_PEACE_CATEGORY:
         # "Secret Path to Lake Lamode!" and "Secret Path to the Steam Gardens!"
         # are reachable from either Snow or Seaside after that kingdom is at

@@ -19,8 +19,6 @@ def BulletBillMaze(world: World, multiworld: MultiWorld, state: CollectionState,
 
 def SandPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do sand peace"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Bullet Bill| and |Knucklotec's Fist|"
     return True
 
 def LakePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -45,8 +43,6 @@ def MazeSkip(world: World, multiworld: MultiWorld, state: CollectionState, playe
 
 def WoodedPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get world peace in wooded kingdom"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Uproot|"
     return True
 
 def ShermOrLongJump(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -55,21 +51,14 @@ def ShermOrLongJump(world: World, multiworld: MultiWorld, state: CollectionState
 
 def PostNightMetro(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get post-night metro moons"""
-    capturesanity = is_option_enabled(multiworld, player, "capturesanity")
-    if capturesanity:
-        return "|Sherm|"
     return True
 
 def PostTrumpeter(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get the trumpeter in metro kingdom"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Sherm|"
     return True
 
 def MetroPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get metro peace"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Sherm| and |Manhole|"
     return True
 
 def FromTheTopOfTheTower(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -86,20 +75,14 @@ def TyfooOrScaleATallWall(world: World, multiworld: MultiWorld, state: Collectio
 
 def SnowPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get snow peace"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Ty-foo| and |Shiverian Racer|"
     return True
 
 def SeasidePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do seaside Peace"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Gushen|"
     return True
 
 def SnowSeasidePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do snow or seaside Peace"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "(|Ty-foo| and |Shiverian Racer|) or |Gushen|"
     return True
 
 def PostEarlyLuncheon(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -112,8 +95,6 @@ def ClimbToTheMeat(world: World, multiworld: MultiWorld, state: CollectionState,
 
 def LuncheonPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get snow peace"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Hammer Bro| and |Meat| and |Lava Bubble|"
     return True
 
 def JumpHigh(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -138,8 +119,6 @@ def ParabonesSkip(world: World, multiworld: MultiWorld, state: CollectionState, 
 
 def BowserPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get bowser peace"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Pokio|"
     return True
 
 def KingdomMoons(world: World, multiworld: MultiWorld, state: CollectionState, player: int, kingdom: str, n) -> str:
@@ -212,8 +191,6 @@ def KingdomMoons(world: World, multiworld: MultiWorld, state: CollectionState, p
 
 def RegionalCap(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in cap"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Paragoomba|"
     return True
 
 def RegionalCascade(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
@@ -222,80 +199,54 @@ def RegionalCascade(world: World, multiworld: MultiWorld, state: CollectionState
 
 def RegionalSand(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in sand"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Bullet Bill| and |Knucklotec's Fist| and |Mini Rocket| and |Goomba|"
     return True
 
 def RegionalLake(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in lake"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Zipper|"
     return True
 
 def RegionalWooded(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in wooded"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Sherm| and |Uproot| and |Boulder|"
     return True
 
 def RegionalLost(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in lost"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Wall Jump|"
     return True
 
 def RegionalMetro(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in metro"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Manhole| and |Mini Rocket|"
     return True
 
 def RegionalSnow(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in snow"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Ty-foo| and |Goomba|"
     return True
 
 def RegionalSeaside(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in snow"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Gushen|"
     return True
 
 def RegionalLuncheon(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in luncheon"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Hammer Bro| and |Volbonan| and |Meat| and |Lava Bubble|"
     return True
 
 def RegionalBowser(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in bowser"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Pokio|"
     return True
 
 def RegionalMoon(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get regional coins in bowser"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Parabones| and |Tropical Wiggler| and |Banzai Bill| and |Sherm|"
     return True
 
 def Meat(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get meat moon"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Hammer Bro| and |Meat|"
     return True
 
 def UprootOrFireBro(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """uproot or fire bro"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Uproot| or |Fire Bro|"
     return True
 
 def Lighthouse(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get to the lighthouse"""
-    if is_option_enabled(multiworld, player, "capturesanity"):
-        return "|Gushen| or |Cheep Cheep|"
     return True
 
 def ItemValue(world: World, multiworld: MultiWorld, state: CollectionState, player: int, args: str):

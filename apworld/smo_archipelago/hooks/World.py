@@ -177,8 +177,80 @@ def _demote_surplus_kingdom_moons(item_pool: list,
             it.classification = ItemClassification.useful
 
 
+# Fixed starters: always precollected, never placed at randomised locations.
+# Frog and Chain Chomp are the two mandatory starting captures (required for
+# Cap Kingdom and early Cascade respectively). A third capture is chosen at
+# random from the remaining Capture pool each seed.
+#
+# These are removed from item_pool here so adjust_filler_items doesn't try to
+# place them; multiworld.push_precollected makes the AP server hand them to the
+# client at game-start (index 0 of the received-items list), so the Switch-mod
+# receives them via the normal item-receive path before any HELLO replay.
+FIXED_STARTER_CAPTURES: tuple[str, ...] = ("Frog", "Chain Chomp")
+
+
+def _precollect_starting_captures(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> None:
+    """Remove the 3 starter captures from the pool and push to precollected.
+
+    Frog and Chain Chomp are always precollected. A third capture is chosen
+    uniformly at random from the remaining Capture-category items in the pool
+    (excluding Frog and Chain Chomp). The chosen item is stored on the world
+    object as `world.random_starter_capture` for test introspection.
+
+    If either fixed starter is missing from the pool (shouldn't happen in
+    normal generation), logs a warning and skips it rather than crashing.
+    """
+    # Collect all Capture items by position so we can remove by index safely.
+    capture_indices = [
+        i for i, it in enumerate(item_pool)
+        if "Capture" in getattr(it, "item_data", {}).get("category", [])
+    ]
+    pool_by_name: dict[str, int] = {}  # name -> first index in item_pool
+    for i in capture_indices:
+        name = item_pool[i].name
+        if name not in pool_by_name:
+            pool_by_name[name] = i
+
+    to_precollect_indices: list[int] = []
+
+    # Fixed starters
+    for name in FIXED_STARTER_CAPTURES:
+        idx = pool_by_name.get(name)
+        if idx is None:
+            logging.warning("_precollect_starting_captures: %r not in pool", name)
+            continue
+        to_precollect_indices.append(idx)
+
+    # Random extra: pick from captures not already chosen
+    chosen_names = {item_pool[i].name for i in to_precollect_indices}
+    eligible = [
+        i for i in capture_indices
+        if item_pool[i].name not in chosen_names
+        and i not in to_precollect_indices
+    ]
+    if eligible:
+        extra_idx = world.random.choice(eligible)
+        world.random_starter_capture = item_pool[extra_idx].name
+        to_precollect_indices.append(extra_idx)
+    else:
+        world.random_starter_capture = None
+        logging.warning("_precollect_starting_captures: no eligible captures for random slot")
+
+    # Push to precollected and remove from pool (descending index order so
+    # earlier removals don't shift later indices).
+    for i in sorted(to_precollect_indices, reverse=True):
+        multiworld.push_precollected(item_pool[i])
+        item_pool.pop(i)
+
+
 # The item pool before starting items are processed, in case you want to see the raw item pool at that stage
 def before_create_items_starting(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
+    # Precollect the 3 starting captures (Frog, Chain Chomp, +1 random).
+    # Must run before the festival-goal trim so the starters are present in
+    # the pool when we remove them (festival trim uses item names, not indices,
+    # so order doesn't matter, but being explicit avoids edge cases).
+    _precollect_starting_captures(item_pool, world, multiworld, player)
+
     # Under the festival goal, post-Metro locations are removed in
     # create_regions, so post-Metro kingdoms' moons and the 15 captures
     # exclusive to those kingdoms have nowhere to land. Drop them now.

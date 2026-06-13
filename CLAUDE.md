@@ -196,4 +196,13 @@ E:\smo_archipelago\
     build_poptracker_pack.py     PopTracker pack generator
     build_switchmod.py           One-shot Switch-mod build wrapper (LLVM 19 + sail +
                                  LibHakkun Windows-port patches; see smo-build skill)
-    patch_hakkun.py              Applies the 5 remaining Windows-port patches to 
+    patch_hakkun.py              Applies the 5 remaining Windows-port patches to the
+                                 pinned LibHakkun submodule (idempotent)
+    setup_imgui_addons.py        Copies LibHakkun's Nvn/ImGui/DebugRenderer addon sources
+                                 into the build tree alongside Dear ImGui
+    setup_sail_winpath.py        One-time sail host-binary compile via msys2 mingw64
+    fix_hakkun_symlinks.py       Stub for converting OdysseyHeaders symlinks (no-op currently)
+    .extract-venv/               Auto-created Python 3.12 venv (gitignored)
+  docs/
+    architecture.md              Two-tier diagram, threading, responsibilities
+    wire-protocol.md             Wire-format ref

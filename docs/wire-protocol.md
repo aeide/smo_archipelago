@@ -161,6 +161,22 @@ is a no-op.
   {"kingdom":"Cap","count":2},
   {"kingdom":"Cascade","count":5}
 ],"lake_received_total":12,"snow_received_total":0}
+
+// P1 — Cap Kingdom Power Moons convert to coins instead of spending the
+// Odyssey hatch (Cap Kingdom has no Odyssey hatch). `total` is the
+// CUMULATIVE LIFETIME balance (Cap Kingdom moons received × 100 coins
+// each), NOT a per-message delta. The Switch tracks its own
+// `coins_applied` high-water mark and calls addCoin(total − coins_applied)
+// on receipt; sending the same total twice is therefore always a no-op.
+//
+// Multi-Moons count as 3 in the lifetime balance (300 coins each),
+// matching the moon-to-coin ratio of OutstandingMsg's moon weights.
+//
+// Sent by the bridge on:
+//   1. Every HELLO replay (push_coin_grant in _run_post_hello_replay).
+//   2. Immediately when a new Cap Kingdom Power Moon arrives from AP.
+// Not sent when total == 0 (nothing to grant; Switch starts at 0).
+{"t":"coin_grant","total":200}
 ```
 
 ## State machines

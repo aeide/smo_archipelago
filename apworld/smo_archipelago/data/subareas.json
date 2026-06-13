@@ -1,0 +1,1267 @@
+{
+  "Poison Tides": {
+    "kingdom": "Cap Kingdom",
+    "csv_names": [
+      "Poison Tides: Skimming the Poison Tide",
+      "Poison Tides: Slipping Through the Poison Tide"
+    ],
+    "location_names": [
+      "Cap: Skimming the Poison Tide",
+      "Cap: Slipping Through the Poison Tide"
+    ]
+  },
+  "Push Block Peril": {
+    "kingdom": "Cap Kingdom",
+    "csv_names": [
+      "Push Block Peril: Push-Block Peril",
+      "Push Block Peril: Hidden Among the Push-Blocks"
+    ],
+    "location_names": [
+      "Cap: Push-Block Peril",
+      "Cap: Hidden Among the Push-Blocks"
+    ]
+  },
+  "Frog Pond": {
+    "kingdom": "Cap Kingdom",
+    "csv_names": [
+      "Frog Pond: Searching the Frog Pond",
+      "Frog Pond: Secrets of the Frog Pond"
+    ],
+    "location_names": [
+      "Cap: Searching the Frog Pond",
+      "Cap: Secrets of the Frog Pond"
+    ]
+  },
+  "Precision Rolling": {
+    "kingdom": "Cap Kingdom",
+    "csv_names": [
+      "Precision Rolling: Roll On and On",
+      "Precision Rolling: Precision Rolling"
+    ],
+    "location_names": []
+  },
+  "Dinosaur Nest": {
+    "kingdom": "Cascade Kingdom",
+    "csv_names": [
+      "Dinosaur Nest: Dinosaur Nest: Big Cleanup!",
+      "Dinosaur Nest: Dinosaur Nest: Running Wild!"
+    ],
+    "location_names": [
+      "Cascade: Dinosaur Nest: Big Cleanup!",
+      "Cascade: Dinosaur Nest: Running Wild!"
+    ]
+  },
+  "Nice Shots with Chain Chomps": {
+    "kingdom": "Cascade Kingdom",
+    "csv_names": [
+      "Nice Shots with Chain Chomps: Nice Shot with the Chain Chomp!",
+      "Nice Shots with Chain Chomps: Very Nice Shot with the Chain Chomp!"
+    ],
+    "location_names": [
+      "Cascade: Nice Shot with the Chain Chomp!",
+      "Cascade: Very Nice Shot with the Chain Chomp!"
+    ]
+  },
+  "8-Bit Chasm Lifts": {
+    "kingdom": "Cascade Kingdom",
+    "csv_names": [
+      "8-Bit Chasm Lifts: Past the Chasm Lifts",
+      "8-Bit Chasm Lifts: Hidden Chasm Passage"
+    ],
+    "location_names": [
+      "Cascade: Past the Chasm Lifts",
+      "Cascade: Hidden Chasm Passage"
+    ]
+  },
+  "Mysterious Clouds": {
+    "kingdom": "Cascade Kingdom",
+    "csv_names": [
+      "Mysterious Clouds: Across the Mysterious Clouds",
+      "Mysterious Clouds: Atop a Wall Among the Clouds"
+    ],
+    "location_names": []
+  },
+  "Gusty Bridges": {
+    "kingdom": "Cascade Kingdom",
+    "csv_names": [
+      "Gusty Bridges: Across the Gusty Bridges",
+      "Gusty Bridges: Flying Far Away from Gusty Bridges"
+    ],
+    "location_names": []
+  },
+  "Deepest Underground": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Deepest Underground: The Hole in the Desert",
+      "Deepest Underground: Under the Mummy's Curse",
+      "Deepest Underground: Binding Band Returned"
+    ],
+    "location_names": [
+      "Sand: The Hole in the Desert",
+      "Sand: Under the Mummy's Curse"
+    ]
+  },
+  "Crazy Cap Store": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Crazy Cap Store: Shopping in Tostarena",
+      "Crazy Cap Store: Employees Only"
+    ],
+    "location_names": [
+      "Sand: Shopping in Tostarena",
+      "Sand: Employees Only"
+    ]
+  },
+  "Tostarena Slots": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Tostarena Slots: Sand Kingdom Slots"
+    ],
+    "location_names": [
+      "Sand: Sand Kingdom Slots"
+    ]
+  },
+  "Inverted Pyramid": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Inverted Pyramid: Upper Interior: Hidden Room in the Inverted Pyramid"
+    ],
+    "location_names": [
+      "Sand: Hidden Room in the Inverted Pyramid"
+    ]
+  },
+  "Underground Ruins": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Underground Ruins: Underground Treasure Chest",
+      "Underground Ruins: Goomba Tower Assembly"
+    ],
+    "location_names": [
+      "Sand: Underground Treasure Chest",
+      "Sand: Goomba Tower Assembly"
+    ]
+  },
+  "Ice Cave": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Ice Cave: Ice Cave Treasure"
+    ],
+    "location_names": [
+      "Sand: Ice Cave Treasure"
+    ]
+  },
+  "Sphynx Treasure Vault": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Sphynx Treasure Vault: Sphynx's Treasure Vault",
+      "Sphynx Treasure Vault: The Sphynx's Underwater Vault"
+    ],
+    "location_names": [
+      "Sand: Sphynx's Treasure Vault",
+      "Seaside: The Sphynx's Underwater Vault"
+    ]
+  },
+  "Rumbling Floor House": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Rumbling Floor House: A Rumble from the Sandy Floor"
+    ],
+    "location_names": [
+      "Sand: A Rumble from the Sandy Floor"
+    ]
+  },
+  "Costume Room": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Costume Room: Dancing with New Friends",
+      "Costume Room: Exploring for Treasure",
+      "Costume Room: A Relaxing Dance"
+    ],
+    "location_names": [
+      "Sand: Dancing with New Friends",
+      "Wooded: Exploring for Treasure",
+      "Seaside: A Relaxing Dance"
+    ]
+  },
+  "Transparent Lifts": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Transparent Lifts: The Invisible Maze",
+      "Transparent Lifts: Skull Sign in the Transparent Maze"
+    ],
+    "location_names": [
+      "Sand: The Invisible Maze",
+      "Sand: Skull Sign in the Transparent Maze"
+    ]
+  },
+  "Bullet Bill Maze": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Bullet Bill Maze: The Bullet Bill Maze: Break Through!",
+      "Bullet Bill Maze: The Bullet Bill Maze: Side Path"
+    ],
+    "location_names": [
+      "Sand: The Bullet Bill Maze: Break Through!",
+      "Sand: The Bullet Bill Maze: Side Path"
+    ]
+  },
+  "Jaxi Driving": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Jaxi Driving: Jaxi Driver",
+      "Jaxi Driving: Jaxi Stunt Driving"
+    ],
+    "location_names": [
+      "Sand: Jaxi Driver",
+      "Sand: Jaxi Stunt Driving"
+    ]
+  },
+  "Strange Neighborhood": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Strange Neighborhood: Strange Neighborhood",
+      "Strange Neighborhood: Above a Strange Neighborhood"
+    ],
+    "location_names": [
+      "Sand: Strange Neighborhood",
+      "Sand: Above a Strange Neighborhood"
+    ]
+  },
+  "The Invisible Maze": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "The Invisible Maze: Where the Transparent Platforms End",
+      "The Invisible Maze: Jump Onto the Transparent Lift"
+    ],
+    "location_names": []
+  },
+  "Colossal Ruins": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Colossal Ruins: Colossal Ruins: Dash! Jump!",
+      "Colossal Ruins: Sinking Colossal Ruins: Hurry!"
+    ],
+    "location_names": []
+  },
+  "Freezing Waterway": {
+    "kingdom": "Sand Kingdom",
+    "csv_names": [
+      "Freezing Waterway: Through the Freezing Waterway",
+      "Freezing Waterway: Freezing Waterway: Hidden Room"
+    ],
+    "location_names": []
+  },
+  "Secret Flower Field": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Secret Flower Field: Defend the Secret Flower Field!",
+      "Secret Flower Field: Make the Secret Flower Field Bloom"
+    ],
+    "location_names": [
+      "Wooded: Defend the Secret Flower Field!",
+      "Wooded: Make the Secret Flower Field Bloom"
+    ]
+  },
+  "Sky Garden Tower": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Sky Garden Tower: Nut Planted in the Tower",
+      "Sky Garden Tower: Stretching Your Legs"
+    ],
+    "location_names": [
+      "Wooded: Nut Planted in the Tower",
+      "Wooded: Stretching Your Legs"
+    ]
+  },
+  "Spinning-Platforms Treasure Vault": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Spinning-Platforms Treasure Vault: Spinning-Platforms Treasure"
+    ],
+    "location_names": [
+      "Wooded: Spinning-Platforms Treasure"
+    ]
+  },
+  "Deep Woods": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Deep Woods: Rolling Rock in the Deep Woods",
+      "Deep Woods: Glowing in the Deep Woods",
+      "Deep Woods: Past the Peculiar Pipes",
+      "Deep Woods: By the Babbling Brook in Deep Woods",
+      "Deep Woods: The Hard Rock in Deep Woods",
+      "Deep Woods: A Treasure Made from Coins",
+      "Deep Woods: Beneath the Roots of the Moving Tree"
+    ],
+    "location_names": [
+      "Wooded: Rolling Rock in the Deep Woods",
+      "Wooded: Glowing in the Deep Woods",
+      "Wooded: Past the Peculiar Pipes",
+      "Wooded: By the Babbling Brook in Deep Woods",
+      "Wooded: The Hard Rock in Deep Woods",
+      "Wooded: A Treasure Made from Coins",
+      "Wooded: Beneath the Roots of the Moving Tree"
+    ]
+  },
+  "Deep Woods Treasure Vault": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Deep Woods Treasure Vault: Deep Woods Treasure Trap"
+    ],
+    "location_names": [
+      "Wooded: Deep Woods Treasure Trap"
+    ]
+  },
+  "Flooding Pipeway": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Flooding Pipeway: Flooding Pipeway",
+      "Flooding Pipeway: Flooding Pipeway Ceiling Secret"
+    ],
+    "location_names": [
+      "Wooded: Flooding Pipeway",
+      "Wooded: Flooding Pipeway Ceiling Secret"
+    ]
+  },
+  "Shards in the Fog": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Shards in the Fog: Wandering in the Fog",
+      "Shards in the Fog: Nut Hidden in the Fog"
+    ],
+    "location_names": [
+      "Wooded: Wandering in the Fog",
+      "Wooded: Nut Hidden in the Fog"
+    ]
+  },
+  "Flower Road": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Flower Road: Flower Road Run",
+      "Flower Road: Flower Road Reach"
+    ],
+    "location_names": [
+      "Wooded: Flower Road Run",
+      "Wooded: Flower Road Reach"
+    ]
+  },
+  "Crowded Elevator": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Crowded Elevator: Elevator Escalation",
+      "Crowded Elevator: Elevator Blind Spot"
+    ],
+    "location_names": [
+      "Wooded: Elevator Escalation",
+      "Wooded: Elevator Blind Spot"
+    ]
+  },
+  "Walking on Clouds": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Walking on Clouds: Walking on Clouds",
+      "Walking on Clouds: Above the Clouds"
+    ],
+    "location_names": [
+      "Wooded: Walking on Clouds",
+      "Wooded: Above the Clouds"
+    ]
+  },
+  "Invisible Road": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Invisible Road: Invisible Road: Danger!",
+      "Invisible Road: Invisible Road: Hidden Room"
+    ],
+    "location_names": []
+  },
+  "Herding Sheep": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Herding Sheep: Herding Sheep Above the Forest Fog",
+      "Herding Sheep: Herding Sheep on the Iron Bridge"
+    ],
+    "location_names": []
+  },
+  "Breakdown Road": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Breakdown Road: Down and Back Breakdown Road",
+      "Breakdown Road: Below Breakdown Road"
+    ],
+    "location_names": []
+  },
+  "Crazy Cap Store (Lake)": {
+    "kingdom": "Lake Kingdom",
+    "csv_names": [
+      "Crazy Cap Store (Lake): Shopping in Lake Lamode"
+    ],
+    "location_names": [
+      "Lake: Shopping in Lake Lamode"
+    ]
+  },
+  "Puzzle Room": {
+    "kingdom": "Lake Kingdom",
+    "csv_names": [
+      "Puzzle Room: A Successful Repair Job"
+    ],
+    "location_names": [
+      "Lake: A Successful Repair Job"
+    ]
+  },
+  "Unzipping the Chasm": {
+    "kingdom": "Lake Kingdom",
+    "csv_names": [
+      "Unzipping the Chasm: Unzip the Chasm",
+      "Unzipping the Chasm: Super-Secret Zipper"
+    ],
+    "location_names": [
+      "Lake: Unzip the Chasm",
+      "Lake: Super-Secret Zipper"
+    ]
+  },
+  "Jump, Grab, Cling, Climb": {
+    "kingdom": "Lake Kingdom",
+    "csv_names": [
+      "Jump, Grab, Cling, Climb: Jump, Grab, Cling, and Climb",
+      "Jump, Grab, Cling, Climb: Jump, Grab, and Climb Some More"
+    ],
+    "location_names": [
+      "Lake: Jump, Grab, Cling, and Climb",
+      "Lake: Jump, Grab, and Climb Some More"
+    ]
+  },
+  "Waves of Poison": {
+    "kingdom": "Lake Kingdom",
+    "csv_names": [
+      "Waves of Poison: Waves of Poison: Hoppin' Over",
+      "Waves of Poison: Waves of Poison: Hop to It!"
+    ],
+    "location_names": []
+  },
+  "Picture Match (Goomba)": {
+    "kingdom": "Lake Kingdom",
+    "csv_names": [
+      "Picture Match (Goomba): Picture Match: Basically a Goomba",
+      "Picture Match (Goomba): Picture Match: A Stellar Goomba!"
+    ],
+    "location_names": [
+      "Cloud: Picture Match: Basically a Goomba"
+    ]
+  },
+  "2D Cube": {
+    "kingdom": "Cloud Kingdom",
+    "csv_names": [
+      "2D Cube: King of the Cube!",
+      "2D Cube: The Sixth Face"
+    ],
+    "location_names": []
+  },
+  "Crazy Cap Store (Lost)": {
+    "kingdom": "Lost Kingdom",
+    "csv_names": [
+      "Crazy Cap Store (Lost): Shopping on Forgotten Isle"
+    ],
+    "location_names": [
+      "Lost: Shopping on Forgotten Isle"
+    ]
+  },
+  "Stretch and Traverse the Jungle": {
+    "kingdom": "Lost Kingdom",
+    "csv_names": [
+      "Stretch and Traverse the Jungle: Stretch and Traverse the Jungle",
+      "Stretch and Traverse the Jungle: Aglow in the Jungle"
+    ],
+    "location_names": []
+  },
+  "Klepto 2 - Lava Boogaloo": {
+    "kingdom": "Lost Kingdom",
+    "csv_names": [
+      "Klepto 2 - Lava Boogaloo: Chasing Klepto",
+      "Klepto 2 - Lava Boogaloo: Extremely Hot Bath"
+    ],
+    "location_names": []
+  },
+  "Sewers": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Sewers: Powering Up the Station",
+      "Sewers: Sewer Treasure",
+      "Sewers: Powering Up the Power Plant"
+    ],
+    "location_names": [
+      "Metro: Powering Up the Station",
+      "Metro: Sewer Treasure"
+    ]
+  },
+  "Crazy Cap Store (Metro)": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Crazy Cap Store (Metro): Shopping in New Donk City"
+    ],
+    "location_names": [
+      "Metro: Shopping in New Donk City"
+    ]
+  },
+  "Metro Kingdom Slots": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Metro Kingdom Slots: Metro Kingdom Slots"
+    ],
+    "location_names": [
+      "Metro: Metro Kingdom Slots"
+    ]
+  },
+  "RC Race": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "RC Race: RC Car Pro!",
+      "RC Race: RC Car Champ!"
+    ],
+    "location_names": [
+      "Metro: RC Car Pro!"
+    ]
+  },
+  "Rainbow Notes": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Rainbow Notes: Taking Notes: In the Private Room"
+    ],
+    "location_names": [
+      "Metro: Taking Notes: In the Private Room"
+    ]
+  },
+  "Inside New Donk City Tower": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Inside New Donk City Tower: City Hall Lost & Found"
+    ],
+    "location_names": [
+      "Metro: City Hall Lost & Found"
+    ]
+  },
+  "Crowded Alleyway": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Crowded Alleyway: Pushing Through the Crowd",
+      "Crowded Alleyway: High Over the Crowd",
+      "Crowded Alleyway: Hat-and-Seek: In the Crowd"
+    ],
+    "location_names": [
+      "Metro: Pushing Through the Crowd",
+      "Metro: High Over the Crowd"
+    ]
+  },
+  "Rewiring the Neighborhood": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Rewiring the Neighborhood: Rewiring the Neighborhood",
+      "Rewiring the Neighborhood: Off the Beaten Wire"
+    ],
+    "location_names": [
+      "Metro: Rewiring the Neighborhood",
+      "Metro: Off the Beaten Wire"
+    ]
+  },
+  "Shards Under Siege": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Shards Under Siege: Moon Shards Under Siege",
+      "Shards Under Siege: Sharpshooting Under Siege"
+    ],
+    "location_names": [
+      "Metro: Moon Shards Under Siege",
+      "Metro: Sharpshooting Under Siege"
+    ]
+  },
+  "Rotating Maze Shards": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Rotating Maze Shards: Inside the Rotating Maze",
+      "Rotating Maze Shards: Outside the Rotating Maze"
+    ],
+    "location_names": [
+      "Metro: Inside the Rotating Maze",
+      "Metro: Outside the Rotating Maze"
+    ]
+  },
+  "Swinging Along the High-Rises": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Swinging Along the High-Rises: Hanging from a High-Rise",
+      "Swinging Along the High-Rises: Vaulting Up a High-Rise"
+    ],
+    "location_names": [
+      "Metro: Hanging from a High-Rise",
+      "Metro: Vaulting Up a High-Rise"
+    ]
+  },
+  "Bullet Billding": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Bullet Billding: Bullet Billding",
+      "Bullet Billding: One Man's Trash..."
+    ],
+    "location_names": [
+      "Metro: Bullet Billding",
+      "Metro: One Man's Trash..."
+    ]
+  },
+  "Scooter Escape!": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Scooter Escape!: Motor Scooter: Escape!",
+      "Scooter Escape!: Big Jump: Escape!"
+    ],
+    "location_names": [
+      "Metro: Motor Scooter: Escape!",
+      "Metro: Big Jump: Escape!"
+    ]
+  },
+  "On the Big Screen": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "On the Big Screen: Up on the Big Screen",
+      "On the Big Screen: Down Inside the Big Screen"
+    ],
+    "location_names": []
+  },
+  "Pitchblack Mountain": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Pitchblack Mountain: Scaling Pitchblack Mountain",
+      "Pitchblack Mountain: Reaching Pitchblack Island"
+    ],
+    "location_names": []
+  },
+  "Swinging Scaffolding": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Swinging Scaffolding: Swinging Scaffolding: Jump!",
+      "Swinging Scaffolding: Swinging Scaffolding: Break!"
+    ],
+    "location_names": []
+  },
+  "Scooter Daredevil": {
+    "kingdom": "Metro Kingdom",
+    "csv_names": [
+      "Scooter Daredevil: Motor Scooter Daredevil!",
+      "Scooter Daredevil: Full-Throttle Scooting!"
+    ],
+    "location_names": []
+  },
+  "Wriggling Power Moon": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "Wriggling Power Moon: Wriggling on the Sandy Bottom"
+    ],
+    "location_names": [
+      "Seaside: Wriggling on the Sandy Bottom"
+    ]
+  },
+  "Underwater Tunnel": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "Underwater Tunnel: Looking Back in the Dark Waterway"
+    ],
+    "location_names": [
+      "Seaside: Looking Back in the Dark Waterway"
+    ]
+  },
+  "Rumbling Floor Cave": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "Rumbling Floor Cave: A Rumble on the Seaside Floor"
+    ],
+    "location_names": [
+      "Seaside: A Rumble on the Seaside Floor"
+    ]
+  },
+  "A Sea of Clouds": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "A Sea of Clouds: Wading in the Cloud Sea",
+      "A Sea of Clouds: Sunken Treasure in the Cloud Sea"
+    ],
+    "location_names": [
+      "Seaside: Wading in the Cloud Sea",
+      "Seaside: Sunken Treasure in the Cloud Sea"
+    ]
+  },
+  "Flying Through the Narrow Valley": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "Flying Through the Narrow Valley: Fly Through the Narrow Valley",
+      "Flying Through the Narrow Valley: Treasure Chest in the Narrow Valley"
+    ],
+    "location_names": [
+      "Seaside: Fly Through the Narrow Valley",
+      "Seaside: Treasure Chest in the Narrow Valley"
+    ]
+  },
+  "Stretching Up the Sinking Island": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "Stretching Up the Sinking Island: Hurry and Stretch",
+      "Stretching Up the Sinking Island: Stretch on the Side Path"
+    ],
+    "location_names": [
+      "Seaside: Hurry and Stretch",
+      "Seaside: Stretch on the Side Path"
+    ]
+  },
+  "Stop, Poke, and Roll": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "Stop, Poke, and Roll: Aim! Poke!",
+      "Stop, Poke, and Roll: Poke! Roll!"
+    ],
+    "location_names": []
+  },
+  "Spinning Maze": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "Spinning Maze: The Spinning Maze: Search!",
+      "Spinning Maze: The Spinning Maze: Open!"
+    ],
+    "location_names": []
+  },
+  "Shiveria Town": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "Shiveria Town: The Icicle Barrier",
+      "Shiveria Town: The Ice Wall Barrier",
+      "Shiveria Town: The Gusty Barrier",
+      "Shiveria Town: The Snowy Mountain Barrier",
+      "Shiveria Town: Entrance to Shiveria",
+      "Shiveria Town: Shining in the Snow in Town",
+      "Shiveria Town: The Shiverian Treasure Chest",
+      "Shiveria Town: I'm Not Cold!",
+      "Shiveria Town: Found with Snow Kingdom Art",
+      "Shiveria Town: Peach in the Snow Kingdom"
+    ],
+    "location_names": [
+      "Snow: The Icicle Barrier",
+      "Snow: The Ice Wall Barrier",
+      "Snow: The Gusty Barrier",
+      "Snow: The Snowy Mountain Barrier",
+      "Snow: Entrance to Shiveria",
+      "Snow: Shining in the Snow in Town",
+      "Snow: The Shiverian Treasure Chest",
+      "Snow: I'm Not Cold!",
+      "Snow: Found with Snow Kingdom Art"
+    ]
+  },
+  "Class A Race": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
+      "Class A Race: The Bound Bowl Grand Prix"
+    ],
+    "location_names": [
+      "Snow: The Bound Bowl Grand Prix"
+    ]
+  },
+  "Crazy Cap Store (Snow)": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Crazy Cap Store (Snow): Shopping in Shiveria"
+    ],
+    "location_names": [
+      "Snow: Shopping in Shiveria"
+    ]
+  },
+  "Shards in the Cold Room": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Shards in the Cold Room: Walking on Ice!",
+      "Shards in the Cold Room: Even More Walking on Ice!"
+    ],
+    "location_names": [
+      "Snow: Walking on Ice!"
+    ]
+  },
+  "Class A Lobby": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Class A Lobby: Snowline Circuit Class S",
+      "Class A Lobby: Hat-and-Seek in the Snow",
+      "Class A Lobby: Forgotten in the Holding Room"
+    ],
+    "location_names": [
+      "Snow: Snowline Circuit Class S"
+    ]
+  },
+  "Dashing Over Cold Water": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Dashing Over Cold Water: Dashing Over Cold Water!",
+      "Dashing Over Cold Water: Dashing Above and Beyond!"
+    ],
+    "location_names": [
+      "Snow: Dashing Over Cold Water!",
+      "Snow: Dashing Above and Beyond!"
+    ]
+  },
+  "Freezing Water": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Freezing Water: Jump 'n' Swim in the Freezing Water",
+      "Freezing Water: Freezing Water Near the Ceiling"
+    ],
+    "location_names": [
+      "Snow: Jump 'n' Swim in the Freezing Water",
+      "Snow: Freezing Water Near the Ceiling"
+    ]
+  },
+  "Ty-Foo Sliding Puzzle": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Ty-Foo Sliding Puzzle: Blowing and Sliding"
+    ],
+    "location_names": [
+      "Snow: Blowing and Sliding"
+    ]
+  },
+  "Cold Room": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Cold Room: Moon Shards in the Cold Room",
+      "Cold Room: Slip Behind the Ice"
+    ],
+    "location_names": [
+      "Snow: Moon Shards in the Cold Room",
+      "Snow: Slip Behind the Ice"
+    ]
+  },
+  "Spinning Above the Clouds": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Spinning Above the Clouds: Spinning Above the Clouds",
+      "Spinning Above the Clouds: High-Altitude Spinning"
+    ],
+    "location_names": [
+      "Snow: Spinning Above the Clouds",
+      "Snow: High-Altitude Spinning"
+    ]
+  },
+  "Class S Lobby": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Class S Lobby: Iceburn Circuit Class A",
+      "Class S Lobby: Iceburn Circuit Class S"
+    ],
+    "location_names": []
+  },
+  "Wintery Flower Road": {
+    "kingdom": "Snow Kingdom",
+    "csv_names": [
+      "Wintery Flower Road: Running the Flower Road",
+      "Wintery Flower Road: Looking Back on the Flower Road"
+    ],
+    "location_names": []
+  },
+  "Crazy Cap Store (Luncheon)": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Crazy Cap Store (Luncheon): Shopping in Mount Volbono"
+    ],
+    "location_names": [
+      "Luncheon: Shopping in Mount Volbono"
+    ]
+  },
+  "Luncheon Kingdom Slots": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Luncheon Kingdom Slots: Luncheon Kingdom Slots"
+    ],
+    "location_names": [
+      "Luncheon: Luncheon Kingdom Slots"
+    ]
+  },
+  "Simmering in the Kitchen": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Simmering in the Kitchen: A Strong Simmer",
+      "Simmering in the Kitchen: An Extreme Simmer"
+    ],
+    "location_names": [
+      "Luncheon: A Strong Simmer",
+      "Luncheon: An Extreme Simmer"
+    ]
+  },
+  "Luncheon Treasure Vault": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Luncheon Treasure Vault: The Treasure Chest in the Veggies"
+    ],
+    "location_names": [
+      "Luncheon: The Treasure Chest in the Veggies"
+    ]
+  },
+  "Magma Swamp": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Magma Swamp: Magma Swamp: Floating and Sinking",
+      "Magma Swamp: Corner of the Magma Swamp"
+    ],
+    "location_names": [
+      "Luncheon: Magma Swamp: Floating and Sinking",
+      "Luncheon: Corner of the Magma Swamp"
+    ]
+  },
+  "Narrow Magma Path": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Narrow Magma Path: Magma Narrow Path",
+      "Narrow Magma Path: Crossing to the Magma"
+    ],
+    "location_names": [
+      "Luncheon: Magma Narrow Path",
+      "Luncheon: Crossing to the Magma"
+    ]
+  },
+  "Fork-Flickin to the Summit": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Fork-Flickin to the Summit: Fork Flickin' to the Summit",
+      "Fork-Flickin to the Summit: Fork Flickin' Detour"
+    ],
+    "location_names": [
+      "Luncheon: Fork Flickin' to the Summit",
+      "Luncheon: Fork Flickin' Detour"
+    ]
+  },
+  "Shards in the Cheese Rocks": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Shards in the Cheese Rocks: Excavate 'n' Search the Cheese Rocks",
+      "Shards in the Cheese Rocks: Climb the Cheese Rocks"
+    ],
+    "location_names": [
+      "Luncheon: Excavate 'n' Search the Cheese Rocks",
+      "Luncheon: Climb the Cheese Rocks"
+    ]
+  },
+  "Spinning Athletics": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Spinning Athletics: Spinning Athletics End Goal",
+      "Spinning Athletics: Taking Notes: Spinning Athletics"
+    ],
+    "location_names": [
+      "Luncheon: Spinning Athletics End Goal",
+      "Luncheon: Taking Notes: Spinning Athletics"
+    ]
+  },
+  "Blazing Above the Gears": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Blazing Above the Gears: Stepping Over the Gears",
+      "Blazing Above the Gears: Lanterns on the Gear Steps"
+    ],
+    "location_names": []
+  },
+  "Volcano Cave Cruising": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Volcano Cave Cruising: Volcano Cave Cruisin'",
+      "Volcano Cave Cruising: Volcano Cave and Mysterious Clouds"
+    ],
+    "location_names": []
+  },
+  "Lava Island Fly-By": {
+    "kingdom": "Luncheon Kingdom",
+    "csv_names": [
+      "Lava Island Fly-By: Treasure of the Lava Islands",
+      "Lava Island Fly-By: Flying Over the Lava Islands"
+    ],
+    "location_names": []
+  },
+  "Roulette Tower": {
+    "kingdom": "Ruined Kingdom",
+    "csv_names": [
+      "Roulette Tower: Roulette Tower: Climbed",
+      "Roulette Tower: Roulette Tower: Stopped"
+    ],
+    "location_names": [
+      "Ruined: Roulette Tower: Climbed",
+      "Ruined: Roulette Tower: Stopped"
+    ]
+  },
+  "Mummy Army": {
+    "kingdom": "Ruined Kingdom",
+    "csv_names": [
+      "Mummy Army: Charging Through an Army",
+      "Mummy Army: The Mummy Army's Curse"
+    ],
+    "location_names": []
+  },
+  "Crazy Cap Store (Bowser's)": {
+    "kingdom": "Bowser's Kingdom",
+    "csv_names": [
+      "Crazy Cap Store (Bowser's): Shopping at Bowser's Castle"
+    ],
+    "location_names": [
+      "Bowser's: Shopping at Bowser's Castle"
+    ]
+  },
+  "Bowser's Kingdom Treasure Vault": {
+    "kingdom": "Bowser's Kingdom",
+    "csv_names": [
+      "Bowser's Kingdom Treasure Vault: Bowser's Castle Treasure Vault"
+    ],
+    "location_names": [
+      "Bowser's: Bowser's Castle Treasure Vault"
+    ]
+  },
+  "Scene in the Folding Screen": {
+    "kingdom": "Bowser's Kingdom",
+    "csv_names": [
+      "Scene in the Folding Screen: Scene of Crossing the Poison Swamp",
+      "Scene in the Folding Screen: Taking Notes: In the Folding Screen"
+    ],
+    "location_names": [
+      "Bowser's: Scene of Crossing the Poison Swamp",
+      "Bowser's: Taking Notes: In the Folding Screen"
+    ]
+  },
+  "Spinning Tower": {
+    "kingdom": "Bowser's Kingdom",
+    "csv_names": [
+      "Spinning Tower: On Top of the Spinning Tower",
+      "Spinning Tower: Down and Up the Spinning Tower"
+    ],
+    "location_names": [
+      "Bowser's: On Top of the Spinning Tower",
+      "Bowser's: Down and Up the Spinning Tower"
+    ]
+  },
+  "Jizo's Great Adventure": {
+    "kingdom": "Bowser's Kingdom",
+    "csv_names": [
+      "Jizo's Great Adventure: Jizo's Big Adventure",
+      "Jizo's Great Adventure: Jizo and the Hidden Room"
+    ],
+    "location_names": [
+      "Bowser's: Jizo's Big Adventure",
+      "Bowser's: Jizo and the Hidden Room"
+    ]
+  },
+  "Dashing Above the Clouds": {
+    "kingdom": "Bowser's Kingdom",
+    "csv_names": [
+      "Dashing Above the Clouds: Dashing Above the Clouds",
+      "Dashing Above the Clouds: Dashing Through the Clouds"
+    ],
+    "location_names": [
+      "Bowser's: Dashing Above the Clouds",
+      "Bowser's: Dashing Through the Clouds"
+    ]
+  },
+  "Hexagon Tower": {
+    "kingdom": "Bowser's Kingdom",
+    "csv_names": [
+      "Hexagon Tower: Searching Hexagon Tower",
+      "Hexagon Tower: Center of Hexagon Tower"
+    ],
+    "location_names": []
+  },
+  "Wooden Tower": {
+    "kingdom": "Bowser's Kingdom",
+    "csv_names": [
+      "Wooden Tower: Climb the Wooden Tower",
+      "Wooden Tower: Poke the Wooden Tower"
+    ],
+    "location_names": []
+  },
+  "Underground Caverns": {
+    "kingdom": "Moon Kingdom",
+    "csv_names": [
+      "Underground Caverns: Under the Bowser Statue",
+      "Underground Caverns: Fly to the Treasure Chest and Back"
+    ],
+    "location_names": [
+      "Moon: Under the Bowser Statue",
+      "Moon: Fly to the Treasure Chest and Back"
+    ]
+  },
+  "Wedding Room": {
+    "kingdom": "Moon Kingdom",
+    "csv_names": [
+      "Wedding Room: Up in the Rafters",
+      "Wedding Room: Doctor in the House",
+      "Wedding Room: Found with Moon Kingdom Art"
+    ],
+    "location_names": [
+      "Moon: Up in the Rafters"
+    ]
+  },
+  "Crazy Cap Store (Moon)": {
+    "kingdom": "Moon Kingdom",
+    "csv_names": [
+      "Crazy Cap Store (Moon): Shopping in Honeylune Ridge"
+    ],
+    "location_names": []
+  },
+  "Moon Kingdom Treasure Vault": {
+    "kingdom": "Moon Kingdom",
+    "csv_names": [
+      "Moon Kingdom Treasure Vault: Sphynx's Hidden Vault"
+    ],
+    "location_names": []
+  },
+  "8-Bit Galaxy": {
+    "kingdom": "Moon Kingdom",
+    "csv_names": [
+      "8-Bit Galaxy: Center of the Galaxy",
+      "8-Bit Galaxy: Edge of the Galaxy"
+    ],
+    "location_names": []
+  },
+  "Giant Swings": {
+    "kingdom": "Moon Kingdom",
+    "csv_names": [
+      "Giant Swings: Navigating Giant Swings",
+      "Giant Swings: A Swing on Top of a Swing"
+    ],
+    "location_names": []
+  },
+  "Crazy Cap Store (Mushroom)": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Crazy Cap Store (Mushroom): Shopping Near Peach's Castle"
+    ],
+    "location_names": []
+  },
+  "Picture Match (Mario)": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Picture Match (Mario): Picture Match: Basically Mario",
+      "Picture Match (Mario): Picture Match: A Stellar Mario!"
+    ],
+    "location_names": []
+  },
+  "Peach's Castle": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Peach's Castle: Light from the Ceiling",
+      "Peach's Castle: Loose-Tile Trackdown",
+      "Peach's Castle: Found with Mushroom Kingdom Art"
+    ],
+    "location_names": []
+  },
+  "Castle Courtyard 64": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Castle Courtyard 64: Totally Classic!",
+      "Castle Courtyard 64: Courtyard Chest Trap"
+    ],
+    "location_names": []
+  },
+  "Yoshi in the Sea of Clouds": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Yoshi in the Sea of Clouds: Yoshi's Feast in the Sea of Clouds",
+      "Yoshi in the Sea of Clouds: Sunken Star in the Sea of Clouds"
+    ],
+    "location_names": []
+  },
+  "8-Bit Bullet Bills": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "8-Bit Bullet Bills: Secret 2D Treasure",
+      "8-Bit Bullet Bills: 2D Boost from Bullet Bill"
+    ],
+    "location_names": []
+  },
+  "Knucklotec Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Knucklotec Boss Re-fight: Tussle in Tostarena: Rematch"
+    ],
+    "location_names": []
+  },
+  "Torkdrift Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Torkdrift Boss Re-fight: Struggle in Steam Gardens: Rematch"
+    ],
+    "location_names": []
+  },
+  "Mechawiggler Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Mechawiggler Boss Re-fight: Dust-Up in New Donk City: Rematch"
+    ],
+    "location_names": []
+  },
+  "Mollusque-Lanceur Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Mollusque-Lanceur Boss Re-fight: Battle in Bubblaine: Rematch"
+    ],
+    "location_names": []
+  },
+  "Cookatiel Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Cookatiel Boss Re-fight: Blowup at Mount Volbono: Rematch"
+    ],
+    "location_names": []
+  },
+  "Lord of Lightning Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "csv_names": [
+      "Lord of Lightning Boss Re-fight: Rumble in Crumbleden: Rematch"
+    ],
+    "location_names": []
+  },
+  "Breakdown Road Capless": {
+    "kingdom": "Dark Side",
+    "csv_names": [
+      "Breakdown Road Capless: Breakdown Road: Hurry!",
+      "Breakdown Road Capless: Breakdown Road: Final Challenge!"
+    ],
+    "location_names": []
+  },
+  "Invisible Road Capless": {
+    "kingdom": "Dark Side",
+    "csv_names": [
+      "Invisible Road Capless: Invisible Road: Rush!",
+      "Invisible Road Capless: Invisible Road: Secret!"
+    ],
+    "location_names": []
+  },
+  "Vanishing Road Capless": {
+    "kingdom": "Dark Side",
+    "csv_names": [
+      "Vanishing Road Capless: Vanishing Road Rush",
+      "Vanishing Road Capless: Vanishing Road Challenge"
+    ],
+    "location_names": []
+  },
+  "Yoshi Under Siege": {
+    "kingdom": "Dark Side",
+    "csv_names": [
+      "Yoshi Under Siege: Yoshi Under Siege",
+      "Yoshi Under Siege: Fruit Feast Under Siege"
+    ],
+    "location_names": []
+  },
+  "Yoshi on the Sinking Island": {
+    "kingdom": "Dark Side",
+    "csv_names": [
+      "Yoshi on the Sinking Island: Yoshi on the Sinking Island",
+      "Yoshi on the Sinking Island: Fruit Feast on the Sinking Island"
+    ],
+    "location_names": []
+  },
+  "Yoshi's Magma Swamp": {
+    "kingdom": "Dark Side",
+    "csv_names": [
+      "Yoshi's Magma Swamp: Yoshi's Magma Swamp",
+      "Yoshi's Magma Swamp: Fruit Feast in the Magma Swamp!"
+    ],
+    "location_names": []
+  }
+}

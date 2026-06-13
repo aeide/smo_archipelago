@@ -1695,4 +1695,8 @@ def _flatten_print_json(data: list) -> str:
     """Concatenate AP PrintJSON 'data' segments into a plain string."""
     out: list[str] = []
     for seg in data:
-    
+        if isinstance(seg, dict):
+            out.append(seg.get("text", ""))
+        else:
+            out.append(str(seg))
+    return "".join(out)

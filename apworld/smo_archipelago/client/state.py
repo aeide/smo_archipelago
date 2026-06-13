@@ -238,6 +238,22 @@ class BridgeState:
                 out.setdefault(k, 0)
             return out
 
+    def compute_cap_coin_total(self) -> int:
+        """Derive the lifetime coin total for Cap Kingdom Power Moons.
+
+        Each Cap Kingdom moon item received from AP is worth 100 coins on the
+        Switch (Cap Kingdom has no Odyssey hatch to spend moons on, so they
+        translate to coins instead). Multi-Moons are weighted 3 in
+        moons_received_by_kingdom, so they contribute 300 coins apiece —
+        matching the moon-to-coin ratio of regular moons.
+
+        Always returns a non-negative int; 0 until the first Cap moon arrives.
+        Called by push_coin_grant in switch_server.py on HELLO replay and
+        whenever a new Cap moon item arrives from AP.
+        """
+        with self._lock:
+            return max(0, self.moons_received_by_kingdom.get("Cap", 0)) * 100
+
     def get_pay_shine_num(self) -> dict[str, int] | None:
         """Return a defensive copy of the last received PayShineNum snapshot."""
         with self._lock:
