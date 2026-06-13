@@ -227,7 +227,7 @@ work (community-curated names, same lineage as locations.json) — safe to commi
   "Locked behind Default Capture" sentinel.
 - Tests: every current location has an entry; vocabulary is closed (no unknown strings).
 
-### P1 — Cap Kingdom moons → 100 coins  *(COMPLETE 2026-06-13 — in-game test pending apworld reinstall fix)*
+### P1 — Cap Kingdom moons → 100 coins  *(✅ VERIFIED IN-GAME 2026-06-13)*
 
 Smallest end-to-end slice of the "moon item with an effect" pattern that P3 reuses.
 

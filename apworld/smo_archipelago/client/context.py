@@ -629,8 +629,6 @@ class SMOContext(CommonContext):
             # No-op when no PaySnapshotMsg has arrived yet (Switch on
             # title screen).
             await self._push_outstanding_to_switch()
-        log.info("[p1-coins] cap_moon_received_this_batch=%s switch=%s",
-                 cap_moon_received_this_batch, self.switch is not None)
         if cap_moon_received_this_batch and self.switch is not None:
             # P1: Cap Kingdom Power Moons grant coins instead of spending
             # the Odyssey hatch. Push the updated lifetime total so the

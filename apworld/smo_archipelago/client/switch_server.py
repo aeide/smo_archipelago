@@ -607,12 +607,9 @@ class SwitchServer:
           - context.py after a Cap Kingdom Power Moon item arrives from AP
         """
         total = self._state.compute_cap_coin_total()
-        log.info("[p1-coins] push_coin_grant: total=%d active=%s",
-                 total, self._active_device_id)
         if total == 0:
             return
         await self._send(CoinGrant(total=total))
-        log.info("[p1-coins] coin_grant sent: total=%d", total)
 
     def set_talkatoo_pool(self, enabled: bool, kingdoms: dict[str, list[str]]) -> None:
         """Stash the Talkatoo% per-kingdom AP-pool payload.
