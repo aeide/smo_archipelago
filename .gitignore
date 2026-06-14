@@ -10,11 +10,12 @@ venv/
 *.coverage
 htmlcov/
 
-# Client runtime (formerly the bridge directory; bridge/ was deleted in
-# the Phase 4 merge that moved the bridge into apworld/smo_archipelago/
-# client/. The dev venv now lives at repo-root `.venv/` (covered by the
-# Python block above). Keeping `bridge/` ignored so leftover seeds /
-# config.local.toml don't drift in.).
+# Bridge runtime directory. The tracked bridge SOURCE lives in
+# apworld/smo_archipelago/client/; `bridge/smo_ap_bridge/` is a local
+# runtime tree that ALSO holds the romfs-extracted maps
+# (bridge/smo_ap_bridge/data/shine_map.json, capture_map.json, and their
+# *_review.json). Those are copyrighted Nintendo content — this dir MUST
+# stay ignored so they never reach the public repo (Devon, 2026-06-13).
 bridge/
 apworld/smo_archipelago/client/logs/
 apworld/smo_archipelago/client/*.log

@@ -971,7 +971,7 @@
             "Lake Peace"
         ],
         "region": "Lake Kingdom",
-        "requires": "{LakePeace()} and {OptOne(Puzzle Part)}"
+        "requires": "{LakePeace()} and |Puzzle Part (Lake Kingdom)|"
     },
     {
         "name": "Lake: I Feel Underdressed",
@@ -1477,7 +1477,7 @@
             "Cloud Peace"
         ],
         "region": "Cloud Kingdom",
-        "requires": "{OptOne(Picture Match Part)}"
+        "requires": "|Picture Match Part (Goomba)|"
     },
     {
         "name": "Lost: Atop a Propeller Pillar",
@@ -4019,12 +4019,12 @@
         "requires": "|Cheep Cheep|"
     },
     {
-        "name": "Capture: Puzzle Part",
+        "name": "Capture: Puzzle Part (Lake Kingdom)",
         "category": [
             "Capture"
         ],
         "region": "Lake Kingdom",
-        "requires": "|Puzzle Part|"
+        "requires": "|Puzzle Part (Lake Kingdom)|"
     },
     {
         "name": "Capture: Poison Piranha Plant",
@@ -4083,12 +4083,12 @@
         "requires": "({OptOne(Hold/Throw)}) AND |Boulder|"
     },
     {
-        "name": "Capture: Picture Match Part",
+        "name": "Capture: Picture Match Part (Goomba)",
         "category": [
             "Capture"
         ],
         "region": "Cloud Kingdom",
-        "requires": "|Picture Match Part|"
+        "requires": "|Picture Match Part (Goomba)|"
     },
     {
         "name": "Capture: Tropical Wiggler",
@@ -4264,5 +4264,73 @@
         ],
         "region": "Moon Kingdom",
         "requires": "({ParabonesSkip()} and {OptOne(Banzai Bill)}) AND |Chargin' Chuck|"
-    }
+    },
+    {"name": "Mushroom: Perched on the Castle Roof", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Pops Out of the Tail", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Caught Hopping at Peach's Castle!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Gardening for Toad: Garden Seed", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Gardening for Toad: Field Seed", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Gardening for Toad: Pasture Seed", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Gardening for Toad: Lake Seed", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Grow a Flower Garden", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Mushroom Kingdom Timer Challenge", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Found at Peach's Castle! Good Dog!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Taking Notes: Around the Well", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Herding Sheep at Peach's Castle", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Gobbling Fruit with Yoshi", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Yoshi's Second Helping!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Yoshi's All Filled Up!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Love at Peach's Castle", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Toad Defender", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Forever Onward, Captain Toad!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Jammin' in the Mushroom Kingdom", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Shopping Near Peach's Castle", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Mushroom Kingdom Regular Cup", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Mushroom Kingdom Master Cup", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Picture Match: Basically Mario", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Picture Match: A Stellar Mario!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Light from the Ceiling", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Loose-Tile Trackdown", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Totally Classic!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Courtyard Chest Trap", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Yoshi's Feast in the Sea of Clouds", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Sunken Star in the Sea of Clouds", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Secret 2D Treasure", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: 2D Boost from Bullet Bill", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Tussle in Tostarena: Rematch", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Struggle in Steam Gardens: Rematch", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Dust-Up in New Donk City: Rematch", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Battle in Bubblaine: Rematch", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Blowup at Mount Volbono: Rematch", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Rumble in Crumbleden: Rematch", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Secret Path to Peach's Castle!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: A Tourist in the Mushroom Kingdom!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Found with Mushroom Kingdom Art", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Hat-and-Seek: Mushroom Kingdom", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Mushroom: Princess Peach, Home Again!", "category": ["Mushroom Kingdom"], "region": "Mushroom Kingdom", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Arrival at Rabbit Ridge!", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Captain Toad on the Dark Side!", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Breakdown Road: Hurry!", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Breakdown Road: Final Challenge!", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Invisible Road: Rush!", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Invisible Road: Secret!", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Vanishing Road Rush", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Vanishing Road Challenge", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Yoshi Under Siege", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Fruit Feast Under Siege", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Yoshi on the Sinking Island", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Fruit Feast on the Sinking Island", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Yoshi's Magma Swamp", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Fruit Feast in the Magma Swamp!", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 1", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 2", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 3", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 4", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 5", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 6", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 7", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 8", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 9", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Dark Side: Found with Dark Side Art 10", "category": ["Dark Side"], "region": "Dark Side", "requires": "", "junk_only": true},
+    {"name": "Darker Side: Long Journey's End", "category": ["Darker Side"], "region": "Darker Side", "requires": "", "junk_only": true}
 ]

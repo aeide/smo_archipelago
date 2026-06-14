@@ -95,6 +95,24 @@
     },
     "Moon Kingdom": {
         "requires": "{KingdomMoons(Bowser's,8)}",
+        "connects_to": [
+            "Mushroom Kingdom"
+        ]
+    },
+    "Mushroom Kingdom": {
+        "requires": "",
+        "connects_to": [
+            "Dark Side"
+        ]
+    },
+    "Dark Side": {
+        "requires": "",
+        "connects_to": [
+            "Darker Side"
+        ]
+    },
+    "Darker Side": {
+        "requires": "",
         "connects_to": []
     }
 }

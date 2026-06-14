@@ -7,6 +7,38 @@ session; the invariants there (MoonGetHook chokepoint, pre-orig init ordering, t
 pattern) all apply to this work.
 
 
+## Session log — 2026-06-13 (P1 verify + P3-3a data)
+
+### Accomplished
+
+**P1 verified in-game** — Cap moon → 100 coins, idempotent catch-up confirmed. Build/deploy
+gotchas recorded in CLAUDE.md (Python 3.11+/`lz4 pyelftools mmh3`; Ryujinx mods path is
+`%APPDATA%\Ryujinx\mods\...`, not `E:\Ryubin`). Fixed a `context.py` truncation committed by
+`5736ece`; added 4 MoonRock scenario symbols to `HookSymbols.hpp` (committed in `a00743a`).
+
+**P3 detailed plan written** — `docs/plan-p3-detail.md` (reviewed + approved by Devon).
+
+**P3-3a data half COMPLETE** (apworld generates; 756 pass — only the pre-existing
+`test_moon_rock_checks.py` failures remain, which are for a separate unimplemented feature).
+Full breakdown in CLAUDE.md "P3 progress". In brief: +20 ability items (`Ability` category),
+capture roster completed (4 part-variants split; +Broode's/Letter/Yoshi/`Spark pylon`/Bowser;
+6 clones), +68 junk-only MK/Dark Side/Darker Side locations (names verbatim from shine_map),
+new regions + categories, `_apply_junk_only_rules` (filler/trap only), festival drops updated,
+`test_moon_requirements` junk_only exemption.
+
+### Next session (P3-3b, Opus + smo-build)
+
+1. Ability classification (`ItemKind.ABILITY`) + `ability_unlock` wire + `ApState::ability_unlocked`
+   bitfield + Cappy + duplicate→coins. Abilities TRACKED only (enforcement is P4).
+2. **Variant capture cap→hack override** — `capture_map` keys both Puzzle Parts as `"Puzzle Part"`
+   (`GotogotonLake`/`GotogotonCity`) and both Picture Match Parts as `"Picture Match Part"`
+   (`FukuwaraiFacePartsKuribo`/`FukuwaraiFacePartsMario`); add a committed override mapping the 4
+   variant item names → hacks in the bridge cap→hack resolution. (Generation doesn't depend on it.)
+3. Tests for the new pool (ability counts, split variants, clones, ID stability, junk_only never
+   progression/useful).
+
+---
+
 ## Session log — 2026-06-13
 
 ### Accomplished this session
@@ -254,7 +286,7 @@ Smallest end-to-end slice of the "moon item with an effect" pattern that P3 reus
 - Tests: update `test_connect_gate.py`-adjacent suites; new test that 3 captures are
   precollected and never placed.
 
-### P3 — Mushroom→captures, DarkSide→abilities, junk-only MK/DS checks  *(split: Sonnet apworld, Opus switch)*
+### P3 — Mushroom→captures, DarkSide→abilities, junk-only MK/DS checks  *(3a data ✅ 2026-06-13; 3b switch/wire pending)*
 
 - apworld: add MK (104) and Dark Side (24) moon locations as `excluded` junk-only checks
   with vanilla gating in regions.json. Items per the accounting section: 20 ability items

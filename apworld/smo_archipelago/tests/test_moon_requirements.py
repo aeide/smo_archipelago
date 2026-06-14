@@ -62,12 +62,19 @@ def subareas() -> dict[str, dict]:
 
 @pytest.fixture(scope="module")
 def matchable_location_names(locations) -> set[str]:
-    """Non-Capture, non-special locations that must have a requirements entry."""
+    """Non-Capture, non-special locations that must have a requirements entry.
+
+    junk_only locations (P3 Mushroom Kingdom / Dark Side / Darker Side checks)
+    are excluded: they're filler/trap-only checks with no ability-logic
+    requirements (requires == ""), so they have no moon_requirements entry by
+    design.
+    """
     return {
         loc["name"]
         for loc in locations
         if not loc["name"].startswith("Capture:")
         and ": " in loc["name"]   # excludes "Arrive in the Mushroom Kingdom"
+        and not loc.get("junk_only", False)
     }
 
 

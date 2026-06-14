@@ -75,6 +75,8 @@ FESTIVAL_ITEMS_TO_DROP = frozenset({
     "Lava Bubble", "Volbonan", "Hammer Bro", "Meat", "Fire Piranha Plant",
     "Pokio", "Jizo", "Bowser Statue", "Parabones", "Banzai Bill",
     "Chargin' Chuck",
+    # P3 post-game captures (no home once post-Metro regions are removed).
+    "Letter", "Yoshi", "Bowser",
 })
 
 ########################################################################################
@@ -417,9 +419,37 @@ def _apply_multi_moon_rules(world: World, multiworld: MultiWorld, player: int) -
                 add_item_rule(location, lambda item: not is_mm_item(item))
 
 
+def _apply_junk_only_rules(world: World, multiworld: MultiWorld, player: int) -> None:
+    """P3: Mushroom Kingdom + Dark Side moon locations are junk-only AP checks.
+
+    They remain collectible in-game with vanilla post-game gating, but the AP
+    fill must never place progression OR useful items there — only filler/traps.
+    Locations are tagged `junk_only: true` in locations.json. Stricter than
+    `filler_only` (which only blocks progression), matching the design's
+    "filled only with filler/traps" intent.
+    """
+    junk_only_names = {
+        loc["name"] for loc in world.location_table
+        if loc.get("junk_only", False)
+    }
+    if not junk_only_names:
+        return
+    from worlds.generic.Rules import add_item_rule
+    for region in multiworld.regions:
+        if region.player != player:
+            continue
+        for location in region.locations:
+            if location.name in junk_only_names:
+                add_item_rule(
+                    location,
+                    lambda item: not item.advancement and not item.useful,
+                )
+
+
 # Called after rules for accessing regions and locations are created, in case you want to see or modify that information.
 def after_set_rules(world: World, multiworld: MultiWorld, player: int):
     _apply_filler_only_rules(world, multiworld, player)
+    _apply_junk_only_rules(world, multiworld, player)
     if is_option_enabled(multiworld, player, "multi_moon_shuffle"):
         _apply_multi_moon_rules(world, multiworld, player)
 

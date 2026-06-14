@@ -133,6 +133,18 @@
             "capturesanity"
         ]
     },
+    "Ability": {
+        "hidden": true
+    },
+    "Mushroom Kingdom": {
+        "hidden": true
+    },
+    "Dark Side": {
+        "hidden": true
+    },
+    "Darker Side": {
+        "hidden": true
+    },
     "post-metro": {
         "hidden": true
     },
