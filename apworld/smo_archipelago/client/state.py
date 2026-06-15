@@ -60,6 +60,11 @@ class BridgeState:
         self.received_items: list[ItemEvent] = []
         self.checked_locations: list[CheckEvent] = []
         self.captures_unlocked: set[str] = set()
+        # Per-name received COUNTS (P3 duplicate->coins). captures_unlocked is a
+        # set (presence only); these track multiplicity so a clone copy of an
+        # already-owned capture/ability converts to coins via the coin total.
+        self.captures_received_count: dict[str, int] = {}
+        self.abilities_received: dict[str, int] = {}
         self.moons_received_by_kingdom: dict[str, int] = {}
         self.moons_checked_by_kingdom: dict[str, int] = {}
         # M6 phase D — per-kingdom PayShineNum from the Switch's save.
@@ -116,6 +121,13 @@ class BridgeState:
             self.received_items.append(evt)
             if evt.item.kind == "capture" and evt.item.cap:
                 self.captures_unlocked.add(evt.item.cap)
+                self.captures_received_count[evt.item.cap] = (
+                    self.captures_received_count.get(evt.item.cap, 0) + 1
+                )
+            elif evt.item.kind == "ability" and evt.item.name:
+                self.abilities_received[evt.item.name] = (
+                    self.abilities_received.get(evt.item.name, 0) + 1
+                )
             elif evt.item.kind == "moon" and evt.item.kingdom:
                 # Effective moon credits, matching `KingdomMoons` rule weighting:
                 # Multi-Moon is worth 3, Power Moon is worth 1. So the GUI's
@@ -253,6 +265,38 @@ class BridgeState:
         """
         with self._lock:
             return max(0, self.moons_received_by_kingdom.get("Cap", 0)) * 100
+
+    def compute_total_coin_grant(self) -> int:
+        """Lifetime coin total to push to the Switch (P1 + P3 duplicate->coins).
+
+          = Cap Kingdom moons * 100
+          + each DUPLICATE capture received (count - 1) * 100
+          + each DUPLICATE ability received (count - 1) * 100
+
+        The first copy of a capture/ability unlocks it; every further copy
+        (the "clone" items added in P3) converts to 100 coins. Counting
+        duplicates from lifetime receipts keeps this idempotent under the
+        Switch's `coins_applied` high-water mark across HELLO replays, exactly
+        like the Cap-moon total. push_coin_grant uses THIS (superset of
+        compute_cap_coin_total).
+        """
+        with self._lock:
+            total = max(0, self.moons_received_by_kingdom.get("Cap", 0)) * 100
+            for c in self.captures_received_count.values():
+                total += max(0, c - 1) * 100
+            for c in self.abilities_received.values():
+                total += max(0, c - 1) * 100
+            return total
+
+    def get_ability_counts(self) -> dict[str, int]:
+        """Defensive copy of per-ability received counts (for AbilityStateMsg).
+
+        Count > 1 on a progressive chain item (Progressive Jump/Crouch/Ground
+        Pound) is the chain level; on a unique ability it just means a clone
+        arrived (the extra converts to coins via compute_total_coin_grant).
+        """
+        with self._lock:
+            return dict(self.abilities_received)
 
     def get_pay_shine_num(self) -> dict[str, int] | None:
         """Return a defensive copy of the last received PayShineNum snapshot."""

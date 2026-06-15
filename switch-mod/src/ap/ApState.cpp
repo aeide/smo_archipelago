@@ -14,6 +14,7 @@
 #include <hk/ro/RoUtil.h>
 #include "../util/MsgFontSafe.hpp"
 
+#include <cstdio>
 #include <cstring>
 
 class PlayerHitPointData;
@@ -248,6 +249,86 @@ void ApState::applyCoinGrant() {
     coins_applied = total;
     SMOAP_LOG_INFO("[p1-coins] addCoin delta=%d total=%d (coins_applied now %d)",
                    delta, total, coins_applied);
+}
+
+void ApState::applyAbilityState(const AbilityEntry* entries, std::size_t count) {
+    // P3 — full-overwrite ability tracking. Worker thread only. Compares the
+    // incoming counts against the prior table to decide which abilities are
+    // newly unlocked / leveled, then overwrites the table under a seqlock.
+    const std::size_t capped = (count < kAbilityTableMax) ? count : kAbilityTableMax;
+
+    // Prior count for a name in the current (pre-overwrite) table; 0 if absent.
+    auto priorCount = [this](const char* name) -> int {
+        for (std::size_t i = 0; i < ability_table_count; ++i) {
+            if (std::strcmp(ability_table[i].name, name) == 0)
+                return ability_table[i].count;
+        }
+        return 0;
+    };
+
+    // Detect newly-unlocked / leveled abilities BEFORE overwriting so the
+    // comparison is against the previous snapshot. Route bubbles through the
+    // inbound_system_bubbles ring — direct CappyMessenger calls from the worker
+    // thread crash Ryujinx's JIT (same reason as enqueueSystemBubble).
+    for (std::size_t i = 0; i < capped; ++i) {
+        const auto& e = entries[i];
+        if (e.ability[0] == '\0') continue;
+        if (e.count > priorCount(e.ability)) {
+            SystemBubble bubble{};
+            std::snprintf(bubble.text, sizeof(bubble.text), "Unlocked %s!", e.ability);
+            if (!inbound_system_bubbles.push(bubble)) {
+                SMOAP_LOG_WARN("[p3-ability] system bubble ring full; dropping "
+                               "unlock bubble for '%s'", e.ability);
+            }
+            SMOAP_LOG_INFO("[p3-ability] unlocked/leveled '%s' count=%d "
+                           "(was %d)", e.ability, e.count, priorCount(e.ability));
+        }
+    }
+
+    // Seqlock full-overwrite (even=stable, odd=writing) — matches the
+    // talkatoo_pools / shop_labels pattern so a P4 frame-thread reader can
+    // re-read without a lock.
+    const auto seq0 = ability_table_seq.load(std::memory_order_relaxed);
+    ability_table_seq.store(seq0 + 1, std::memory_order_release);  // even -> odd
+    for (std::size_t i = 0; i < capped; ++i) {
+        std::memcpy(ability_table[i].name, entries[i].ability, kCheckFieldCap);
+        ability_table[i].name[kCheckFieldCap - 1] = '\0';
+        ability_table[i].count = entries[i].count;
+    }
+    ability_table_count = capped;
+    ability_table_seq.store(seq0 + 2, std::memory_order_release);  // odd -> even
+}
+
+int ApState::abilityCount(const char* name) const {
+    if (!name || !*name) return 0;
+    // Seqlock read (matches applyAbilityState's even=stable/odd=writing).
+    // Writes happen only on item receipt / HELLO replay (rare + brief), so a
+    // few retries effectively always land on a stable snapshot. On the
+    // pathological always-contended case we return the best-effort last read;
+    // counts are monotonic so that can only under-report by a frame, never
+    // over-grant a move the player doesn't own.
+    int result = 0;
+    for (int attempt = 0; attempt < 8; ++attempt) {
+        const std::uint32_t s0 = ability_table_seq.load(std::memory_order_acquire);
+        if (s0 & 1u) continue;  // writer mid-update
+        result = 0;
+        std::size_t n = ability_table_count;
+        if (n > kAbilityTableMax) n = kAbilityTableMax;
+        for (std::size_t i = 0; i < n; ++i) {
+            if (std::strcmp(ability_table[i].name, name) == 0) {
+                result = ability_table[i].count;
+                break;
+            }
+        }
+        const std::uint32_t s1 = ability_table_seq.load(std::memory_order_acquire);
+        if (s0 == s1) return result;  // stable snapshot
+    }
+    return result;  // best-effort (contended)
+}
+
+bool ApState::abilityAtLeast(const char* name, int level) const {
+    if (ability_gate_force_unlock.load(std::memory_order_relaxed)) return true;
+    return abilityCount(name) >= level;
 }
 
 void ApState::maybeApplyInboundKill() {

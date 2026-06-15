@@ -29,12 +29,15 @@ SHARED_PEACE_CATEGORY = "Snow/Seaside Peace"
 def before_is_category_enabled(multiworld: MultiWorld, player: int, category_name: str) -> Optional[bool]:
     from ..Helpers import is_option_enabled
 
-    # Capturesanity locations are retired in v2. "Capture: X" locations are
-    # never generated regardless of the capturesanity option value. Capture
-    # *items* remain and are handled via starting-inventory and (in P3)
-    # Mushroom Kingdom moon funding.
-    if category_name == "Capture":
-        return False
+    # NOTE: the "Capture" category must NOT be disabled here. is_category_enabled
+    # is shared by both is_item_enabled and is_location_enabled, and capture
+    # ITEMS and capture LOCATIONS both carry category ["Capture"]. Disabling the
+    # category here would zero out every capture item in create_items (regression
+    # observed 2026-06-14: |Puzzle Part (Lake Kingdom)| / |Picture Match Part
+    # (Goomba)| unreachable because the items were never created). Capture
+    # *locations* ("Capture: X") are retired in v2 via before_is_location_enabled
+    # below instead; capture *items* stay in the pool (funded by Mushroom Kingdom
+    # moons in P3 and precollected as starters in hooks/World.py).
 
     if category_name == SHARED_PEACE_CATEGORY:
         # "Secret Path to Lake Lamode!" and "Secret Path to the Steam Gardens!"
@@ -55,4 +58,11 @@ def before_is_item_enabled(multiworld: MultiWorld, player: int, item: SMOItem) -
 # Use this if you want to override the default behavior of is_option_enabled
 # Return True to enable the location, False to disable it, or None to use the default behavior
 def before_is_location_enabled(multiworld: MultiWorld, player: int, location: SMOLocation) -> Optional[bool]:
+    # Capturesanity locations are retired in v2. "Capture: X" locations (tagged
+    # with the "Capture" category) are never generated. This replaces the old
+    # category-level disable, which also (incorrectly) zeroed out the capture
+    # ITEMS that share the same category. Items keep flowing; only the locations
+    # are dropped. `location` here is the raw dict from world.location_table.
+    if "Capture" in location.get("category", []):
+        return False
     return None

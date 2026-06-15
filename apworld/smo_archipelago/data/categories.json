@@ -129,9 +129,7 @@
         "hidden": true
     },
     "Capture": {
-        "yaml_option": [
-            "capturesanity"
-        ]
+        "hidden": true
     },
     "Ability": {
         "hidden": true

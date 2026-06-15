@@ -25,11 +25,36 @@ namespace smoap::hooks {
 
 namespace {
 
+// Single pointer-sized field, passed in x0 on aarch64 — matches the layout
+// used by game/OdysseyRescue.cpp and game/CaptureGate.cpp for the same calls.
+// TU-local (anonymous namespace) to mirror those files and avoid any
+// global-scope collision with their identically-named locals.
+struct GameDataHolderAccessor { void* mData; };
+
 constexpr const char* kGetCurrentHackNameSym =
     "_ZNK16PlayerHackKeeper18getCurrentHackNameEv";
 
 using GetCurrentHackNameFn = const char* (*)(const PlayerHackKeeper*);
 GetCurrentHackNameFn s_getCurrentHackName = nullptr;
+
+// Resolves the current stage key (e.g. "CapWorldHomeStage") so the gate can
+// make a stage-scoped exception for the forced Cap-Kingdom exit pylon (see
+// kSparkPylonHack / capIsExemptCapKingdomPylon below). Same symbol +
+// accessor pattern as game/OdysseyRescue.cpp.
+using GetCurrentStageNameFn = const char* (*)(GameDataHolderAccessor);
+GetCurrentStageNameFn s_getCurrentStageName = nullptr;
+
+// The Spark Pylon's SMO-internal hack_name. It's a real startHack capture
+// (NOT a scripted cinematic, contrary to an earlier assumption — confirmed
+// in-game 2026-06-14: gating it soft-locked Mario inside Cap Kingdom because
+// the forced "ride the sparks up to the Odyssey" exit IS this capture). We
+// keep Spark Pylon randomized everywhere else and exempt only the Cap-Kingdom
+// instance so the player can always leave the opening kingdom.
+constexpr const char* kSparkPylonHack = "ElectricWire";
+// Cap Kingdom's main stage. Every pylon here is exempt; that's fine —
+// Cap Kingdom is the tutorial and holds no pylon-gated AP progression, so
+// "free pylons in Cap Kingdom" only ever means "can leave Cap Kingdom".
+constexpr const char* kCapKingdomStage = "CapWorldHomeStage";
 
 using ForceKillHackFn = void (*)(PlayerHackKeeper*);
 ForceKillHackFn s_forceKillHack = nullptr;
@@ -78,6 +103,24 @@ bool capUsesTryEscape(const char* hack_name) {
     return false;
 }
 
+// True ONLY for a Spark Pylon (ElectricWire) captured while the player is in
+// Cap Kingdom (CapWorldHomeStage). This is the forced exit pylon — gating it
+// soft-locks the opening kingdom. Spark Pylons in every other stage stay
+// gated on the "Spark pylon" AP item. Fails CLOSED (returns false → normal
+// gate applies) if the stage can't be positively confirmed as Cap Kingdom,
+// so it never weakens the gate elsewhere; during the forced-pylon sequence
+// the game is running and the GameDataHolder is cached, so confirmation is
+// reliable in the one place that matters.
+bool capIsExemptCapKingdomPylon(const char* hack_name) {
+    if (!hack_name || std::strcmp(hack_name, kSparkPylonHack) != 0) return false;
+    if (!s_getCurrentStageName) return false;
+    void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
+        std::memory_order_relaxed);
+    if (!gdh) return false;
+    const char* stage = s_getCurrentStageName(GameDataHolderAccessor{gdh});
+    return stage && std::strcmp(stage, kCapKingdomStage) == 0;
+}
+
 HkTrampoline<void, PlayerHackKeeper*, al::HitSensor*, al::HitSensor*, al::LiveActor*>
     captureStartHook = hk::hook::trampoline(
         [](PlayerHackKeeper* self, al::HitSensor* a, al::HitSensor* b,
@@ -89,7 +132,19 @@ HkTrampoline<void, PlayerHackKeeper*, al::HitSensor*, al::HitSensor*, al::LiveAc
 
             SMOAP_LOG_INFO("CaptureStartHook: hack_name=%s", name);
 
-            const bool blocked = smoap::game::captureBlocked(name);
+            bool blocked = smoap::game::captureBlocked(name);
+
+            // Stage-scoped exception: the forced Cap-Kingdom exit pylon is a
+            // real capture, so gating it soft-locks the opening kingdom. Let
+            // any Spark Pylon in Cap Kingdom through while keeping it gated
+            // everywhere else (the "Spark pylon" item still matters for every
+            // later kingdom). See capIsExemptCapKingdomPylon.
+            if (blocked && capIsExemptCapKingdomPylon(name)) {
+                blocked = false;
+                SMOAP_LOG_INFO(
+                    "CaptureStartHook: %s in Cap Kingdom — exempt from gate "
+                    "(forced exit pylon)", name);
+            }
 
             // Capturesanity: only credit the check when the player owns the
             // unlock. A blocked capture is yanked back to Mario as soon as
@@ -160,6 +215,22 @@ void installCaptureStartHook() {
         s_getCurrentHackName = reinterpret_cast<GetCurrentHackNameFn>(addr);
         SMOAP_LOG_INFO("getCurrentHackName resolved @ 0x%lx",
                        static_cast<unsigned long>(addr));
+    }
+
+    // Stage lookup for the Cap-Kingdom exit-pylon exemption. Non-fatal:
+    // if it fails to resolve, capIsExemptCapKingdomPylon fails closed and
+    // Spark Pylon is gated everywhere (including Cap Kingdom) — i.e. the
+    // pre-exemption behavior, logged so the soft-lock risk is visible.
+    const ptr stage_addr =
+        hk::ro::lookupSymbol(smoap::sym::kGameDataFunctionGetCurrentStageName);
+    if (stage_addr == 0) {
+        SMOAP_LOG_WARN("getCurrentStageName lookup FAILED — Cap-Kingdom pylon "
+                       "exemption disabled (Spark Pylon gated everywhere)");
+    } else {
+        s_getCurrentStageName =
+            reinterpret_cast<GetCurrentStageNameFn>(stage_addr);
+        SMOAP_LOG_INFO("getCurrentStageName resolved @ 0x%lx",
+                       static_cast<unsigned long>(stage_addr));
     }
 
     const ptr fkh_addr = hk::ro::lookupSymbol(smoap::sym::kPlayerHackKeeperForceKillHack);

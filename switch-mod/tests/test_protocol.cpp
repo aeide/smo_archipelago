@@ -815,6 +815,58 @@ TEST(decode_talkatoo_pool_truncates_overflow) {
     EXPECT(m.talkatoo_pool.truncated);
 }
 
+// P3 — ability_state wire message ------------------------------------------
+
+TEST(decode_ability_state_empty) {
+    // Empty entries is meaningful: full-overwrite semantics mean "no
+    // abilities" on the apply side.
+    DecodedMsg m;
+    EXPECT(decodeFrom(R"({"t":"ability_state","entries":[]})", m));
+    EXPECT_EQ_S(m.t, "ability_state");
+    EXPECT_EQ_I(m.ability_state.entry_count, 0u);
+    EXPECT(!m.ability_state.truncated);
+}
+
+TEST(decode_ability_state_multiple) {
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"ability_state","entries":[)"
+        R"({"ability":"Wall Slide","count":1},)"
+        R"({"ability":"Progressive Jump","count":2},)"
+        R"({"ability":"Progressive Ground Pound","count":3}]})",
+        m));
+    EXPECT_EQ_I(m.ability_state.entry_count, 3u);
+    EXPECT_EQ_S(m.ability_state.entries[0].ability, "Wall Slide");
+    EXPECT_EQ_I(m.ability_state.entries[0].count, 1);
+    EXPECT_EQ_S(m.ability_state.entries[1].ability, "Progressive Jump");
+    EXPECT_EQ_I(m.ability_state.entries[1].count, 2);
+    EXPECT_EQ_S(m.ability_state.entries[2].ability, "Progressive Ground Pound");
+    EXPECT_EQ_I(m.ability_state.entries[2].count, 3);
+}
+
+TEST(decode_ability_state_caps_at_max_entries) {
+    std::string body = R"({"t":"ability_state","entries":[)";
+    constexpr std::size_t kOver = kAbilityStateMax + 3;
+    for (std::size_t i = 0; i < kOver; ++i) {
+        if (i > 0) body += ',';
+        body += R"({"ability":"A)";
+        body += std::to_string(i);
+        body += R"(","count":1})";
+    }
+    body += "]}";
+    DecodedMsg m;
+    EXPECT(decodeFrom(body, m));
+    EXPECT_EQ_I(m.ability_state.entry_count, kAbilityStateMax);
+    EXPECT(m.ability_state.truncated);
+}
+
+TEST(decode_ability_state_unknown_field_rejected) {
+    DecodedMsg m;
+    EXPECT(!decodeFrom(
+        R"({"t":"ability_state","entries":[{"ability":"Climb","count":1,"x":2}]})",
+        m));
+}
+
 TEST(roundtrip_check_via_reader) {
     Check c{.kind=ItemKind::Moon, .kingdom="Cap", .shine_id="Spinning-Hat Stack"};
     std::string w = wire([&](auto& b){ encodeCheck(b, c); });

@@ -593,7 +593,12 @@ class SMOContext(CommonContext):
 
         initial_mirror_len = len(self.state.received_items)
         moon_received_this_batch = False
-        cap_moon_received_this_batch = False
+        # Any item whose arrival can change the coin total: a Cap moon, OR a
+        # capture/ability (a clone of an already-owned one converts to coins).
+        # Pushing coin_grant is idempotent (Switch high-water mark), so it's
+        # safe to push whenever one of these arrives even if not a duplicate.
+        coin_relevant_this_batch = False
+        ability_received_this_batch = False
 
         for i, ni in enumerate(items):
             pos = ap_index + i
@@ -611,7 +616,17 @@ class SMOContext(CommonContext):
             if ref.kind == ItemKind.MOON.value and ref.kingdom:
                 moon_received_this_batch = True
                 if ref.kingdom == "Cap":
-                    cap_moon_received_this_batch = True
+                    coin_relevant_this_batch = True
+            elif ref.kind == ItemKind.ABILITY.value:
+                # Abilities ship via the AbilityStateMsg snapshot (not ItemMsg),
+                # so the Switch tracks counts idempotently. Don't send_item.
+                ability_received_this_batch = True
+                coin_relevant_this_batch = True
+                continue
+            elif ref.kind == ItemKind.CAPTURE.value:
+                # A duplicate capture (clone) converts to coins; the unlock
+                # itself still flows through the ItemMsg path below.
+                coin_relevant_this_batch = True
             if self.switch is not None:
                 await self.switch.send_item(ItemMsg(
                     kind=ref.kind,
@@ -629,10 +644,14 @@ class SMOContext(CommonContext):
             # No-op when no PaySnapshotMsg has arrived yet (Switch on
             # title screen).
             await self._push_outstanding_to_switch()
-        if cap_moon_received_this_batch and self.switch is not None:
-            # P1: Cap Kingdom Power Moons grant coins instead of spending
-            # the Odyssey hatch. Push the updated lifetime total so the
-            # Switch applies the delta (addCoin(total - coins_applied)).
+        if self.switch is not None and ability_received_this_batch:
+            # P3: ship the authoritative per-ability count table (Cappy bubble
+            # on a newly-unlocked ability; tracked for P4 enforcement).
+            await self.switch.push_ability_state()
+        if self.switch is not None and coin_relevant_this_batch:
+            # P1 + P3: Cap moons -> coins, and clone captures/abilities ->
+            # coins. Push the updated lifetime total; the Switch applies only
+            # the delta (addCoin(total - coins_applied)), so this is idempotent.
             await self.switch.push_coin_grant()
 
     def _parse_received_item(self, ni):
@@ -856,13 +875,10 @@ class SMOContext(CommonContext):
             # ClientGoal StatusUpdate from a Switch goal-snapshot replay,
             # which the AP server treats idempotently.
             if self.switch is not None:
-                # Push the capturesanity flag BEFORE send_ap_state — the
-                # next Switch HELLO will use it to decide whether to
-                # synthesize all-captures-unlocked ItemMsgs (default for
-                # capturesanity OFF; otherwise AP-granted captures only).
                 # slot_data isn't auto-stashed by CommonContext (unlike
-                # stored_data, which is); read it straight off the
-                # Connected args dict.
+                # stored_data, which is); read it straight off the Connected
+                # args dict. Used below for the goal location, capture gating,
+                # DeathLink, and Talkatoo%.
                 slot_data = args.get("slot_data") or {}
                 # Goal-trigger location: when the apworld's victory location
                 # is a real in-game moon (festival% mode), checking it on
@@ -873,7 +889,16 @@ class SMOContext(CommonContext):
                 # fires the goal via its own wire message.
                 self._goal_location_name = _GOAL_LOC_BY_OPTION.get(
                     slot_data.get("goal"))
-                capturesanity = bool(slot_data.get("capturesanity", 0))
+                # Capture gating (v2 capturesanity, default ON). When ON, only
+                # AP-granted captures unlock and the Switch's CaptureStartHook
+                # ejects Mario from un-owned captures. When OFF, the bridge
+                # floods every capture as unlocked at HELLO (vanilla movement;
+                # the capture items still ride along in the pool but grant
+                # nothing new). Default ON (the `.get` fallback) so a fresh YAML
+                # — or a malformed/absent slot_data — gets the gated experience
+                # and never the all-captures flood that filled the compendium
+                # with un-owned captures and let T-Rex etc. be captured.
+                capturesanity = bool(slot_data.get("capturesanity", 1))
                 self.capturesanity_enabled = capturesanity
                 self.switch.set_capturesanity_enabled(capturesanity)
                 # DeathLink is per-slot: each player opts in via their own

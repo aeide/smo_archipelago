@@ -24,6 +24,7 @@ from typing import Any, Awaitable, Callable
 
 from . import protocol
 from .protocol import (
+    AbilityStateMsg,
     ActivateMsg,
     ApStateMsg,
     CappyMsg,
@@ -594,9 +595,10 @@ class SwitchServer:
     async def push_coin_grant(self) -> None:
         """Send the current Cap Kingdom coin total to the active Switch.
 
-        Derives `total` from BridgeState.compute_cap_coin_total() (lifetime
-        Cap Kingdom Power Moons received x 100 coins each). No-op when total
-        is 0 -- there is nothing to grant and the Switch starts at 0 already.
+        Derives `total` from BridgeState.compute_total_coin_grant() (lifetime
+        Cap Kingdom Power Moons x 100, PLUS P3 duplicate captures/abilities
+        x 100 each). No-op when total is 0 -- there is nothing to grant and
+        the Switch starts at 0 already.
 
         Idempotent: the Switch tracks its own `coins_applied` high-water mark
         and only calls addCoin(total - coins_applied). Sending the same total
@@ -604,12 +606,31 @@ class SwitchServer:
 
         Called from:
           - _run_post_hello_replay (HELLO replay, after push_kingdom_gates)
-          - context.py after a Cap Kingdom Power Moon item arrives from AP
+          - context.py after a Cap moon OR a duplicate capture/ability arrives
         """
-        total = self._state.compute_cap_coin_total()
+        total = self._state.compute_total_coin_grant()
         if total == 0:
             return
         await self._send(CoinGrant(total=total))
+
+    async def push_ability_state(self) -> None:
+        """Send the authoritative per-ability count table to the active Switch.
+
+        Full-overwrite snapshot (AbilityStateMsg) — idempotent, mirrors
+        OutstandingMsg / KingdomGatesMsg. No-op when no ability items have been
+        received yet. Called from _run_post_hello_replay and from context.py
+        when an ability item arrives. P3 tracks abilities only; the Switch
+        stores the counts + bubbles newly-unlocked abilities (enforcement is
+        P4).
+        """
+        counts = self._state.get_ability_counts()
+        if not counts:
+            return
+        entries = [
+            {"ability": name, "count": n}
+            for name, n in sorted(counts.items())
+        ]
+        await self._send(AbilityStateMsg(entries=entries))
 
     def set_talkatoo_pool(self, enabled: bool, kingdoms: dict[str, list[str]]) -> None:
         """Stash the Talkatoo% per-kingdom AP-pool payload.
@@ -1126,8 +1147,13 @@ class SwitchServer:
 
         # P1 coin grant: Cap Kingdom Power Moons convert to 100 coins each
         # instead of spending the Odyssey hatch. Running lifetime total so
-        # the Switch applies only the delta on reconnect (idempotent).
+        # the Switch applies only the delta on reconnect (idempotent). Also
+        # carries P3 duplicate-capture/ability coins.
         await self.push_coin_grant()
+
+        # P3 abilities: ship the authoritative per-ability count table so the
+        # Switch re-applies its ability tracking idempotently after a reboot.
+        await self.push_ability_state()
 
         # Shine palette replay (per-uid). Routed through _send so it
         # targets the active conn — but during the post-HELLO sequence we

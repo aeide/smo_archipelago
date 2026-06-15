@@ -68,6 +68,12 @@ class _StubSwitch:
     async def push_deathlink_helloack(self) -> None:  # pragma: no cover - unused here
         pass
 
+    async def push_coin_grant(self) -> None:  # pragma: no cover - unused here
+        pass
+
+    async def push_ability_state(self) -> None:  # pragma: no cover - unused here
+        pass
+
 
 _ITEM_ID = 4242
 _ITEM_NAME = "Goomba"

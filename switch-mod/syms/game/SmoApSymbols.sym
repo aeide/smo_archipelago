@@ -169,3 +169,32 @@ _ZN2rs17getGrowFlowerTimeEPKN2al9LiveActorEPKNS0_11PlacementIdE
 // VERIFY before shipping: llvm-nm --dynamic main.nso | grep addCoin
 // If absent from dynsym the module will abort at sail loadSymbols.
 _ZN16GameDataFunction7addCoinE20GameDataHolderWriteri
+
+//
+// P4 — ability enforcement (judge-backed move gates). See
+// hooks/AbilityGateHook.cpp. Each is `bool PlayerJudge*::judge() const`
+// (IJudge override) → mangled _ZNK<len><Class>5judgeEv (no args). Mangling
+// produced via the Itanium ABI (aarch64-none-elf-nm equivalent), lengths:
+// PlayerJudgeStartSquat=21, PlayerJudgeStartRolling=23, PlayerJudgeStartHipDrop=23.
+// These are virtual overrides so the vtable keeps their out-of-line body —
+// they should be in dynsym, but VERIFY before shipping (a missing trampoline
+// target aborts at sail loadSymbols, not soft-fail):
+//   llvm-nm --dynamic main.nso | grep 5judgeEv
+// Crouch:
+_ZNK21PlayerJudgeStartSquat5judgeEv
+// Roll (crouch-roll):
+_ZNK23PlayerJudgeStartRolling5judgeEv
+// Ground Pound (hip drop):
+_ZNK23PlayerJudgeStartHipDrop5judgeEv
+// Roll Boost (motion-control shake while rolling) — NOT a judge; this is the
+// PlayerInput predicate that reports the boost swing. Gated on Progressive
+// Crouch>=3. VERIFIED present in main.nso (2026-06-14). bool ()const → no args.
+_ZNK11PlayerInput28isTriggerRollingRestartSwingEv
+// Option 3 (squat-jump suppression — Backflip + Long Jump). The squat→jump
+// trigger is undecompiled (PlayerActorHakoniwa.cpp is a 40-byte stub upstream),
+// so we gate the jump-input judge but ONLY while in the squat state, detected
+// via the exeSquat beacon. Both VERIFIED HIT in main.nso (2026-06-14g).
+// PlayerActorHakoniwa::exeSquat() — void, non-const; "PlayerActorHakoniwa"=19.
+_ZN19PlayerActorHakoniwa8exeSquatEv
+// PlayerJudgePreInputJump::judge() const — bool, no args; len 23.
+_ZNK23PlayerJudgePreInputJump5judgeEv

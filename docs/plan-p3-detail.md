@@ -213,10 +213,17 @@ Either way:
 
 ## Open items to resolve before/at implementation
 
-1. **Capture variant naming + capture_map join.** Do `Puzzle Part` Lake/Metro and
-   `Picture Match Part` Goomba/Mario share one `hack_name` each? If so, both variants map to the
-   same hack in `sync_capture_table.py` — verify the sync + Switch lookup tolerate two cap-names →
-   one hack. This is the riskiest data detail.
+1. **Capture variant naming + capture_map join.** ✅ RESOLVED 2026-06-14. Each split variant has
+   its OWN distinct hack_name (Puzzle Part Lake=`GotogotonLake`/Metro=`GotogotonCity`; Picture
+   Match Goomba=`FukuwaraiFacePartsKuribo`/Mario=`FukuwaraiFacePartsMario`) — NOT a shared hack.
+   But `capture_map.json` keys both under the OLD names (`Puzzle Part`/`Picture Match Part`), so the
+   split item names aren't map keys. Handled by `VARIANT_CAP_HACK_OVERRIDE` in BOTH `client/maps.py`
+   (runtime grant) and now `scripts/sync_capture_table.py` (Switch table gen). No aliases needed
+   (each variant → exactly one hack). NB: while fixing this we found `sync_capture_table.py` was
+   emitting an IDENTITY hack-name table entirely (it couldn't find `capture_map.json` — looked in
+   `client/data/`, real map is `%APPDATA%/SMOArchipelago/data/`), which fail-opened the capture gate
+   for 46/51 captures. Both bugs fixed; see `plan-v2-vision.md` 2026-06-14. `sync_shine_table.py`
+   still has the same path bug (unfixed).
 2. **Exact MK/DS/Darker Side counts and names** from upstream (104/24 are approximate).
 3. **Generic `Mushroom Kingdom Power Moon` item** — keep as filler or remove.
 4. **Progressive Ground Pound clone semantics** (eases Dive vs. true GP clone) — confirm with

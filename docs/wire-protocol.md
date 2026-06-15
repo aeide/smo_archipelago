@@ -175,8 +175,30 @@ is a no-op.
 // Sent by the bridge on:
 //   1. Every HELLO replay (push_coin_grant in _run_post_hello_replay).
 //   2. Immediately when a new Cap Kingdom Power Moon arrives from AP.
+//   3. (P3) When a duplicate capture/ability arrives — the clone copy of an
+//      already-owned capture or ability converts to 100 coins, folded into
+//      this same cumulative total (compute_total_coin_grant).
 // Not sent when total == 0 (nothing to grant; Switch starts at 0).
 {"t":"coin_grant","total":200}
+
+// P3 — ability tracking. Authoritative per-ability received-count snapshot
+// (FULL OVERWRITE, like outstanding / kingdom_gates): the Switch replaces its
+// entire ability table from `entries` on each receipt, so HELLO replay is
+// idempotent and progressive-chain levels (count > 1) survive reconnects
+// without double-counting. `ability` is the AP item name; `count` is how many
+// copies have been received (1 = unlocked; 2+ on a progressive chain =
+// chain level, on a unique ability = a clone arrived → coins via coin_grant).
+//
+// P3 TRACKS abilities only — the Switch stores counts and pops a Cappy bubble
+// on a newly-unlocked ability. ENFORCEMENT (gating Mario's moveset) is P4.
+// New message type so a pre-P3-3b Switch ignores it gracefully.
+//
+// Sent by the bridge on every HELLO replay (push_ability_state) and whenever
+// an ability item arrives from AP. Not sent when no abilities received yet.
+{"t":"ability_state","entries":[
+  {"ability":"Backflip","count":1},
+  {"ability":"Progressive Ground Pound","count":2}
+]}
 ```
 
 ## State machines

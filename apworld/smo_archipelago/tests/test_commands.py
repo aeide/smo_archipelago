@@ -232,12 +232,12 @@ async def test_connected_handler_pushes_capturesanity_off_to_switch():
         # scout warming is skipped.
     })
 
+    # capturesanity: 0 explicitly opts OUT of gating, so the bridge floods
+    # every capture as unlocked (vanilla movement). The flag flows through to
+    # the switch and the ctx mirror.
     assert sw.capturesanity_calls == [False]
     assert sw.push_capturesanity_calls == 1
     assert sw.ap_states == ["ready"]
-    # ctx mirror gets flipped too — used by gui.py to hide the
-    # "Captures unlocked" section (which would otherwise list 50
-    # synthetic unlocks).
     assert ctx.capturesanity_enabled is False
 
 
@@ -270,8 +270,8 @@ async def test_connected_handler_pushes_capturesanity_on_to_switch():
 @pytest.mark.asyncio
 async def test_connected_handler_tolerates_missing_slot_data():
     """Defensive: a malformed Connected packet (or a server that
-    doesn't ship slot_data) must not crash — default to enabled=False
-    matches the apworld's default Capturesanity Toggle = OFF."""
+    doesn't ship slot_data) must not crash — and the v2 capture gate
+    defaults ON (enabled=True) so captures are never accidentally flooded."""
     import asyncio
     ctx = SMOContext(
         server_address=None, password=None,
@@ -284,15 +284,15 @@ async def test_connected_handler_tolerates_missing_slot_data():
     sw = _StubSwitch()
     ctx.switch = sw  # type: ignore[assignment]
 
-    # No slot_data key at all.
+    # No slot_data key at all. v2 forces the capture gate ON regardless.
     await ctx._handle_ap_package("Connected", {})
-    assert sw.capturesanity_calls == [False]
+    assert sw.capturesanity_calls == [True]
     assert ctx.talkatoo_mode is False
 
     # Explicit None.
     sw.capturesanity_calls.clear()
     await ctx._handle_ap_package("Connected", {"slot_data": None})
-    assert sw.capturesanity_calls == [False]
+    assert sw.capturesanity_calls == [True]
     assert ctx.talkatoo_mode is False
 
 

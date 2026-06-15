@@ -515,6 +515,37 @@ struct CoinGrant {
     int total = 0;
 };
 
+// P3 — Bridge -> Switch ability tracking (full-overwrite snapshot).
+//
+// Sent on every HELLO replay and whenever a new ability item arrives from AP.
+// `entries` is the authoritative per-ability received-count table; the Switch
+// full-overwrites its ability table (idempotent, same model as OutstandingMsg
+// / KingdomGates / ShopLabels). A count > 1 on a progressive-chain item
+// (Progressive Jump/Crouch/Ground Pound) is the chain level; on a unique
+// ability it just means a clone was received — the duplicate->100-coins
+// conversion rides the existing coin_grant total, NOT this message. P3 TRACKS
+// abilities only: the Switch stores counts and pops a Cappy bubble for any
+// ability whose count rose. Enforcement (gating Mario's moveset) is P4.
+//
+// New `t` ("ability_state") so a pre-P3 Switch ignores it via decode()'s
+// unknown-type branch, exactly like coin_grant before P1's Switch side landed.
+//
+// Fixed-buffer storage (same M6.1 allocator-safety contract every inbound
+// struct uses). 20 ability items today; 32 entries is comfortable headroom.
+// Wire size: <= 32 entries x ~40 bytes — trivially under the 8 KiB line cap.
+inline constexpr std::size_t kAbilityStateMax = 32;
+
+struct AbilityEntry {
+    char ability[kCheckFieldCap] = {};
+    int count = 0;
+};
+
+struct AbilityState {
+    AbilityEntry entries[kAbilityStateMax]{};
+    std::size_t entry_count = 0;
+    bool truncated = false;
+};
+
 // (de)serialization --------------------------------------------------------
 // Implementations in ApProtocol.cpp use util/Json.hpp (no STL exceptions).
 //
@@ -556,6 +587,7 @@ struct DecodedMsg {
     TalkatooPool talkatoo_pool{};
     ShopLabels shop_labels{};
     CoinGrant coin_grant{};
+    AbilityState ability_state{};
 };
 bool decode(const char* data, std::size_t len, DecodedMsg& out);
 

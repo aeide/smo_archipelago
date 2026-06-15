@@ -7,6 +7,185 @@ session; the invariants there (MoonGetHook chokepoint, pre-orig init ordering, t
 pattern) all apply to this work.
 
 
+## Session log — 2026-06-14c (P4 ability enforcement — judge-gate spike, CODE COMPLETE)
+
+Capture gate confirmed working end-to-end in-game (un-owned caps eject; Zipper moon
+→ Zipper capturable). Started **P4 enforcement**. Devon decisions this session:
+spike-first; pivoted the spike target from jumps to **judge-backed moves** after
+discovering backflip/side-flip have NO dedicated judge class (they're branches
+inside the jump state — deferred), whereas crouch/roll/ground-pound each have a
+clean `PlayerJudge*::judge()`.
+
+### Architecture (load-bearing for all of P4)
+SMO gates a move by calling a `PlayerJudge*`'s `IJudge::judge() const` (returns
+bool: "should this move start?"). Trampolining `judge()` and returning false when
+the gating AP ability isn't owned cleanly suppresses the move — `judge()` is const
+and side-effect-free (`update()` does the state work), so a forced-false is a clean
+"not now". This is the canonical P4 enforcement point (M7 lesson: hook the decision).
+Judge classes exist for: crouch (`PlayerJudgeStartSquat`), roll
+(`PlayerJudgeStartRolling`), ground pound (`PlayerJudgeStartHipDrop`), ground spin,
+hip-drop, etc. **No judge for backflip/side-flip/long-jump** — those need jump-state
+work in a later pass (long jump has `exeLongJump`/`PlayerStateLongJump`; backflip/
+side-flip are stick+crouch-context branches with no single symbol).
+
+### Implemented this session (CODE COMPLETE, uncommitted; needs Devon build+test)
+- **`ApState` reader (P4):** `abilityCount(name)` — lock-free seqlock read over the
+  existing `ability_table` (the seqlock was added in P3-3b exactly for this).
+  `abilityAtLeast(name, level)` = count>=level, returns true when
+  `ability_gate_force_unlock` is set. Counts are monotonic so a torn read can only
+  under-report a frame, never over-grant. (`ap/ApState.{hpp,cpp}`)
+- **`ability_gate_force_unlock`** atomic on ApState, default **false** (gates active,
+  so the spike is testable out of the box). Hook point for a future "unlock all"
+  toggle; not yet wired to a UI/command (see safety net below).
+- **`hooks/AbilityGateHook.cpp`** — three `judge()` trampolines:
+  - Crouch ← `Progressive Crouch >= 1`  (`PlayerJudgeStartSquat`)
+  - Roll   ← `Progressive Crouch >= 2`  (`PlayerJudgeStartRolling`)
+  - Ground Pound ← `Progressive Ground Pound >= 1` (`PlayerJudgeStartHipDrop`)
+  Each calls orig first; only suppresses when the move WOULD start. Throttled log on
+  suppression. Installed from `main.cpp` (`installAbilityGateHooks`, after
+  CaptureStartHook). Source glob picks up the new file on reconfigure.
+- **Symbols** added to `syms/game/SmoApSymbols.sym` (mangled, Itanium ABI, no args):
+  `_ZNK21PlayerJudgeStartSquat5judgeEv`, `_ZNK23PlayerJudgeStartRolling5judgeEv`,
+  `_ZNK23PlayerJudgeStartHipDrop5judgeEv`. No `HookSymbols.hpp` constants needed
+  (trampoline `installAtSym<...>` takes the literal mangled name).
+
+### Devon: build + verify + test
+1. **Judge symbols VERIFIED present (2026-06-14)** in `.romfs-cache/main` (SMO 1.0.0)
+   via `python scripts/check_nso_symbols.py .romfs-cache/main _ZNK21PlayerJudgeStartSquat5judgeEv _ZNK23PlayerJudgeStartRolling5judgeEv _ZNK23PlayerJudgeStartHipDrop5judgeEv`
+   → all three HIT (project's verifier; NOT llvm-nm, which isn't on PATH). No
+   sail loadSymbols-abort risk. (If a FUTURE judge is inlined/missing, hook the caller
+   `PlayerActorHakoniwa::exe*` instead.)
+2. Rebuild + redeploy the switch-mod (same loop as the capture fixes).
+3. **Test:** on a save WITHOUT Progressive Crouch / Progressive Ground Pound, confirm
+   Mario can't crouch / roll / ground-pound; watch for `AbilityGate: suppressed …`.
+   Then `/send <slot> Progressive Crouch` (×1 → crouch works; ×2 → roll works) and
+   `/send <slot> Progressive Ground Pound` (→ ground pound works). Confirm a Cappy
+   bubble pops on receipt (P3-3b tracking).
+4. **Assumption to confirm:** `PlayerJudgeStartRolling` == the crouch-roll (not dive-
+   roll). If it gates the wrong thing, the test will show it — easy to remap.
+
+### Safety net
+No interactive force-unlock wired yet, BUT the spike moves carry low brick risk
+(none are strictly required to leave a kingdom) AND there's a zero-code escape hatch:
+`/send <slot> <ability>` from the AP server console unlocks any blocked move
+immediately (ability_state is a full-overwrite snapshot). Wiring
+`ability_gate_force_unlock` to a `/`-command (client→Switch msg, mirrors coin_grant)
+is a clean follow-up if we want a one-shot "unlock everything" during later, riskier
+passes (jumps, dive).
+
+### Next (after the spike validates)
+- Remaining judge-backed moves: ground spin (Spin Throw?), wall catch, etc. — map
+  each judge to its ability item.
+- Cap throws (Up/Down/Spin Throw) — find their judge/input-routing.
+- Jump-context moves (backflip/side-flip via `PlayerStateJump`; long jump via
+  `exeLongJump`) — the hard subset, do last.
+- Wire the force-unlock `/`-command before the jump passes (higher brick risk).
+
+---
+
+## Session log — 2026-06-14b (Cap-Kingdom Spark Pylon soft-lock — FIXED)
+
+### Symptom
+After the capture-gate fix above started working, the forced "ride the sparks up
+to the Odyssey" pylon that leaves Cap Kingdom turned out to be a **real startHack
+capture** (`ElectricWire`), not a scripted cinematic as an earlier note assumed.
+With Spark Pylon randomized (not yet owned), the gate ejected Mario from it →
+**soft-lock inside Cap Kingdom.**
+
+### Fix (keeps Spark Pylon randomized — Devon's preference)
+Stage-scoped exemption in `hooks/CaptureStartHook.cpp`: a Spark Pylon
+(`ElectricWire`) is allowed free ONLY when the current stage is Cap Kingdom
+(`CapWorldHomeStage`); every other Spark Pylon stays gated on the "Spark pylon"
+AP item. Implementation:
+- New `s_getCurrentStageName` (resolves `GameDataFunction::getCurrentStageName` —
+  already in `SmoApSymbols.sym`/`HookSymbols.hpp`, already used by
+  `game/OdysseyRescue.cpp`, so resolution is proven).
+- `capIsExemptCapKingdomPylon(hack)` — true iff hack==`ElectricWire` AND
+  `getCurrentStageName(GameDataHolderAccessor{holder})`==`CapWorldHomeStage`.
+  **Fails closed** (no exemption) if the symbol is unresolved or the holder
+  isn't cached, so it never weakens the gate elsewhere; during the forced-pylon
+  sequence the holder is reliably cached.
+- In the hook: `blocked = captureBlocked(name); if (blocked &&
+  capIsExemptCapKingdomPylon(name)) blocked = false;`
+- Corrected the stale "scripted cinematic" claim in `game/CaptureGate.cpp`'s
+  `kBaselineHacks` comment.
+
+Spark Pylon stays in the randomized pool (NOT added to `kBaselineHacks` /
+precollect). Cap Kingdom holds no pylon-gated AP progression, so "free pylons in
+Cap Kingdom" only ever means "can leave Cap Kingdom."
+
+### Next steps (Devon, Windows)
+- Rebuild + redeploy the switch-mod (same loop as the capture-table fix — both
+  ride in the same `subsdk9`). Test: (1) un-owned T-Rex elsewhere still ejects;
+  (2) the Cap-Kingdom exit pylon is captureable WITHOUT owning "Spark pylon";
+  (3) once you have a kingdom past Cap, an un-owned Spark Pylon there still ejects.
+- Watch the log for `getCurrentStageName resolved @ …` at boot and
+  `… in Cap Kingdom — exempt from gate` when you grab the exit pylon.
+
+---
+
+## Session log — 2026-06-14 (capturesanity gate fail-open — ROOT-CAUSED + FIXED)
+
+### Symptom
+Capturesanity re-enabled (real `DefaultOnToggle`, gated path), switch-mod rebuilt
++ redeployed, yet capturing an un-owned T-Rex did NOT eject Mario. Reported as
+"same functionality" after last session's `kBaselineHacks` change.
+
+### Root cause (not the gate logic — the lookup table)
+The deny path in `CaptureStartHook.cpp` → `CaptureGate::captureBlocked(name)` is
+correct. The bug is the data it matches against. `captureBlocked` gets `name`
+from `PlayerHackKeeper::getCurrentHackName()`, which returns the **SMO-internal
+hack_name** (T-Rex = `"TRex"`, Goomba = `"Kuribo"`, …). It looks that up in
+`capture_table.h::kCaptureHackNames`. But that header had been generated with an
+**identity** hack-name mapping — `kCaptureHackNames` == `kCaptureNames` (apworld
+display names: `"T-Rex"`, `"Goomba"`). So `captureBitFor("TRex")` found no match
+→ returned `0xff` → `captureBlocked` returned `false` → **fail-open for 46 of 51
+captures** (only Frog/Cactus/Tree/Manhole/Yoshi matched by coincidence). The
+header's own line 3 said it: `Hack-name mapping: identity (capture_map.json absent`.
+
+Why identity: `sync_capture_table.py` looked for `capture_map.json` ONLY at
+`apworld/smo_archipelago/client/data/` (doesn't exist in this checkout). The real
+extracted map lives at `%APPDATA%/SMOArchipelago/data/capture_map.json` (where the
+setup wizard's extractor writes it — same place the runtime client loads it via
+`client/setup_state.py::_resolve_map_path`). So the build-loop's plain
+`python scripts/sync_capture_table.py` silently emitted the identity table. The
+runtime client was fine (it found the %APPDATA% map), which is why owned captures
+worked and only the *block* path was broken.
+
+### Fixes applied this session
+1. **Regenerated `switch-mod/src/ap/capture_table.h`** with correct SMO-internal
+   hack names (sourced from `bridge/smo_ap_bridge/data/capture_map.json`, 52
+   entries, + the 4 split-variant overrides). 51 captures, 46 diverged, 0 aliases.
+   Written via the disk-truth Write tool (shell mount is stale — confirmed again:
+   the shell even executed a truncated mirror of the edited script). **This file is
+   gitignored IP — do NOT commit it.**
+2. **`scripts/sync_capture_table.py`** now resolves `capture_map.json` from
+   `%APPDATA%/SMOArchipelago/data/` (then XDG, then legacy `client/data/`) —
+   mirroring the client — so a plain run on Windows finds the same map the client
+   uses. Also applies `VARIANT_CAP_HACK_OVERRIDE` (the 4 split part-captures whose
+   item names aren't capture_map keys) so they no longer fall through to identity.
+
+### Next steps (Devon, Windows)
+1. **Rebuild + redeploy the switch-mod** — `capture_table.h` is compiled in, so the
+   regenerated table only takes effect after a rebuild:
+   `python scripts/build_switchmod.py -DBRIDGE_HOST=<LAN IP>`, then copy
+   `subsdk9`+`main.npdm` into `%APPDATA%\Ryujinx\mods\contents\0100000000010000\exefs\`.
+2. **Test:** with capturesanity ON, capture an un-owned T-Rex → Mario should be
+   yanked back out the moment the dive-in cinematic ends (forceKillHack + playSE_NG).
+   Owned captures still work; the 4 split part-captures (Puzzle/Picture Match) now
+   gate too.
+3. **Parallel issue — ALSO FIXED 2026-06-14:** `sync_shine_table.py` had the IDENTICAL
+   default-path bug → `shine_table.h` was an EMPTY STUB (it couldn't find `shine_map.json`),
+   which silently no-ops Phase 2 pre-marking, the Talkatoo% block, and per-moon recolor
+   (NOT the capture gate). Applied the same `%APPDATA%/SMOArchipelago/data/` resolution helper.
+   I did NOT hand-regenerate `shine_table.h` (it's ~435 rows joined from `locations.json`, which
+   the stale shell mount truncates — unsafe to build here). It regenerates correctly on Devon's
+   next Windows build: the build loop already runs `python scripts/sync_shine_table.py`, which now
+   finds the %APPDATA% shine_map (775 entries verified present). Confirm the regenerated
+   `shine_table.h` has a non-zero `// Count:` line (stub says `0 moons`).
+
+---
+
 ## Session log — 2026-06-13 (P1 verify + P3-3a data)
 
 ### Accomplished
@@ -286,7 +465,7 @@ Smallest end-to-end slice of the "moon item with an effect" pattern that P3 reus
 - Tests: update `test_connect_gate.py`-adjacent suites; new test that 3 captures are
   precollected and never placed.
 
-### P3 — Mushroom→captures, DarkSide→abilities, junk-only MK/DS checks  *(3a data ✅ 2026-06-13; 3b switch/wire pending)*
+### P3 — Mushroom→captures, DarkSide→abilities, junk-only MK/DS checks  *(3a data ✅ + 3b client/wire ✅ 2026-06-13; 3b Switch C++ pending)*
 
 - apworld: add MK (104) and Dark Side (24) moon locations as `excluded` junk-only checks
   with vanilla gating in regions.json. Items per the accounting section: 20 ability items
@@ -305,6 +484,11 @@ Smallest end-to-end slice of the "moon item with an effect" pattern that P3 reus
   which keeps the build playable throughout.
 
 ### P4 — Ability gating on Switch  *(Opus 4.8 — the hard hooking phase)*
+
+> **Canonical, living P4 plan + progress tracker: [docs/plan-p4-detail.md](plan-p4-detail.md).**
+> It holds the full ability→hook mapping table, rollout order, the judge() architecture,
+> risks, and a per-session log. Keep THAT file updated each P4 session; the notes below
+> are the original high-level sketch and are superseded by it.
 
 Gate Mario's moveset by `ApState::ability_unlocked`. This is symbol-discovery-heavy work in
 `PlayerActorHakoniwa` / `PlayerJudge*` / `rs::` trigger land; expect the same pattern as the
@@ -372,6 +556,124 @@ the M7 three-layer lesson (catch upstream of the visible state change).
   subareas (excluded anyway), checkpoint-flag side effects, Talkatoo%/moon-rock interactions.
 - This phase re-uses the M7 "lie to the game" three-layer pattern for any UI that previews
   destinations.
+
+### P7 data — subarea ↔ capture ↔ ability correlation (extracted 2026-06-14f)
+
+Generated from P0's `data/moon_requirements.json` (775 CSV moons; 435 matched to current
+apworld locations) + `data/subareas.json` (131 subareas) by `outputs/analyze_v3.py`. Full
+per-moon detail in `outputs/subarea_analysis.json`. **Universe = the 435 ability-mapped
+moons** (excludes Multi-Moons, boss/festival locations, and the P3 junk MK/DS checks, which
+carry no ability requirements). "Required ability" uses the **easiest method** per moon (the
+method with the fewest non-baseline requirements); starting kit = single jump + neutral/no
+cap throw + walk/capture.
+
+**Method/throw semantics (load-bearing for the logic compiler — P6/P7):** a method's
+`cap_throws` is the SET of throws that satisfy it; if it contains `neutral` or `none`, a
+baseline throw works and NO motion-throw ability is required. Consequence: across all 131
+subareas, **no subarea's easiest path strictly requires Up/Down/Spin Throw** — every
+throw-flavored moon has a baseline-throw alternative. So gating the motion throws (P4) never
+strands a subarea. (They appear as *options* constantly, but never as the sole path.)
+Likewise `jump_height` `single`/`none` = baseline; only `double/triple/backflip/long_jump/
+gpj/cap_return` are gated.
+
+**(1) Overworld vs subarea moons per kingdom** (435 mapped moons; a moon is "subarea" iff its
+location_name appears in a subarea's `location_names`, else "overworld"; a subarea moon is
+counted under the subarea's assigned kingdom — see cross-kingdom caveat below):
+
+| Kingdom | Overworld | Subarea | Total |
+|---|--:|--:|--:|
+| Cap | 5 | 6 | 11 |
+| Cascade | 15 | 6 | 21 |
+| Sand | 42 | 23 | 65 |
+| Lake | 21 | 7 | 28 |
+| Wooded | 26 | 23 | 49 |
+| Lost | 20 | 1 | 21 |
+| Metro | 32 | 21 | 53 |
+| Snow | 11 | 22 | 33 |
+| Seaside | 39 | 9 | 48 |
+| Luncheon | 34 | 15 | 49 |
+| Ruined | 2 | 2 | 4 |
+| Bowser's | 28 | 10 | 38 |
+| Moon | 11 | 3 | 14 |
+| Mushroom | 1 | 0 | 1 |
+| **Total** | **287** | **148** | **435** |
+
+**(2) Subareas gated by a capture** (≥1 member moon requires a capture). "ALL" = the capture
+is required by *every* matched moon in the subarea → strongest "you need this capture to do
+anything here" signal; a capture matching the subarea's theme/name is the de-facto entrance
+key. **Frog and Chain Chomp are fixed starters (P2 precollect), so their subareas are always
+open**; all other captures here are shuffled pool items and genuinely gate the subarea.
+
+- Cap: **Frog Pond** → Frog *(starter → always open)* (ALL). **Poison Tides** → Gushen,
+  Parabones, Paragoomba, Pokio (ALL) + Dino/Glydon/Shiverian.
+- Cascade: **Dinosaur Nest** → Dino (ALL). **Nice Shots with Chain Chomps** → Chain Chomp
+  *(starter → always open)* (ALL).
+- Sand: **Bullet Bill Maze** → Bullet Bill, Frog, Gushen, Hammer Bro, Parabones, Paragoomba,
+  Pokio, Shiverian, Uproot (ALL — every moon needs all of these across methods). **Inverted
+  Pyramid** → Bullet Bill, Glydon, Gushen, Parabones, Paragoomba, Shiverian, Yoshi (ALL).
+  **Underground Ruins** → Gushen (ALL) + 9 others. **Deepest Underground** → Glydon, Gushen,
+  Parabones, Paragoomba, "Locked behind Default Capture".
+- Wooded: **Sky Garden Tower** → Uproot (ALL). **Walking on Clouds** → Uproot (ALL).
+  **Shards in the Fog** → Paragoomba (ALL). **Crowded Elevator** → Tank (ALL).
+  **Secret Flower Field** → Frog/Gushen/Pokio/Tank/Uproot. **Deep Woods** →
+  Bullet Bill/Coin Coffer/Dino/Hammer Bro/Tank. **Flower Road** → Goomba.
+- Lost: **Crazy Cap Store (Lost)** → Pokio (ALL).
+- Metro: **Shards Under Siege** → Tank (ALL). **Bullet Billding** → Bullet Bill.
+- Snow: **Shiveria Town** → Dino/Frog/Glydon/Gushen/Parabones/Paragoomba/Shiverian/Yoshi
+  (the town hub — 9 matched moons, many captures).
+- Seaside: **Flying Through the Narrow Valley** → Gushen (ALL).
+- Luncheon: **Narrow Magma Path** → Lava Bubble (ALL). **Simmering in the Kitchen** → Lava
+  Bubble (ALL). **Luncheon Treasure Vault** → Fire Bro + Lava Bubble (ALL). **Shards in the
+  Cheese Rocks** → Hammer Bro (ALL). **Fork-Flickin to the Summit** → Forks (ALL).
+- Bowser's: **Spinning Tower** → Pokio (ALL).
+- Moon: **Underground Caverns** → Bullet Bill.
+
+**(3) Capture → # of subareas it unlocks** (which captures are most load-bearing for subarea
+access; shuffled captures only, so logic should weight these):
+
+Gushen 8 · Paragoomba 7 · Parabones 6 · Pokio 6 · Bullet Bill 6 · Glydon 5 · Frog 5* ·
+Uproot 5 · Shiverian 4 · Dino 4 · Tank 4 · Yoshi 3 · Hammer Bro 3 · Lava Bubble 3 ·
+Goomba 2 · Chain Chomp 1* · Coin Coffer 1 · Fire Bro 1 · Forks 1 ·
+"Locked behind Default Capture" 1 *(data marker, not a real capture — flag for cleanup)*.
+(*Frog/Chain Chomp are starters → their subareas are always reachable.*)
+
+**(4) Abilities required within subareas** (corrected throw logic; count = # subareas whose
+easiest path needs the ability). These are the P4/P6 gates that actually constrain subarea
+completion:
+
+| Ability | # subareas | Notes |
+|---|--:|---|
+| Long Jump | 22 | by far the most common gated requirement — P4 Long-Jump gate has the widest logic reach |
+| Ground Pound (`ground_pound`) | 7 | |
+| Ledge Grab (`ledge_grab`) | 5 | |
+| Wall Jump (`wall_jump`) | 5 | distinct from Wall Slide — verify which AP item maps here |
+| 2D Jump (`2d_jump`) | 4 | 8-bit-tube sections; may be inherent, not an AP item |
+| Dive (`dive`) | 4 | = Progressive Ground Pound L2 |
+| Outfit (`outfit`) | 4 | a required costume, NOT a moveset ability — handle separately |
+| Backflip | 4 | |
+| Crouch (`crouch`) | 3 | Progressive Crouch L1 |
+| Climb (`climb`) | 3 | |
+| Cap Bounce (`cap_return`) | 2 | |
+| Ground Pound Jump | 2 | |
+| Triple Jump | 1 | Shiveria Town |
+| Jaxi / Scooter / damage_boost / other_kingdom_trigger | 1 each | situational; not core moveset |
+| **Up/Down/Spin Throw** | **0 (as hard req)** | never the sole path — see throw semantics above |
+
+**Caveats / data oddities to resolve before P6/P7 logic uses this:**
+- **Cross-kingdom subareas** count under the kingdom you *enter* them from (subareas.json
+  `kingdom`), even when the moon physically lives in another kingdom's stage. Examples folded
+  into the counts: Costume Room (Sand) holds `Wooded: Exploring for Treasure` +
+  `Seaside: A Relaxing Dance`; Sphynx Treasure Vault (Sand) holds
+  `Seaside: The Sphynx's Underwater Vault`; Picture Match (Goomba) (Lake) holds a `Cloud:`
+  moon. For entrance shuffle this is the correct grouping (the door is in the enter-kingdom),
+  but a P5 moon-recolor keyed on *physical* kingdom would disagree.
+- **"Locked behind Default Capture"** appears in `captures` for Deepest Underground — it's a
+  sentinel, not a capture; the logic compiler should special-case or strip it.
+- `outfit` and `2d_jump` are listed as `other_required` but aren't moveset abilities (a
+  costume gate / an inherent 8-bit mechanic) — don't map them to AP ability items.
+- Numbers reflect **matched moons only**; subareas with `location_names: []` (their moons are
+  post-game/unmatched, e.g. the Dark Side capless roads, boss re-fights, most Mushroom
+  subareas) contribute 0 here and need their own pass if those moons ever become AP locations.
 
 ---
 

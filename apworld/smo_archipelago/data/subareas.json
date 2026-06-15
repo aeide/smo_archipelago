@@ -727,7 +727,7 @@
     "location_names": []
   },
   "Shiveria Town": {
-    "kingdom": "Seaside Kingdom",
+    "kingdom": "Snow Kingdom",
     "csv_names": [
       "Shiveria Town: The Icicle Barrier",
       "Shiveria Town: The Ice Wall Barrier",
@@ -753,7 +753,7 @@
     ]
   },
   "Class A Race": {
-    "kingdom": "Seaside Kingdom",
+    "kingdom": "Snow Kingdom",
     "csv_names": [
       "Class A Race: The Bound Bowl Grand Prix"
     ],

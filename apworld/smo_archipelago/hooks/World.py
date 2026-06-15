@@ -21,7 +21,8 @@ import logging
 # the per-kingdom effective-moon counts needed to leave that kingdom for the
 # next, where each Multi-Moon = 3 effective and each Power Moon = 1. Mirrored
 # here so after_create_items can demote surplus moons from progression to
-# useful, freeing locations for toggle-driven location reductions to trim. The
+# filler, freeing locations for toggle-driven location reductions to trim and
+# giving the P3 junk_only locations enough filler to be fillable. The
 # test_kingdom_moon_demotion sweep keeps this table in sync with regions.json.
 KINGDOM_MOON_GATES = {
     "Cascade":  5,
@@ -127,13 +128,21 @@ from ..kingdom_gates import pool_gate_capacities, roll_kingdom_gates
 def _demote_surplus_kingdom_moons(item_pool: list,
                                   gates: dict[str, int] | None = None,
                                   prefer_demoting_multimoons: bool = False) -> None:
-    """Demote surplus per-kingdom progression moons to useful in place.
+    """Demote surplus per-kingdom progression moons to FILLER in place.
 
     Items.json marks every kingdom moon as `progression: true`, but each
     gated kingdom's KingdomMoons(K, N) rule only needs N effective moons
-    reachable. The surplus contributes nothing to reachability but blocks
-    adjust_filler_items from trimming the pool when toggles drop the
-    location count — it pops fillers/traps/useful but never progression.
+    reachable. The surplus contributes nothing to reachability.
+
+    Surplus moons are demoted to `filler` (NOT `useful`) because P3 added 67
+    `junk_only` Mushroom/Dark Side locations whose item rule rejects BOTH
+    advancement AND useful items — only filler/traps may land there. The pool's
+    standalone filler (Coins/traps) is trimmed to a handful by
+    adjust_filler_items, so the surplus moons are the only large filler source
+    big enough to fill those 67 slots. Demoting them to `useful` instead left
+    ~47 non-fillable moons with no legal home (remaining_fill: "No more spots").
+    Filler also stays trim-friendly (adjust_filler_items pops filler/trap/useful
+    alike), so nothing else regresses.
 
     `gates` defaults to the static KINGDOM_MOON_GATES table; the
     randomize_kingdom_gates option passes the per-seed rolled table instead
@@ -144,7 +153,7 @@ def _demote_surplus_kingdom_moons(item_pool: list,
     for kingdom, threshold in gates.items():
         # Ruined exemption: its pool is tiny (1 Multi-Moon + 4 Power Moons)
         # and it gates the entire post-game chain (Bowser's -> Moon ->
-        # victory). Demoting any of its moons to useful drops them out of
+        # victory). Demoting any of its moons drops them out of
         # the reachability-guaranteed progression fill, which makes the
         # chain tail fragile (observed as remaining_fill FillErrors at
         # Bowser's/Moon locations). Five always-progression items cost the
@@ -160,7 +169,7 @@ def _demote_surplus_kingdom_moons(item_pool: list,
         if prefer_demoting_multimoons:
             # multi_moon_shuffle strategy: Power Moons are the progression
             # backbone; Multi-Moons are kept progression only when the PMs
-            # alone can't cover the gate. Demoted (useful) MMs are what lets
+            # alone can't cover the gate. Demoted (filler) MMs are what lets
             # the MM<->MM-location matching fill freely — in particular the
             # filler_only "Cascade: Multi Moon Atop the Falls" can only hold
             # a non-progression Multi-Moon.
@@ -174,9 +183,9 @@ def _demote_surplus_kingdom_moons(item_pool: list,
             mms_kept = min(len(prog_mms), threshold // 3)
             pms_kept = min(len(prog_pms), max(0, threshold - 3 * mms_kept))
         for it in prog_mms[mms_kept:]:
-            it.classification = ItemClassification.useful
+            it.classification = ItemClassification.filler
         for it in prog_pms[pms_kept:]:
-            it.classification = ItemClassification.useful
+            it.classification = ItemClassification.filler
 
 
 # Fixed starters: always precollected, never placed at randomised locations.
@@ -203,9 +212,14 @@ def _precollect_starting_captures(item_pool: list, world: World, multiworld: Mul
     normal generation), logs a warning and skips it rather than crashing.
     """
     # Collect all Capture items by position so we can remove by index safely.
+    # SMOItem carries no per-instance category dict, so resolve the category
+    # from the world's canonical name->data table. (An earlier version read a
+    # per-item attribute that SMOItem never sets, so it matched nothing and the
+    # starters were never precollected — fixed 2026-06-14.)
+    item_name_to_item = world.item_name_to_item
     capture_indices = [
         i for i, it in enumerate(item_pool)
-        if "Capture" in getattr(it, "item_data", {}).get("category", [])
+        if "Capture" in item_name_to_item.get(it.name, {}).get("category", [])
     ]
     pool_by_name: dict[str, int] = {}  # name -> first index in item_pool
     for i in capture_indices:
@@ -446,12 +460,47 @@ def _apply_junk_only_rules(world: World, multiworld: MultiWorld, player: int) ->
                 )
 
 
+def _apply_no_logic(world: World, multiworld: MultiWorld, player: int) -> None:
+    """no_logic testing mode: make every location and region trivially reachable.
+
+    Overrides the access_rule on every entrance and location for this player
+    with "always accessible", and relaxes the world's accessibility to minimal,
+    so a seed generates regardless of whether the moon-requirement logic is
+    satisfiable. Item-placement rules (filler_only / junk_only / multi_moon) are
+    left intact — those constrain *what* lands where, not *reachability*, so the
+    pool still fills sanely. Reserved for testing; seeds may be unwinnable.
+    """
+    def _always(state) -> bool:
+        return True
+
+    for region in multiworld.regions:
+        if region.player != player:
+            continue
+        for entrance in region.exits:
+            entrance.access_rule = _always
+        for location in region.locations:
+            location.access_rule = _always
+
+    # Relax the accessibility check so the fill never fails on an unreachable
+    # location (defensive; with every rule True everything is reachable anyway).
+    acc = getattr(world.options, "accessibility", None)
+    if acc is not None:
+        minimal = getattr(acc, "option_minimal", None)
+        if minimal is not None:
+            acc.value = minimal
+    logging.info("no_logic enabled: all access rules forced True, "
+                 "accessibility relaxed to minimal")
+
+
 # Called after rules for accessing regions and locations are created, in case you want to see or modify that information.
 def after_set_rules(world: World, multiworld: MultiWorld, player: int):
     _apply_filler_only_rules(world, multiworld, player)
     _apply_junk_only_rules(world, multiworld, player)
     if is_option_enabled(multiworld, player, "multi_moon_shuffle"):
         _apply_multi_moon_rules(world, multiworld, player)
+    # Must run last so it wins over the access rules set in set_rules.
+    if is_option_enabled(multiworld, player, "no_logic"):
+        _apply_no_logic(world, multiworld, player)
 
 # The item name to create is provided before the item is created, in case you want to make changes to it
 def before_create_item(item_name: str, world: World, multiworld: MultiWorld, player: int) -> str:

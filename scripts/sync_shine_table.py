@@ -28,9 +28,47 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
+
+
+def _user_data_dir() -> Path:
+    """Per-user data dir where the setup wizard's extractor writes the maps.
+
+    Mirrors client/setup_state.py::_user_data_dir so a plain
+    `python scripts/sync_shine_table.py` finds the SAME shine_map.json the
+    running SMOClient loads. (Previously this script only looked at the
+    in-repo client/data/ — which release/dev checkouts don't populate
+    because the maps are Nintendo IP — so the build loop silently emitted an
+    EMPTY-STUB shine_table.h and Phase 2 pre-marking / Talkatoo% / moon
+    recolor degraded to no-ops. Same class of bug as sync_capture_table.py's
+    identity fallback. 2026-06-14.)
+    """
+    base = os.environ.get("APPDATA")
+    if base:
+        return Path(base) / "SMOArchipelago" / "data"
+    return Path.home() / ".local" / "share" / "SMOArchipelago" / "data"
+
+
+def _resolve_shine_map(repo_root: Path) -> Path:
+    """First existing shine_map.json, search order matching the client:
+      1. %APPDATA%/SMOArchipelago/data/ (or XDG) — wizard extractor output
+      2. legacy in-repo apworld/smo_archipelago/client/data/ (dev-only)
+    Returns the %APPDATA% path even when absent so the --help/default text
+    and the stub diagnostic point at the canonical location.
+    """
+    wizard = _user_data_dir() / "shine_map.json"
+    if wizard.exists():
+        return wizard
+    legacy = (
+        repo_root / "apworld" / "smo_archipelago" / "client" / "data"
+        / "shine_map.json"
+    )
+    if legacy.exists():
+        return legacy
+    return wizard
 
 
 # Mirrors the regex in apworld/smo_archipelago/client/datapackage.py — keep
@@ -52,9 +90,7 @@ def parse_location_name(name: str) -> tuple[str, str] | None:
 def main(argv: list[str] | None = None) -> int:
     here = Path(__file__).resolve().parent.parent
     default_locations = here / "apworld" / "smo_archipelago" / "data" / "locations.json"
-    default_shine_map = (
-        here / "apworld" / "smo_archipelago" / "client" / "data" / "shine_map.json"
-    )
+    default_shine_map = _resolve_shine_map(here)
     default_out = here / "switch-mod" / "src" / "ap" / "shine_table.h"
 
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])

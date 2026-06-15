@@ -202,10 +202,14 @@ class DataPackage:
 
     def classify_item(self, name: str) -> ClassifiedItem:
         cats = [c.lower() for c in self._item_categories.get(name, [])]
-        # Upstream uses "Moon", "Capture", "post-metro".
+        # Upstream uses "Moon", "Capture", "post-metro". P3 adds "Ability".
         if "capture" in cats:
             # Capture items are bare enemy names (e.g. "Goomba", "Paragoomba").
             return ClassifiedItem(ItemKind.CAPTURE, name, cap=name)
+        if "ability" in cats:
+            # Ability items (P3): Up Throw, Backflip, Progressive Jump, ...
+            # The bare item name is the ability id the Switch keys off.
+            return ClassifiedItem(ItemKind.ABILITY, name)
         if "moon" in cats:
             # Items use " Kingdom " separator, not ": " (that's location form).
             m = _ITEM_MOON_KINGDOM_RE.match(name)

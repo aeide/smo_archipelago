@@ -13,6 +13,124 @@ This file is a fast-load brief for the **Spicy Meatball Overdrive** project. The
 
 The zip stem `meatballs` was chosen 2026-05-20 because the `worlds.smo` slot was already claimed by another apworld (`.apsmo` namespace conflict). The in-repo folder `apworld/smo_archipelago/` did not change to avoid churning dev-workflow path references.
 
+## ⚠️ Dev-environment gotcha: the Linux shell can serve STALE / byte-TRUNCATED files
+
+Confirmed twice now (2026-06-12 and again 2026-06-13). There are two independent paths to
+the repo and they can disagree within a session:
+
+- **File tools (Read / Write / Edit) and VS Code read the real files on disk.** These are
+  always correct and current.
+- **The Linux shell** (`mcp__workspace__bash` — used for `pytest`, `git`, `g++`, the zip
+  builder, etc.) mounts the repo through a separate layer. That layer snapshots files at
+  workspace-boot, and the snapshot is **stale AND byte-truncated** — files are cut off
+  mid-line well before EOF (e.g. `ApProtocol.hpp` served as 557 lines / 24,246 bytes ending
+  mid-token at `void encodeHello(smoap::util:` while disk had the full ~592 lines). The
+  shell's `stat` mtime reveals it: it reads *older* than your most recent edit. **Assume
+  this is present in EVERY session** — it has reproduced in 100% of sessions to date
+  (2026-06-12, -13, -14), and it truncates not just edited files but unedited deps too
+  (`items.json` was served cut off mid-array at line 579 on 2026-06-14). Do not waste time
+  re-confirming whether "this session" is affected; it is.
+
+### How to avoid it: do file work through the disk-truth tools, not the shell
+
+The Read / Write / Edit tools (and VS Code) always hit the real files on disk. The shell does
+not. So:
+
+- **Read / verify file contents → use the `Read` tool.** Never trust shell `cat` / `wc -l` /
+  `head` / `tail` / `git diff` / `grep` over file bytes you care about — they read the
+  truncated mirror. (The `Grep` tool also reads disk truth; prefer it over shell `grep`.)
+- **Edit files → use `Edit` / `Write`.** These land on disk correctly and the editor never
+  sees the stale mirror.
+- **Run pytest / Generate / builds → do it on Windows (or a fresh session), NOT this shell.**
+  The repo's normal workflow already runs `Generate.py` and the test suite on Windows; that is
+  the reliable path and sidesteps the bug entirely. Hand verification back to the user (or a
+  fresh shell) rather than fighting the mount.
+- **If you MUST run something in the shell against your edits:** brand-new files written to a
+  NEW path after boot ARE read correctly. So `Write` fresh copies of the changed files to a
+  new dir (e.g. the outputs dir) and run there — but note even `cp`-ing "unedited" deps from
+  the mount can copy truncated bytes, so `Write` those from `Read`-tool truth too, don't `cp`.
+- **A shell `g++` / `pytest` failure pointing at a syntax error mid-declaration, or a
+  `git diff` showing impossible deletions, is almost always the truncated mirror — NOT a real
+  bug in your edit.** Confirm with `Read` before "fixing" anything.
+
+Bottom line: **disk-truth edits are always safe** — the underlying files on disk are fine no
+matter what the shell shows. The bug is purely a read-side illusion in `mcp__workspace__bash`.
+
+## ⚠️ Generate runs the INSTALLED apworld zip, not your source edits
+
+`Generate.py` imports `worlds.meatballs` from the bundled zip at
+`vendor/Archipelago/custom_worlds/meatballs.apworld`, NOT from `apworld/smo_archipelago/`.
+So **edits to the source apworld do nothing in Generate until you rebuild the zip** with
+`python scripts/install_apworld.py` (run it on Windows — the Linux sandbox produces a
+wrong-arcname zip that fails with `No module named 'worlds.meatballs'`). Confirmed bite
+2026-06-14: a capture-pool fix was verified by the test suite (tests read the source tree
+directly) yet Generate still failed byte-for-byte identically because it loaded the stale
+2026-06-13 zip. **The tell:** the generation error/log is unchanged across a fix, AND the
+installed `meatballs.apworld` mtime predates your edit. The regen loop is therefore:
+
+1. `Edit`/`Write` source under `apworld/smo_archipelago/`.
+2. `pytest apworld/smo_archipelago/tests/...` (validates source — fast, but does NOT exercise the zip).
+3. **`python scripts/install_apworld.py`** to rebuild the zip — easy to forget, required every time.
+   (Plain, no flags. The `--bundle-mod`/`--bundle-scripts` flags only add the switch-mod sources +
+   wizard scripts *inside* the zip for release/first-run-wizard distribution; they do NOT affect
+   generation. The world-gen data — `items.json`/`locations.json`/`regions.json`/`hooks/` — bundles
+   every time regardless. Use plain for dev/gen-debug; reserve the flags for release builds.)
+4. `python vendor/Archipelago/Generate.py`.
+
+(The switch-mod binary in Ryujinx's exefs is independent of this zip; a Python-only bundle —
+no `--bundle-mod`/`--bundle-scripts` — is ~500 KB and fine for quick gen-debug cycles.)
+
+## Switch-mod build & deploy (build_switchmod.py → Ryujinx)
+
+Whenever you change anything under `switch-mod/src/` (hooks, `ApState`, `CaptureGate`,
+`ApProtocol`, etc.) the change does NOTHING in-game until you rebuild the subsdk9 binary AND
+copy it into Ryujinx's exefs. This is a frequent loop — keep it handy.
+
+**Prereqs (Windows, one-time):** Windows-native CMake, LLVM 19 (ABI-pinned by LibHakkun's
+libc++ — not 18, not 20), Ninja, and mingw64 g++ (builds `sail`). The post-link tools
+(`elf2nso.py` / `build_npdm.py` / `deploy.py`) shell out to bare `python`, so that Python must
+be **3.11+ with `pip install lz4 pyelftools mmh3`**. `build_switchmod.py` puts its own
+interpreter's dir first on PATH, so run it with that Python. Tool dirs can be overridden via
+`SMOAP_CMAKE_BIN` / `SMOAP_LLVM_BIN` / `SMOAP_NINJA_BIN` / `SMOAP_MINGW_BIN` / `SMOAP_PYTHON_BIN`.
+
+**Full build + deploy (PowerShell, Windows — the canonical copy-paste loop).** Run from a fresh
+shell; the Linux sandbox can't build (and the stale-mount bug). Step 1's table sync is only
+strictly needed after editing `data/items.json` / `data/locations.json`, but it's cheap and
+idempotent so it's left in the always-run path.
+
+```powershell
+cd E:\smo_archipelago
+# 1. Regenerate the joined tables (capture_table.h / shine_table.h)
+python scripts\sync_capture_table.py
+python scripts\sync_shine_table.py
+# 2. Find this PC's LAN IP (the address the Switch/Ryujinx reaches it on)
+$LAN_IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
+    $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -ne '127.0.0.1' -and
+    ($_.PrefixOrigin -eq 'Dhcp' -or $_.PrefixOrigin -eq 'Manual')
+}).IPAddress
+$LAN_IP   # eyeball this — if multiple lines print, pick the /24 that matches your Switch
+# 3. Build (~30s). Pass the IP explicitly — CMake aborts without it.
+python scripts\build_switchmod.py -DBRIDGE_HOST=$LAN_IP
+
+$RYU = "$env:APPDATA\Ryujinx\mods\contents\0100000000010000\"
+New-Item -ItemType Directory -Force "$RYU\exefs" | Out-Null
+Copy-Item -Force E:\smo_archipelago\switch-mod\build\sd\atmosphere\contents\0100000000010000\exefs\subsdk9  "$RYU\exefs\subsdk9"
+Copy-Item -Force E:\smo_archipelago\switch-mod\build\sd\atmosphere\contents\0100000000010000\exefs\main.npdm "$RYU\exefs\main.npdm"
+```
+
+Notes:
+- Build artifacts land in `switch-mod\build\sd\atmosphere\contents\0100000000010000\exefs\`
+  (`subsdk9` + `main.npdm`), staged by the `deploy.py` POST_BUILD step.
+- Deploy target is `%APPDATA%\Ryujinx\mods\contents\0100000000010000\exefs\` — **NO per-mod
+  subfolder** (the `...\0100000000010000\smo-archipelago\exefs\` layout the smo-build skill docs
+  imply does NOT load; confirmed 2026-06-13). `0100000000010000` is SMO's US title id
+  (`switch-mod/config/config.cmake`). Make sure the mod is **enabled** in Ryujinx's Mod Manager.
+- The wrapper auto-runs `patch_hakkun.py`, the libc++ download, and the sail build, then does a
+  clean CMake configure + `ninja`. Extra `-D…` args after the script name forward to CMake.
+
+(The apworld zip is independent — a switch-mod change does NOT need `install_apworld.py`, and a
+client/apworld change does NOT need a switch-mod rebuild. Know which tier you touched.)
+
 ## ⚠️ CRITICAL: Never commit Nintendo IP
 
 This repository is open-source and built on a careful line: **functional identifiers and reference apworld names are okay; bulk-extracted Nintendo content is not.** A misstep here exposes the user to DMCA risk. Before any commit, audit `git status` + `git diff` and refuse to stage anything from this list:
@@ -68,7 +186,7 @@ Non-obvious constraints that will silently break things if violated:
 
 ## Status
 
-**v2 plan progress (2026-06-13):** P0, P1 (Python side), and P2 complete. P0 (CSV ingestion & data foundation) complete. `scripts/import_moon_requirements.py` parses the community-authored "Moon Ability Requirements" CSV (775 moons, 3-rows-per-moon blocks, Methods 1–5) into `apworld/smo_archipelago/data/moon_requirements.json` (keyed by CSV name; `location_name` field gives matched locations.json canonical name; 435/435 current locations matched, 340 unmatched are post-game/Mushroom/Dark Side content not yet in the apworld) and `apworld/smo_archipelago/data/subareas.json` (131 subareas with kingdom assignments and location-name lists). Vocabulary normalised to enums (`none/single/double/cap_return/backflip/gpj/triple/long_jump`, cap-throw set, other-required set). One name-override entry: `"Inverted Pyramid: Upper Interior: Hidden Room in the Inverted Pyramid"` → `"Sand: Hidden Room in the Inverted Pyramid"`. 13 new tests in `test_moon_requirements.py` all pass. The CSV file (`Public SMO Randomizer Moon Ability Requirements - Moons.csv`) lives in the repo root and is Devon's authored work (safe to commit). The `.pytest_cache` directory in `tests/` is a stale Windows artifact — use `--ignore=<path>/.pytest_cache -p no:cacheprovider` when running tests from Linux. P2 (remove capturesanity checks + starting captures) complete: `before_is_category_enabled` returns False for "Capture" category (hooks/Helpers.py); all 24 capturesanity branches removed from Rules.py; Frog + Chain Chomp added to items.json (now 44 captures); `FIXED_STARTER_CAPTURES + _precollect_starting_captures()` in hooks/World.py precollects Frog, Chain Chomp, + 1 random capture via `push_precollected` each seed; `Capturesanity` option deprecated-in-place (docstring + display_name changed); 13 new tests in `test_starting_captures.py` all pass. Switch-mod `CaptureStartHook.cpp` deferred (needs smo-build session). Run `scripts/sync_capture_table.py` before next switch-mod build (Frog + Chain Chomp are new). P1 Python side complete (2026-06-13): `CoinGrant` dataclass in `client/protocol.py` (`t=coin_grant`, `total` = lifetime Cap moons × 100); `compute_cap_coin_total()` in `client/state.py` (reads `moons_received_by_kingdom["Cap"] * 100`, thread-safe, clamped); `push_coin_grant()` in `client/switch_server.py` (no-op when total=0, called from `_run_post_hello_replay` after `push_kingdom_gates` + from `_process_received_items` when `cap_moon_received_this_batch`); documented in `docs/wire-protocol.md`; 25 new tests in `test_coin_grant.py` all pass. P1 Switch side complete (2026-06-13): `CoinGrant` struct + `parseCoinGrant()` in `ApProtocol.hpp/cpp`; `_ZN16GameDataFunction7addCoinE20GameDataHolderWriteri` added to `SmoApSymbols.sym` + `kGameDataFunctionAddCoin` constant in `HookSymbols.hpp`; `ApState::pending_coin_grant_total` (atomic), `coins_applied` high-water mark, `add_coin_fn` lazy pointer, and `applyCoinGrant()` in `ApState.hpp/cpp` (lazy `hk::ro::lookupSymbol` pattern matching `addHackDictionary`); `coin_grant` dispatch in `ApClient.cpp`; `applyCoinGrant()` wired into per-frame loop in `main.cpp`. Symbol verified present in SMO 1.0.0 dynsym via LZ4-decompress + raw string search (`scripts/check_nso_symbols.py`). Committed as `be993cc`. **P1 VERIFIED IN-GAME 2026-06-13** — Cap moon → 100 coins each, idempotent catch-up confirmed (`[p1-coins] addCoin delta=100 total=400`). Three fixes were needed to get there, all now in the working tree (uncommitted): (1) the `5736ece` "debug logging" commit accidentally **truncated `_flatten_print_json` in `context.py`** (lost the for-body + return) — restored; (2) `MoonRockHook.cpp` (untracked WIP) referenced **4 symbol constants that were never added to `HookSymbols.hpp`** — added `kGameDataFileIsClearWorldMainScenario`, `kGameDataFileGetScenarioNo`, `kGameDataFileGetMainScenarioNo`, `kWorldListGetMoonRockScenarioNo` (only the last is header-verified `_ZNK9WorldList21getMoonRockScenarioNoEi`; the 3 GameDataFile getters are best-guess const manglings — MoonRockHook's `resolve()` degrades to vanilla with a `[moon-rock] … lookup FAILED` log if any is wrong, and in-game logs showed NO such failure, so they resolved); (3) the `[p1-coins]` debug log lines added in `5736ece` were removed from `context.py` + `switch_server.py` after verification. **Build/deploy gotchas for next switch-mod session:** the post-link tools (`elf2nso.py`/`build_npdm.py`/`deploy.py`) run under bare `python` and need **Python 3.11+ with `pip install lz4 pyelftools mmh3`**; and **Ryujinx loads mods from `%APPDATA%\Ryujinx\mods\contents\<tid>\<mod>\exefs\`, NOT a stray `E:\Ryubin` SD dump** — confirm via Ryujinx → right-click SMO → Open Mods Directory. Next: P3.
+**v2 plan progress (2026-06-13):** P0, P1 (Python side), and P2 complete. P0 (CSV ingestion & data foundation) complete. `scripts/import_moon_requirements.py` parses the community-authored "Moon Ability Requirements" CSV (775 moons, 3-rows-per-moon blocks, Methods 1–5) into `apworld/smo_archipelago/data/moon_requirements.json` (keyed by CSV name; `location_name` field gives matched locations.json canonical name; 435/435 current locations matched, 340 unmatched are post-game/Mushroom/Dark Side content not yet in the apworld) and `apworld/smo_archipelago/data/subareas.json` (131 subareas with kingdom assignments and location-name lists). Vocabulary normalised to enums (`none/single/double/cap_return/backflip/gpj/triple/long_jump`, cap-throw set, other-required set). One name-override entry: `"Inverted Pyramid: Upper Interior: Hidden Room in the Inverted Pyramid"` → `"Sand: Hidden Room in the Inverted Pyramid"`. 13 new tests in `test_moon_requirements.py` all pass. The CSV file (`Public SMO Randomizer Moon Ability Requirements - Moons.csv`) lives in the repo root and is Devon's authored work (safe to commit). The `.pytest_cache` directory in `tests/` is a stale Windows artifact — use `--ignore=<path>/.pytest_cache -p no:cacheprovider` when running tests from Linux. P2 (remove capturesanity checks + starting captures) complete: `before_is_category_enabled` returns False for "Capture" category (hooks/Helpers.py); all 24 capturesanity branches removed from Rules.py; Frog + Chain Chomp added to items.json (now 44 captures); `FIXED_STARTER_CAPTURES + _precollect_starting_captures()` in hooks/World.py precollects Frog, Chain Chomp, + 1 random capture via `push_precollected` each seed; `Capturesanity` option deprecated-in-place (docstring + display_name changed); 13 new tests in `test_starting_captures.py` all pass. Switch-mod `CaptureStartHook.cpp` deferred (needs smo-build session). Run `scripts/sync_capture_table.py` before next switch-mod build (Frog + Chain Chomp are new). P1 Python side complete (2026-06-13): `CoinGrant` dataclass in `client/protocol.py` (`t=coin_grant`, `total` = lifetime Cap moons × 100); `compute_cap_coin_total()` in `client/state.py` (reads `moons_received_by_kingdom["Cap"] * 100`, thread-safe, clamped); `push_coin_grant()` in `client/switch_server.py` (no-op when total=0, called from `_run_post_hello_replay` after `push_kingdom_gates` + from `_process_received_items` when `cap_moon_received_this_batch`); documented in `docs/wire-protocol.md`; 25 new tests in `test_coin_grant.py` all pass. P1 Switch side complete (2026-06-13): `CoinGrant` struct + `parseCoinGrant()` in `ApProtocol.hpp/cpp`; `_ZN16GameDataFunction7addCoinE20GameDataHolderWriteri` added to `SmoApSymbols.sym` + `kGameDataFunctionAddCoin` constant in `HookSymbols.hpp`; `ApState::pending_coin_grant_total` (atomic), `coins_applied` high-water mark, `add_coin_fn` lazy pointer, and `applyCoinGrant()` in `ApState.hpp/cpp` (lazy `hk::ro::lookupSymbol` pattern matching `addHackDictionary`); `coin_grant` dispatch in `ApClient.cpp`; `applyCoinGrant()` wired into per-frame loop in `main.cpp`. Symbol verified present in SMO 1.0.0 dynsym via LZ4-decompress + raw string search (`scripts/check_nso_symbols.py`). Committed as `be993cc`. **P1 VERIFIED IN-GAME 2026-06-13** — Cap moon → 100 coins each, idempotent catch-up confirmed (`[p1-coins] addCoin delta=100 total=400`). Three fixes were needed to get there, all now in the working tree (uncommitted): (1) the `5736ece` "debug logging" commit accidentally **truncated `_flatten_print_json` in `context.py`** (lost the for-body + return) — restored; (2) `MoonRockHook.cpp` (untracked WIP) referenced **4 symbol constants that were never added to `HookSymbols.hpp`** — added `kGameDataFileIsClearWorldMainScenario`, `kGameDataFileGetScenarioNo`, `kGameDataFileGetMainScenarioNo`, `kWorldListGetMoonRockScenarioNo` (only the last is header-verified `_ZNK9WorldList21getMoonRockScenarioNoEi`; the 3 GameDataFile getters are best-guess const manglings — MoonRockHook's `resolve()` degrades to vanilla with a `[moon-rock] … lookup FAILED` log if any is wrong, and in-game logs showed NO such failure, so they resolved); (3) the `[p1-coins]` debug log lines added in `5736ece` were removed from `context.py` + `switch_server.py` after verification. **Build/deploy gotchas for next switch-mod session:** the post-link tools (`elf2nso.py`/`build_npdm.py`/`deploy.py`) run under bare `python` and need **Python 3.11+ with `pip install lz4 pyelftools mmh3`**; and **Ryujinx loads the subsdk9/main.npdm directly from `%APPDATA%\Ryujinx\mods\contents\<tid>\exefs\` (NO per-mod subfolder — Devon confirmed 2026-06-13: the `...\contents\0100000000010000\smo-archipelago\exefs\` layout from the smo-build skill does NOT load; copy `subsdk9`+`main.npdm` straight into `...\contents\0100000000010000\exefs\`), NOT a stray `E:\Ryubin` SD dump** — confirm via Ryujinx → right-click SMO → Open Mods Directory. Next: P3.
 
 **P3 progress — 3a data half COMPLETE (2026-06-13), generation-validated (756 pass; only pre-existing `test_moon_rock_checks.py` failures remain — those test a separate unimplemented Moon-Rock-*checks* feature, not P3).** Devon decisions locked: starters = Frog + Chain Chomp + 1 random ONLY (Spark pylon & Bowser are shuffled pool items, NOT precollected); part-captures split into all 4 variants; plan-first (see `docs/plan-p3-detail.md`). Done this session:
 - `data/items.json`: +20 ability items (new `Ability` category; `Wall Slide` count 2, `Progressive Jump` 2, `Progressive Crouch` 3, `Progressive Ground Pound` 3 = 2 chain + 1 clone, rest count 1; all `progression:true`). Capture roster: split `Puzzle Part` → `Puzzle Part (Lake Kingdom)` + `Puzzle Part (Metro Kingdom)`, `Picture Match Part` → `Picture Match Part (Goomba)` + `Picture Match Part (Mario)`; added `Broode's Chain Chomp`, `Letter`, `Yoshi`, **`Spark pylon`** (lowercase p — exact `capture_map` journal name!), `Bowser`; clones (count 2) for `Bullet Bill`, `Sherm`, `Parabones`, `Banzai Bill`, `Spark pylon`, `Bowser`.
@@ -83,7 +201,28 @@ Non-obvious constraints that will silently break things if violated:
 2. **Variant capture cap→hack override (load-bearing for the split).** `bridge/smo_ap_bridge/data/capture_map.json` keys BOTH puzzle parts as `"Puzzle Part"` (hacks `GotogotonLake` / `GotogotonCity`) and BOTH picture-match parts as `"Picture Match Part"` (`FukuwaraiFacePartsKuribo` / `FukuwaraiFacePartsMario`). The split AP item names are correct for generation but won't resolve cap→hack at runtime. Add a committed override mapping the 4 variant names → their hacks in the bridge's capture resolution (`client/maps.py` CaptureMap, or wherever cap_to_hack lives) so the Switch grants the right capture. Generation does NOT depend on this.
 3. Tests for the new pool (ability item counts, the 4 split variants, clones at count 2, ID-stability snapshot, junk_only locations never receive progression/useful).
 
+**P3-3b — CLIENT/WIRE HALF COMPLETE (2026-06-13); Switch C++ tracking REMAINS.** Done this session (all in `apworld/smo_archipelago/client/`, validate with `pytest tests/test_ability_wire.py`):
+- `protocol.py`: `ItemKind.ABILITY = "ability"`; `AbilityStateMsg` (`t="ability_state"`, `entries=[{ability,count}]`) — full-overwrite snapshot (idempotent like OutstandingMsg), so HELLO replay + progressive-chain levels are replay-safe. New `t=` so a pre-3b Switch ignores it.
+- `datapackage.py`: `classify_item` returns `ABILITY` for the `Ability` category (bare item name = ability id).
+- `maps.py`: **`VARIANT_CAP_HACK_OVERRIDE`** (task #13 DONE) pins the 4 split-variant cap names → hacks (`Puzzle Part (Lake Kingdom)`→`GotogotonLake`, `(Metro Kingdom)`→`GotogotonCity`, `Picture Match Part (Goomba)`→`FukuwaraiFacePartsKuribo`, `(Mario)`→`FukuwaraiFacePartsMario`); applied first in `cap_to_hack`.
+- `state.py`: `captures_received_count` + `abilities_received` count dicts; `compute_total_coin_grant()` = Cap moons×100 + Σ(dup capture)×100 + Σ(dup ability)×100 (duplicate=count−1; idempotent under the Switch coins high-water mark); `get_ability_counts()`. `compute_cap_coin_total()` kept Cap-only (unchanged contract).
+- `switch_server.py`: `push_coin_grant` now uses `compute_total_coin_grant` (folds dup coins); new `push_ability_state()`; both ship in `_run_post_hello_replay`.
+- `context.py`: ability items ship via `push_ability_state` (NOT ItemMsg) + fold into `push_coin_grant`; captures/Cap-moons also trigger `push_coin_grant`.
+- `docs/wire-protocol.md`: `ability_state` documented.
+
+**P3-3b SWITCH C++ — CODE COMPLETE (2026-06-13, uncommitted; full host-build + switch-mod build + Ryujinx in-game test still pending).** All four items below were implemented this session exactly as specced (pure tracking, NO new game symbols). `parseAbilityState` was verified by a standalone unit test (`outputs/ability_parse_check.cpp`) compiled against the real `util/Json.cpp` — empty / multi-with-chain-levels / overflow-truncation / unknown-field-rejected all pass; 4 matching `decode_ability_state_*` cases were also added to `switch-mod/tests/test_protocol.cpp`. `applyAbilityState` enqueues unlock bubbles via `inbound_system_bubbles` (worker-thread-safe, NOT a direct CappyMessenger call) and uses the talkatoo/shop seqlock so a P4 frame-thread reader can read lock-free. The in-repo host build + `build_switchmod.py` + Ryujinx test could NOT run this session (shell mount served truncated source — see the dev-environment gotcha at the top; run them in a fresh session or on Windows). Original spec for reference:**
+- `ApProtocol.hpp/cpp`: `AbilityState` struct + `parseAbilityState` + dispatch (mirror `parseKingdomGates`/`parseShopLabels`; full-overwrite list of {ability,count}).
+- `ApClient.cpp`: `ability_state` dispatch → `ApState::applyAbilityState(entries)`.
+- `ApState.hpp/cpp`: fixed-array ability table (name char[N] + count, like `talkatoo_pools`/`shop_labels`); `applyAbilityState` full-overwrites + pops a `CappyMessenger` bubble for any ability whose count rose above its prior value (newly unlocked / leveled). NO `addCoin` change needed — duplicate→coins already flows via the existing `coin_grant` total. NO `HookSymbols`/`.sym` additions (tracking only; enforcement is P4).
+- Then `pytest` (client, already green) + build + Ryujinx test: receive an ability → Cappy bubble; receive a clone capture/ability → +100 coins; collect MK/DS junk check → fires.
+
 **IP (Devon, 2026-06-13):** NEVER commit `shine_map.json`/`capture_map.json` or anything under `bridge/smo_ap_bridge/data/` — already covered by the `bridge/` .gitignore rule (comment there updated). The 68 MK/DS names in locations.json were sourced from shine_map (romfs) at Devon's explicit direction; Devon owns the commit decision for that data.
+
+**Capturesanity gate fail-open — FIXED 2026-06-14 (needs switch-mod rebuild to take effect).** Re-enabled capturesanity wasn't ejecting Mario from un-owned captures. Root cause was NOT the gate logic (`CaptureStartHook`/`CaptureGate::captureBlocked` are correct) but the lookup table: `capture_table.h::kCaptureHackNames` had been generated as an **identity** map (== `kCaptureNames`, the apworld display names). `captureBlocked` matches on `PlayerHackKeeper::getCurrentHackName()` which returns the **SMO-internal** hack_name (T-Rex=`TRex`, Goomba=`Kuribo`), so 46/51 captures missed → `captureBitFor`=`0xff` → fail-open. Identity happened because `sync_capture_table.py` only looked for `capture_map.json` in `apworld/.../client/data/` (absent here); the real extracted map is at `%APPDATA%/SMOArchipelago/data/capture_map.json` (wizard output, same place the runtime client reads it — which is why owned captures still worked and only the block path broke). Fixes: (1) regenerated `capture_table.h` with correct hack names (gitignored IP — **do NOT commit**); (2) `sync_capture_table.py` now resolves the map from `%APPDATA%` like the client + applies `VARIANT_CAP_HACK_OVERRIDE` for the 4 split part-captures. **Devon must rebuild+redeploy the switch-mod** (`capture_table.h` is compiled in) then test an un-owned T-Rex. Full writeup + next steps: `docs/plan-v2-vision.md` session log 2026-06-14. **Parallel issue — ALSO FIXED 2026-06-14:** `sync_shine_table.py` had the identical default-path bug → `shine_table.h` was an empty stub (degrades Phase 2 pre-marking / Talkatoo% / moon recolor, not the gate). Same `%APPDATA%` resolution helper applied. NOT hand-regenerated (435-row join from truncation-prone `locations.json`); regenerates on Devon's next Windows build via the now-fixed script — confirm the new `shine_table.h` `// Count:` is non-zero (stub = `0 moons`).
+
+**P4 ability enforcement — judge-gate spike TESTED-PASS in-game 2026-06-14; Roll Boost gate added (uncommitted; Roll Boost needs Devon build+test).** First enforcement pass gates 3 judge-backed moves on AP ability items, all three CONFIRMED working in-game (gate + `/send`-unlock + Cappy bubble): Crouch (`PlayerJudgeStartSquat::judge` ← `Progressive Crouch>=1`), Roll (`PlayerJudgeStartRolling::judge` ← `Progressive Crouch>=2`), Ground Pound (`PlayerJudgeStartHipDrop::judge` ← `Progressive Ground Pound>=1`). Mechanism: trampoline the `IJudge::judge() const` (returns "should move start?"); force false when the ability isn't owned (clean suppression, no side effects). New `ApState::abilityCount`/`abilityAtLeast` (lock-free seqlock read over the P3-3b `ability_table`) + `ability_gate_force_unlock` atomic (default false). New `hooks/AbilityGateHook.cpp` (installed in main.cpp). **Roll Boost gate (NEW this session, uncommitted, needs build+test):** the L2 Roll item was leaking Roll Boost (the motion-only shake-while-rolling speed boost) in for free, since Roll Boost is NOT the StartRolling judge. Now gated separately at `Progressive Crouch>=3` via a trampoline on `PlayerInput::isTriggerRollingRestartSwing` (the boost-swing input predicate — suppresses ONLY the boost, roll START untouched). 4 symbols now in `SmoApSymbols.sym` (`_ZNK21PlayerJudgeStartSquat5judgeEv`, `_ZNK23PlayerJudgeStartRolling5judgeEv`, `_ZNK23PlayerJudgeStartHipDrop5judgeEv`, `_ZNK11PlayerInput28isTriggerRollingRestartSwingEv`). **All 4 symbols VERIFIED present in SMO 1.0.0 main.nso (2026-06-14)** via `python scripts/check_nso_symbols.py .romfs-cache/main <syms>` (all HIT) — the project's verifier; NOT llvm-nm (not on PATH). **Devon: rebuild+redeploy, then test Roll Boost — at PC=2 roll works but shake gives no boost; at PC=3 boost returns; confirm normal rolling still works.** Up/Down Throw are also motion-only (flick direction via `getSwingThrowDir`/`getCapThrowDir`) — deferred, harder (direction computation, not a boolean). **Backflip & Long Jump gate — Option 3 ITER 1 TESTED-PASS in-game (2026-06-14h, uncommitted).** Both moves start from a jump-input while in the squat state and have NO judge; the squat→jump trigger is undecompiled (OdysseyDecomp's `PlayerActorHakoniwa.cpp` is a 40-byte stub — confirmed via GitHub API `size:40`, NOT a read bug). Option 3 gates them with verified symbols only: a beacon on `PlayerActorHakoniwa::exeSquat` marks "in squat" (a 2-frame decaying `g_squatWindow` decremented per-frame in drawMain via `tickAbilityGate()`), and the jump-input judge `PlayerJudgePreInputJump::judge` is suppressed ONLY while that window is open — so standing/run/wall jumps are untouched. **CONFIRMED in-game:** with neither owned, crouch+jump does nothing (log `AbilityGate: suppressed squat-jump`) for both stationary (backflip) and moving (long jump) — so `PreInputJump::judge` IS the squat-jump trigger (core assumption validated, no pivot). ITER 1 imprecision: owning EITHER move unlocks BOTH crouch-jumps. **NEXT = ITER 2** (per-move split via `PlayerStateSquat::isEnableLongJump` + a `PlayerStateSquat::appear` state-ptr beacon — full step list in `docs/plan-p4-detail.md` "Option 3 → ITER 2 plan"). 2 new symbols (`_ZN19PlayerActorHakoniwa8exeSquatEv`, `_ZNK23PlayerJudgePreInputJump5judgeEv`) verified HIT + in `SmoApSymbols.sym`. Crouch-conditioning still holds: gating Crouch already blocks both for free (can't squat → can't jump-from-squat). Safety net: `/send <slot> <ability>` unlocks any blocked move (no interactive force-unlock wired yet; low brick risk for these moves). **Canonical P4 plan + living progress tracker (full ability→hook mapping table, rollout order, risks, per-session log): `docs/plan-p4-detail.md` — keep it updated every P4 session.** This is P4 (enforcement); P3-3b ability *tracking* (Cappy bubble + bitfield) was already in the tree and built.
+
+**Cap-Kingdom Spark Pylon soft-lock — FIXED 2026-06-14 (needs switch-mod rebuild).** The forced "ride the sparks to the Odyssey" pylon that exits Cap Kingdom is a REAL `ElectricWire` startHack capture (NOT a scripted cinematic — earlier assumption was wrong), so the now-working capture gate ejected Mario from it and soft-locked the opening kingdom. Fix keeps Spark Pylon randomized: a stage-scoped exemption in `hooks/CaptureStartHook.cpp` (`capIsExemptCapKingdomPylon`) lets `ElectricWire` through ONLY when `getCurrentStageName`==`CapWorldHomeStage`; every other pylon stays gated on the "Spark pylon" item. Fails closed if the stage can't be confirmed (symbol already in `SmoApSymbols.sym`, proven via `OdysseyRescue.cpp`). Spark Pylon stays OUT of `kBaselineHacks`/precollect. Details: `docs/plan-v2-vision.md` session log 2026-06-14b.
 
 **Devon-fork features (2026-06-11/12):** `randomize_kingdom_gates` (sum-preserving ±5 rolls, total pinned to vanilla 124; rolled gates flow slot_data → `kingdom_gates` wire msg → `ApState::kingdom_gate[]` → `UnlockShineNumHook` so the in-game Odyssey cost matches logic), `multi_moon_shuffle` (default on; 13 MM items ↔ 13 `multi_moon`-tagged boss locations, PM-first demotion variant, one Metro MM dropped — "A Traditional Festival!" is the festival victory location and holds no item), Ruined moons promoted to progression + demotion-exempt (gated-kingdom moons MUST be progression or the reachability sweep can't satisfy their gate — guard test in test_randomize_kingdom_gates.py), and **peace-gated Moon Rocks** (`MoonRockHook`: openable after per-kingdom story completion instead of game clear; NEVER force while the moon-rock scenario is active — the vanilla rock-open is a scenario-jump stage reload whose re-init must take the wreckage/commit branch; mid-story forcing without the peace gate skips kingdom bosses and strands story-MM checks). Cap-peace-from-start experiment concluded OFF — scenario numbers are recomputed from quest state at every load; see MoonRockHook.cpp header. Moon-rock moons are NOT yet AP locations (phase 2: source names from the upstream manual-apworld lineage, never the romfs dump). `install_apworld.py --out` exists so the bundling tests never clobber the real installed zip (zipimport TOC staleness presented as 'bad local file header').
 

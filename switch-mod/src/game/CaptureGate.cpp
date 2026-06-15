@@ -28,12 +28,27 @@ AddHackDictionaryFn       s_addHackDictionary       = nullptr;
 IsExistInHackDictionaryFn s_isExistInHackDictionary = nullptr;
 
 // Always-unlocked captures whose dict entries we pre-populate at scene load,
-// independent of AP grants. The apworld excludes these from the AP item pool
-// (free / always-available) so the compendium needs them written here.
-inline constexpr std::array<std::string_view, 3> kBaselineHacks = {
+// independent of AP grants. Frog is the ONLY baseline capture: it's the very
+// first capture in the game (needed to leave the Cap Kingdom opening area) and
+// must be available before the AP item replay can arrive — otherwise a player
+// who boots SMO before SMOClient/AP is connected would be ejected from the
+// opening frog and soft-lock. (Frog is also a guaranteed precollected starter,
+// so this is a belt-and-braces floor for the connection-timing window.)
+//
+// REMOVED (2026-06-14) — both are now real AP pool items that must be gated,
+// not free:
+//  - "ElectricWire" (Spark pylon): now gated on the "Spark pylon" item.
+//    CORRECTION (2026-06-14, verified in-game): the forced Cap-Kingdom exit
+//    pylon IS a real startHack capture (NOT a scripted cinematic, as an
+//    earlier note assumed) — gating it soft-locked Mario inside Cap Kingdom.
+//    Rather than make ALL Spark Pylons free (kBaselineHacks) we keep Spark
+//    Pylon randomized and exempt ONLY the Cap-Kingdom instance via a
+//    stage-scoped check in hooks/CaptureStartHook.cpp
+//    (capIsExemptCapKingdomPylon: hack=="ElectricWire" && stage==
+//    "CapWorldHomeStage"). So it stays OUT of kBaselineHacks here.
+//  - "Koopa" (Bowser): now gated on the "Bowser" AP item.
+inline constexpr std::array<std::string_view, 1> kBaselineHacks = {
     "Frog",
-    "ElectricWire",
-    "Koopa",
 };
 
 }  // namespace

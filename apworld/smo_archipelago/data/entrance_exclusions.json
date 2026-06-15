@@ -1,0 +1,237 @@
+// this is a list of subareas to be EXCLUDED from the entrance shuffler, ordered by kingdom. if the subarea already exiss in subareas.json,
+// I included the full dataset from that json file. if it did not, the json correlated to it is empty (e.g. Cap Kingdom's "Inside Top-Hat Tower").
+// These mostly seemed to be locations that simply did not contain any moons within them. I also included "Inside New Donk City Tower" in both 
+// night and day metro, as it is present in both - if the redundancy isn't needed or causes parse issues you can remove one. Also for the new areas
+// not included in subareas.json i simply named them what shows on the screen when you enter the area, which doesn't always match up (e.g. "Inside New Donk City Tower"
+// displays in-game as "New Donk City Hall Interior")
+{
+    "Cap Kingdom": {
+      "Inside Top-Hat Tower": {}
+    },
+    "Cascade Kingdom": {
+    },
+    "Sand Kingdom": {
+      "Deepest Underground": {
+        "csv_names": [
+          "Deepest Underground: The Hole in the Desert",
+          "Deepest Underground: Under the Mummy's Curse",
+          "Deepest Underground: Binding Band Returned"
+        ],
+        "location_names": [
+          "Sand: The Hole in the Desert",
+          "Sand: Under the Mummy's Curse"
+        ]
+      },
+      "Inverted Pyramid": {
+        "kingdom": "Sand Kingdom",
+        "csv_names": [
+          "Inverted Pyramid: Upper Interior: Hidden Room in the Inverted Pyramid"
+        ],
+        "location_names": [
+          "Sand: Hidden Room in the Inverted Pyramid"
+        ]
+      },
+      "Underground Ruins": {
+        "kingdom": "Sand Kingdom",
+        "csv_names": [
+          "Underground Ruins: Underground Treasure Chest",
+          "Underground Ruins: Goomba Tower Assembly"
+        ],
+        "location_names": [
+          "Sand: Underground Treasure Chest",
+          "Sand: Goomba Tower Assembly"
+        ]
+      },
+    },
+    "Lake Kingdom": {
+    },
+    "Wooded Kingdom": {
+      "Deep Woods": {
+        "kingdom": "Wooded Kingdom",
+        "csv_names": [
+          "Deep Woods: Rolling Rock in the Deep Woods",
+          "Deep Woods: Glowing in the Deep Woods",
+          "Deep Woods: Past the Peculiar Pipes",
+          "Deep Woods: By the Babbling Brook in Deep Woods",
+          "Deep Woods: The Hard Rock in Deep Woods",
+          "Deep Woods: A Treasure Made from Coins",
+          "Deep Woods: Beneath the Roots of the Moving Tree"
+        ],
+        "location_names": [
+          "Wooded: Rolling Rock in the Deep Woods",
+          "Wooded: Glowing in the Deep Woods",
+          "Wooded: Past the Peculiar Pipes",
+          "Wooded: By the Babbling Brook in Deep Woods",
+          "Wooded: The Hard Rock in Deep Woods",
+          "Wooded: A Treasure Made from Coins",
+          "Wooded: Beneath the Roots of the Moving Tree"
+        ]
+      },
+      "Sky Garden Tower": {
+        "kingdom": "Wooded Kingdom",
+        "csv_names": [
+          "Sky Garden Tower: Nut Planted in the Tower",
+          "Sky Garden Tower: Stretching Your Legs"
+        ],
+        "location_names": [
+          "Wooded: Nut Planted in the Tower",
+          "Wooded: Stretching Your Legs"
+        ]
+      },
+      "Secret Flower Field": {
+        "kingdom": "Wooded Kingdom",
+        "csv_names": [
+          "Secret Flower Field: Defend the Secret Flower Field!",
+          "Secret Flower Field: Make the Secret Flower Field Bloom"
+        ],
+        "location_names": [
+          "Wooded: Defend the Secret Flower Field!",
+          "Wooded: Make the Secret Flower Field Bloom"
+        ]
+      },
+    },
+    "Cloud Kingdom": {
+    },
+    "Lost Kingdom": {
+    },
+    "Night Metro": {
+      "Inside New Donk City Tower": {
+        "kingdom": "Metro Kingdom",
+        "csv_names": [
+          "Inside New Donk City Tower: City Hall Lost & Found"
+        ],
+        "location_names": [
+          "Metro: City Hall Lost & Found"
+        ]
+      },
+    },
+    "Metro Kingdom": {
+      "Sewers": {
+        "kingdom": "Metro Kingdom",
+        "csv_names": [
+          "Sewers: Powering Up the Station",
+          "Sewers: Sewer Treasure",
+          "Sewers: Powering Up the Power Plant"
+        ],
+        "location_names": [
+          "Metro: Powering Up the Station",
+          "Metro: Sewer Treasure"
+        ]
+      },
+      "Inside New Donk City Tower": {
+        "kingdom": "Metro Kingdom",
+        "csv_names": [
+          "Inside New Donk City Tower: City Hall Lost & Found"
+        ],
+        "location_names": [
+          "Metro: City Hall Lost & Found"
+        ]
+      },
+      "New Donk City Hall Auditorium": {},
+      "A Traditional Festival!": {},
+    },
+    "Snow Kingdom": {
+      "Shiveria Town": {
+        "kingdom": "Snow Kingdom",
+        "csv_names": [
+          "Shiveria Town: The Icicle Barrier",
+          "Shiveria Town: The Ice Wall Barrier",
+          "Shiveria Town: The Gusty Barrier",
+          "Shiveria Town: The Snowy Mountain Barrier",
+          "Shiveria Town: Entrance to Shiveria",
+          "Shiveria Town: Shining in the Snow in Town",
+          "Shiveria Town: The Shiverian Treasure Chest",
+          "Shiveria Town: I'm Not Cold!",
+          "Shiveria Town: Found with Snow Kingdom Art",
+          "Shiveria Town: Peach in the Snow Kingdom"
+        ],
+        "location_names": [
+          "Snow: The Icicle Barrier",
+          "Snow: The Ice Wall Barrier",
+          "Snow: The Gusty Barrier",
+          "Snow: The Snowy Mountain Barrier",
+          "Snow: Entrance to Shiveria",
+          "Snow: Shining in the Snow in Town",
+          "Snow: The Shiverian Treasure Chest",
+          "Snow: I'm Not Cold!",
+          "Snow: Found with Snow Kingdom Art"
+        ]
+      },
+      "Class A Race": {
+        "kingdom": "Snow Kingdom",
+        "csv_names": [
+          "Class A Race: The Bound Bowl Grand Prix"
+        ],
+        "location_names": [
+          "Snow: The Bound Bowl Grand Prix"
+        ]
+      },
+      "Class A Lobby": {
+        "kingdom": "Snow Kingdom",
+        "csv_names": [
+          "Class A Lobby: Snowline Circuit Class S",
+          "Class A Lobby: Hat-and-Seek in the Snow",
+          "Class A Lobby: Forgotten in the Holding Room"
+        ],
+        "location_names": [
+          "Snow: Snowline Circuit Class S"
+        ]
+      },
+    },
+    "Seaside Kingdom": {
+      "Underwater Tunnel": {
+        "kingdom": "Seaside Kingdom",
+        "csv_names": [
+          "Underwater Tunnel: Looking Back in the Dark Waterway"
+        ],
+        "location_names": [
+          "Seaside: Looking Back in the Dark Waterway"
+        ]
+      },
+    },
+    "Luncheon Kingdom": {
+    },
+    "Ruined Kingdom": {
+    },
+    "Bowser's Kingdom": {
+    },
+    "Moon Kingdom": {
+      "Underground Caverns": {
+        "kingdom": "Moon Kingdom",
+        "csv_names": [
+          "Underground Caverns: Under the Bowser Statue",
+          "Underground Caverns: Fly to the Treasure Chest and Back"
+        ],
+        "location_names": [
+          "Moon: Under the Bowser Statue",
+          "Moon: Fly to the Treasure Chest and Back"
+        ]
+      },
+      "Wedding Room": {
+        "kingdom": "Moon Kingdom",
+        "csv_names": [
+          "Wedding Room: Up in the Rafters",
+          "Wedding Room: Doctor in the House",
+          "Wedding Room: Found with Moon Kingdom Art"
+        ],
+        "location_names": [
+          "Moon: Up in the Rafters"
+        ]
+      },
+    },
+    "Mushroom Kingdom": {
+      "Peach's Castle": {
+        "kingdom": "Mushroom Kingdom",
+        "csv_names": [
+          "Peach's Castle: Light from the Ceiling",
+          "Peach's Castle: Loose-Tile Trackdown",
+          "Peach's Castle: Found with Mushroom Kingdom Art"
+        ],
+        "location_names": []
+      },
+    },
+    "Dark Side": {
+    },
+    "Darker Side": {
+    }
+}

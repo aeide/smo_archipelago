@@ -555,6 +555,39 @@ bool parseCoinGrant(Reader& r, CoinGrant& out) {
     return true;
 }
 
+bool parseAbilityState(Reader& r, AbilityState& out) {
+    // Mirrors parseShopLabels / parseKingdomGates: an `entries` array of
+    // {ability, count} objects, full-overwrite semantics. Overflow past
+    // kAbilityStateMax is parse-and-discarded (JSON stays well-formed) and
+    // flagged truncated for consumer logging.
+    out.entry_count = 0;
+    out.truncated = false;
+    std::string_view key;
+    while (r.nextField(key)) {
+        if (key == "entries") {
+            if (!r.enterArray()) return false;
+            while (r.hasMoreInArray()) {
+                if (!r.enterObject()) return false;
+                AbilityEntry tmp{};
+                std::string_view k2;
+                while (r.nextField(k2)) {
+                    if      (k2 == "ability") { if (!readIntoField(r, tmp.ability)) return false; }
+                    else if (k2 == "count")   { if (!readIntoInt(r, tmp.count)) return false; }
+                    else                      { return false; }
+                }
+                if (!r.exitObject()) return false;
+                if (out.entry_count < kAbilityStateMax) {
+                    out.entries[out.entry_count++] = tmp;
+                } else {
+                    out.truncated = true;
+                }
+            }
+            if (!r.exitArray()) return false;
+        } else { return false; }
+    }
+    return true;
+}
+
 }  // namespace
 
 bool decode(const char* data, std::size_t len, DecodedMsg& out) {
@@ -586,6 +619,7 @@ bool decode(const char* data, std::size_t len, DecodedMsg& out) {
     else if (eqStr(out.t, "talkatoo_pool"))  ok = parseTalkatooPool(r, out.talkatoo_pool);
     else if (eqStr(out.t, "shop_labels"))    ok = parseShopLabels(r, out.shop_labels);
     else if (eqStr(out.t, "coin_grant"))     ok = parseCoinGrant(r, out.coin_grant);
+    else if (eqStr(out.t, "ability_state"))  ok = parseAbilityState(r, out.ability_state);
     else {
         // Unknown type: leave out.t set so handleLine can warn. Don't bother
         // draining the rest of the object — caller treats unknown as ignored.

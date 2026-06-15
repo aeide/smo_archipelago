@@ -27,8 +27,60 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
+
+
+# Split part-captures. The in-game journal (and the extracted capture_map.json)
+# names BOTH puzzle parts "Puzzle Part" and BOTH picture-match parts
+# "Picture Match Part", each with a DISTINCT hack_name; capture_map.json
+# therefore has NO key for the four split item names the apworld now ships.
+# This MUST stay in sync with client/maps.py::VARIANT_CAP_HACK_OVERRIDE —
+# without it the four variants fall through to identity and the Switch
+# capture-gate fail-opens for them (the same class of bug that left every
+# diverged capture ungated when capture_map.json wasn't found at all).
+VARIANT_CAP_HACK_OVERRIDE: dict[str, str] = {
+    "Puzzle Part (Lake Kingdom)": "GotogotonLake",
+    "Puzzle Part (Metro Kingdom)": "GotogotonCity",
+    "Picture Match Part (Goomba)": "FukuwaraiFacePartsKuribo",
+    "Picture Match Part (Mario)": "FukuwaraiFacePartsMario",
+}
+
+
+def _user_data_dir() -> Path:
+    """Per-user data dir where the setup wizard's extractor writes the maps.
+
+    Mirrors client/setup_state.py::_user_data_dir so a plain
+    `python scripts/sync_capture_table.py` finds the SAME capture_map.json
+    the running SMOClient loads. (Previously this script only looked at the
+    in-repo client/data/ — which release/dev checkouts don't populate
+    because the maps are Nintendo IP — so the build loop silently emitted an
+    identity hack-name table and the capture gate fail-opened. 2026-06-14.)
+    """
+    base = os.environ.get("APPDATA")
+    if base:
+        return Path(base) / "SMOArchipelago" / "data"
+    return Path.home() / ".local" / "share" / "SMOArchipelago" / "data"
+
+
+def _resolve_capture_map(repo_root: Path) -> Path:
+    """First existing capture_map.json, search order matching the client:
+      1. %APPDATA%/SMOArchipelago/data/ (or XDG) — wizard extractor output
+      2. legacy in-repo apworld/smo_archipelago/client/data/ (dev-only)
+    Returns the %APPDATA% path even when absent so the --help/default text
+    and the "MISSING" diagnostic point at the canonical location.
+    """
+    wizard = _user_data_dir() / "capture_map.json"
+    if wizard.exists():
+        return wizard
+    legacy = (
+        repo_root / "apworld" / "smo_archipelago" / "client" / "data"
+        / "capture_map.json"
+    )
+    if legacy.exists():
+        return legacy
+    return wizard
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,9 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     here = Path(__file__).resolve().parent.parent
     default_items = here / "apworld" / "smo_archipelago" / "data" / "items.json"
     default_out = here / "switch-mod" / "src" / "ap" / "capture_table.h"
-    default_capture_map = (
-        here / "apworld" / "smo_archipelago" / "client" / "data" / "capture_map.json"
-    )
+    default_capture_map = _resolve_capture_map(here)
 
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n", 1)[0])
     ap.add_argument("--items", type=Path, default=default_items,
@@ -80,20 +130,35 @@ def main(argv: list[str] | None = None) -> int:
         for e in entries:
             if "cap" in e and "hack_name" in e:
                 cap_to_hacks.setdefault(e["cap"], []).append(e["hack_name"])
-    # Primary hack_name per apworld cap = first one seen in capture_map.json
-    # (matches CaptureMap._reverse.setdefault on the Python side; keeps the
-    # wire-format hack_name field consistent across bridge ↔ Switch).
-    hack_names = [
-        cap_to_hacks[name][0] if name in cap_to_hacks else name
-        for name in captures
-    ]
+    # Primary hack_name per apworld cap:
+    #   1. VARIANT_CAP_HACK_OVERRIDE — the 4 split part-captures whose item
+    #      names don't exist as capture_map.json keys (Nintendo journals both
+    #      variants under one name). Must win over capture_map so the splits
+    #      don't fall through to identity.
+    #   2. first hack_name seen in capture_map.json (matches
+    #      CaptureMap._reverse.setdefault on the Python side; keeps the
+    #      wire-format hack_name field consistent across bridge ↔ Switch).
+    #   3. identity (capture_map.json absent / cap not listed).
+    def _primary_hack(name: str) -> str:
+        if name in VARIANT_CAP_HACK_OVERRIDE:
+            return VARIANT_CAP_HACK_OVERRIDE[name]
+        if name in cap_to_hacks:
+            return cap_to_hacks[name][0]
+        return name
+
+    hack_names = [_primary_hack(name) for name in captures]
     diverged = sum(1 for cap, hack in zip(captures, hack_names) if cap != hack)
     # Any extra hack_names past the first map to the same bit as their cap.
     # Without these aliases, captureBitFor() returns 0xff for the extras and
     # captureBlocked() fail-opens. Bug surfaced 2026-05-26 — user reported
     # Lake-Kingdom Puzzle Part capturing through without the AP item.
+    # (With the P3 split each variant item maps 1:1 via the override, so the
+    # collapsed-pair aliases are normally empty now; kept for any future
+    # cap that legitimately shares one item name across multiple hacks.)
     aliases: list[tuple[str, int]] = []
     for i, name in enumerate(captures):
+        if name in VARIANT_CAP_HACK_OVERRIDE:
+            continue
         for extra in cap_to_hacks.get(name, [])[1:]:
             aliases.append((extra, i))
 

@@ -178,36 +178,49 @@ def test_before_create_items_starting_calls_precollect_first():
         )
 
 
-# ─── 3. Category-disable layer: hooks/Helpers.py ─────────────────────────────
+# ─── 3. Location-disable layer: hooks/Helpers.py ─────────────────────────────
+#
+# Regression guard (2026-06-14): capture ITEMS and capture LOCATIONS both carry
+# category ["Capture"]. The retired-capturesanity disable MUST act on locations
+# only — disabling the *category* zeroes out every capture item in create_items,
+# making capture-gated locations unreachable (FillError on Puzzle Part /
+# Picture Match Part). So the disable lives in before_is_location_enabled, NOT
+# before_is_category_enabled, and categories.json must not gate "Capture" on the
+# capturesanity option.
 
-def test_capture_category_disabled_in_helpers():
-    """before_is_category_enabled must return False for 'Capture' so no
-    Capture: X location is generated — the items go through starting
-    inventory only."""
+def test_capture_locations_disabled_in_helpers():
+    """before_is_location_enabled must return False for Capture-category
+    locations so no 'Capture: X' check is generated."""
     src = _hooks_src("Helpers.py")
     m = re.search(
-        r"def before_is_category_enabled\b(.+?)(?=\n# |\ndef |\Z)",
+        r"def before_is_location_enabled\b(.+?)(?=\n# |\ndef |\Z)",
         src, re.DOTALL,
     )
-    assert m, "before_is_category_enabled not found in hooks/Helpers.py"
+    assert m, "before_is_location_enabled not found in hooks/Helpers.py"
     body = m.group(1)
     assert '"Capture"' in body or "'Capture'" in body, (
-        "before_is_category_enabled does not reference the 'Capture' category"
+        "before_is_location_enabled does not reference the 'Capture' category"
     )
-    # The guard must return False, not None or True.
-    # Find the Capture block and confirm False follows.
-    capture_idx = body.find('"Capture"') if '"Capture"' in body else body.find("'Capture'")
-    excerpt = body[capture_idx: capture_idx + 120]
-    assert "return False" in excerpt, (
-        "before_is_category_enabled does not return False for 'Capture'; "
-        f"excerpt: {excerpt!r}"
+    # Look for the actual code gate (ignore comment mentions of "Capture"):
+    # a `return False` guarded by a Capture category membership test.
+    code_lines = [
+        ln for ln in body.splitlines()
+        if "Capture" in ln and not ln.lstrip().startswith("#")
+    ]
+    assert code_lines, (
+        "before_is_location_enabled mentions 'Capture' only in comments — "
+        "no code-level capture-location guard found."
+    )
+    assert "return False" in body, (
+        "before_is_location_enabled does not return False for Capture locations; "
+        f"body: {body!r}"
     )
 
 
-def test_capture_category_check_precedes_shared_peace_check():
-    """The Capture guard must come before the SHARED_PEACE_CATEGORY guard
-    (no functional reason, but ensures it's not accidentally buried after
-    the peace logic)."""
+def test_capture_category_not_disabled_for_items():
+    """before_is_category_enabled must NOT blanket-disable 'Capture' — doing so
+    drops every capture item from the pool. The only Capture handling allowed in
+    the category hook is none (it's now a location-level concern)."""
     src = _hooks_src("Helpers.py")
     m = re.search(
         r"def before_is_category_enabled\b(.+?)(?=\n# |\ndef |\Z)",
@@ -215,10 +228,69 @@ def test_capture_category_check_precedes_shared_peace_check():
     )
     assert m, "before_is_category_enabled not found in hooks/Helpers.py"
     body = m.group(1)
-    cap_idx = body.find('"Capture"') if '"Capture"' in body else body.find("'Capture'")
-    peace_idx = body.find("SHARED_PEACE_CATEGORY")
-    assert cap_idx != -1, "'Capture' check missing from before_is_category_enabled"
-    if peace_idx != -1:
-        assert cap_idx < peace_idx, (
-            "The 'Capture' early-return must precede the SHARED_PEACE_CATEGORY block"
-        )
+    # No "Capture" early-return False may exist in the category hook.
+    assert not re.search(
+        r"==\s*[\"']Capture[\"']\s*:\s*\n?\s*return\s+False", body
+    ), (
+        "before_is_category_enabled still disables the 'Capture' category, which "
+        "zeroes out capture items in create_items. Disable capture LOCATIONS in "
+        "before_is_location_enabled instead."
+    )
+
+
+def test_capture_category_has_no_disabling_yaml_option():
+    """categories.json 'Capture' must not be gated on the (deprecated)
+    capturesanity option — that would disable capture items too."""
+    cats = json.loads(
+        (APWORLD_ROOT / "data" / "categories.json").read_text(encoding="utf-8")
+    )
+    cap = cats.get("Capture", {})
+    assert "capturesanity" not in cap.get("yaml_option", []), (
+        "categories.json 'Capture' is gated on 'capturesanity'; with the option "
+        "off (default) this disables every capture item. Remove the yaml_option."
+    )
+
+
+# ─── 4. Precollect category-lookup regression ────────────────────────────────
+
+def test_precollect_uses_name_table_not_item_data():
+    """_precollect_starting_captures must resolve a capture's category from the
+    world's name->data table, not a nonexistent it.item_data attribute (which
+    silently matched nothing, leaving the starters unprecollected)."""
+    src = _hooks_src("World.py")
+    m = re.search(
+        r"def _precollect_starting_captures\b(.+?)(?=\n# |\ndef |\Z)",
+        src, re.DOTALL,
+    )
+    assert m, "_precollect_starting_captures body not found"
+    body = m.group(1)
+    assert "item_data" not in body, (
+        "_precollect_starting_captures still references it.item_data, which "
+        "SMOItem never sets — the category lookup will match nothing."
+    )
+    assert "item_name_to_item" in body, (
+        "_precollect_starting_captures must resolve categories via "
+        "world.item_name_to_item[name]."
+    )
+
+
+# ─── 5. no_logic testing option ──────────────────────────────────────────────
+
+def test_no_logic_option_registered():
+    src = (APWORLD_ROOT / "hooks" / "Options.py").read_text(encoding="utf-8")
+    assert "class NoLogic(" in src, "NoLogic option class not defined in hooks/Options.py"
+    assert 'options["no_logic"]' in src, (
+        "no_logic not registered in before_options_defined"
+    )
+
+
+def test_no_logic_forces_access_rules_in_world():
+    src = _hooks_src("World.py")
+    assert "_apply_no_logic" in src, "_apply_no_logic not defined in hooks/World.py"
+    m = re.search(
+        r"def after_set_rules\b(.+?)(?=\n# |\ndef |\Z)", src, re.DOTALL,
+    )
+    assert m, "after_set_rules not found"
+    assert 'is_option_enabled(multiworld, player, "no_logic")' in m.group(1), (
+        "after_set_rules must call _apply_no_logic when no_logic is enabled"
+    )

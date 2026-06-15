@@ -22,6 +22,7 @@ MAX_LINE_BYTES = 8 * 1024
 class ItemKind(str, Enum):
     MOON = "moon"
     CAPTURE = "capture"
+    ABILITY = "ability"
     OTHER = "other"
 
 
@@ -626,6 +627,32 @@ class CoinGrant:
     """
     t: str = "coin_grant"
     total: int = 0
+
+
+@dataclass
+class AbilityStateMsg:
+    """Bridge -> Switch: authoritative per-ability received counts.
+
+    Full-overwrite snapshot (same idempotent pattern as OutstandingMsg /
+    KingdomGatesMsg): the Switch replaces its entire ability table from
+    `entries` on each receipt. This makes HELLO replay safe and lets the
+    progressive chains (count > 1 = chain level) survive reconnects without
+    double-counting.
+
+    `entries` is a list of {"ability": <item name>, "count": <int>}. P3
+    TRACKS abilities only (Cappy bubble on a newly-unlocked ability);
+    enforcement is P4. Duplicate-ability -> 100 coins is handled separately
+    via the coin_grant total (BridgeState.compute_total_coin_grant), NOT here.
+
+    New message type (`t="ability_state"`) so a Switch mod built before P3-3b
+    ignores it gracefully (handleLine's unknown-type branch), exactly like
+    coin_grant did before P1's Switch side landed.
+    """
+    t: str = "ability_state"
+    entries: list[dict] = field(default_factory=list)
+
+    def to_wire(self) -> dict[str, Any]:
+        return {"t": self.t, "entries": self.entries}
 
 
 @dataclass

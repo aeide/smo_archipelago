@@ -45,6 +45,10 @@ void installAddPayShineHook();
 void installAddPayShineAllHook();
 void installCaptureStartHook();
 void tickPendingUncapture();
+void installAbilityGateHooks();
+// Option 3 squat-jump suppression — decays the "in squat" window once per
+// frame. Must run every frame on the game thread. See AbilityGateHook.cpp.
+void tickAbilityGate();
 void installWorldMapSelectHook();
 void installMoonLabelHook();
 void installShineAppearanceHook();
@@ -206,6 +210,7 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
         smoap::ap::ApState::instance().flushPendingCaptureGrants();
         smoap::ap::ApState::instance().applyCoinGrant();
         smoap::hooks::tickPendingUncapture();
+        smoap::hooks::tickAbilityGate();  // Option 3: decay the squat-jump window
 
         // Lost Kingdom softlock sweep — see game/OdysseyRescue.hpp. Throttled
         // to once per 60 frames (~1s @ 60fps). Pattern + cadence mirror
@@ -280,6 +285,9 @@ extern "C" void hkMain() {
 
     SMOAP_LOG_INFO("installing CaptureStartHook (capture lock + AP check)");
     smoap::hooks::installCaptureStartHook();
+
+    SMOAP_LOG_INFO("installing AbilityGateHook (P4 move enforcement)");
+    smoap::hooks::installAbilityGateHooks();
 
     SMOAP_LOG_INFO("installing WorldMapSelectHook (M7 Path A)");
     smoap::hooks::installWorldMapSelectHook();

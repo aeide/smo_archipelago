@@ -134,8 +134,11 @@ def test_push_coin_grant_defined():
 
 def test_push_coin_grant_calls_compute():
     body = _fn_body(_src("switch_server.py"), "push_coin_grant")
-    assert "compute_cap_coin_total" in body, \
-        "push_coin_grant must call state.compute_cap_coin_total()"
+    # P3-3b: push_coin_grant now uses compute_total_coin_grant (Cap moons +
+    # duplicate capture/ability coins). compute_cap_coin_total stays as the
+    # Cap-only helper but is no longer what push_coin_grant calls.
+    assert "compute_total_coin_grant" in body, \
+        "push_coin_grant must call state.compute_total_coin_grant()"
 
 
 def test_push_coin_grant_sends_coin_grant_msg():
@@ -173,16 +176,18 @@ def test_context_syntax_valid():
 
 
 def test_context_has_cap_moon_flag():
-    assert "cap_moon_received_this_batch" in _src("context.py")
+    # P3-3b renamed cap_moon_received_this_batch -> coin_relevant_this_batch
+    # (now also set for captures/abilities, since their clones convert to coins).
+    assert "coin_relevant_this_batch" in _src("context.py")
 
 
 def test_context_cap_flag_gated_on_cap_kingdom():
     src = _src("context.py")
-    m = re.search(r"cap_moon_received_this_batch\s*=\s*True", src)
-    assert m, "cap_moon_received_this_batch = True not found in context.py"
+    m = re.search(r"coin_relevant_this_batch\s*=\s*True", src)
+    assert m, "coin_relevant_this_batch = True not found in context.py"
     window = src[max(0, m.start() - 200): m.end() + 100]
     assert "Cap" in window, \
-        'cap_moon_received_this_batch must be set only when ref.kingdom == "Cap"'
+        'coin_relevant_this_batch must be set when ref.kingdom == "Cap"'
 
 
 def test_context_calls_push_coin_grant():
@@ -199,5 +204,5 @@ def test_context_cap_flag_inside_moon_branch():
     )
     assert moon_match, "moon_received_this_batch = True block not found"
     after = src[moon_match.start(): moon_match.end() + 200]
-    assert "cap_moon_received_this_batch" in after, \
-        "cap_moon_received_this_batch must be set inside the moon-kind branch"
+    assert "coin_relevant_this_batch" in after, \
+        "coin_relevant_this_batch must be set inside the moon-kind branch (Cap)"

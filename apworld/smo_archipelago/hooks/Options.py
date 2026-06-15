@@ -112,9 +112,16 @@ class IncludePrecisionCaptureMoons(DefaultOnToggle):
     generation may fail."""
     display_name = "Include Precision Capture Moons"
 
-class Capturesanity(Toggle):
-    """Deprecated in v2 — has no effect. Kept for YAML back-compatibility."""
-    display_name = "Capturesanity (Deprecated)"
+class Capturesanity(DefaultOnToggle):
+    """Gate captures behind their AP items (default ON).
+
+    ON: captures are part of the AP item pool — you can only use a capture
+    after you've received its item, and capturing an un-owned creature ejects
+    Mario. Frog is always available so the Cap Kingdom opening can't soft-lock.
+    OFF: every capture is unlocked from the start (vanilla movement); the
+    capture items still ride along in the pool but grant nothing new. Useful for
+    logic-light / testing seeds (pairs well with no_logic)."""
+    display_name = "Capturesanity"
 
 class Goal(Choice):
     """Choose your victory condition.
@@ -130,6 +137,15 @@ class Goal(Choice):
     option_mushroom_kingdom = 0
     option_festival = 1
     default = 0
+
+class NoLogic(Toggle):
+    """No-logic / testing mode. When on, every location and region access rule is
+    replaced with "always accessible" and the world's accessibility check is set
+    to minimal, so a seed always generates regardless of whether it is actually
+    completable. Intended for end-to-end testing of item/wire behavior (e.g. P3
+    captures + abilities flowing to the Switch) while the moon-requirement logic
+    is still being authored. NOT for real playthroughs — seeds may be unwinnable."""
+    display_name = "No Logic (testing)"
 
 class TalkatooMode(Toggle):
     """Talkatoo% mode: Talkatoo's speech bubble names 3 of YOUR AP-pool moons from the current
@@ -297,6 +313,7 @@ class BowsersMoonCount(Range):
 # This is called before any options are defined, in case you want to define your own with a clean slate
 def before_options_defined(options: dict) -> dict:
     options["goal"] = Goal
+    options["no_logic"] = NoLogic
     options["capturesanity"] = Capturesanity
     options["talkatoo_mode"] = TalkatooMode
     options["randomize_kingdom_gates"] = RandomizeKingdomGates

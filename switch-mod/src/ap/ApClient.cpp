@@ -1065,6 +1065,21 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
             SMOAP_LOG_INFO("[p1-coins] coin_grant total=%d queued for frame thread",
                            total);
         }
+    } else if (eq(m.t, "ability_state")) {
+        // P3 — full-overwrite ability tracking snapshot. ApState compares the
+        // incoming counts against the prior table and pops a Cappy bubble for
+        // any newly-unlocked / leveled ability (routed through
+        // inbound_system_bubbles, worker-thread safe). Idempotent on HELLO
+        // replay. Enforcement (gating Mario's moveset) is P4.
+        auto& st = ApState::instance();
+        const auto& as = m.ability_state;
+        st.applyAbilityState(as.entries, as.entry_count);
+        if (as.truncated) {
+            SMOAP_LOG_WARN("[p3-ability] ability_state truncated at %zu entries "
+                           "(bump kAbilityStateMax?)", as.entry_count);
+        }
+        SMOAP_LOG_INFO("[p3-ability] applied %zu ability entries",
+                       as.entry_count);
     } else {
         SMOAP_LOG_WARN("unknown message t=%s", m.t);
     }

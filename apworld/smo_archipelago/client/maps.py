@@ -23,6 +23,24 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 
+# P3 part-capture split. The in-game journal (and thus the extracted
+# capture_map.json) names BOTH puzzle parts "Puzzle Part" and BOTH
+# picture-match parts "Picture Match Part", each with a DISTINCT hack_name.
+# The apworld splits them into four variant items so each randomizes
+# independently, but CaptureMap._reverse (first-write-wins on cap name)
+# can't disambiguate by display name. This committed override pins each
+# variant item name to its functional hack_name so cap_to_hack resolves
+# correctly at grant time. Hack names are functional identifiers (allowed
+# per CLAUDE.md IP rules), verified against
+# bridge/smo_ap_bridge/data/capture_map.json (2026-06-13).
+VARIANT_CAP_HACK_OVERRIDE: dict[str, str] = {
+    "Puzzle Part (Lake Kingdom)": "GotogotonLake",
+    "Puzzle Part (Metro Kingdom)": "GotogotonCity",
+    "Picture Match Part (Goomba)": "FukuwaraiFacePartsKuribo",
+    "Picture Match Part (Mario)": "FukuwaraiFacePartsMario",
+}
+
+
 @dataclass(frozen=True)
 class MoonResolution:
     kingdom: str
@@ -241,6 +259,11 @@ class CaptureMap:
         """
         if not cap:
             return None
+        # P3 split variants: pin each to its distinct hack (the journal name
+        # alone is ambiguous — see VARIANT_CAP_HACK_OVERRIDE).
+        override = VARIANT_CAP_HACK_OVERRIDE.get(cap)
+        if override is not None:
+            return override
         return self._reverse.get(cap, cap)
 
     def iter_all(self) -> list[tuple[str, str]]:

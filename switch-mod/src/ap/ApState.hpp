@@ -635,6 +635,68 @@ public:
     int coins_applied = 0;
     void* add_coin_fn = nullptr;
 
+    // ---- P3 ability tracking ------------------------------------------------
+    //
+    // Bridge ships an `ability_state` message — a full-overwrite snapshot of
+    // per-ability received counts — on every HELLO replay and whenever a new
+    // ability item arrives from AP. applyAbilityState() overwrites this table
+    // and pops a Cappy bubble for any ability whose count rose above its
+    // previously-stored value (newly unlocked, or a progressive chain that
+    // leveled up).
+    //
+    // P3 TRACKS only: nothing reads ability_table to gate moves yet — that's
+    // P4 enforcement. The duplicate-ability -> 100 coins conversion rides the
+    // existing coin_grant path, not this table.
+    //
+    // Threading: the worker thread (ApClient::handleLine -> applyAbilityState)
+    // is the sole writer. The unlock bubble is routed through
+    // inbound_system_bubbles (NOT a direct CappyMessenger call) because
+    // worker-thread CappyMessenger access crashes Ryujinx's ARMeilleure JIT —
+    // same constraint enqueueSystemBubble works around. The seqlock
+    // (even=stable, odd=writing) lets a future P4 frame-thread reader re-read
+    // without a lock, matching the talkatoo_pools / shop_labels pattern.
+    //
+    // 32 slots x (64 name + 4 count) ~= 2 KiB BSS. Fixed buffers per the M6.1
+    // allocator-safety contract.
+    struct AbilitySlot {
+        char name[kCheckFieldCap] = {};
+        int count = 0;
+    };
+    static constexpr std::size_t kAbilityTableMax = kAbilityStateMax;
+    AbilitySlot ability_table[kAbilityTableMax]{};
+    std::size_t ability_table_count = 0;
+    std::atomic<std::uint32_t> ability_table_seq{0};
+
+    // Worker-thread write — full-overwrite the ability table from an
+    // ability_state message. For every ability whose new count exceeds the
+    // previously-stored count, enqueues a Cappy system bubble (via
+    // inbound_system_bubbles) announcing the unlock / level-up. Idempotent: a
+    // replayed snapshot with unchanged counts pops no bubbles.
+    void applyAbilityState(const AbilityEntry* entries, std::size_t count);
+
+    // ---- P4 ability enforcement (frame-thread reads) ------------------------
+    //
+    // Frame-thread, lock-free count read over the seqlock-protected
+    // ability_table written by applyAbilityState. Returns the received count
+    // for `name` (e.g. how far a progressive chain has advanced), or 0 if the
+    // ability is absent. Used by the judge-gate hooks (hooks/AbilityGateHook)
+    // to decide whether a move is unlocked. Counts are monotonic (the bridge
+    // only ever raises them), so a torn/stale read can only briefly UNDER-
+    // report — never grant a move the player doesn't own.
+    int abilityCount(const char* name) const;
+
+    // True iff the player has received `name` to at least `level`
+    // (abilityCount(name) >= level). Progressive chains map levels to moves:
+    // e.g. abilityAtLeast("Progressive Crouch", 2) == "has Roll".
+    bool abilityAtLeast(const char* name, int level) const;
+
+    // Debug override: when true, every ability gate reports unlocked. Toggled
+    // from the ImGui debug console (ApDebugConsole) so a mis-hooked judge can
+    // never permanently brick a save during the P4 rollout. Frame-thread read,
+    // console-thread write — atomic. Defaults FALSE (gates active) so the
+    // enforcement is actually testable out of the box.
+    std::atomic<bool> ability_gate_force_unlock{false};
+
     // Local AP slot name — captured by ApClient when the bridge sends
     // hello_ack. Fixed buffer rather than std::string to avoid subsdk9's
     // libstdc++ allocator NULL-deref (see project_libstdcpp_allocator_broken_in_subsdk9.md).
