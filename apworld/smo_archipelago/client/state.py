@@ -417,6 +417,7 @@ class BridgeState:
                 "checked_count": len(self.checked_locations),
                 "death_count": self.death_count,
                 "captures_unlocked": sorted(self.captures_unlocked),
+                "abilities_received": dict(self.abilities_received),
                 "moons_received_by_kingdom": dict(self.moons_received_by_kingdom),
                 "moons_checked_by_kingdom": dict(self.moons_checked_by_kingdom),
                 "pay_shine_num_by_kingdom": (

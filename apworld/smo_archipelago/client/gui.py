@@ -48,6 +48,7 @@ from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 
+from .abilities import moves_owned
 from .net_util import detect_lan_ip
 
 if typing.TYPE_CHECKING:  # pragma: no cover
@@ -555,6 +556,7 @@ def _format_odyssey(ctx: "SMOContext") -> str:
     """
     snap = ctx.state.snapshot()
     caps = snap.get("captures_unlocked") or []
+    abilities = snap.get("abilities_received") or {}
     moons_recv = snap.get("moons_received_by_kingdom") or {}
     exit_thresholds = ctx.dp.kingdom_exit_thresholds()
 
@@ -598,5 +600,20 @@ def _format_odyssey(ctx: "SMOContext") -> str:
         parts.append("[b]Captures unlocked[/b]")
         parts.append(", ".join(caps) if caps else "[i](none yet)[/i]")
         parts.append("")
+    # Abilities owned (P3/P4). Listed as the concrete in-game MOVES, not
+    # the AP pool item names — a "Progressive Crouch" with count 3 reads
+    # as "Crouch, Roll, Roll Boost". The translation + level ordering live
+    # in client/abilities.py (mirrored in the Switch unlock bubble). Items
+    # are iterated in sorted order so a chain's moves stay adjacent; clone
+    # copies past the end of a chain add no move (they convert to coins).
+    parts.append("[b]Abilities owned[/b]")
+    owned_moves: list[str] = []
+    for name in sorted(abilities):
+        owned_moves.extend(moves_owned(name, abilities.get(name, 0)))
+    if owned_moves:
+        parts.append(", ".join(owned_moves))
+    else:
+        parts.append("[i](none yet)[/i]")
+    parts.append("")
     parts.append("[b]DeathLink[/b]: " + ("ENABLED" if ctx.deathlink_enabled else "disabled"))
     return "\n".join(parts)

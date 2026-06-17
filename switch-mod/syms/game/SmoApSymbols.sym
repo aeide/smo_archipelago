@@ -186,15 +186,92 @@ _ZNK21PlayerJudgeStartSquat5judgeEv
 _ZNK23PlayerJudgeStartRolling5judgeEv
 // Ground Pound (hip drop):
 _ZNK23PlayerJudgeStartHipDrop5judgeEv
+// Wall Slide — the wall-judge FAMILY (gating WallCatch alone did NOT stop the
+// slide/wall-jump in-game; WallKeep is the confirmed wall-contact gate per the
+// PlayerStateWallAir decomp). All gated on Wall Slide>=1. All VERIFIED HIT
+// (2026-06-15). Lengths: WallKeep=19, WallHitDown=22, WallCatch=20, WallCatchInputDir=28.
+_ZNK19PlayerJudgeWallKeep5judgeEv
+_ZNK22PlayerJudgeWallHitDown5judgeEv
+_ZNK20PlayerJudgeWallCatch5judgeEv
+_ZNK28PlayerJudgeWallCatchInputDir5judgeEv
+// Climb — PlayerJudgePoleClimb::judge() const. "PlayerJudgePoleClimb"=20. HIT, TESTED-PASS.
+_ZNK20PlayerJudgePoleClimb5judgeEv
+// Ledge Grab — PlayerJudgeGrabCeil::judge() const. The decomp confirms judge()
+// returns mIsJudge (a pure entry detector set by rs::findGrabCeilPos*), so forcing
+// it false suppresses ENTRY only (no jump-off coupling — earlier soft-lock fear
+// disproved). Decoupled from Wall Slide: it sits downstream of the wall judges, so
+// Ledge Grab is gated by its own item even with Wall Slide owned. "PlayerJudgeGrabCeil"=19.
+// HIT (2026-06-15).
+_ZNK19PlayerJudgeGrabCeil5judgeEv
 // Roll Boost (motion-control shake while rolling) — NOT a judge; this is the
 // PlayerInput predicate that reports the boost swing. Gated on Progressive
 // Crouch>=3. VERIFIED present in main.nso (2026-06-14). bool ()const → no args.
 _ZNK11PlayerInput28isTriggerRollingRestartSwingEv
-// Option 3 (squat-jump suppression — Backflip + Long Jump). The squat→jump
+// Roll-out-of-Ground-Pound — PlayerInput::isTriggerRollingCancelHipDrop(bool)
+// const. The roll-cancel-hipdrop path bypasses the StartRolling judge, so it
+// leaked Roll in for free. Gated on Progressive Crouch>=2. Note the `Eb` (bool
+// arg). "isTriggerRollingCancelHipDrop"=29. HIT (2026-06-15).
+_ZNK11PlayerInput29isTriggerRollingCancelHipDropEb
+// Dive (head slide) — PlayerInput::isTriggerHeadSliding() const. Gated on
+// Progressive Ground Pound>=2. "isTriggerHeadSliding"=20. HIT, TESTED-PASS.
+_ZNK11PlayerInput20isTriggerHeadSlidingEv
+// Spin Throw — the throw-TYPE classifiers PlayerInput::isThrowTypeSpiral /
+// isThrowTypeRolling (const sead::Vector2f&). NOT isTriggerSpinCap (gates the
+// neutral throw) nor isSpinInput (didn't suppress the spin throw). Forcing these
+// false downgrades a spin throw to a normal throw; neutral throw untouched.
+// Gated on Spin Throw>=1. sead::Vector2f = sead::Vector2<f32> → N4sead7Vector2IfEE.
+// Both HIT (2026-06-15).
+_ZNK11PlayerInput17isThrowTypeSpiralERKN4sead7Vector2IfEE
+_ZNK11PlayerInput18isThrowTypeRollingERKN4sead7Vector2IfEE
+// Option 3 ITER 2 (squat-jump suppression — Backflip + Long Jump). The squat→jump
 // trigger is undecompiled (PlayerActorHakoniwa.cpp is a 40-byte stub upstream),
 // so we gate the jump-input judge but ONLY while in the squat state, detected
-// via the exeSquat beacon. Both VERIFIED HIT in main.nso (2026-06-14g).
+// via the exeSquat beacon. ITER 2 adds PlayerStateSquat::appear to stash the live
+// state pointer for isEnableLongJump calls (per-move BF/LJ split).
+// All VERIFIED HIT in main.nso (2026-06-14f/g).
+// PlayerStateSquat::appear() — void, non-const; "PlayerStateSquat"=16.
+// (isEnableLongJumpEv is resolved via hk::ro::lookupSymbol, NOT sail installAtSym.)
+_ZN16PlayerStateSquat6appearEv
 // PlayerActorHakoniwa::exeSquat() — void, non-const; "PlayerActorHakoniwa"=19.
 _ZN19PlayerActorHakoniwa8exeSquatEv
 // PlayerJudgePreInputJump::judge() const — bool, no args; len 23.
 _ZNK23PlayerJudgePreInputJump5judgeEv
+// Progressive Jump (Double / Triple Jump) — NOT a judge. The jump combo lives
+// in PlayerContinuousJump::mCount (0=single, 1=double, 2=triple); countUp()
+// raises it on each chained jump. We clamp mCount to the owned level right
+// after countUp so single jump is always free, Double caps at 1, Triple at 2.
+// countUp(const sead::Vector3f&): sead::Vector3f = sead::Vector3<f32> →
+// N4sead7Vector3IfEE; "PlayerContinuousJump"=20, "countUp"=7. HIT (2026-06-17).
+_ZN20PlayerContinuousJump7countUpERKN4sead7Vector3IfEE
+// Ground Pound Jump — the jump out of a hip-drop landing. NOT a judge; the
+// hip-drop land state exposes dedicated isEnable* predicates and LandCancel is
+// the one that gates canceling the landing into a jump (HeadSliding=dive and
+// Move are separate, and the airborne dive/roll-out cancels go through their own
+// PlayerInput predicates). Force it false to withhold the GP-jump while leaving
+// a normal hip-drop landing intact. "PlayerStateHipDrop"=18, "isEnableLandCancel"
+// =18, const. HIT in rodata (2026-06-17).
+_ZNK18PlayerStateHipDrop18isEnableLandCancelEv
+// Side Flip — SMO's "turn jump". isEnableTurnJump() = mTrigger->isOn(QuickTurn) ||
+// mCounter>0, with the SET and the READ inlined back-to-back inside the undecompiled
+// run nerve. SEVEN clear/suppress points failed (the getTurnJumpVelH probe fired
+// every frame of the arc, but PlayerStateJump::appear never observed the window —
+// there's no out-of-line seam between the set and the read). So the move is NEUTERED
+// instead: the turn-jump PHYSICS getters on PlayerConst are virtual with real
+// out-of-line bodies (called every frame of the side-flip arc, proven by the velH
+// probe), so we override them to return normal-jump values when Side Flip is unowned.
+// "PlayerConst"=11; "getTurnJumpPower"=16, "getTurnJumpVelH"=15, "getTurnJumpGravity"
+// =18; all const. All HIT in rodata (2026-06-17).
+// (The dead v7 probes — PlayerActorHakoniwa::executePreMovementNerveChange and
+//  PlayerStateJump::appear — were removed once the neuter approach landed.)
+_ZNK11PlayerConst16getTurnJumpPowerEv
+_ZNK11PlayerConst15getTurnJumpVelHEv
+_ZNK11PlayerConst18getTurnJumpGravityEv
+// Cap Bounce (cap vault) — bouncing off held Cappy is delivered by the cap's
+// touch-jump sensor message. v2 hooked rs::sendMsgPlayerCapTrample (the cap-TRAMPLE
+// reaction — the cap wobbling to being stepped on); that logged but did NOT stop
+// the bounce. The real vault trigger is rs::sendMsgPlayerCapTouchJump (v3). We gate
+// the SENDER: skip delivery when Cap Bounce is unowned. Cap-specific (the generic
+// enemy stomp is rs::sendMsgRequestPlayerTrampleJump, takes an f32 power — distinct),
+// covers walk-into + dive-into variants. Free fn in namespace rs taking two
+// al::HitSensor*. HIT in rodata (2026-06-17).
+_ZN2rs25sendMsgPlayerCapTouchJumpEPN2al9HitSensorES2_

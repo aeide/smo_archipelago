@@ -324,6 +324,10 @@ class SwitchServer:
         self._get_outstanding = get_outstanding_entries
         self._client_ver = client_ver
         self._capturesanity_enabled = capturesanity_enabled
+        # abilitysanity gate (default ON). Set from slot_data on AP Connected
+        # via set_abilitysanity_enabled. When OFF, push_ability_state ships
+        # enforce=False so the Switch opens its ability gate.
+        self._abilitysanity_enabled = True
         self._get_all_captures = get_all_captures
         self._is_ap_ready = is_ap_ready
         self._build_reconcile_cappy_item = build_reconcile_cappy_item
@@ -449,6 +453,15 @@ class SwitchServer:
         the caller should also call push_capturesanity_replay() to
         flush the unlocks without waiting for a save-load."""
         self._capturesanity_enabled = bool(enabled)
+
+    def set_abilitysanity_enabled(self, enabled: bool) -> None:
+        """Update the abilitysanity gate. Called by SMOContext after AP
+        Connected delivers slot_data. Takes effect on the NEXT HELLO replay;
+        the caller should also call push_ability_state() to flush the
+        enforce flag to an already-running Switch without waiting for a
+        save-load. When OFF, the ability items aren't in the pool, so the
+        Switch must be told (enforce=False) to open its ability gate."""
+        self._abilitysanity_enabled = bool(enabled)
 
     async def push_capturesanity_replay(self) -> None:
         """Synthesize all-captures-unlocked ItemMsgs for the active
@@ -618,19 +631,24 @@ class SwitchServer:
 
         Full-overwrite snapshot (AbilityStateMsg) — idempotent, mirrors
         OutstandingMsg / KingdomGatesMsg. No-op when no ability items have been
-        received yet. Called from _run_post_hello_replay and from context.py
-        when an ability item arrives. P3 tracks abilities only; the Switch
-        stores the counts + bubbles newly-unlocked abilities (enforcement is
-        P4).
+        received yet (UNLESS abilitysanity is off — then we must still send
+        enforce=False to open the Switch gate). Called from
+        _run_post_hello_replay and from context.py when an ability item
+        arrives. P3 tracks abilities only; the Switch stores the counts +
+        bubbles newly-unlocked abilities; P4 enforces the `enforce` flag.
         """
+        enforce = self._abilitysanity_enabled
         counts = self._state.get_ability_counts()
-        if not counts:
+        # When the gate is enforced and nothing has been received yet there is
+        # nothing to say. When it's disabled we MUST send (enforce=False) even
+        # with zero counts so the Switch opens its ability gate.
+        if enforce and not counts:
             return
         entries = [
             {"ability": name, "count": n}
             for name, n in sorted(counts.items())
         ]
-        await self._send(AbilityStateMsg(entries=entries))
+        await self._send(AbilityStateMsg(entries=entries, enforce=enforce))
 
     def set_talkatoo_pool(self, enabled: bool, kingdoms: dict[str, list[str]]) -> None:
         """Stash the Talkatoo% per-kingdom AP-pool payload.

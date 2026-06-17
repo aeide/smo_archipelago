@@ -19,6 +19,7 @@ from client.protocol import (
     encode,
 )
 from client.maps import CaptureMap, VARIANT_CAP_HACK_OVERRIDE
+from client.abilities import moves_owned, newly_unlocked_move, PROGRESSIVE_MOVES
 
 CLIENT_ROOT = Path(__file__).resolve().parents[1] / "client"
 
@@ -52,6 +53,18 @@ def test_ability_state_round_trips():
     assert d["entries"] == [{"ability": "Backflip", "count": 1}]
 
 
+def test_ability_state_enforce_defaults_true():
+    # abilitysanity ON: enforce defaults True (gates active on the Switch).
+    d = decode(encode(AbilityStateMsg(entries=[])))
+    assert d["enforce"] is True
+
+
+def test_ability_state_enforce_false_when_abilitysanity_off():
+    # abilitysanity OFF: enforce=False tells the Switch to open its gate.
+    d = decode(encode(AbilityStateMsg(entries=[], enforce=False)))
+    assert d["enforce"] is False
+
+
 # ── State tracking ────────────────────────────────────────────────────────────
 
 def test_ability_counts_tracked():
@@ -60,6 +73,89 @@ def test_ability_counts_tracked():
     s.add_received_item(ItemEvent(item=_ability("Backflip")))
     s.add_received_item(ItemEvent(item=_ability("Climb")))
     assert s.get_ability_counts() == {"Backflip": 2, "Climb": 1}
+
+
+def test_snapshot_exposes_abilities_received():
+    # The Odyssey-tab "Abilities owned" panel reads snapshot()["abilities_received"].
+    s = BridgeState()
+    s.add_received_item(ItemEvent(item=_ability("Backflip")))
+    s.add_received_item(ItemEvent(item=_ability("Progressive Crouch")))
+    s.add_received_item(ItemEvent(item=_ability("Progressive Crouch")))
+    snap = s.snapshot()
+    assert snap["abilities_received"] == {"Backflip": 1, "Progressive Crouch": 2}
+    # Defensive copy — mutating the snapshot must not corrupt state.
+    snap["abilities_received"]["Backflip"] = 99
+    assert s.get_ability_counts()["Backflip"] == 1
+
+
+# ── Ability -> move mapping (Odyssey list + unlock bubble) ────────────────────
+
+def test_moves_owned_progressive_crouch_chain():
+    assert moves_owned("Progressive Crouch", 1) == ["Crouch"]
+    assert moves_owned("Progressive Crouch", 2) == ["Crouch", "Roll"]
+    assert moves_owned("Progressive Crouch", 3) == ["Crouch", "Roll", "Roll Boost"]
+    # Count past the chain (defensive) clamps, never errors.
+    assert moves_owned("Progressive Crouch", 9) == ["Crouch", "Roll", "Roll Boost"]
+
+
+def test_moves_owned_clone_levels_add_no_move():
+    # Ground Pound chain has 2 real levels; a 3rd copy is a clone (coins).
+    assert moves_owned("Progressive Ground Pound", 3) == ["Ground Pound", "Dive"]
+    # Wall Slide chain has 1 real level; a 2nd copy is a clone.
+    assert moves_owned("Wall Slide", 2) == ["Wall Slide"]
+
+
+def test_moves_owned_single_grant_is_item_name():
+    assert moves_owned("Ledge Grab", 1) == ["Ledge Grab"]
+    # A clone of a single-grant ability adds no move.
+    assert moves_owned("Ledge Grab", 2) == ["Ledge Grab"]
+    assert moves_owned("Climb", 0) == []
+    assert moves_owned("", 1) == []
+
+
+def test_newly_unlocked_move_per_level():
+    assert newly_unlocked_move("Progressive Crouch", 1) == "Crouch"
+    assert newly_unlocked_move("Progressive Crouch", 2) == "Roll"
+    assert newly_unlocked_move("Progressive Crouch", 3) == "Roll Boost"
+    # Clone level past the chain -> no move (bubble falls back to coins).
+    assert newly_unlocked_move("Progressive Ground Pound", 3) is None
+    assert newly_unlocked_move("Wall Slide", 2) is None
+    # Single-grant: only the first copy unlocks; clones return None.
+    assert newly_unlocked_move("Backflip", 1) == "Backflip"
+    assert newly_unlocked_move("Backflip", 2) is None
+
+
+def test_progressive_table_matches_item_counts():
+    # The chain lengths must not exceed the pool item counts in items.json,
+    # or a player could never reach a listed move. (Clone copies make the
+    # item count >= chain length, never less.)
+    import json
+    from pathlib import Path
+    data = json.loads(
+        (Path(__file__).resolve().parents[1] / "data" / "items.json")
+        .read_text(encoding="utf-8")
+    )
+    items = data["items"] if isinstance(data, dict) and "items" in data else data
+    counts = {it["name"]: it.get("count", 1) for it in items}
+    for item_name, moves in PROGRESSIVE_MOVES.items():
+        assert item_name in counts, f"{item_name} missing from items.json"
+        assert counts[item_name] >= len(moves), (
+            f"{item_name} count {counts[item_name]} < chain length {len(moves)}"
+        )
+
+
+def test_cpp_ability_move_table_mirrors_python():
+    # ApState.cpp::abilityMoveAtLevel must carry the same item->moves table as
+    # client/abilities.py (the source comment names abilities.py as the mirror).
+    # Drift here = the in-game unlock bubble disagrees with the Odyssey list.
+    src = (
+        Path(__file__).resolve().parents[3]
+        / "switch-mod" / "src" / "ap" / "ApState.cpp"
+    ).read_text(encoding="utf-8")
+    for item_name, moves in PROGRESSIVE_MOVES.items():
+        assert f'"{item_name}"' in src, f"{item_name} chain missing from ApState.cpp"
+        for move in moves:
+            assert f'"{move}"' in src, f"move '{move}' missing from ApState.cpp"
 
 
 def test_capture_counts_tracked_alongside_set():

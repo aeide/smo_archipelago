@@ -544,6 +544,11 @@ struct AbilityState {
     AbilityEntry entries[kAbilityStateMax]{};
     std::size_t entry_count = 0;
     bool truncated = false;
+    // abilitysanity flag. True (default) = enforce the ability gates; false =
+    // abilitysanity is off, so ApState opens the gate (ability_gate_disabled)
+    // and every move works. Defaults true so a message omitting the field (or
+    // an older bridge) keeps enforcing.
+    bool enforce = true;
 };
 
 // (de)serialization --------------------------------------------------------

@@ -251,10 +251,39 @@ void ApState::applyCoinGrant() {
                    delta, total, coins_applied);
 }
 
-void ApState::applyAbilityState(const AbilityEntry* entries, std::size_t count) {
+// Mirror of client/abilities.py PROGRESSIVE_MOVES. Returns the move-name
+// unlocked at 1-indexed `level` for `ability`, or nullptr when that level is
+// a duplicate/clone past the end of the chain (coins, no new move). Keep in
+// sync with abilities.py + the gating thresholds in AbilityGateHook.cpp:
+//   Progressive Crouch        >=1 Crouch  >=2 Roll  >=3 Roll Boost
+//   Progressive Ground Pound  >=1 Ground Pound  >=2 Dive   (>=3 clone)
+//   Progressive Jump          >=1 Double Jump   >=2 Triple Jump
+//   Wall Slide                >=1 Wall Slide    (>=2 clone)
+// Single-grant abilities (Climb, Backflip, Ledge Grab, …) map move == item.
+static const char* abilityMoveAtLevel(const char* ability, int level) {
+    if (!ability || level < 1) return nullptr;
+    struct Chain { const char* item; const char* moves[3]; int len; };
+    static const Chain kChains[] = {
+        {"Progressive Crouch",       {"Crouch", "Roll", "Roll Boost"}, 3},
+        {"Progressive Ground Pound", {"Ground Pound", "Dive", nullptr}, 2},
+        {"Progressive Jump",         {"Double Jump", "Triple Jump", nullptr}, 2},
+        {"Wall Slide",               {"Wall Slide", nullptr, nullptr}, 1},
+    };
+    for (const auto& c : kChains) {
+        if (std::strcmp(ability, c.item) == 0)
+            return (level <= c.len) ? c.moves[level - 1] : nullptr;
+    }
+    return (level == 1) ? ability : nullptr;  // single-grant: move == item
+}
+
+void ApState::applyAbilityState(const AbilityEntry* entries, std::size_t count,
+                                bool enforce) {
     // P3 — full-overwrite ability tracking. Worker thread only. Compares the
     // incoming counts against the prior table to decide which abilities are
     // newly unlocked / leveled, then overwrites the table under a seqlock.
+    // `enforce` is the abilitysanity flag: when false (abilitysanity off) we
+    // open the gate so every move works regardless of the (likely empty) table.
+    ability_gate_disabled.store(!enforce, std::memory_order_relaxed);
     const std::size_t capped = (count < kAbilityTableMax) ? count : kAbilityTableMax;
 
     // Prior count for a name in the current (pre-overwrite) table; 0 if absent.
@@ -273,15 +302,31 @@ void ApState::applyAbilityState(const AbilityEntry* entries, std::size_t count) 
     for (std::size_t i = 0; i < capped; ++i) {
         const auto& e = entries[i];
         if (e.ability[0] == '\0') continue;
-        if (e.count > priorCount(e.ability)) {
+        const int prior = priorCount(e.ability);
+        if (e.count <= prior) continue;
+        // Announce each newly-crossed level as the concrete MOVE it unlocks
+        // (the player thinks in moves, not pool-item names). A single /send
+        // crosses one level -> one bubble; a multi-level jump (fresh ApState
+        // on first HELLO after a reboot) announces each move in turn. Levels
+        // past the end of a chain are clone copies that convert to coins.
+        for (int level = prior + 1; level <= e.count; ++level) {
+            const char* move = abilityMoveAtLevel(e.ability, level);
             SystemBubble bubble{};
-            std::snprintf(bubble.text, sizeof(bubble.text), "Unlocked %s!", e.ability);
+            if (move != nullptr) {
+                std::snprintf(bubble.text, sizeof(bubble.text),
+                              "Unlocked %s!", move);
+            } else {
+                std::snprintf(bubble.text, sizeof(bubble.text),
+                              "Spare ability - +100 coins!");
+            }
             if (!inbound_system_bubbles.push(bubble)) {
                 SMOAP_LOG_WARN("[p3-ability] system bubble ring full; dropping "
-                               "unlock bubble for '%s'", e.ability);
+                               "unlock bubble for '%s' L%d", e.ability, level);
             }
-            SMOAP_LOG_INFO("[p3-ability] unlocked/leveled '%s' count=%d "
-                           "(was %d)", e.ability, e.count, priorCount(e.ability));
+            SMOAP_LOG_INFO("[p3-ability] unlocked/leveled '%s' -> '%s' L%d "
+                           "(count=%d, was %d)", e.ability,
+                           move != nullptr ? move : "(coins)", level,
+                           e.count, prior);
         }
     }
 
@@ -327,7 +372,10 @@ int ApState::abilityCount(const char* name) const {
 }
 
 bool ApState::abilityAtLeast(const char* name, int level) const {
+    // Open the gate if EITHER the debug-console override OR abilitysanity-off
+    // is set (independent levers — see ability_gate_disabled in the header).
     if (ability_gate_force_unlock.load(std::memory_order_relaxed)) return true;
+    if (ability_gate_disabled.load(std::memory_order_relaxed)) return true;
     return abilityCount(name) >= level;
 }
 

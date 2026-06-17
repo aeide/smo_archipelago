@@ -1,0 +1,27 @@
+build:
+cd E:\smo_archipelago
+# 1. Regenerate the joined tables (capture_table.h / shine_table.h)
+python scripts\sync_capture_table.py
+python scripts\sync_shine_table.py
+# 2. Find this PC's LAN IP (the address the Switch/Ryujinx reaches it on)
+$LAN_IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
+    $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -ne '127.0.0.1' -and
+    ($_.PrefixOrigin -eq 'Dhcp' -or $_.PrefixOrigin -eq 'Manual')
+}).IPAddress
+$LAN_IP   # eyeball this — if multiple lines print, pick the /24 that matches your Switch
+# 3. Build (~30s). Pass the IP explicitly — CMake aborts without it.
+python scripts\build_switchmod.py -DBRIDGE_HOST=$LAN_IP
+
+
+
+$RYU = "$env:APPDATA\Ryujinx\mods\contents\0100000000010000\"
+New-Item -ItemType Directory -Force "$RYU\exefs" | Out-Null
+Copy-Item -Force E:\smo_archipelago\switch-mod\build\sd\atmosphere\contents\0100000000010000\exefs\subsdk9  "$RYU\exefs\subsdk9"
+Copy-Item -Force E:\smo_archipelago\switch-mod\build\sd\atmosphere\contents\0100000000010000\exefs\main.npdm "$RYU\exefs\main.npdm"
+
+
+
+
+
+launcher:
+ .\.venv\Scripts\python vendor\Archipelago\Launcher.py

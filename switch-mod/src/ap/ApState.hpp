@@ -672,7 +672,11 @@ public:
     // previously-stored count, enqueues a Cappy system bubble (via
     // inbound_system_bubbles) announcing the unlock / level-up. Idempotent: a
     // replayed snapshot with unchanged counts pops no bubbles.
-    void applyAbilityState(const AbilityEntry* entries, std::size_t count);
+    // `enforce` carries the abilitysanity flag: true (default) keeps the
+    // gates active; false sets ability_gate_disabled so every gate reports
+    // unlocked (abilitysanity off — the ability items aren't even in the pool).
+    void applyAbilityState(const AbilityEntry* entries, std::size_t count,
+                           bool enforce = true);
 
     // ---- P4 ability enforcement (frame-thread reads) ------------------------
     //
@@ -696,6 +700,14 @@ public:
     // console-thread write — atomic. Defaults FALSE (gates active) so the
     // enforcement is actually testable out of the box.
     std::atomic<bool> ability_gate_force_unlock{false};
+
+    // abilitysanity OFF signal, set from the ability_state `enforce` field
+    // (enforce=false -> disabled=true). Separate from the debug-console
+    // force-unlock toggle so the two never clobber each other: abilityAtLeast
+    // opens the gate when EITHER is set. Defaults FALSE (gates active) so a
+    // seed that never sends ability_state still enforces. Worker-thread write
+    // (applyAbilityState), frame-thread read — atomic.
+    std::atomic<bool> ability_gate_disabled{false};
 
     // Local AP slot name — captured by ApClient when the bridge sends
     // hello_ack. Fixed buffer rather than std::string to avoid subsdk9's

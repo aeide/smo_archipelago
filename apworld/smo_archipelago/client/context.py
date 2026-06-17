@@ -270,6 +270,10 @@ class SMOContext(CommonContext):
         # to hide the "Captures unlocked" section when capturesanity is
         # off — listing all 50 synthetic unlocks is noise, not signal.
         self.capturesanity_enabled = True
+        # Default True (= abilities are AP-gated) until the AP Connected
+        # handler flips it from slot_data. When off, the ability items aren't
+        # in the pool and the Switch gate is opened (ability_state enforce).
+        self.abilitysanity_enabled = True
         # Talkatoo% mode flag, populated from slot_data on AP Connected. When
         # True, the Switch's TalkatooSpeechHook substitutes Talkatoo's speech
         # bubble with up to 3 uncollected AP-pool moons from the current
@@ -901,6 +905,17 @@ class SMOContext(CommonContext):
                 capturesanity = bool(slot_data.get("capturesanity", 1))
                 self.capturesanity_enabled = capturesanity
                 self.switch.set_capturesanity_enabled(capturesanity)
+                # Ability gating (v2 abilitysanity, default ON). When ON, the
+                # ability items are in the pool and the Switch's
+                # AbilityGateHook suppresses each move until its item arrives.
+                # When OFF, the ability items aren't in the pool, so we tell the
+                # Switch to open its ability gate (ability_state enforce=False);
+                # otherwise it would block every gated move. Default ON (the
+                # `.get` fallback) so a fresh/absent slot_data gets the gated
+                # experience rather than silently disabling enforcement.
+                abilitysanity = bool(slot_data.get("abilitysanity", 1))
+                self.abilitysanity_enabled = abilitysanity
+                self.switch.set_abilitysanity_enabled(abilitysanity)
                 # DeathLink is per-slot: each player opts in via their own
                 # YAML `death_link` setting, and the AP server only bounces
                 # deaths among slots tagged "DeathLink". In a five-player
@@ -940,6 +955,11 @@ class SMOContext(CommonContext):
                 # replay ran with the default (locked) flag. No-op when
                 # capturesanity is on or no Switch is connected.
                 await self.switch.push_capturesanity_replay()
+                # Flush the ability gate flag to an already-running Switch that
+                # HELLO'd before this Connected handler (its replay ran with the
+                # default enforce=True). When abilitysanity is off this opens the
+                # gate immediately; no-op when on and no abilities received yet.
+                await self.switch.push_ability_state()
                 # Talkatoo% mode: stash the slot flag and ship the per-
                 # kingdom AP-pool. push_talkatoo_pool is a no-op when the
                 # payload isn't set yet.

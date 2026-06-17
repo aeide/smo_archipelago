@@ -117,10 +117,10 @@ check before Crouch is reachable.
 | Climb | Pole/net climb | TBD — climb start judge / nerve; investigate | owned≥1 | ❓ |
 | Progressive Jump (L1/L2) | Double / Triple Jump | NOT a judge — jump combo counter (`PlayerContinuousJump`); gate by clamping the chain index, likely in `exeJump`/jump-state | 1=Double, 2=Triple | ❓ hard |
 | Backflip | Backflip | Gated via **Option 3** (squat-jump suppression): jump-from-squat is suppressed at `PlayerJudgePreInputJump::judge` while the `exeSquat` in-squat window is open. ITER 1 (both-unowned) **TESTED-PASS**. ITER 2 will split stationary(backflip)/moving(longjump) via `isEnableLongJump`. | owned≥1 (mechanically needs Crouch) | ✅ ITER 1 TESTED (both-unowned); 🟡 ITER 2 for per-move split |
-| Side Flip | Side flip | NOT a judge — jump-state branch (quick-turn + jump) | owned≥1 | ❓ hard |
+| Side Flip | Side flip | NOT a judge — SMO's "turn jump". `isEnableTurnJump() = mTrigger->isOn(QuickTurn) \|\| mCounter>0`, the SET and READ inlined back-to-back in the undecompiled run nerve. v1–v7 all failed to suppress the STATE (no out-of-line seam between set and read — v7's `[sf-velH]` probe fired every frame confirming a PlayerConst turn jump, but `PlayerStateJump::appear` never observed the window). **NEUTER (current):** override the turn-jump PHYSICS getters on `PlayerConst` (virtual, real out-of-line bodies, every-frame in-path) when Side Flip unowned — `getTurnJumpPower`→`getJumpPowerMax()`, `getTurnJumpVelH`→`0`, `getTurnJumpGravity`→`getJumpGravity()`. Flip animation still plays (bound to the uncatchable nerve), but no height/distance advantage. Syms: `_ZNK11PlayerConst16getTurnJumpPowerEv` / `15getTurnJumpVelHEv` / `18getTurnJumpGravityEv` (all HIT). | owned≥1 | 🟡 NEUTER code-complete — needs Devon build+test (animation plays, physics normalized) |
 | Long Jump | Long jump | Gated via **Option 3** (squat-jump suppression), same hook as Backflip. ITER 1 (both-unowned) **TESTED-PASS** — moving crouch-jump suppressed. ITER 2 splits it from Backflip via `isEnableLongJump` (`_ZNK16PlayerStateSquat16isEnableLongJumpEv`, HIT; true iff forward momentum). **Naturally blocked while Crouch is locked.** | owned≥1 (mechanically needs Crouch) | ✅ ITER 1 TESTED (both-unowned); 🟡 ITER 2 for per-move split |
 | Ground Pound Jump | GP-jump | NOT a judge — jump out of ground-pound; composite trigger | owned≥1 (needs GP) | ❓ |
-| Cap Bounce | Bounce on thrown cap | NOT a judge — cap-actor bounce interaction | owned≥1 | ❓ |
+| Cap Bounce | Bounce on thrown cap | NOT a judge — driven by a cap sensor message. Gate the **SENDER** `rs::sendMsgPlayerCapTouchJump` (`_ZN2rs25sendMsgPlayerCapTouchJumpEPN2al9HitSensorES2_`, HIT) — the held cap's "touch + jump off" vault message. When Cap Bounce unowned, skip delivery (don't call orig) + return false → Mario falls past Cappy. NOT `sendMsgPlayerCapTrample` (the cap-trample *reaction* — logged but didn't stop the bounce). Cap-specific (enemy stomps use `rs::sendMsgRequestPlayerTrampleJump`, takes an f32 power). `logSuppressed<14>`. | owned≥1 | ✅ TESTED-PASS (2026-06-17, CapTouchJump) |
 | Up Throw | Cap throw up | **motion-control only** (flick up). Cap-throw input routing (`PlayerCapActionHistory` / HackCap throw dispatch) + the motion/shake detector. See "Motion-control abilities". | owned≥1 | ❓ |
 | Down Throw | Cap throw down | **motion-control only** (flick down). Same as Up Throw. | owned≥1 | ❓ |
 | Spin Throw | Spin cap throw | cap-throw routing (spin variant). NOTE: the button "spin throw" (shake) vs `PlayerJudgeStartGroundSpin` (ground spin move) — confirm which the AP item means. | owned≥1 | ❓ |
@@ -663,3 +663,193 @@ command disables every gate if a hook misfires. Currently the only recovery hatc
   build+test, Step 1 Long Jump gate (suppress; resolve+verify the transition-selector
   symbol, NOT `exeLongJump`), Step 2 Backflip, Step 3 optional Wall Slide, plus the
   force-unlock-command reminder before the jump-state wave grows.
+
+### 2026-06-17 — Cap Bounce TESTED-PASS (CapTouchJump); Side Flip re-hooked at exeRun (inlining)
+Continuing the two "hard" abilities. Devon built+tested the prior sender hooks:
+- **Cap Bounce — TESTED-PASS** ✅. The earlier `rs::sendMsgPlayerCapTrample` hook logged but
+  didn't stop the bounce — wrong message (that's the cap *trample reaction*). The real vault
+  trigger is **`rs::sendMsgPlayerCapTouchJump`** (`_ZN2rs25sendMsgPlayerCapTouchJumpEPN2al9HitSensorES2_`,
+  HIT, same `(HitSensor*,HitSensor*)` sig). Gating the sender (skip delivery when unowned)
+  works perfectly in-game: Mario passes through thrown Cappy when Cap Bounce is unowned,
+  bounces once unlocked (confirmed via `!getitem Cap Bounce` → `Unlocked Cap Bounce!` + bounce
+  returns). Enemy stomps unaffected (distinct `rs::sendMsgRequestPlayerTrampleJump`, takes f32).
+- **Side Flip — STILL always active, ZERO logs** (the `PlayerCounterQuickTurnJump::update`
+  clamp produced no `AbilityGate: suppressed Side Flip` output). The no-log tell = `update()`
+  is **inlined** into run control: the out-of-line symbol exists (so `installAtSym` resolved)
+  but the actual per-frame call is inlined, so our trampoline never ran. Same inlining trap as
+  the v1 `isEnableTurnJump` getter.
+  - **v3 (exeRun mCounter clamp) — ALSO TESTED, FAILED (no log, still side-flips).** Hooked
+    `PlayerActorHakoniwa::exeRun` and zeroed `self->mCounterQuickTurnJump->mCounter`. No
+    suppression, no log → two problems, both revealed by reading the decomp (below).
+  - **Decomp finding (the breakthrough).** Fetched `PlayerCounterQuickTurnJump.cpp` from
+    OdysseyDecomp: `isEnableTurnJump() const { return mTrigger->isOn(EActionTrigger_QuickTurn)
+    || mCounter > 0; }`. So (1) the **QuickTurn trigger is the PRIMARY path** — `mCounter` is
+    only the grace window *after* the trigger releases, so zeroing it can't stop the
+    trigger-frame side flip; and (2) `update()` (which arms `mCounter`) is NOT called from
+    `exeRun` (it's in the undecompiled actor body), so the v3 hook never saw a nonzero counter
+    → no log. Both `isEnableTurnJump` and `update` are inlined into the actor body, so neither
+    is hookable directly.
+  - **Fix (v4, uncommitted; needs Devon build+test) — kill the trigger at its source.** All
+    action triggers are set through the single out-of-line `PlayerTrigger::set(EActionTrigger)`
+    (`_ZN13PlayerTrigger3setENS_14EActionTriggerE`, VERIFIED HIT; called from many sites, so it
+    stays out-of-line — unlike the trivial getters/counter methods). Hooked it: when Side Flip
+    is unowned and the arg is `EActionTrigger_QuickTurn` (34), skip orig (don't set the bit).
+    Then `isOn(QuickTurn)` is always false AND `update()` never arms `mCounter` (it only arms
+    while the trigger is on) → `isEnableTurnJump()` is always false regardless of where/when
+    it's read. **Timing-independent** (the bit is never set in the first place), and every other
+    action trigger passes through untouched. Replaced `exeRunSideFlipHook` → `actionTriggerSetHook`;
+    swapped includes (`PlayerActorHakoniwa.h`/`PlayerCounterQuickTurnJump.h` → `PlayerTrigger.h`);
+    `.sym` entry → `PlayerTrigger::set(EActionTrigger)`; updated comments. `logSuppressed<13>`.
+  - **General-lesson reinforcement (updated):** a HIT symbol ≠ "the decision flows through it,"
+    AND don't guess the chokepoint — **read the decomp**. Two build cycles were burned guessing
+    (`update`, then `exeRun`); the decomp's one-line `isEnableTurnJump` body immediately showed
+    the trigger (not `mCounter`) is the real input. For inlined predicates, attack their
+    out-of-line *inputs* (here, the trigger setter) rather than the predicate or its callers.
+  - **Devon build+test:** run, quick-turn, jump while Side Flip unowned → plain jump (no side
+    somersault; watch `AbilityGate: suppressed Side Flip`, slot 13 — should fire on each
+    quick-turn now); `/send Side Flip` (or `!getitem Side Flip`) → side flip returns. **Watch
+    for collateral:** confirm the normal quick-turn SKID/pivot animation still looks right — if
+    it breaks, the skid also reads this trigger, and we fall back to clearing the bit in
+    `executePreMovementNerveChange` (HIT) just before the jump decision. abilitysanity false →
+    side flip works from start.
+
+- **2026-06-17 (cont. 4) — Side Flip v4 FAILED (no log → set inlined); v5 = clear at the actor
+  nerve handler (uncommitted; needs Devon build+test).** Devon tested v4: side flip still always
+  works, and **`AbilityGate: suppressed Side Flip` NEVER appeared** in the log. So
+  `PlayerTrigger::set(EActionTrigger)` is ALSO inlined at the skid-detection call site (the
+  out-of-line symbol is HIT but never invoked there) — same inlining trap a fourth time. The
+  no-log also rules out "trigger isn't the gate": if the set had fired and side flip persisted,
+  the jump would be re-deriving the turn from velocity; since it never fired, the trigger IS the
+  gate, we just can't intercept the inlined SET.
+  - **Decomp recap:** `update()` arms `mCounter = getQuickTurnJumpFrame()` only while
+    `mTrigger->isOn(QuickTurn)`; `isEnableTurnJump() = isOn(QuickTurn) || mCounter>0`. Both the
+    set and the read live in the undecompiled actor/jump/run states (no `PlayerStateJump.cpp` or
+    run-state `.cpp` in OdysseyDecomp; `PlayerActorHakoniwa.cpp` is a stub). Confirmed the trigger
+    is not set in any decompiled input/action helper.
+  - **v5 (current):** stop chasing the inlined set/read and instead clear BOTH inputs every frame
+    from a real out-of-line actor member, **`PlayerActorHakoniwa::executePreMovementNerveChange`**
+    (`_ZN19PlayerActorHakoniwa29executePreMovementNerveChangeEv`, VERIFIED HIT) — the pre-movement
+    nerve handler where the jump transition + turn-jump selection happen. At pre-orig, when Side
+    Flip is unowned: `self->mTrigger->mActionTrigger.resetBit(EActionTrigger_QuickTurn)` and
+    `self->mCounterQuickTurnJump->mCounter = 0`. Whatever the prior-frame skid set is wiped right
+    before the jump reads it → `isEnableTurnJump` resolves false → normal jump. The skid spans
+    several frames and the jump comes after, so a per-frame pre-read clear catches it (only a
+    literal same-frame skid+jump is an edge). Replaced `actionTriggerSetHook` →
+    `preNerveChangeSideFlipHook`; includes back to `PlayerActorHakoniwa.h` +
+    `PlayerCounterQuickTurnJump.h` (+ `PlayerTrigger.h`); `.sym` →
+    `executePreMovementNerveChange`. Uses the pinned OdysseyHeaders actor layout to reach
+    `mTrigger` (member 4) + `mCounterQuickTurnJump` (member 24) — a wrong offset would crash, not
+    silently leak. **Built-in diagnostic:** `logSuppressed<13>` fires ONLY when it actually
+    observed the QuickTurn bit or `mCounter` set, so the next test is conclusive:
+      - log fires + side flip gone → success.
+      - log fires + side flip remains → the jump read happens *before* this clear / doesn't use
+        these inputs → move the clear later or pivot to the jump-state path.
+      - no log + side flip remains → actor-layout offset wrong (or detection elsewhere).
+  - **Devon build+test:** run, quick-turn, jump while Side Flip unowned → plain jump (watch slot
+    13, should fire per quick-turn now); confirm normal running/turning/jumping unaffected;
+    `/send Side Flip` → side flip returns.
+
+- **2026-06-17 (cont. 5) — Side Flip v5 FIRES but misses the real move; v6 = clear at the jump
+  decision (uncommitted; needs Devon build+test).** Devon tested v5: side flip still always works
+  and no `suppressed Side Flip` during the actual skid→jump — BUT the log DID fire once when Mario
+  stood up from an idle lay-down. That's the key datapoint:
+  - **v5 fires and reads the actor correctly** (the stand-up QuickTurn was observed + logged), so
+    the `executePreMovementNerveChange` hook works and the OdysseyHeaders actor offsets
+    (`mTrigger`, `mCounterQuickTurnJump`) are PROVEN correct.
+  - **But it never observes the side-flip window:** during the real skid→jump, the QuickTurn SET
+    and the jump's `isEnableTurnJump` READ both happen inside the undecompiled run nerve exe, which
+    runs AFTER `executePreMovementNerveChange` in the frame. So a once-per-frame clear at that point
+    can't get between the set and the read. (The idle stand-up set QuickTurn in a context that
+    persisted to the next frame's handler, hence the lone log.)
+  - **v6 (current):** move the real clear to the JUMP DECISION. `preInputJumpHook`
+    (`PlayerJudgePreInputJump::judge`) already fires for every jump-start (proven by the working
+    squat backflip/long-jump gate) and runs right before the jump's `appear()` reads
+    `isEnableTurnJump`. New non-squat branch: when a jump is starting and Side Flip is unowned,
+    `clearTurnJumpWindow(g_sideFlipActor)` — `resetBit` QuickTurn + zero `mCounter` — so the jump
+    can't be a turn jump and downgrades to a normal jump. `g_sideFlipActor` is stashed every frame
+    by the `executePreMovementNerveChange` beacon (kept, now also a backstop clear). No new symbol
+    (both hooks already installed). New shared helper `clearTurnJumpWindow`. `logSuppressed<13>`.
+  - **Why this should catch what v5 couldn't:** the clear happens synchronously inside the jump-
+    start judge, after the skid has set the window and before the type is selected — not on a
+    separate per-frame pass that the run-nerve set/read straddles.
+  - **Also noted (harmless):** during idle lay-down the Cap Bounce sender (`sendMsgPlayerCapTouchJump`)
+    fires repeatedly (Cappy bobbing on Mario's head) → slot-14 log spam; the gate correctly
+    suppresses it, no bounce, just noisy log. Not a bug.
+  - **Devon build+test:** run, quick-turn, jump while Side Flip unowned → plain jump (watch slot 13
+    — should fire on the jump now); `/send Side Flip` → side flip returns; confirm normal jumps
+    feel identical. If it STILL doesn't suppress, the run→side-flip jump doesn't route through
+    `PlayerJudgePreInputJump::judge` → next pivot is hooking `PlayerStateJump::appear` (the actual
+    `isEnableTurnJump` read site) or disassembling the run nerve.
+
+- **2026-06-17 (cont. 6) — Side Flip v6 FAILED but the log gave the breakthrough clue; v7 is an
+  INSTRUMENTED build (uncommitted; needs Devon in-game LOG, not just pass/fail).** Devon tested v6:
+  side flip still always works, no `suppressed Side Flip` during the move — BUT the log fired ONCE
+  when Mario stood up from an idle lay-down. Decisive reads:
+  - **The hook fires and the actor offsets are CORRECT** — the idle-standup QuickTurn was observed
+    + logged, so `executePreMovementNerveChange` reads `mTrigger`/`mCounterQuickTurnJump` correctly
+    (offset doubt fully retired).
+  - **It never sees the side-flip window:** during the real skid→jump, the QuickTurn set AND the
+    jump's `isEnableTurnJump` read happen together inside the undecompiled run nerve exe, which runs
+    AFTER `executePreMovementNerveChange` and (apparently) the preInputJump judge. So no once-per-
+    frame / judge clear catches it. Six clear points have now missed; continuing to guess is wrong.
+  - **v7 = instrument, don't guess.** Verified HIT: `PlayerStateJump::appear` (jump-state entry, the
+    likely `isEnableTurnJump` read site) and the `PlayerConst::getTurnJump{Power,VelH,Gravity}`
+    virtuals (called ONLY while building a turn jump). New hooks:
+      - `jumpAppearHook` (`_ZN15PlayerStateJump6appearEv`): before orig, if the QuickTurn window is
+        set, clear it (candidate fix → normal jump) and `SMOAP_LOG_INFO("[sf-appear] … qt=%d mc=%d")`.
+        Logs ONLY on a turn-jump entry, so it marks the move. Forwards the state ptr untouched; the
+        trigger/counter come from the beacon-stashed `g_sideFlipActor`.
+      - `turnJumpVelHHook` (`_ZNK11PlayerConst15getTurnJumpVelHEv`, virtual): throttled `[sf-velH]`
+        log + returns orig. Definitive "a side flip is executing now" probe.
+    Removed the v5/v6 clears (executePreMovementNerveChange is now just the actor-stash beacon; the
+    preInputJump non-squat branch is back to plain pass-through) so the window reads cleanly at
+    appear. New shared helper `clearTurnJumpWindow`, globals `g_sideFlipActor`. Both new symbols
+    added to `SmoApSymbols.sym`.
+  - **Devon: capture the LOG during one side flip (Side Flip unowned)**, then report which case:
+      1. side flip GONE + `[sf-appear]` fired + NO `[sf-velH]` → appear-clear is the fix (next session:
+         drop the `[sf-velH]` probe + the diagnostic log, keep the clear).
+      2. side flip REMAINS + `[sf-appear]` fired + `[sf-velH]` fired → appear doesn't re-read
+         isEnableTurnJump (decided earlier); pivot to neutering the turn-jump physics getters
+         (`getTurnJumpVelH/Power/Gravity` return the normal-jump values when unowned — they're in-path
+         and out-of-line/virtual).
+      3. side flip REMAINS + NO `[sf-appear]` + `[sf-velH]` fired → window already consumed before
+         appear; same physics-getter pivot.
+      4. NO `[sf-velH]` at all during a side flip → it is NOT a `PlayerConst` turn jump; the move was
+         misidentified — re-derive from the binary.
+
+- **2026-06-17 (cont. 7) — v7 RESULT: case 3 confirmed. Side flip = a PlayerConst turn jump, but
+  no out-of-line interception seam exists.** Devon's log: `[sf-velH]` fires every frame of the arc
+  (turn jump confirmed) and `[sf-appear]` NEVER fires → `PlayerStateJump::appear` is not the entry
+  (or doesn't read the window). Combined with v5 (window not observable at
+  `executePreMovementNerveChange`), the conclusion is definitive: **the QuickTurn trigger SET (skid
+  detection) and the `isEnableTurnJump` READ both happen inlined, back-to-back, inside the
+  undecompiled run nerve exe** — nothing out-of-line runs between them, so no clear/gate point can
+  intercept. Same fundamental wall as Ledge Grab (no clean chokepoint / no exported nerve to eject
+  to). The only confirmed in-path, out-of-line lever is the turn-jump PHYSICS: `PlayerConst::
+  getTurnJump{Power,VelH,Gravity,Brake,Accel,SideAccel}` (all virtual, HIT). These can NEUTER the
+  jump (return normal-jump values → no extra height / no backward launch) but cannot stop the turn-
+  jump STATE, so the spin ANIMATION would remain (animation is bound to the nerve, decided at the
+  uncatchable entry). **Decision handed to Devon** (options below). Pending that, the v7 hooks stay
+  in as instrumentation; once decided, the chosen fix replaces them and the `[sf-velH]` probe log
+  is removed.
+
+- **2026-06-17 (cont. 8) — Side Flip NEUTER implemented (code-complete, uncommitted; needs Devon
+  build+test).** Devon chose physics-neuter over animation-only or leaving it unrestricted. The v7
+  instrumentation scaffolding is fully removed (`jumpAppearHook`, the `[sf-velH]` diagnostic probe,
+  the `executePreMovementNerveChange` beacon, `g_sideFlipActor`, `clearTurnJumpWindow`). Replaced
+  with three neuter trampolines on the PlayerConst turn-jump physics getters
+  (`AbilityGateHook.cpp`): when Side Flip is unowned, `getTurnJumpPower` → `getJumpPowerMax()`
+  (no extra height), `getTurnJumpVelH` → `0.0f` (no backward launch), `getTurnJumpGravity` →
+  `getJumpGravity()` (normal arc). `getJumpPowerMax`/`getJumpGravity` are other PlayerConst virtuals
+  on the same object and are NOT hooked, so no recursion. Applied only while unowned;
+  `abilityAtLeast` honors `ability_gate_force_unlock`. Sym file: dropped the dead
+  `PlayerStateJump::appear` + `executePreMovementNerveChange` entries; kept `getTurnJumpVelH`; added
+  `getTurnJumpPower` + `getTurnJumpGravity` (all three verified HIT 2026-06-17).
+  - **Trade-off (accepted):** the flip ANIMATION still plays (it's bound to the turn-jump nerve,
+    decided at the uncatchable inlined entry) — only the physics advantage is removed, so the side
+    flip behaves like a normal jump and can't reach side-flip-only spots.
+  - **Devon build+test:** run, quick-turn, jump while Side Flip unowned → spinning flip plays but
+    reaches only normal-jump height/distance (and no backward launch); `/send Side Flip` → full
+    side-flip height/distance returns. Confirm normal jumps are unaffected (the getters are
+    turn-jump-specific, so they only fire mid-side-flip). No suppression log for this one — it's a
+    physics override, not an input/judge suppression, so nothing prints; verify by feel/height.

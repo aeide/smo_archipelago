@@ -867,6 +867,25 @@ TEST(decode_ability_state_unknown_field_rejected) {
         m));
 }
 
+TEST(decode_ability_state_enforce_defaults_true) {
+    // abilitysanity flag absent -> enforce defaults true (gates active).
+    DecodedMsg m;
+    EXPECT(decodeFrom(R"({"t":"ability_state","entries":[]})", m));
+    EXPECT(m.ability_state.enforce);
+}
+
+TEST(decode_ability_state_enforce_false) {
+    // abilitysanity off -> enforce=false so ApState opens the gate.
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"ability_state","enforce":false,"entries":[)"
+        R"({"ability":"Climb","count":1}]})",
+        m));
+    EXPECT(!m.ability_state.enforce);
+    EXPECT_EQ_I(m.ability_state.entry_count, 1u);
+    EXPECT_EQ_S(m.ability_state.entries[0].ability, "Climb");
+}
+
 TEST(roundtrip_check_via_reader) {
     Check c{.kind=ItemKind::Moon, .kingdom="Cap", .shine_id="Spinning-Hat Stack"};
     std::string w = wire([&](auto& b){ encodeCheck(b, c); });

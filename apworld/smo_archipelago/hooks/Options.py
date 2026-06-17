@@ -123,6 +123,21 @@ class Capturesanity(DefaultOnToggle):
     logic-light / testing seeds (pairs well with no_logic)."""
     display_name = "Capturesanity"
 
+class AbilitySanity(DefaultOnToggle):
+    """Gate Mario's moveset behind their AP items (default ON).
+
+    ON: abilities (Crouch/Roll, Ground Pound/Dive, Double/Triple Jump,
+    Wall Slide, Climb, Backflip, Long Jump, Spin Throw, ...) are part of the
+    AP item pool — each move is suppressed in-game until you've received its
+    item. The base single jump and walking are always available.
+    OFF: the ability items are NOT added to the pool, and the Switch mod's
+    ability gate is disabled, so every move works from the start (vanilla
+    movement). Useful for capture-only / moon-only seeds.
+
+    Mirrors capturesanity. The flag flows slot_data -> client ->
+    ability_state(enforce) wire field -> ApState::ability_gate_disabled."""
+    display_name = "Abilitysanity"
+
 class Goal(Choice):
     """Choose your victory condition.
 
@@ -315,6 +330,7 @@ def before_options_defined(options: dict) -> dict:
     options["goal"] = Goal
     options["no_logic"] = NoLogic
     options["capturesanity"] = Capturesanity
+    options["abilitysanity"] = AbilitySanity
     options["talkatoo_mode"] = TalkatooMode
     options["randomize_kingdom_gates"] = RandomizeKingdomGates
     options["multi_moon_shuffle"] = MultiMoonShuffle

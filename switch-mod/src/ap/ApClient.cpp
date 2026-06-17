@@ -1073,13 +1073,14 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
         // replay. Enforcement (gating Mario's moveset) is P4.
         auto& st = ApState::instance();
         const auto& as = m.ability_state;
-        st.applyAbilityState(as.entries, as.entry_count);
+        // `enforce` = abilitysanity flag (P4): false opens the ability gate.
+        st.applyAbilityState(as.entries, as.entry_count, as.enforce);
         if (as.truncated) {
             SMOAP_LOG_WARN("[p3-ability] ability_state truncated at %zu entries "
                            "(bump kAbilityStateMax?)", as.entry_count);
         }
-        SMOAP_LOG_INFO("[p3-ability] applied %zu ability entries",
-                       as.entry_count);
+        SMOAP_LOG_INFO("[p3-ability] applied %zu ability entries (enforce=%d)",
+                       as.entry_count, as.enforce ? 1 : 0);
     } else {
         SMOAP_LOG_WARN("unknown message t=%s", m.t);
     }

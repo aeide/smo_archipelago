@@ -647,12 +647,19 @@ class AbilityStateMsg:
     New message type (`t="ability_state"`) so a Switch mod built before P3-3b
     ignores it gracefully (handleLine's unknown-type branch), exactly like
     coin_grant did before P1's Switch side landed.
+
+    `enforce` carries the abilitysanity flag (default True). When abilitysanity
+    is OFF the bridge sends enforce=False so the Switch opens its ability gate
+    (ApState::ability_gate_disabled) and every move works regardless of the
+    received counts. A pre-enforce Switch ignores the field. Independent of the
+    debug-console force-unlock toggle.
     """
     t: str = "ability_state"
     entries: list[dict] = field(default_factory=list)
+    enforce: bool = True
 
     def to_wire(self) -> dict[str, Any]:
-        return {"t": self.t, "entries": self.entries}
+        return {"t": self.t, "entries": self.entries, "enforce": self.enforce}
 
 
 @dataclass

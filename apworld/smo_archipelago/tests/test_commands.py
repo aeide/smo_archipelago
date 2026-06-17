@@ -65,6 +65,8 @@ class _StubSwitch:
         self.ap_states: list[str] = []
         self.capturesanity_calls: list[bool] = []
         self.push_capturesanity_calls: int = 0
+        self.abilitysanity_calls: list[bool] = []
+        self.push_ability_state_calls: int = 0
         self.deathlink_calls: list[bool] = []
         self.push_deathlink_calls: int = 0
         self.talkatoo_pool_calls: list[tuple[bool, dict[str, list[str]]]] = []
@@ -98,6 +100,12 @@ class _StubSwitch:
 
     async def push_capturesanity_replay(self) -> None:
         self.push_capturesanity_calls += 1
+
+    def set_abilitysanity_enabled(self, enabled: bool) -> None:
+        self.abilitysanity_calls.append(bool(enabled))
+
+    async def push_ability_state(self) -> None:
+        self.push_ability_state_calls += 1
 
     def set_deathlink_enabled(self, enabled: bool) -> None:
         self.deathlink_calls.append(bool(enabled))

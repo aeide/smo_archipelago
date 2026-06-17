@@ -562,9 +562,12 @@ bool parseAbilityState(Reader& r, AbilityState& out) {
     // flagged truncated for consumer logging.
     out.entry_count = 0;
     out.truncated = false;
+    out.enforce = true;  // default: enforce gates if the field is absent
     std::string_view key;
     while (r.nextField(key)) {
-        if (key == "entries") {
+        if (key == "enforce") {
+            if (!r.nextBool(out.enforce)) return false;
+        } else if (key == "entries") {
             if (!r.enterArray()) return false;
             while (r.hasMoreInArray()) {
                 if (!r.enterObject()) return false;

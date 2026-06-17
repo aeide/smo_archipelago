@@ -284,6 +284,27 @@ def before_create_items_starting(item_pool: list, world: World, multiworld: Mult
                 it.classification = ItemClassification.filler
     return item_pool
 
+def _drop_ability_items_if_disabled(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> None:
+    """abilitysanity OFF: remove every `Ability`-category item from the pool.
+
+    When abilitysanity is on (default) the ability items ride in the pool and
+    each move is gated in-game until its item arrives (P4 enforcement). When
+    off, ability randomization is disabled entirely: the items are dropped here
+    (mirroring the festival-goal drop) and adjust_filler_items tops the freed
+    slots back up with filler — same check count, no ability items received,
+    and the client tells the Switch to open the ability gate (see
+    context.py / ability_state `enforce`). Dropping by name keeps item IDs
+    stable (IDs are name-keyed in the datapackage, not pool-position).
+    """
+    if is_option_enabled(multiworld, player, "abilitysanity"):
+        return
+    name_to_item = world.item_name_to_item
+    item_pool[:] = [
+        it for it in item_pool
+        if "Ability" not in name_to_item.get(it.name, {}).get("category", [])
+    ]
+
+
 def _trim_kingdom_moons_to_options(item_pool: list, multiworld: MultiWorld, player: int) -> None:
     """Drop surplus per-kingdom Moon items down to the option-configured cap.
 
@@ -325,6 +346,11 @@ def before_create_items_filler(item_pool: list, world: World, multiworld: MultiW
             if it.name == "Metro Kingdom Multi-Moon":
                 item_pool.pop(i)
                 break
+    # abilitysanity OFF: strip the Ability-category items from the pool (the
+    # freed slots are topped up with filler by adjust_filler_items, same as the
+    # moon-count trim below). Runs here so the reduced pool flows into
+    # adjust_filler_items / after_create_items unchanged when the option is on.
+    _drop_ability_items_if_disabled(item_pool, world, multiworld, player)
     # Apply the per-kingdom moon-count caps before adjust_filler_items runs
     # in create_items: the trim leaves locations > items, which then triggers
     # adjust_filler_items' top-up branch (filler / traps). Runs before
