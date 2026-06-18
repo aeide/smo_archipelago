@@ -215,12 +215,12 @@ _ZNK11PlayerInput29isTriggerRollingCancelHipDropEb
 // Dive (head slide) — PlayerInput::isTriggerHeadSliding() const. Gated on
 // Progressive Ground Pound>=2. "isTriggerHeadSliding"=20. HIT, TESTED-PASS.
 _ZNK11PlayerInput20isTriggerHeadSlidingEv
-// Spin Throw — the throw-TYPE classifiers PlayerInput::isThrowTypeSpiral /
-// isThrowTypeRolling (const sead::Vector2f&). NOT isTriggerSpinCap (gates the
-// neutral throw) nor isSpinInput (didn't suppress the spin throw). Forcing these
-// false downgrades a spin throw to a normal throw; neutral throw untouched.
-// Gated on Spin Throw>=1. sead::Vector2f = sead::Vector2<f32> → N4sead7Vector2IfEE.
-// Both HIT (2026-06-15).
+// Cap-throw-TYPE classifiers PlayerInput::isThrowType{Spiral,Rolling}
+// (const sead::Vector2f& gesture). Per OdysseyDecomp: Spiral = horizontal-dominant
+// flick (the spin/homing throw → Spin Throw gate), Rolling = vertical-dominant flick
+// (the up/down throw → Up/Down Throw gate, split by the gesture's v.y sign). Forcing
+// a classifier false downgrades that gesture to a normal forward throw; neutral throw
+// untouched. sead::Vector2f = sead::Vector2<f32> → N4sead7Vector2IfEE. Both HIT (2026-06-15).
 _ZNK11PlayerInput17isThrowTypeSpiralERKN4sead7Vector2IfEE
 _ZNK11PlayerInput18isThrowTypeRollingERKN4sead7Vector2IfEE
 // Option 3 ITER 2 (squat-jump suppression — Backflip + Long Jump). The squat→jump

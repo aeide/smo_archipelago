@@ -19,7 +19,9 @@
 //   Wall Slide   PlayerJudge{WallKeep,WallHitDown,WallCatch,WallCatchInputDir}::judge <- Wall Slide >= 1  [confirm in-game]
 //   Climb        PlayerJudgePoleClimb::judge        <- Climb item >= 1  [TESTED]
 //   Dive         PlayerInput::isTriggerHeadSliding  <- Progressive Ground Pound >= 2  [TESTED]
-//   Spin Throw   PlayerInput::isThrowType{Spiral,Rolling} <- Spin Throw item >= 1  [TESTED]
+//   Spin Throw   PlayerInput::isThrowTypeSpiral (horizontal flick) <- Spin Throw item >= 1  [TESTED]
+//   Up Throw     PlayerInput::isThrowTypeRolling, v.y >= 0 <- Up Throw item >= 1  [confirm in-game]
+//   Down Throw   PlayerInput::isThrowTypeRolling, v.y <  0 <- Down Throw item >= 1  [confirm in-game]
 //   Ledge Grab   PlayerJudgeGrabCeil::judge          <- Ledge Grab item >= 1  [judge-hook FAILED; abandoned — Wall Slide enables ledge grab]
 //   Dbl/Triple   PlayerContinuousJump::countUp (wrap mCount to 0 past cap) <- Progressive Jump 1/2  [TESTED]
 //   GP Jump      PlayerStateHipDrop::isEnableLandCancel <- Ground Pound Jump >= 1  [TESTED]
@@ -64,11 +66,12 @@
 // NOT sendMsgPlayerCapTrample (the cap-trample reaction, which logged but didn't
 // stop the bounce) — see those hooks for the inlining/wrong-message write-up. Dive
 // is Progressive Ground Pound level 2.
-// Up/Down Throw remain deferred: they are motion-flick throws whose only
-// distinguishing signal is the computed throw-DIRECTION vector (no boolean
-// predicate exists in the headers — unlike Spin Throw's isThrowType* classifiers),
-// so gating them needs the cap-throw-action direction computation clamped, which
-// lives in the undecompiled actor body. See plan-p4-detail.md.
+// Up/Down Throw are the VERTICAL-flick cap throws, classified by the SAME
+// isThrowType* family as Spin Throw: the OdysseyDecomp source shows isThrowTypeRolling
+// is true exactly when the gesture vector is vertical-dominant (|v.y| >= |v.x|, v.y
+// nonzero), and the gesture vector is the function ARGUMENT — so our trampoline reads
+// v.y's sign to split up vs down and gates each on its own item (no undecompiled actor
+// access needed). See the throwTypeRollingHook block below.
 //
 // Safety net: ApState::abilityAtLeast() returns true unconditionally when
 // ApState::ability_gate_force_unlock is set (toggle in the ImGui debug
@@ -124,6 +127,14 @@ constexpr const char* kProgressiveJump = "Progressive Jump";
 constexpr const char* kGroundPoundJump = "Ground Pound Jump";
 constexpr const char* kSideFlip = "Side Flip";
 constexpr const char* kCapBounce = "Cap Bounce";
+constexpr const char* kUpThrow = "Up Throw";
+constexpr const char* kDownThrow = "Down Throw";
+
+// Up Throw / Down Throw sign convention: the cap-throw gesture Vector2f passed to
+// isThrowTypeRolling has its vertical component in .y. We assume y > 0 == up-flick
+// (matching stick-up = +y). If the in-game test shows it reversed (owning Up Throw
+// restores the DOWN throw), flip this to false — that is the ONLY change needed.
+constexpr bool kUpThrowIsPositiveY = true;
 
 // --- Option 3: context-aware squat-jump suppression --------------------------
 // Backflip and Long Jump are the only moves that start from a jump-input while
@@ -308,18 +319,23 @@ HkTrampoline<bool, PlayerInput*> headSlidingHook =
         return false;
     });
 
-// Spin Throw — Spin Throw item. Two earlier attempts were wrong:
-//   - isTriggerSpinCap gated ALL throws (the basic Y throw is internally a "spin
-//     cap" throw) → killed the neutral throw.
-//   - isSpinInput (the raw spin gesture) did NOT suppress the spin throw at all.
-// The correct discriminator is the throw-TYPE classifier: PlayerInput::
-// isThrowTypeSpiral(const Vector2f&) returns "this throw is the circular/spiral
-// spin throw". Forcing it false downgrades a spin attempt to a normal forward
-// throw — the neutral throw (not spiral) is untouched. We also gate the sibling
-// isThrowTypeRolling (the other non-neutral spin-family type; not the up/down
-// throws, which are direction-based separate items) so any spin-gesture throw
-// falls back to normal. The Vector2f& arg is ABI-identical to a pointer, so we
-// take it as const void* and forward it untouched. Both share log slot 10.
+// The two cap-throw-TYPE classifiers, confirmed from the OdysseyDecomp source of
+// PlayerInput::isThrowType{Spiral,Rolling}(const Vector2f& v): both take the throw
+// GESTURE as a 2D vector and report which non-neutral throw it is —
+//   - isThrowTypeSpiral  = |v.x| > |v.y|  → HORIZONTAL flick = the spin / homing throw.
+//   - isThrowTypeRolling = |v.y| >= |v.x| && v.y != 0  → VERTICAL flick = the up/down throw
+//     (sign of v.y picks up vs down).
+// A neutral throw (no flick → v ~ 0) is neither, so it's always untouched. Forcing
+// a classifier false downgrades that gesture to a normal forward throw (proven for
+// Spiral → Spin Throw, TESTED-PASS). The Vector2f& arg is ABI-identical to a pointer;
+// we take it as const void* and read v.y (offset 4) when we need the direction.
+
+// Spin Throw — gate ONLY the spiral (horizontal) classifier. Earlier attempts:
+// isTriggerSpinCap gated ALL throws (the basic Y throw is internally a "spin cap"
+// throw) → killed the neutral throw; isSpinInput didn't suppress it. isThrowTypeSpiral
+// is the correct discriminator. (Previously we ALSO gated isThrowTypeRolling here as
+// "belt and braces" — that was wrong: Rolling is the up/down throw, so it now has its
+// own gate below. Spin Throw no longer touches it.) Log slot 10.
 HkTrampoline<bool, PlayerInput*, const void*> throwTypeSpiralHook =
     hk::hook::trampoline([](PlayerInput* self, const void* vec) -> bool {
         const bool want = throwTypeSpiralHook.orig(self, vec);
@@ -329,14 +345,25 @@ HkTrampoline<bool, PlayerInput*, const void*> throwTypeSpiralHook =
         logSuppressed<10>("Spin Throw");
         return false;
     });
+
+// Up Throw / Down Throw — gate the rolling (vertical) classifier, split by the sign
+// of the gesture's v.y. When the matching item is unowned, force the classifier false
+// so the vertical flick downgrades to a normal forward throw (same neuter shape as
+// Spin Throw). The other direction (and the neutral throw) are untouched. v.y sign →
+// up/down per kUpThrowIsPositiveY (logged so the in-game test confirms the convention).
 HkTrampoline<bool, PlayerInput*, const void*> throwTypeRollingHook =
     hk::hook::trampoline([](PlayerInput* self, const void* vec) -> bool {
         const bool want = throwTypeRollingHook.orig(self, vec);
-        if (!want) return false;
-        if (smoap::ap::ApState::instance().abilityAtLeast(kSpinThrow, 1))
+        if (!want) return false;  // not a vertical throw → leave alone
+        // sead::Vector2f layout is {f32 x, f32 y}; v.y is the second float.
+        const float y = vec ? reinterpret_cast<const float*>(vec)[1] : 0.0f;
+        const bool isUp = kUpThrowIsPositiveY ? (y >= 0.0f) : (y < 0.0f);
+        const char* needed = isUp ? kUpThrow : kDownThrow;
+        if (smoap::ap::ApState::instance().abilityAtLeast(needed, 1))
             return true;
-        logSuppressed<10>("Spin Throw");
-        return false;
+        if (isUp) logSuppressed<15>("Up Throw");
+        else      logSuppressed<16>("Down Throw");
+        return false;  // downgrade vertical flick → normal forward throw
     });
 
 // Roll-out-of-Ground-Pound — Progressive Crouch level 2 (same gate as Roll).
@@ -448,7 +475,10 @@ HkTrampoline<bool, PlayerStateHipDrop*> hipDropLandCancelHook =
 // the side flip at the normal MAX single jump (no side-flip-only height advantage)
 // while keeping it a usable jump. (If in-game shows it over/undershoots a normal
 // full jump, nudge kSideFlipPowerScale.)
-constexpr float kSideFlipPowerScale = 1.567f;  // sqrt(258/105)
+// TEST (2026-06-17): 0.0f to probe whether a zero-impulse turn jump effectively
+// removes the side flip (no upward launch → spin-in-place / immediate fall).
+// Revert to 1.567f (= sqrt(258/105), normal max single-jump height) after the test.
+constexpr float kSideFlipPowerScale = 0.0f;  // TEST: was 1.567f
 HkTrampoline<float, PlayerConst*> turnJumpPowerHook =
     hk::hook::trampoline([](PlayerConst* self) -> float {
         if (self && !smoap::ap::ApState::instance().abilityAtLeast(kSideFlip, 1))
@@ -584,7 +614,7 @@ void tickAbilityGate() {
 }
 
 void installAbilityGateHooks() {
-    SMOAP_LOG_INFO("installing AbilityGateHook (Crouch/Roll/GPound/RollBoost/RollCancelHipDrop/WallSlide-family/Climb/LedgeGrab/Dive/SpinThrow/ProgJump/GPJump/SideFlip/CapBounce + squat-jump ITER2)");
+    SMOAP_LOG_INFO("installing AbilityGateHook (Crouch/Roll/GPound/RollBoost/RollCancelHipDrop/WallSlide-family/Climb/LedgeGrab/Dive/SpinThrow/Up+DownThrow/ProgJump/GPJump/SideFlip/CapBounce + squat-jump ITER2)");
     // judge() is `bool judge() const` — mangled _ZNK<len><Class>5judgeEv.
     // Verified mangling via aarch64 Itanium ABI (no args). These symbols must
     // exist in main.nso (virtual overrides → kept in the vtable); confirm with
@@ -610,10 +640,10 @@ void installAbilityGateHooks() {
     rollCancelHipDropHook.installAtSym<"_ZNK11PlayerInput29isTriggerRollingCancelHipDropEb">();
     // Dive (head slide) — Progressive Ground Pound L2. Input predicate.
     headSlidingHook.installAtSym<"_ZNK11PlayerInput20isTriggerHeadSlidingEv">();
-    // Spin Throw — gate the throw-TYPE classifiers (spiral + rolling), NOT
-    // isTriggerSpinCap (gates the neutral throw) nor isSpinInput (didn't suppress).
-    // Forcing these false downgrades a spin throw to a normal throw. Arg is a
-    // const sead::Vector2f& (taken as const void*).
+    // Cap-throw-TYPE classifiers (both take const sead::Vector2f&, taken as const void*):
+    //   isThrowTypeSpiral  (horizontal flick) → Spin Throw gate.
+    //   isThrowTypeRolling (vertical flick)   → Up/Down Throw gate (split by v.y sign).
+    // Forcing a classifier false downgrades that gesture to a normal forward throw.
     throwTypeSpiralHook.installAtSym<"_ZNK11PlayerInput17isThrowTypeSpiralERKN4sead7Vector2IfEE">();
     throwTypeRollingHook.installAtSym<"_ZNK11PlayerInput18isThrowTypeRollingERKN4sead7Vector2IfEE">();
     // Progressive Jump (Double / Triple) — clamp the PlayerContinuousJump combo
