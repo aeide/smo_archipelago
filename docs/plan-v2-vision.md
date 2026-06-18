@@ -7,18 +7,18 @@ chokepoint") all apply here.
 
 ## Status (2026-06-17)
 
-**P0–P4 COMPLETE and verified in-game. Remaining: P5, P6, P7.**
+**P0–P4 + P6 COMPLETE. Remaining: P5, P7.**
 
 | Phase | What | State |
 |---|---|---|
-| P0 | CSV ingestion → `moon_requirements.json` (435/435 matched) + `subareas.json` (131) | ✅ |
+| P0 | CSV ingestion → `moon_requirements.json` (435/435 matched) + `subareas.json` (131) | ✅ (superseded by P6) |
 | P1 | Cap Kingdom moons → 100 coins (`coin_grant` wire msg, idempotent high-water) | ✅ in-game |
 | P2 | Capturesanity removed; Frog + Chain Chomp + 1-random precollected starters | ✅ |
 | P3 | MK→captures / DarkSide→abilities item pool; junk-only MK/DS checks; ability tracking | ✅ |
 | P4 | Ability gating on Switch (every move gated; Side Flip neuter, Up/Down/Spin Throw) | ✅ in-game |
 | **P5** | **Per-kingdom moon colors** | ⬜ Sonnet, small |
-| **P6** | **Logic difficulty tiers** (apworld-only) | ⬜ |
-| **P7** | **Entrance shuffle** (headline feature) | ⬜ Opus |
+| **P6** | **Update logic** (xlsx ingest → recompile all moon `requires`) | ✅ Generate-validated (2026-06-17) |
+| **P7** | **Entrance shuffle** (headline feature) | ⬜ Opus — NEXT |
 
 P0–P4 implementation detail lives in git history, CLAUDE.md, and `docs/plan-p4-detail.md`
 (the P4 canonical record). This file now covers only the design context that the remaining
@@ -70,26 +70,82 @@ phases consume + the P5–P7 plans + the P7 subarea/ability/capture correlation 
   kingdom of a moon can disagree with the subarea's enter-kingdom grouping — decide which
   keying P5 uses (physical kingdom is the natural choice for a moon-color feature).
 
-### P6 — Logic difficulty tiers  *(Sonnet 4.6 compiler, Opus review; apworld-only)*
+### P6 — Update logic  ✅ *(Sonnet 4.6; apworld-only; done + Generate-validated 2026-06-17)*
 
-- New `LogicDifficulty` Choice option: `intended` (M1) / `basic_tricks` (≤M2) /
-  `intermediate_tricks` (≤M3) / `advanced_tricks` (≤M5).
-- Rules compiler: per moon, OR across allowed methods; each method ANDs (jump-height term →
-  qualifying ability items, cap-throw term, other-required terms → ability/capture items
-  directly, "Capture" → col-C capture list OR). Generate into manual-AP `requires` strings or
-  a generated Rules module — prefer generated data over ~836 hand-written rules.
-- **Throw semantics (load-bearing — see P7 data §"Method/throw semantics"):** a method's
-  `cap_throws` is the SET of throws that satisfy it; if it contains `neutral`/`none`, no
-  motion-throw ability is required. No subarea's easiest path strictly requires Up/Down/Spin
-  Throw. Likewise `jump_height` `single`/`none` = baseline (ungated); only
-  `double/triple/backflip/long_jump/gpj/cap_return` gate.
-- Sphere-1 audit: with the bare kit, generation must verify enough reachable sphere-1 checks
-  in Cascade at every difficulty; add a guard test like the randomize_kingdom_gates one.
-- Tests: fill succeeds at all 4 difficulties × kingdom-gate randomization; spot-check known
-  moons (e.g. a Method-3-only moon unreachable on `intended`).
-- **Data oddities to strip/special-case:** `"Locked behind Default Capture"` is a sentinel,
-  not a capture; `outfit` and `2d_jump` appear under `other_required` but are NOT moveset
-  ability items (a costume gate / inherent 8-bit mechanic) — don't map them to AP items.
+**Reframed 2026-06-17** from the original "logic difficulty tiers" idea. Devon supplied a
+fully corrected requirements spreadsheet (`SMO Requirements.xlsx`, sheet "Moons", 775 moons)
+and difficulty tiers were dropped — there is now ONE logic, the corrected intended logic.
+Two-stage pipeline:
+
+**Stage 1 — faithful ingest** ([scripts/import_moon_requirements.py](../scripts/import_moon_requirements.py), rewritten for xlsx via openpyxl):
+- Reads the 3-row/5-method blocks (jump height / cap throws / other required), records the
+  structured data verbatim into `data/moon_requirements.json` + `data/subareas.json`.
+- Corrected vocabulary: `other_required` collapsed to a clean moveset set
+  (`Wall Slide`, `Cap Bounce` added; the legacy junk tokens outfit/2d_jump/scooter/jaxi/
+  wall_jump/ledge_grab/… are gone). Capture names map 1:1 to items.json (3 normalisations:
+  Wiggler→Tropical Wiggler, Ty-Foo→Ty-foo, Spark Pylon→Spark pylon).
+- **Capture AND/OR model:** commas within one C cell = AND; a broken-up (unmerged) C cell =
+  OR alternatives → `capture_groups` (list of AND-groups). 14 such moons; 0 use a literal
+  "None" capture cell. Result: 775 blocks, 0 parse errors, 435/436 AP locations covered (the
+  1 gap is the `Arrive in the Mushroom Kingdom` event location).
+
+**Stage 2 — compile to `requires`** ([scripts/compile_moon_logic.py](../scripts/compile_moon_logic.py), new):
+- `moon.requires = OR(methods) AND kingdom-gate AND subarea-gate AND per-moon-gate`, each
+  method = `AND(height-term, throw-term, other-terms, capture-term)`. Writes the strings back
+  into `locations.json`; skips junk_only locations (stay requirement-free). Emits
+  [docs/logic-compile-review.md](logic-compile-review.md) listing assumptions + flagged moons.
+- **Locked decisions (Devon 2026-06-17):**
+  - Height is a FLOOR — a min-height requirement = OR of every jump item reaching ≥ that
+    height (the ladder). Long Jump is its own horizontal axis.
+  - **Vault == Cap Bounce** (corrects the earlier "dive = dive + cap bounce" note — Dive is
+    just `Progressive Ground Pound:2`). So the 496 tier = `Backflip OR Side Flip OR Cap Bounce`.
+    Consequence: Cap Bounce satisfies any height ≤496 — a high-reach logic item.
+  - **Free captures (never gating): Frog + Chain Chomp only.** Spark pylon & Bowser GATE
+    (so the Metro/Bowser-overworld Spark-pylon gates from the notes stay meaningful); the
+    +1 random starter can't be relied on.
+  - **Movement prerequisites:** Backflip & Long Jump each also need `Progressive Crouch:1`;
+    Ground Pound Jump also needs `Progressive Ground Pound:1`. Side Flip: none.
+- **Kingdom/subarea entrance gates** from [docs/capture-requirement-notes.md](capture-requirement-notes.md)
+  lines 1–16 are ANDed onto every moon in the gated kingdom/subarea (Metro/Bowser overworld →
+  Spark pylon; Lake overworld → Zipper OR jump-combo; subarea entrances → Manhole/Mini Rocket/
+  Taxi/Zipper/Lava Bubble/Hammer Bro/Gushen; Employees Only → Crouch).
+- **assume-MORE flags (Devon to review in logic-compile-review.md):** Bonk(Roll)→Roll;
+  Narrow-Valley "max-height jump"→Triple; kingdom gates applied to ALL kingdom moons; cross-
+  kingdom subareas keyed by physical kingdom.
+- Result: 435 moons compiled (96 free, 118 kingdom-gated, 28 subarea-gated), all 56 item
+  tokens resolve to real pool items.
+- **Validated:** `install_apworld.py` + a full `Generate.py` fill SUCCEEDED (Full
+  accessibility, 22-sphere playthrough to Victory under the Mushroom-Kingdom festival goal).
+  Spot-check confirmed gate ordering — Spark pylon lands sphere 9 and every Metro moon is
+  sphere 12+ (after it), so the Metro/Bowser kingdom-gates hold.
+- **Open for Devon (post-commit, low priority):** the assume-MORE flags in
+  [logic-compile-review.md](logic-compile-review.md) — chiefly whether the kingdom gates
+  should apply to ALL kingdom moons (current) or only overworld moons. Loosening is a
+  one-line change in `compile_moon_logic.py` + a recompile; nothing downstream depends on it.
+- **Regen loop (any future moon-logic edit):** `import_moon_requirements.py` (if the xlsx
+  changed) → `compile_moon_logic.py` → `install_apworld.py` → `Generate.py`. Needs `openpyxl`.
+
+**Devon's review resolutions (2026-06-17) — all assume-MORE flags CONFIRMED, no recompile
+needed for P6:**
+- Bonk (Roll) → `Progressive Crouch:2` — ✅ correct.
+- Narrow Valley "max-height jump" → Triple (`Progressive Jump:2`) — ✅ correct.
+- Cross-kingdom subareas keyed by physical kingdom — ✅ correct.
+- All capture OR/AND moons — ✅ correct.
+- Kingdom-gates-apply-to-ALL-kingdom-moons — ✅ correct **for now**, but see P7 carry-over.
+
+**P7 carry-over TODO (the two "matters for the entrance randomizer, not now" items):**
+1. **Kingdom gates must split overworld vs subarea on entrance shuffle.** Today the Metro/
+   Bowser/Lake kingdom gate is ANDed onto *every* moon in the kingdom (overworld + subarea
+   interiors). Once entrances shuffle, the correct model is: the kingdom gate applies to all
+   *overworld* moons AND to each *subarea entrance* — NOT blanket-ANDed onto every interior
+   subarea moon (whose reachability then flows through whatever door the shuffle assigns).
+2. **Narrow Valley (and any subarea with an entrance-gate ≠ interior requirement) needs the
+   entrance vs interior requirement split.** Current compile ANDs both onto each interior
+   moon: `(|Gushen| and (|Gushen| or (|Progressive Jump:2| and |Wall Slide| and |Cap Bounce|)))`.
+   The `(Gushen OR jump-combo)` is the *entrance* requirement; once inside, Gushen alone is
+   required. P7 must attach the entrance term to the door, not the interior moon. So
+   `compile_moon_logic.py`'s `SUBAREA_GATES` / `gates_for()` should become P7-aware: emit
+   per-door entrance requirements separately from per-moon interior requirements.
 
 ### P7 — Entrance shuffle  *(Opus 4.8; headline feature, last — consumes P0 + P6)*
 
@@ -249,6 +305,7 @@ Inverted Pyramid, Ice Cave, Ruined Dragon arena, …). P7 consumes it as-is.
 Wire: the palette index already travels in `ShineScoutsMsg` (`client/protocol.py`,
 `docs/wire-protocol.md`).
 
-**Don't start manually:** the P6 logic compiler (subtle method/throw semantics above) and the
-P7 entrance shuffle (symbol-discovery + trampoline-heavy, depends on the exclusion list). Read
-`docs/milestones.md` M7 Path A before touching P7's stage-change hooks.
+**Don't start manually:** the P7 entrance shuffle (symbol-discovery + trampoline-heavy, depends
+on the exclusion list). Read `docs/milestones.md` M7 Path A before touching P7's stage-change
+hooks. (P6 logic update is done — the corrected `requires` are already compiled into
+locations.json; P7 reachability builds on top of them.)

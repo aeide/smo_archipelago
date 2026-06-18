@@ -33,11 +33,12 @@ VALID_JUMP_HEIGHTS = frozenset({
 
 VALID_CAP_THROWS = frozenset({"none", "neutral", "up", "down", "spin"})
 
+# Corrected-sheet vocabulary (mirrors OTHER_REQUIRED_MAP in
+# import_moon_requirements.py). The legacy messy tokens (wall_jump, ledge_grab,
+# 2d_jump, outfit, scooter, jaxi, …) were dropped when the logic was corrected.
 VALID_OTHER_REQUIRED = frozenset({
-    "capture", "dive", "ground_pound", "roll", "roll_boost", "crouch",
-    "wall_jump", "ledge_grab", "climb", "homing_cap", "bonk_roll",
-    "damage_boost", "2d_jump", "scooter", "jaxi", "rainbow_spin",
-    "outfit", "single", "other_kingdom_trigger",
+    "capture", "ground_pound", "dive", "wall_slide", "climb",
+    "roll", "crouch", "roll_boost", "cap_bounce", "bonk_roll", "single",
 })
 
 METHOD_KEYS = frozenset({"1", "2", "3", "4", "5"})
@@ -166,9 +167,23 @@ def test_method_fields(requirements):
     assert not bad, "\n".join(bad)
 
 
-def test_captures_is_list(requirements):
-    bad = [k for k, v in requirements.items() if not isinstance(v["captures"], list)]
-    assert not bad, f"Non-list captures in: {bad}"
+def test_capture_groups_is_list_of_lists(requirements):
+    """capture_groups is OR-of-AND: a list of groups, each a list of str names."""
+    bad: list[str] = []
+    for k, v in requirements.items():
+        groups = v["capture_groups"]
+        if not isinstance(groups, list) or any(
+            not isinstance(g, list) or any(not isinstance(c, str) for c in g)
+            for g in groups
+        ):
+            bad.append(k)
+    assert not bad, f"Malformed capture_groups in: {bad}"
+
+
+def test_capture_optional_is_bool(requirements):
+    bad = [k for k, v in requirements.items()
+           if not isinstance(v["capture_optional"], bool)]
+    assert not bad, f"Non-bool capture_optional in: {bad}"
 
 
 def test_locked_default_capture_is_bool(requirements):

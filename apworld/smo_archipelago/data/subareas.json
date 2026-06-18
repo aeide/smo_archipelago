@@ -727,7 +727,7 @@
     "location_names": []
   },
   "Shiveria Town": {
-    "kingdom": "Snow Kingdom",
+    "kingdom": "Seaside Kingdom",
     "csv_names": [
       "Shiveria Town: The Icicle Barrier",
       "Shiveria Town: The Ice Wall Barrier",
@@ -753,7 +753,7 @@
     ]
   },
   "Class A Race": {
-    "kingdom": "Snow Kingdom",
+    "kingdom": "Seaside Kingdom",
     "csv_names": [
       "Class A Race: The Bound Bowl Grand Prix"
     ],
@@ -1131,7 +1131,9 @@
     "csv_names": [
       "Crazy Cap Store (Mushroom): Shopping Near Peach's Castle"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Shopping Near Peach's Castle"
+    ]
   },
   "Picture Match (Mario)": {
     "kingdom": "Mushroom Kingdom",
@@ -1139,7 +1141,10 @@
       "Picture Match (Mario): Picture Match: Basically Mario",
       "Picture Match (Mario): Picture Match: A Stellar Mario!"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Picture Match: Basically Mario",
+      "Mushroom: Picture Match: A Stellar Mario!"
+    ]
   },
   "Peach's Castle": {
     "kingdom": "Mushroom Kingdom",
@@ -1148,7 +1153,11 @@
       "Peach's Castle: Loose-Tile Trackdown",
       "Peach's Castle: Found with Mushroom Kingdom Art"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Light from the Ceiling",
+      "Mushroom: Loose-Tile Trackdown",
+      "Mushroom: Found with Mushroom Kingdom Art"
+    ]
   },
   "Castle Courtyard 64": {
     "kingdom": "Mushroom Kingdom",
@@ -1156,7 +1165,10 @@
       "Castle Courtyard 64: Totally Classic!",
       "Castle Courtyard 64: Courtyard Chest Trap"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Totally Classic!",
+      "Mushroom: Courtyard Chest Trap"
+    ]
   },
   "Yoshi in the Sea of Clouds": {
     "kingdom": "Mushroom Kingdom",
@@ -1164,7 +1176,10 @@
       "Yoshi in the Sea of Clouds: Yoshi's Feast in the Sea of Clouds",
       "Yoshi in the Sea of Clouds: Sunken Star in the Sea of Clouds"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Yoshi's Feast in the Sea of Clouds",
+      "Mushroom: Sunken Star in the Sea of Clouds"
+    ]
   },
   "8-Bit Bullet Bills": {
     "kingdom": "Mushroom Kingdom",
@@ -1172,49 +1187,64 @@
       "8-Bit Bullet Bills: Secret 2D Treasure",
       "8-Bit Bullet Bills: 2D Boost from Bullet Bill"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Secret 2D Treasure",
+      "Mushroom: 2D Boost from Bullet Bill"
+    ]
   },
   "Knucklotec Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
     "csv_names": [
       "Knucklotec Boss Re-fight: Tussle in Tostarena: Rematch"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Tussle in Tostarena: Rematch"
+    ]
   },
   "Torkdrift Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
     "csv_names": [
       "Torkdrift Boss Re-fight: Struggle in Steam Gardens: Rematch"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Struggle in Steam Gardens: Rematch"
+    ]
   },
   "Mechawiggler Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
     "csv_names": [
       "Mechawiggler Boss Re-fight: Dust-Up in New Donk City: Rematch"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Dust-Up in New Donk City: Rematch"
+    ]
   },
   "Mollusque-Lanceur Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
     "csv_names": [
       "Mollusque-Lanceur Boss Re-fight: Battle in Bubblaine: Rematch"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Battle in Bubblaine: Rematch"
+    ]
   },
   "Cookatiel Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
     "csv_names": [
       "Cookatiel Boss Re-fight: Blowup at Mount Volbono: Rematch"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Blowup at Mount Volbono: Rematch"
+    ]
   },
   "Lord of Lightning Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
     "csv_names": [
       "Lord of Lightning Boss Re-fight: Rumble in Crumbleden: Rematch"
     ],
-    "location_names": []
+    "location_names": [
+      "Mushroom: Rumble in Crumbleden: Rematch"
+    ]
   },
   "Breakdown Road Capless": {
     "kingdom": "Dark Side",
@@ -1222,7 +1252,10 @@
       "Breakdown Road Capless: Breakdown Road: Hurry!",
       "Breakdown Road Capless: Breakdown Road: Final Challenge!"
     ],
-    "location_names": []
+    "location_names": [
+      "Dark Side: Breakdown Road: Hurry!",
+      "Dark Side: Breakdown Road: Final Challenge!"
+    ]
   },
   "Invisible Road Capless": {
     "kingdom": "Dark Side",
@@ -1230,7 +1263,10 @@
       "Invisible Road Capless: Invisible Road: Rush!",
       "Invisible Road Capless: Invisible Road: Secret!"
     ],
-    "location_names": []
+    "location_names": [
+      "Dark Side: Invisible Road: Rush!",
+      "Dark Side: Invisible Road: Secret!"
+    ]
   },
   "Vanishing Road Capless": {
     "kingdom": "Dark Side",
@@ -1238,7 +1274,10 @@
       "Vanishing Road Capless: Vanishing Road Rush",
       "Vanishing Road Capless: Vanishing Road Challenge"
     ],
-    "location_names": []
+    "location_names": [
+      "Dark Side: Vanishing Road Rush",
+      "Dark Side: Vanishing Road Challenge"
+    ]
   },
   "Yoshi Under Siege": {
     "kingdom": "Dark Side",
@@ -1246,7 +1285,10 @@
       "Yoshi Under Siege: Yoshi Under Siege",
       "Yoshi Under Siege: Fruit Feast Under Siege"
     ],
-    "location_names": []
+    "location_names": [
+      "Dark Side: Yoshi Under Siege",
+      "Dark Side: Fruit Feast Under Siege"
+    ]
   },
   "Yoshi on the Sinking Island": {
     "kingdom": "Dark Side",
@@ -1254,7 +1296,10 @@
       "Yoshi on the Sinking Island: Yoshi on the Sinking Island",
       "Yoshi on the Sinking Island: Fruit Feast on the Sinking Island"
     ],
-    "location_names": []
+    "location_names": [
+      "Dark Side: Yoshi on the Sinking Island",
+      "Dark Side: Fruit Feast on the Sinking Island"
+    ]
   },
   "Yoshi's Magma Swamp": {
     "kingdom": "Dark Side",
@@ -1262,6 +1307,9 @@
       "Yoshi's Magma Swamp: Yoshi's Magma Swamp",
       "Yoshi's Magma Swamp: Fruit Feast in the Magma Swamp!"
     ],
-    "location_names": []
+    "location_names": [
+      "Dark Side: Yoshi's Magma Swamp",
+      "Dark Side: Fruit Feast in the Magma Swamp!"
+    ]
   }
 }

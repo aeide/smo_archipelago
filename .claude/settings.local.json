@@ -124,7 +124,18 @@
       "Bash(echo \"=== EXIT $? ===\")",
       "Bash(curl -s \"https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/git/trees/master?recursive=1\")",
       "Bash(curl -s \"https://raw.githubusercontent.com/MonsterDruide1/OdysseyDecomp/master/lib/sead/include/prim/seadBitFlag.h\")",
-      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main _ZN15PlayerStateJump6appearEv _ZN15PlayerStateJump6updateEv _ZNK11PlayerConst16getTurnJumpPowerEv _ZNK11PlayerConst15getTurnJumpVelHEv _ZNK11PlayerConst18getTurnJumpGravityEv _ZN19PlayerActorHakoniwa7exeJumpEv)"
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main _ZN15PlayerStateJump6appearEv _ZN15PlayerStateJump6updateEv _ZNK11PlayerConst16getTurnJumpPowerEv _ZNK11PlayerConst15getTurnJumpVelHEv _ZNK11PlayerConst18getTurnJumpGravityEv _ZN19PlayerActorHakoniwa7exeJumpEv)",
+      "PowerShell(python -c \"import openpyxl; print\\('openpyxl', openpyxl.__version__\\)\" 2>&1)",
+      "PowerShell(python --version)",
+      "PowerShell(python -m pip install --quiet openpyxl 2>&1)",
+      "PowerShell(python -c \"import openpyxl; print\\('ok', openpyxl.__version__\\)\")",
+      "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; python scripts\\\\import_moon_requirements.py)",
+      "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; python scripts\\\\import_moon_requirements.py 2>&1 | Select-Object -First 8; python $env:TEMP\\\\cov.py 2>&1 | Select-Object -First 6)",
+      "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; python -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_moon_requirements.py -q 2>&1 | Select-Object -Last 25)",
+      "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; python scripts\\\\compile_moon_logic.py)",
+      "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; python -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_moon_requirements.py apworld\\\\smo_archipelago\\\\tests\\\\test_randomize_kingdom_gates.py -q 2>&1 | Select-Object -Last 20)",
+      "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; python scripts\\\\install_apworld.py 2>&1 | Select-Object -Last 5)",
+      "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; .venv\\\\Scripts\\\\python scripts\\\\ap_generate.py --player_files_path apworld\\\\smo_archipelago\\\\tests\\\\seeds --outputpath apworld\\\\smo_archipelago\\\\tests\\\\seeds\\\\out --seed 12345 2>&1 | Select-Object -Last 30)"
     ]
   }
 }

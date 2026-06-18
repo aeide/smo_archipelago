@@ -1,10 +1,8 @@
 notes for capture requirements:
 
-1. anything requiring "Manhole" is actually only the _entrance_ to that power moon, not the moon itself. Relevant for the story moon "Sewers" (always vanilla location) and the entrance to "Rotating Maze Shards" (randomized location)
-2. all of the Metro Kingdom overworld is locked behind Spark pylon
-3. all of the Lake Kingdom overworld is locked behind either Zipper OR (Backflip/Side Flip/Triple Jump/Ground Pound Jump) + Cap Bounce + (Dive/Wall Jump)
-4. zipper also locks the entrance to the subarea "Unzipping the Chasm"
-5. all of the Bowser's Kingdom overworld is locked behind Spark pylon 
+1. all of the Metro Kingdom overworld is locked behind Spark pylon
+2. all of the Lake Kingdom overworld is locked behind either Zipper OR (Backflip/Side Flip/Triple Jump/Ground Pound Jump) + Cap Bounce + (Dive/Wall Jump)
+3. all of the Bowser's Kingdom overworld is locked behind Spark pylon 
 
 list of subareas that require captures to access:
 "Unzipping the Chasm" requires Zipper
@@ -16,6 +14,9 @@ list of subareas that require captures to access:
 "Fork-Flickin to the Summit" requires Lava Bubble
 "Shards in the Cheese Rocks" requires Hammer Bros
 "Spinning Athletics" requires Lava Bubble
+
+
+claude.ai you can stop reading here, this has been reflected in the .xlsx already
 
 list of moons in subareas with required captures:
 | Subarea          | Moon                             | Required to collect |
