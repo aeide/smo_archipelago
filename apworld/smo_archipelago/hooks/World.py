@@ -335,13 +335,16 @@ def _trim_kingdom_moons_to_options(item_pool: list, multiworld: MultiWorld, play
 
 # The item pool after starting items are processed but before filler is added, in case you want to see the raw item pool at that stage
 def before_create_items_filler(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
-    # multi_moon_shuffle: there are 14 Multi-Moon items but only 13 fillable
-    # multi_moon locations — "Metro: A Traditional Festival!" is the festival
-    # goal's victory location and never holds a real item. Drop ONE Metro
-    # Multi-Moon (Metro has two) so the MM<->MM-location matching is exactly
-    # solvable; adjust_filler_items tops the freed slot back up with filler.
-    # Holds under the festival goal too (7 items <-> 7 MM locations).
-    if is_option_enabled(multiworld, player, "multi_moon_shuffle"):
+    # multi_moon_shuffle: under the FESTIVAL goal, "Metro: A Traditional
+    # Festival!" is the victory location and can't hold an item, leaving
+    # 14 Multi-Moon items for only 13 fillable MM locations. Drop ONE Metro
+    # Multi-Moon (Metro has two) to balance the matching; adjust_filler_items
+    # tops the freed slot back up with filler.
+    # Under any other goal the festival is a real 14th MM location (it
+    # survived __init__.create_regions as a normal check), so 14 items match
+    # 14 locations exactly — no drop.
+    if (is_option_enabled(multiworld, player, "multi_moon_shuffle")
+            and get_option_value(multiworld, player, "goal") == 1):  # festival
         for i, it in enumerate(item_pool):
             if it.name == "Metro Kingdom Multi-Moon":
                 item_pool.pop(i)

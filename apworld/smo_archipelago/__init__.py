@@ -181,8 +181,13 @@ class SMOWorld(World):
         location_game_complete = self.multiworld.get_location(target_victory_name, self.player)
         location_game_complete.address = None
 
-        for unused_goal in [self.multiworld.get_location(name, self.player) for name in victory_names if name != location_game_complete.name]:
-            unused_goal.parent_region.locations.remove(unused_goal)
+        for name in [n for n in victory_names if n != location_game_complete.name]:
+            unused_goal = self.multiworld.get_location(name, self.player)
+            loc_data = self.location_name_to_location.get(name, {})
+            if not loc_data.get("multi_moon"):
+                # Synthetic victory location (no real moon behind it) — remove.
+                # Real moon locations (multi_moon: true) survive as normal checks.
+                unused_goal.parent_region.locations.remove(unused_goal)
 
         location_game_complete.place_locked_item(
             SMOItem("__Victory__", ItemClassification.progression, None, player=self.player))

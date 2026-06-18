@@ -1,9 +1,3 @@
-// this is a list of subareas to be EXCLUDED from the entrance shuffler, ordered by kingdom. if the subarea already exiss in subareas.json,
-// I included the full dataset from that json file. if it did not, the json correlated to it is empty (e.g. Cap Kingdom's "Inside Top-Hat Tower").
-// These mostly seemed to be locations that simply did not contain any moons within them. I also included "Inside New Donk City Tower" in both 
-// night and day metro, as it is present in both - if the redundancy isn't needed or causes parse issues you can remove one. Also for the new areas
-// not included in subareas.json i simply named them what shows on the screen when you enter the area, which doesn't always match up (e.g. "Inside New Donk City Tower"
-// displays in-game as "New Donk City Hall Interior")
 {
     "Cap Kingdom": {
       "Inside Top-Hat Tower": {}
@@ -41,7 +35,7 @@
           "Sand: Underground Treasure Chest",
           "Sand: Goomba Tower Assembly"
         ]
-      },
+      }
     },
     "Lake Kingdom": {
     },
@@ -88,7 +82,7 @@
           "Wooded: Defend the Secret Flower Field!",
           "Wooded: Make the Secret Flower Field Bloom"
         ]
-      },
+      }
     },
     "Cloud Kingdom": {
     },
@@ -103,7 +97,7 @@
         "location_names": [
           "Metro: City Hall Lost & Found"
         ]
-      },
+      }
     },
     "Metro Kingdom": {
       "Sewers": {
@@ -128,7 +122,7 @@
         ]
       },
       "New Donk City Hall Auditorium": {},
-      "A Traditional Festival!": {},
+      "A Traditional Festival!": {}
     },
     "Snow Kingdom": {
       "Shiveria Town": {
@@ -176,7 +170,7 @@
         "location_names": [
           "Snow: Snowline Circuit Class S"
         ]
-      },
+      }
     },
     "Seaside Kingdom": {
       "Underwater Tunnel": {
@@ -187,7 +181,7 @@
         "location_names": [
           "Seaside: Looking Back in the Dark Waterway"
         ]
-      },
+      }
     },
     "Luncheon Kingdom": {
     },
@@ -217,7 +211,7 @@
         "location_names": [
           "Moon: Up in the Rafters"
         ]
-      },
+      }
     },
     "Mushroom Kingdom": {
       "Peach's Castle": {
@@ -228,7 +222,7 @@
           "Peach's Castle: Found with Mushroom Kingdom Art"
         ],
         "location_names": []
-      },
+      }
     },
     "Dark Side": {
     },

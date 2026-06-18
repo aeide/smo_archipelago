@@ -7,9 +7,9 @@ Backflip/Long Jump need Crouch, GPJ needs Ground Pound).
 
 ## Summary
 
-- Moon locations compiled: **435**
-- Free (no requirement): **96**
-- Kingdom-gated (Metro/Bowser=Spark pylon, Lake=Zipper/jump): **118**
+- Moon locations compiled: **489**
+- Free (no requirement): **98**
+- Kingdom-gated (Metro/Bowser=Spark pylon, Lake=Zipper/jump): **132**
 - Subarea-gated moons: **28**
 
 ## Assumptions to verify ("assume MORE")

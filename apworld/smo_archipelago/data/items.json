@@ -1,752 +1,752 @@
 [
-    {
-        "name": "Cap Kingdom Power Moon",
-        "count": 11,
-        "category": [
-            "Moon"
-        ],
-        "filler": true
-    },
-    {
-        "name": "Cascade Kingdom Power Moon",
-        "count": 19,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Cascade Kingdom Multi-Moon",
-        "count": 1,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Sand Kingdom Power Moon",
-        "count": 60,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Sand Kingdom Multi-Moon",
-        "count": 2,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Lake Kingdom Power Moon",
-        "count": 26,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Lake Kingdom Multi-Moon",
-        "count": 1,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Wooded Kingdom Power Moon",
-        "count": 48,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Wooded Kingdom Multi-Moon",
-        "count": 2,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Cloud Kingdom Power Moon",
-        "count": 1,
-        "category": [
-            "Moon"
-        ],
-        "filler": true
-    },
-    {
-        "name": "Lost Kingdom Power Moon",
-        "count": 21,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Metro Kingdom Power Moon",
-        "count": 51,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Metro Kingdom Multi-Moon",
-        "count": 2,
-        "category": [
-            "Moon"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Snow Kingdom Power Moon",
-        "count": 33,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Snow Kingdom Multi-Moon",
-        "count": 1,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Seaside Kingdom Power Moon",
-        "count": 49,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Seaside Kingdom Multi-Moon",
-        "count": 1,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Luncheon Kingdom Power Moon",
-        "count": 47,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Luncheon Kingdom Multi-Moon",
-        "count": 2,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Ruined Kingdom Power Moon",
-        "count": 3,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Ruined Kingdom Multi-Moon",
-        "count": 1,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Bowser's Kingdom Power Moon",
-        "count": 37,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Bowser's Kingdom Multi-Moon",
-        "count": 1,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "progression": true
-    },
-    {
-        "name": "Moon Kingdom Power Moon",
-        "count": 14,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "filler": true
-    },
-    {
-        "name": "Mushroom Kingdom Power Moon",
-        "count": 1,
-        "category": [
-            "Moon",
-            "post-metro"
-        ],
-        "filler": true
-    },
-    {
-        "name": "Frog",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": false
-    },
-    {
-        "name": "Chain Chomp",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": false
-    },
-    {
-        "name": "Paragoomba",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Binoculars",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "T-Rex",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Bullet Bill",
-        "category": [
-            "Capture"
-        ],
-        "count": 2,
-        "progression": true
-    },
-    {
-        "name": "Moe-Eye",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Cactus",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Goomba",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Knucklotec's Fist",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Mini Rocket",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Glydon",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Lakitu",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Zipper",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Cheep Cheep",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Puzzle Part (Lake Kingdom)",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Poison Piranha Plant",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Uproot",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Fire Bro",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Sherm",
-        "category": [
-            "Capture"
-        ],
-        "count": 2,
-        "progression": true
-    },
-    {
-        "name": "Coin Coffer",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Tree",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Boulder",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Picture Match Part (Goomba)",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Tropical Wiggler",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Pole",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Manhole",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Taxi",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "RC Car",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Ty-foo",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Shiverian Racer",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Snow Cheep Cheep",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Gushen",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Lava Bubble",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Volbonan",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Hammer Bro",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Meat",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Fire Piranha Plant",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Pokio",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Jizo",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Bowser Statue",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Parabones",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 2,
-        "progression": true
-    },
-    {
-        "name": "Banzai Bill",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 2,
-        "progression": true
-    },
-    {
-        "name": "Chargin' Chuck",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Up Throw",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Down Throw",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Spin Throw",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Backflip",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Side Flip",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Cap Bounce",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Ground Pound Jump",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Long Jump",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Wall Slide",
-        "category": [
-            "Ability"
-        ],
-        "count": 2,
-        "progression": true
-    },
-    {
-        "name": "Ledge Grab",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Climb",
-        "category": [
-            "Ability"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Progressive Jump",
-        "category": [
-            "Ability"
-        ],
-        "count": 2,
-        "progression": true
-    },
-    {
-        "name": "Progressive Crouch",
-        "category": [
-            "Ability"
-        ],
-        "count": 3,
-        "progression": true
-    },
-    {
-        "name": "Progressive Ground Pound",
-        "category": [
-            "Ability"
-        ],
-        "count": 3,
-        "progression": true
-    },
-    {
-        "name": "Puzzle Part (Metro Kingdom)",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Picture Match Part (Mario)",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Broode's Chain Chomp",
-        "category": [
-            "Capture"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Letter",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Yoshi",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 1,
-        "progression": true
-    },
-    {
-        "name": "Spark pylon",
-        "category": [
-            "Capture"
-        ],
-        "count": 2,
-        "progression": true
-    },
-    {
-        "name": "Bowser",
-        "category": [
-            "Capture",
-            "post-metro"
-        ],
-        "count": 2,
-        "progression": true
-    }
+  {
+    "name": "Cap Kingdom Power Moon",
+    "count": 13,
+    "category": [
+      "Moon"
+    ],
+    "filler": true
+  },
+  {
+    "name": "Cascade Kingdom Power Moon",
+    "count": 23,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Cascade Kingdom Multi-Moon",
+    "count": 1,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Sand Kingdom Power Moon",
+    "count": 66,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Sand Kingdom Multi-Moon",
+    "count": 2,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Lake Kingdom Power Moon",
+    "count": 28,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Lake Kingdom Multi-Moon",
+    "count": 1,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Wooded Kingdom Power Moon",
+    "count": 54,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Wooded Kingdom Multi-Moon",
+    "count": 2,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Cloud Kingdom Power Moon",
+    "count": 3,
+    "category": [
+      "Moon"
+    ],
+    "filler": true
+  },
+  {
+    "name": "Lost Kingdom Power Moon",
+    "count": 25,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Metro Kingdom Power Moon",
+    "count": 59,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Metro Kingdom Multi-Moon",
+    "count": 2,
+    "category": [
+      "Moon"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Snow Kingdom Power Moon",
+    "count": 37,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Snow Kingdom Multi-Moon",
+    "count": 1,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Seaside Kingdom Power Moon",
+    "count": 53,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Seaside Kingdom Multi-Moon",
+    "count": 1,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Luncheon Kingdom Power Moon",
+    "count": 53,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Luncheon Kingdom Multi-Moon",
+    "count": 2,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Ruined Kingdom Power Moon",
+    "count": 5,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Ruined Kingdom Multi-Moon",
+    "count": 1,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Bowser's Kingdom Power Moon",
+    "count": 41,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Bowser's Kingdom Multi-Moon",
+    "count": 1,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Moon Kingdom Power Moon",
+    "count": 14,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "filler": true
+  },
+  {
+    "name": "Mushroom Kingdom Power Moon",
+    "count": 1,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "filler": true
+  },
+  {
+    "name": "Frog",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": false
+  },
+  {
+    "name": "Chain Chomp",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": false
+  },
+  {
+    "name": "Paragoomba",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Binoculars",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "T-Rex",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Bullet Bill",
+    "category": [
+      "Capture"
+    ],
+    "count": 2,
+    "progression": true
+  },
+  {
+    "name": "Moe-Eye",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Cactus",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Goomba",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Knucklotec's Fist",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Mini Rocket",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Glydon",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Lakitu",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Zipper",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Cheep Cheep",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Puzzle Part (Lake Kingdom)",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Poison Piranha Plant",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Uproot",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Fire Bro",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Sherm",
+    "category": [
+      "Capture"
+    ],
+    "count": 2,
+    "progression": true
+  },
+  {
+    "name": "Coin Coffer",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Tree",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Boulder",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Picture Match Part (Goomba)",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Tropical Wiggler",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Pole",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Manhole",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Taxi",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "RC Car",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Ty-foo",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Shiverian Racer",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Snow Cheep Cheep",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Gushen",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Lava Bubble",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Volbonan",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Hammer Bro",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Meat",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Fire Piranha Plant",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Pokio",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Jizo",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Bowser Statue",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Parabones",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 2,
+    "progression": true
+  },
+  {
+    "name": "Banzai Bill",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 2,
+    "progression": true
+  },
+  {
+    "name": "Chargin' Chuck",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Up Throw",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Down Throw",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Spin Throw",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Backflip",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Side Flip",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Cap Bounce",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Ground Pound Jump",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Long Jump",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Wall Slide",
+    "category": [
+      "Ability"
+    ],
+    "count": 2,
+    "progression": true
+  },
+  {
+    "name": "Ledge Grab",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Climb",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Progressive Jump",
+    "category": [
+      "Ability"
+    ],
+    "count": 2,
+    "progression": true
+  },
+  {
+    "name": "Progressive Crouch",
+    "category": [
+      "Ability"
+    ],
+    "count": 3,
+    "progression": true
+  },
+  {
+    "name": "Progressive Ground Pound",
+    "category": [
+      "Ability"
+    ],
+    "count": 3,
+    "progression": true
+  },
+  {
+    "name": "Puzzle Part (Metro Kingdom)",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Picture Match Part (Mario)",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Broode's Chain Chomp",
+    "category": [
+      "Capture"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Letter",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Yoshi",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
+    "name": "Spark pylon",
+    "category": [
+      "Capture"
+    ],
+    "count": 2,
+    "progression": true
+  },
+  {
+    "name": "Bowser",
+    "category": [
+      "Capture",
+      "post-metro"
+    ],
+    "count": 2,
+    "progression": true
+  }
 ]

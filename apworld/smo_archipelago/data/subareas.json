@@ -38,7 +38,10 @@
       "Precision Rolling: Roll On and On",
       "Precision Rolling: Precision Rolling"
     ],
-    "location_names": []
+    "location_names": [
+      "Cap: Roll On and On",
+      "Cap: Precision Rolling"
+    ]
   },
   "Dinosaur Nest": {
     "kingdom": "Cascade Kingdom",
@@ -79,7 +82,10 @@
       "Mysterious Clouds: Across the Mysterious Clouds",
       "Mysterious Clouds: Atop a Wall Among the Clouds"
     ],
-    "location_names": []
+    "location_names": [
+      "Cascade: Across the Mysterious Clouds",
+      "Cascade: Atop a Wall Among the Clouds"
+    ]
   },
   "Gusty Bridges": {
     "kingdom": "Cascade Kingdom",
@@ -87,7 +93,10 @@
       "Gusty Bridges: Across the Gusty Bridges",
       "Gusty Bridges: Flying Far Away from Gusty Bridges"
     ],
-    "location_names": []
+    "location_names": [
+      "Cascade: Across the Gusty Bridges",
+      "Cascade: Flying Far Away from Gusty Bridges"
+    ]
   },
   "Deepest Underground": {
     "kingdom": "Sand Kingdom",
@@ -233,7 +242,10 @@
       "The Invisible Maze: Where the Transparent Platforms End",
       "The Invisible Maze: Jump Onto the Transparent Lift"
     ],
-    "location_names": []
+    "location_names": [
+      "Sand: Where the Transparent Platforms End",
+      "Sand: Jump Onto the Transparent Lift"
+    ]
   },
   "Colossal Ruins": {
     "kingdom": "Sand Kingdom",
@@ -241,7 +253,10 @@
       "Colossal Ruins: Colossal Ruins: Dash! Jump!",
       "Colossal Ruins: Sinking Colossal Ruins: Hurry!"
     ],
-    "location_names": []
+    "location_names": [
+      "Sand: Colossal Ruins: Dash! Jump!",
+      "Sand: Sinking Colossal Ruins: Hurry!"
+    ]
   },
   "Freezing Waterway": {
     "kingdom": "Sand Kingdom",
@@ -249,7 +264,10 @@
       "Freezing Waterway: Through the Freezing Waterway",
       "Freezing Waterway: Freezing Waterway: Hidden Room"
     ],
-    "location_names": []
+    "location_names": [
+      "Sand: Through the Freezing Waterway",
+      "Sand: Freezing Waterway: Hidden Room"
+    ]
   },
   "Secret Flower Field": {
     "kingdom": "Wooded Kingdom",
@@ -373,7 +391,10 @@
       "Invisible Road: Invisible Road: Danger!",
       "Invisible Road: Invisible Road: Hidden Room"
     ],
-    "location_names": []
+    "location_names": [
+      "Wooded: Invisible Road: Danger!",
+      "Wooded: Invisible Road: Hidden Room"
+    ]
   },
   "Herding Sheep": {
     "kingdom": "Wooded Kingdom",
@@ -381,7 +402,10 @@
       "Herding Sheep: Herding Sheep Above the Forest Fog",
       "Herding Sheep: Herding Sheep on the Iron Bridge"
     ],
-    "location_names": []
+    "location_names": [
+      "Wooded: Herding Sheep Above the Forest Fog",
+      "Wooded: Herding Sheep on the Iron Bridge"
+    ]
   },
   "Breakdown Road": {
     "kingdom": "Wooded Kingdom",
@@ -389,7 +413,10 @@
       "Breakdown Road: Down and Back Breakdown Road",
       "Breakdown Road: Below Breakdown Road"
     ],
-    "location_names": []
+    "location_names": [
+      "Wooded: Down and Back Breakdown Road",
+      "Wooded: Below Breakdown Road"
+    ]
   },
   "Crazy Cap Store (Lake)": {
     "kingdom": "Lake Kingdom",
@@ -437,7 +464,10 @@
       "Waves of Poison: Waves of Poison: Hoppin' Over",
       "Waves of Poison: Waves of Poison: Hop to It!"
     ],
-    "location_names": []
+    "location_names": [
+      "Lake: Waves of Poison: Hoppin' Over",
+      "Lake: Waves of Poison: Hop to It!"
+    ]
   },
   "Picture Match (Goomba)": {
     "kingdom": "Lake Kingdom",
@@ -455,7 +485,10 @@
       "2D Cube: King of the Cube!",
       "2D Cube: The Sixth Face"
     ],
-    "location_names": []
+    "location_names": [
+      "Cloud: King of the Cube!",
+      "Cloud: The Sixth Face"
+    ]
   },
   "Crazy Cap Store (Lost)": {
     "kingdom": "Lost Kingdom",
@@ -472,7 +505,10 @@
       "Stretch and Traverse the Jungle: Stretch and Traverse the Jungle",
       "Stretch and Traverse the Jungle: Aglow in the Jungle"
     ],
-    "location_names": []
+    "location_names": [
+      "Lost: Stretch and Traverse the Jungle",
+      "Lost: Aglow in the Jungle"
+    ]
   },
   "Klepto 2 - Lava Boogaloo": {
     "kingdom": "Lost Kingdom",
@@ -480,7 +516,10 @@
       "Klepto 2 - Lava Boogaloo: Chasing Klepto",
       "Klepto 2 - Lava Boogaloo: Extremely Hot Bath"
     ],
-    "location_names": []
+    "location_names": [
+      "Lost: Chasing Klepto",
+      "Lost: Extremely Hot Bath"
+    ]
   },
   "Sewers": {
     "kingdom": "Metro Kingdom",
@@ -624,7 +663,10 @@
       "On the Big Screen: Up on the Big Screen",
       "On the Big Screen: Down Inside the Big Screen"
     ],
-    "location_names": []
+    "location_names": [
+      "Metro: Up on the Big Screen",
+      "Metro: Down Inside the Big Screen"
+    ]
   },
   "Pitchblack Mountain": {
     "kingdom": "Metro Kingdom",
@@ -632,7 +674,10 @@
       "Pitchblack Mountain: Scaling Pitchblack Mountain",
       "Pitchblack Mountain: Reaching Pitchblack Island"
     ],
-    "location_names": []
+    "location_names": [
+      "Metro: Scaling Pitchblack Mountain",
+      "Metro: Reaching Pitchblack Island"
+    ]
   },
   "Swinging Scaffolding": {
     "kingdom": "Metro Kingdom",
@@ -640,7 +685,10 @@
       "Swinging Scaffolding: Swinging Scaffolding: Jump!",
       "Swinging Scaffolding: Swinging Scaffolding: Break!"
     ],
-    "location_names": []
+    "location_names": [
+      "Metro: Swinging Scaffolding: Jump!",
+      "Metro: Swinging Scaffolding: Break!"
+    ]
   },
   "Scooter Daredevil": {
     "kingdom": "Metro Kingdom",
@@ -648,7 +696,10 @@
       "Scooter Daredevil: Motor Scooter Daredevil!",
       "Scooter Daredevil: Full-Throttle Scooting!"
     ],
-    "location_names": []
+    "location_names": [
+      "Metro: Motor Scooter Daredevil!",
+      "Metro: Full-Throttle Scooting!"
+    ]
   },
   "Wriggling Power Moon": {
     "kingdom": "Seaside Kingdom",
@@ -716,7 +767,10 @@
       "Stop, Poke, and Roll: Aim! Poke!",
       "Stop, Poke, and Roll: Poke! Roll!"
     ],
-    "location_names": []
+    "location_names": [
+      "Seaside: Aim! Poke!",
+      "Seaside: Poke! Roll!"
+    ]
   },
   "Spinning Maze": {
     "kingdom": "Seaside Kingdom",
@@ -724,7 +778,10 @@
       "Spinning Maze: The Spinning Maze: Search!",
       "Spinning Maze: The Spinning Maze: Open!"
     ],
-    "location_names": []
+    "location_names": [
+      "Seaside: The Spinning Maze: Search!",
+      "Seaside: The Spinning Maze: Open!"
+    ]
   },
   "Shiveria Town": {
     "kingdom": "Seaside Kingdom",
@@ -850,7 +907,10 @@
       "Class S Lobby: Iceburn Circuit Class A",
       "Class S Lobby: Iceburn Circuit Class S"
     ],
-    "location_names": []
+    "location_names": [
+      "Snow: Iceburn Circuit Class A",
+      "Snow: Iceburn Circuit Class S"
+    ]
   },
   "Wintery Flower Road": {
     "kingdom": "Snow Kingdom",
@@ -858,7 +918,10 @@
       "Wintery Flower Road: Running the Flower Road",
       "Wintery Flower Road: Looking Back on the Flower Road"
     ],
-    "location_names": []
+    "location_names": [
+      "Snow: Running the Flower Road",
+      "Snow: Looking Back on the Flower Road"
+    ]
   },
   "Crazy Cap Store (Luncheon)": {
     "kingdom": "Luncheon Kingdom",
@@ -959,7 +1022,10 @@
       "Blazing Above the Gears: Stepping Over the Gears",
       "Blazing Above the Gears: Lanterns on the Gear Steps"
     ],
-    "location_names": []
+    "location_names": [
+      "Luncheon: Stepping Over the Gears",
+      "Luncheon: Lanterns on the Gear Steps"
+    ]
   },
   "Volcano Cave Cruising": {
     "kingdom": "Luncheon Kingdom",
@@ -967,7 +1033,10 @@
       "Volcano Cave Cruising: Volcano Cave Cruisin'",
       "Volcano Cave Cruising: Volcano Cave and Mysterious Clouds"
     ],
-    "location_names": []
+    "location_names": [
+      "Luncheon: Volcano Cave Cruisin'",
+      "Luncheon: Volcano Cave and Mysterious Clouds"
+    ]
   },
   "Lava Island Fly-By": {
     "kingdom": "Luncheon Kingdom",
@@ -975,7 +1044,10 @@
       "Lava Island Fly-By: Treasure of the Lava Islands",
       "Lava Island Fly-By: Flying Over the Lava Islands"
     ],
-    "location_names": []
+    "location_names": [
+      "Luncheon: Treasure of the Lava Islands",
+      "Luncheon: Flying Over the Lava Islands"
+    ]
   },
   "Roulette Tower": {
     "kingdom": "Ruined Kingdom",
@@ -994,7 +1066,10 @@
       "Mummy Army: Charging Through an Army",
       "Mummy Army: The Mummy Army's Curse"
     ],
-    "location_names": []
+    "location_names": [
+      "Ruined: Charging Through an Army",
+      "Ruined: The Mummy Army's Curse"
+    ]
   },
   "Crazy Cap Store (Bowser's)": {
     "kingdom": "Bowser's Kingdom",
@@ -1064,7 +1139,10 @@
       "Hexagon Tower: Searching Hexagon Tower",
       "Hexagon Tower: Center of Hexagon Tower"
     ],
-    "location_names": []
+    "location_names": [
+      "Bowser's: Searching Hexagon Tower",
+      "Bowser's: Center of Hexagon Tower"
+    ]
   },
   "Wooden Tower": {
     "kingdom": "Bowser's Kingdom",
@@ -1072,7 +1150,10 @@
       "Wooden Tower: Climb the Wooden Tower",
       "Wooden Tower: Poke the Wooden Tower"
     ],
-    "location_names": []
+    "location_names": [
+      "Bowser's: Climb the Wooden Tower",
+      "Bowser's: Poke the Wooden Tower"
+    ]
   },
   "Underground Caverns": {
     "kingdom": "Moon Kingdom",
@@ -1101,14 +1182,18 @@
     "csv_names": [
       "Crazy Cap Store (Moon): Shopping in Honeylune Ridge"
     ],
-    "location_names": []
+    "location_names": [
+      "Moon: Shopping in Honeylune Ridge"
+    ]
   },
   "Moon Kingdom Treasure Vault": {
     "kingdom": "Moon Kingdom",
     "csv_names": [
       "Moon Kingdom Treasure Vault: Sphynx's Hidden Vault"
     ],
-    "location_names": []
+    "location_names": [
+      "Moon: Sphynx's Hidden Vault"
+    ]
   },
   "8-Bit Galaxy": {
     "kingdom": "Moon Kingdom",
@@ -1116,7 +1201,10 @@
       "8-Bit Galaxy: Center of the Galaxy",
       "8-Bit Galaxy: Edge of the Galaxy"
     ],
-    "location_names": []
+    "location_names": [
+      "Moon: Center of the Galaxy",
+      "Moon: Edge of the Galaxy"
+    ]
   },
   "Giant Swings": {
     "kingdom": "Moon Kingdom",
@@ -1124,7 +1212,10 @@
       "Giant Swings: Navigating Giant Swings",
       "Giant Swings: A Swing on Top of a Swing"
     ],
-    "location_names": []
+    "location_names": [
+      "Moon: Navigating Giant Swings",
+      "Moon: A Swing on Top of a Swing"
+    ]
   },
   "Crazy Cap Store (Mushroom)": {
     "kingdom": "Mushroom Kingdom",

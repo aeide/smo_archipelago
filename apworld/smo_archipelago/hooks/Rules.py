@@ -17,13 +17,17 @@ def BulletBillMaze(world: World, multiworld: MultiWorld, state: CollectionState,
     """can the player do the bullet bill maze without a bullet bill (or with a bullet bill)"""
     return True
 
+def CascadePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
+    """World peace in Cascade Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Cascade: Multi Moon Atop the Falls")
+
 def SandPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player do sand peace"""
-    return True
+    """World peace in Sand Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Sand: The Hole in the Desert")
 
 def LakePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player do lake peace"""
-    return True
+    """World peace in Lake Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Lake: Broodals Over the Lake")
 
 def SwimOrCheepCheep(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """swim or cheep cheep"""
@@ -42,8 +46,8 @@ def MazeSkip(world: World, multiworld: MultiWorld, state: CollectionState, playe
     return True
 
 def WoodedPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player get world peace in wooded kingdom"""
-    return True
+    """World peace in Wooded Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Wooded: Defend the Secret Flower Field!")
 
 def ShermOrLongJump(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player do sherm or long jump"""
@@ -58,8 +62,8 @@ def PostTrumpeter(world: World, multiworld: MultiWorld, state: CollectionState, 
     return True
 
 def MetroPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player get metro peace"""
-    return True
+    """World peace in Metro Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Metro: A Traditional Festival!")
 
 def FromTheTopOfTheTower(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player jump frm the top of metro tower"""
@@ -74,16 +78,16 @@ def TyfooOrScaleATallWall(world: World, multiworld: MultiWorld, state: Collectio
     return True
 
 def SnowPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player get snow peace"""
-    return True
+    """World peace in Snow Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Snow: The Bound Bowl Grand Prix")
 
 def SeasidePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player do seaside Peace"""
-    return True
+    """World peace in Seaside Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Seaside: The Glass Is Half Full!")
 
 def SnowSeasidePeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player do snow or seaside Peace"""
-    return True
+    """World peace in Snow or Seaside Kingdom (either suffices)."""
+    return SnowPeace(world, multiworld, state, player) or SeasidePeace(world, multiworld, state, player)
 
 def PostEarlyLuncheon(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player get more moons in luncheon than the very first ones"""
@@ -94,8 +98,8 @@ def ClimbToTheMeat(world: World, multiworld: MultiWorld, state: CollectionState,
     return True
 
 def LuncheonPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player get snow peace"""
-    return True
+    """World peace in Luncheon Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Luncheon: Cookatiel Showdown!")
 
 def JumpHigh(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """can the player jump high"""
@@ -117,9 +121,13 @@ def ParabonesSkip(world: World, multiworld: MultiWorld, state: CollectionState, 
     """can the player skip the parabones (or use it)"""
     return True
 
+def RuinedPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
+    """World peace in Ruined Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Ruined: Battle with the Lord of Lightning!")
+
 def BowserPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """can the player get bowser peace"""
-    return True
+    """World peace in Bowser's Kingdom: player can collect the story-completing moon."""
+    return canReachLocation(world, multiworld, state, player, "Bowser's: Showdown at Bowser's Castle")
 
 def KingdomMoons(world: World, multiworld: MultiWorld, state: CollectionState, player: int, kingdom: str, n) -> str:
     """N effective Power Moons FROM A SPECIFIC KINGDOM.

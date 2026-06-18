@@ -818,7 +818,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Roll On and On"
   },
   "Precision Rolling: Precision Rolling": {
     "capture_groups": [],
@@ -839,7 +839,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Precision Rolling"
   },
   "Cascade Kingdom: Our First Power Moon": {
     "capture_groups": [
@@ -1769,7 +1769,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Across the Mysterious Clouds"
   },
   "Mysterious Clouds: Atop a Wall Among the Clouds": {
     "capture_groups": [],
@@ -1800,7 +1800,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Atop a Wall Among the Clouds"
   },
   "Gusty Bridges: Across the Gusty Bridges": {
     "capture_groups": [],
@@ -1831,7 +1831,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Across the Gusty Bridges"
   },
   "Gusty Bridges: Flying Far Away from Gusty Bridges": {
     "capture_groups": [],
@@ -1862,7 +1862,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Flying Far Away from Gusty Bridges"
   },
   "Sand Kingdom: Atop the Highest Tower": {
     "capture_groups": [],
@@ -4034,7 +4034,7 @@
         ]
       }
     },
-    "location_name": null
+    "location_name": "Sand: Where the Transparent Platforms End"
   },
   "The Invisible Maze: Jump Onto the Transparent Lift": {
     "capture_groups": [],
@@ -4082,7 +4082,7 @@
       },
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Jump Onto the Transparent Lift"
   },
   "Colossal Ruins: Colossal Ruins: Dash! Jump!": {
     "capture_groups": [],
@@ -4115,7 +4115,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Colossal Ruins: Dash! Jump!"
   },
   "Colossal Ruins: Sinking Colossal Ruins: Hurry!": {
     "capture_groups": [],
@@ -4137,7 +4137,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Sinking Colossal Ruins: Hurry!"
   },
   "Freezing Waterway: Through the Freezing Waterway": {
     "capture_groups": [
@@ -4165,7 +4165,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Through the Freezing Waterway"
   },
   "Freezing Waterway: Freezing Waterway: Hidden Room": {
     "capture_groups": [
@@ -4193,7 +4193,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Freezing Waterway: Hidden Room"
   },
   "Wooded Kingdom: Road to Sky Garden": {
     "capture_groups": [
@@ -6302,7 +6302,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Invisible Road: Danger!"
   },
   "Invisible Road: Invisible Road: Hidden Room": {
     "capture_groups": [],
@@ -6324,7 +6324,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Invisible Road: Hidden Room"
   },
   "Herding Sheep: Herding Sheep Above the Forest Fog": {
     "capture_groups": [],
@@ -6362,7 +6362,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Herding Sheep Above the Forest Fog"
   },
   "Herding Sheep: Herding Sheep on the Iron Bridge": {
     "capture_groups": [],
@@ -6400,7 +6400,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Herding Sheep on the Iron Bridge"
   },
   "Breakdown Road: Down and Back Breakdown Road": {
     "capture_groups": [
@@ -6433,7 +6433,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Down and Back Breakdown Road"
   },
   "Breakdown Road: Below Breakdown Road": {
     "capture_groups": [
@@ -6458,7 +6458,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Below Breakdown Road"
   },
   "Lake Kingdom: Broodals Over the Lake": {
     "capture_groups": [],
@@ -7674,7 +7674,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Waves of Poison: Hoppin' Over"
   },
   "Waves of Poison: Waves of Poison: Hop to It!": {
     "capture_groups": [
@@ -7710,7 +7710,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Waves of Poison: Hop to It!"
   },
   "Picture Match (Goomba): Picture Match: Basically a Goomba": {
     "capture_groups": [
@@ -7900,7 +7900,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cloud: King of the Cube!"
   },
   "2D Cube: The Sixth Face": {
     "capture_groups": [],
@@ -7921,7 +7921,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cloud: The Sixth Face"
   },
   "Lost Kingdom: Atop a Propeller Pillar": {
     "capture_groups": [],
@@ -8723,7 +8723,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Stretch and Traverse the Jungle"
   },
   "Stretch and Traverse the Jungle: Aglow in the Jungle": {
     "capture_groups": [
@@ -8755,7 +8755,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Aglow in the Jungle"
   },
   "Klepto 2 - Lava Boogaloo: Chasing Klepto": {
     "capture_groups": [],
@@ -8779,7 +8779,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Chasing Klepto"
   },
   "Klepto 2 - Lava Boogaloo: Extremely Hot Bath": {
     "capture_groups": [
@@ -8808,7 +8808,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Extremely Hot Bath"
   },
   "Metro Kingdom: New Donk City's Pest Problem": {
     "capture_groups": [
@@ -10344,7 +10344,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Up on the Big Screen"
   },
   "On the Big Screen: Down Inside the Big Screen": {
     "capture_groups": [],
@@ -10363,7 +10363,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Down Inside the Big Screen"
   },
   "Metro Kingdom: Peach in the Metro Kingdom": {
     "capture_groups": [],
@@ -10607,7 +10607,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Scaling Pitchblack Mountain"
   },
   "Pitchblack Mountain: Reaching Pitchblack Island": {
     "capture_groups": [],
@@ -10631,7 +10631,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Reaching Pitchblack Island"
   },
   "Swinging Scaffolding: Swinging Scaffolding: Jump!": {
     "capture_groups": [],
@@ -10653,7 +10653,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Swinging Scaffolding: Jump!"
   },
   "Swinging Scaffolding: Swinging Scaffolding: Break!": {
     "capture_groups": [
@@ -10681,7 +10681,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Swinging Scaffolding: Break!"
   },
   "Scooter Daredevil: Motor Scooter Daredevil!": {
     "capture_groups": [],
@@ -10700,7 +10700,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Motor Scooter Daredevil!"
   },
   "Scooter Daredevil: Full-Throttle Scooting!": {
     "capture_groups": [],
@@ -10719,7 +10719,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Full-Throttle Scooting!"
   },
   "Seaside Kingdom: The Stone Pillar Seal": {
     "capture_groups": [
@@ -12446,7 +12446,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Aim! Poke!"
   },
   "Stop, Poke, and Roll: Poke! Roll!": {
     "capture_groups": [
@@ -12474,7 +12474,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Poke! Roll!"
   },
   "Spinning Maze: The Spinning Maze: Search!": {
     "capture_groups": [],
@@ -12495,7 +12495,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: The Spinning Maze: Search!"
   },
   "Spinning Maze: The Spinning Maze: Open!": {
     "capture_groups": [],
@@ -12516,7 +12516,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: The Spinning Maze: Open!"
   },
   "Shiveria Town: The Icicle Barrier": {
     "capture_groups": [],
@@ -13759,7 +13759,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Iceburn Circuit Class A"
   },
   "Class S Lobby: Iceburn Circuit Class S": {
     "capture_groups": [
@@ -13787,7 +13787,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Iceburn Circuit Class S"
   },
   "Wintery Flower Road: Running the Flower Road": {
     "capture_groups": [],
@@ -13809,7 +13809,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Running the Flower Road"
   },
   "Wintery Flower Road: Looking Back on the Flower Road": {
     "capture_groups": [],
@@ -13831,7 +13831,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Looking Back on the Flower Road"
   },
   "Luncheon Kingdom: The Broodals Are After Some Cookin'": {
     "capture_groups": [
@@ -15619,7 +15619,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Stepping Over the Gears"
   },
   "Blazing Above the Gears: Lanterns on the Gear Steps": {
     "capture_groups": [
@@ -15647,7 +15647,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Lanterns on the Gear Steps"
   },
   "Volcano Cave Cruising: Volcano Cave Cruisin'": {
     "capture_groups": [],
@@ -15669,7 +15669,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Volcano Cave Cruisin'"
   },
   "Volcano Cave Cruising: Volcano Cave and Mysterious Clouds": {
     "capture_groups": [],
@@ -15691,7 +15691,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Volcano Cave and Mysterious Clouds"
   },
   "Lava Island Fly-By: Treasure of the Lava Islands": {
     "capture_groups": [
@@ -15719,7 +15719,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Treasure of the Lava Islands"
   },
   "Lava Island Fly-By: Flying Over the Lava Islands": {
     "capture_groups": [
@@ -15747,7 +15747,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Flying Over the Lava Islands"
   },
   "Ruined Kingdom: Battle with the Lord of Lightning!": {
     "capture_groups": [
@@ -15973,7 +15973,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Ruined: Charging Through an Army"
   },
   "Mummy Army: The Mummy Army's Curse": {
     "capture_groups": [],
@@ -16006,7 +16006,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Ruined: The Mummy Army's Curse"
   },
   "Bowser's Kingdom: Infiltrate Bowser's Castle!": {
     "capture_groups": [
@@ -17713,7 +17713,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Searching Hexagon Tower"
   },
   "Hexagon Tower: Center of Hexagon Tower": {
     "capture_groups": [
@@ -17741,7 +17741,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Center of Hexagon Tower"
   },
   "Wooden Tower: Climb the Wooden Tower": {
     "capture_groups": [
@@ -17769,7 +17769,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Climb the Wooden Tower"
   },
   "Wooden Tower: Poke the Wooden Tower": {
     "capture_groups": [
@@ -17797,7 +17797,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Poke the Wooden Tower"
   },
   "Moon Kingdom: Shining Above the Moon": {
     "capture_groups": [],
@@ -18294,7 +18294,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Shopping in Honeylune Ridge"
   },
   "Moon Kingdom: Walking on the Moon!": {
     "capture_groups": [],
@@ -18383,7 +18383,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Sphynx's Hidden Vault"
   },
   "Moon Kingdom: A Tourist in the Moon Kingdom!": {
     "capture_groups": [],
@@ -18615,7 +18615,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Center of the Galaxy"
   },
   "8-Bit Galaxy: Edge of the Galaxy": {
     "capture_groups": [],
@@ -18637,7 +18637,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Edge of the Galaxy"
   },
   "Giant Swings: Navigating Giant Swings": {
     "capture_groups": [],
@@ -18661,7 +18661,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Navigating Giant Swings"
   },
   "Giant Swings: A Swing on Top of a Swing": {
     "capture_groups": [],
@@ -18685,7 +18685,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: A Swing on Top of a Swing"
   },
   "Mushroom Kingdom: Perched on the Castle Roof": {
     "capture_groups": [

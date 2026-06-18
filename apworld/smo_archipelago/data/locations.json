@@ -1720,6 +1720,7 @@
     "region": "Metro Kingdom",
     "requires": "|Spark pylon|",
     "victory": true,
+    "multi_moon": true,
     "progression": true
   },
   {
@@ -4865,6 +4866,610 @@
       "Darker Side"
     ],
     "region": "Darker Side",
+    "requires": "",
+    "junk_only": true
+  },
+  {
+    "name": "Cap: Roll On and On",
+    "category": [
+      "Cap Kingdom",
+      "Moon Rock"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|)"
+  },
+  {
+    "name": "Cap: Precision Rolling",
+    "category": [
+      "Cap Kingdom",
+      "Moon Rock"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|)"
+  },
+  {
+    "name": "Cascade: Across the Mysterious Clouds",
+    "category": [
+      "Cascade Kingdom",
+      "Moon Rock",
+      "Cascade Peace"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "{CascadePeace()}"
+  },
+  {
+    "name": "Cascade: Atop a Wall Among the Clouds",
+    "category": [
+      "Cascade Kingdom",
+      "Moon Rock",
+      "Cascade Peace"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or (|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|)) and {CascadePeace()})"
+  },
+  {
+    "name": "Cascade: Across the Gusty Bridges",
+    "category": [
+      "Cascade Kingdom",
+      "Moon Rock",
+      "Cascade Peace"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "{CascadePeace()}"
+  },
+  {
+    "name": "Cascade: Flying Far Away from Gusty Bridges",
+    "category": [
+      "Cascade Kingdom",
+      "Moon Rock",
+      "Cascade Peace"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "{CascadePeace()}"
+  },
+  {
+    "name": "Sand: Where the Transparent Platforms End",
+    "category": [
+      "Sand Kingdom",
+      "Moon Rock",
+      "Sand Peace"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "{SandPeace()}"
+  },
+  {
+    "name": "Sand: Jump Onto the Transparent Lift",
+    "category": [
+      "Sand Kingdom",
+      "Moon Rock",
+      "Sand Peace"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "{SandPeace()}"
+  },
+  {
+    "name": "Sand: Colossal Ruins: Dash! Jump!",
+    "category": [
+      "Sand Kingdom",
+      "Moon Rock",
+      "Sand Peace"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "{SandPeace()}"
+  },
+  {
+    "name": "Sand: Sinking Colossal Ruins: Hurry!",
+    "category": [
+      "Sand Kingdom",
+      "Moon Rock",
+      "Sand Peace"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "{SandPeace()}"
+  },
+  {
+    "name": "Sand: Through the Freezing Waterway",
+    "category": [
+      "Sand Kingdom",
+      "Moon Rock",
+      "Sand Peace"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "(|Gushen| and {SandPeace()})"
+  },
+  {
+    "name": "Sand: Freezing Waterway: Hidden Room",
+    "category": [
+      "Sand Kingdom",
+      "Moon Rock",
+      "Sand Peace"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "(|Gushen| and {SandPeace()})"
+  },
+  {
+    "name": "Lake: Waves of Poison: Hoppin' Over",
+    "category": [
+      "Lake Kingdom",
+      "Moon Rock",
+      "Lake Peace"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "((|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
+  },
+  {
+    "name": "Lake: Waves of Poison: Hop to It!",
+    "category": [
+      "Lake Kingdom",
+      "Moon Rock",
+      "Lake Peace"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "((|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
+  },
+  {
+    "name": "Wooded: Invisible Road: Danger!",
+    "category": [
+      "Wooded Kingdom",
+      "Moon Rock",
+      "Wooded Peace"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "{WoodedPeace()}"
+  },
+  {
+    "name": "Wooded: Invisible Road: Hidden Room",
+    "category": [
+      "Wooded Kingdom",
+      "Moon Rock",
+      "Wooded Peace"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "{WoodedPeace()}"
+  },
+  {
+    "name": "Wooded: Herding Sheep Above the Forest Fog",
+    "category": [
+      "Wooded Kingdom",
+      "Moon Rock",
+      "Wooded Peace"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "((((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|) or (|Progressive Ground Pound:1| and |Climb|) or (|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|)) and {WoodedPeace()})"
+  },
+  {
+    "name": "Wooded: Herding Sheep on the Iron Bridge",
+    "category": [
+      "Wooded Kingdom",
+      "Moon Rock",
+      "Wooded Peace"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "((((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|) or |Climb| or (|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|)) and {WoodedPeace()})"
+  },
+  {
+    "name": "Wooded: Down and Back Breakdown Road",
+    "category": [
+      "Wooded Kingdom",
+      "Moon Rock",
+      "Wooded Peace"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "{WoodedPeace()}"
+  },
+  {
+    "name": "Wooded: Below Breakdown Road",
+    "category": [
+      "Wooded Kingdom",
+      "Moon Rock",
+      "Wooded Peace"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "(|Banzai Bill| and {WoodedPeace()})"
+  },
+  {
+    "name": "Cloud: King of the Cube!",
+    "category": [
+      "Cloud Kingdom",
+      "Moon Rock"
+    ],
+    "region": "Cloud Kingdom",
+    "requires": "|Progressive Crouch:1|"
+  },
+  {
+    "name": "Cloud: The Sixth Face",
+    "category": [
+      "Cloud Kingdom",
+      "Moon Rock"
+    ],
+    "region": "Cloud Kingdom",
+    "requires": "|Progressive Crouch:1|"
+  },
+  {
+    "name": "Lost: Stretch and Traverse the Jungle",
+    "category": [
+      "Lost Kingdom",
+      "Moon Rock"
+    ],
+    "region": "Lost Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Lost: Aglow in the Jungle",
+    "category": [
+      "Lost Kingdom",
+      "Moon Rock"
+    ],
+    "region": "Lost Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Lost: Chasing Klepto",
+    "category": [
+      "Lost Kingdom",
+      "Moon Rock"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Lost: Extremely Hot Bath",
+    "category": [
+      "Lost Kingdom",
+      "Moon Rock"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "(|Progressive Ground Pound:1| and |Lava Bubble|)"
+  },
+  {
+    "name": "Metro: Up on the Big Screen",
+    "category": [
+      "Metro Kingdom",
+      "Moon Rock",
+      "Metro Peace"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Down Inside the Big Screen",
+    "category": [
+      "Metro Kingdom",
+      "Moon Rock",
+      "Metro Peace"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Scaling Pitchblack Mountain",
+    "category": [
+      "Metro Kingdom",
+      "Moon Rock",
+      "Metro Peace"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Reaching Pitchblack Island",
+    "category": [
+      "Metro Kingdom",
+      "Moon Rock",
+      "Metro Peace"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Progressive Ground Pound:1| and |Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Swinging Scaffolding: Jump!",
+    "category": [
+      "Metro Kingdom",
+      "Moon Rock",
+      "Metro Peace"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Swinging Scaffolding: Break!",
+    "category": [
+      "Metro Kingdom",
+      "Moon Rock",
+      "Metro Peace"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Hammer Bro|) and |Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Motor Scooter Daredevil!",
+    "category": [
+      "Metro Kingdom",
+      "Moon Rock",
+      "Metro Peace"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Full-Throttle Scooting!",
+    "category": [
+      "Metro Kingdom",
+      "Moon Rock",
+      "Metro Peace"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Seaside: Aim! Poke!",
+    "category": [
+      "Seaside Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Seaside Peace"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "(|Pokio| and {SeasidePeace()})"
+  },
+  {
+    "name": "Seaside: Poke! Roll!",
+    "category": [
+      "Seaside Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Seaside Peace"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "(|Pokio| and {SeasidePeace()})"
+  },
+  {
+    "name": "Seaside: The Spinning Maze: Search!",
+    "category": [
+      "Seaside Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Seaside Peace"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {SeasidePeace()})"
+  },
+  {
+    "name": "Seaside: The Spinning Maze: Open!",
+    "category": [
+      "Seaside Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Seaside Peace"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {SeasidePeace()})"
+  },
+  {
+    "name": "Snow: Iceburn Circuit Class A",
+    "category": [
+      "Snow Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Snow Peace"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "(|Shiverian Racer| and {SnowPeace()})"
+  },
+  {
+    "name": "Snow: Iceburn Circuit Class S",
+    "category": [
+      "Snow Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Snow Peace"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "(|Shiverian Racer| and {SnowPeace()})"
+  },
+  {
+    "name": "Snow: Running the Flower Road",
+    "category": [
+      "Snow Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Snow Peace"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "{SnowPeace()}"
+  },
+  {
+    "name": "Snow: Looking Back on the Flower Road",
+    "category": [
+      "Snow Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Snow Peace"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "{SnowPeace()}"
+  },
+  {
+    "name": "Luncheon: Stepping Over the Gears",
+    "category": [
+      "Luncheon Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Luncheon Peace"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "{LuncheonPeace()}"
+  },
+  {
+    "name": "Luncheon: Lanterns on the Gear Steps",
+    "category": [
+      "Luncheon Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Luncheon Peace"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "(|Fire Bro| and {LuncheonPeace()})"
+  },
+  {
+    "name": "Luncheon: Volcano Cave Cruisin'",
+    "category": [
+      "Luncheon Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Luncheon Peace"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "{LuncheonPeace()}"
+  },
+  {
+    "name": "Luncheon: Volcano Cave and Mysterious Clouds",
+    "category": [
+      "Luncheon Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Luncheon Peace"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and {LuncheonPeace()})"
+  },
+  {
+    "name": "Luncheon: Treasure of the Lava Islands",
+    "category": [
+      "Luncheon Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Luncheon Peace"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "(|Lava Bubble| and {LuncheonPeace()})"
+  },
+  {
+    "name": "Luncheon: Flying Over the Lava Islands",
+    "category": [
+      "Luncheon Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Luncheon Peace"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "(|Lava Bubble| and {LuncheonPeace()})"
+  },
+  {
+    "name": "Ruined: Charging Through an Army",
+    "category": [
+      "Ruined Kingdom",
+      "Moon Rock",
+      "post-metro"
+    ],
+    "region": "Ruined Kingdom",
+    "requires": "{RuinedPeace()}"
+  },
+  {
+    "name": "Ruined: The Mummy Army's Curse",
+    "category": [
+      "Ruined Kingdom",
+      "Moon Rock",
+      "post-metro"
+    ],
+    "region": "Ruined Kingdom",
+    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) or |Climb|) and {RuinedPeace()})"
+  },
+  {
+    "name": "Bowser's: Searching Hexagon Tower",
+    "category": [
+      "Bowser's Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Bowser's Peace"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(|Parabones| and |Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Bowser's: Center of Hexagon Tower",
+    "category": [
+      "Bowser's Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Bowser's Peace"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(|Parabones| and |Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Bowser's: Climb the Wooden Tower",
+    "category": [
+      "Bowser's Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Bowser's Peace"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(|Pokio| and |Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Bowser's: Poke the Wooden Tower",
+    "category": [
+      "Bowser's Kingdom",
+      "Moon Rock",
+      "post-metro",
+      "Bowser's Peace"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(|Pokio| and |Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Moon: Shopping in Honeylune Ridge",
+    "category": [
+      "Moon Kingdom"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "",
+    "junk_only": true
+  },
+  {
+    "name": "Moon: Sphynx's Hidden Vault",
+    "category": [
+      "Moon Kingdom"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "",
+    "junk_only": true
+  },
+  {
+    "name": "Moon: Center of the Galaxy",
+    "category": [
+      "Moon Kingdom"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "",
+    "junk_only": true
+  },
+  {
+    "name": "Moon: Edge of the Galaxy",
+    "category": [
+      "Moon Kingdom"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "",
+    "junk_only": true
+  },
+  {
+    "name": "Moon: Navigating Giant Swings",
+    "category": [
+      "Moon Kingdom"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "",
+    "junk_only": true
+  },
+  {
+    "name": "Moon: A Swing on Top of a Swing",
+    "category": [
+      "Moon Kingdom"
+    ],
+    "region": "Moon Kingdom",
     "requires": "",
     "junk_only": true
   }

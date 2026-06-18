@@ -34,11 +34,13 @@ def _hooks_src(name: str) -> str:
 def test_multi_moon_location_counts_match_item_counts():
     """The MM<->MM-location matching is only solvable if, per kingdom, the
     number of `multi_moon: true` locations equals the Multi-Moon item count.
-    Known exception: Metro has 2 MM items but only 1 taggable MM location
-    ("A Traditional Festival!" is the festival victory location and can't
-    hold an item), so before_create_items_filler drops one Metro MM from
-    the pool when the option is on. This sync test catches any OTHER drift
-    (a mistagged location) immediately."""
+
+    Under the default (mushroom_kingdom) goal "Metro: A Traditional Festival!"
+    is a real 14th MM location, so 14 items == 14 locations with no pool drop.
+    Under the festival goal the festival is the victory location (can't hold
+    an item), so before_create_items_filler drops one Metro MM giving 13 items
+    for 13 locations — but that's goal-conditional logic, not a static count
+    mismatch, so we assert the raw counts match without any drop here."""
     mm_locs = Counter()
     for l in _locations():
         if l.get("multi_moon"):
@@ -50,29 +52,34 @@ def test_multi_moon_location_counts_match_item_counts():
         if m:
             mm_items[m.group(1)] += int(i.get("count", 1))
 
-    expected = Counter(mm_items)
-    expected["Metro"] -= 1  # the documented pool drop
-    assert mm_locs == expected, (
+    assert mm_locs == mm_items, (
         f"multi_moon location tags vs Multi-Moon item counts drift:\n"
-        f"  locations: {dict(mm_locs)}\n  items-1Metro: {dict(expected)}")
+        f"  locations: {dict(mm_locs)}\n  items: {dict(mm_items)}")
 
 
-def test_multi_moon_total_is_thirteen():
-    assert sum(1 for l in _locations() if l.get("multi_moon")) == 13
+def test_multi_moon_total_is_fourteen():
+    """14 multi_moon locations: 13 floating + festival (real MM boss fight).
+    Under festival goal the festival becomes victory and before_create_items_filler
+    drops one Metro MM, giving 13 items for 13 locations. Under the default goal
+    the festival is a normal 14th MM check holding the second Metro MM."""
+    assert sum(1 for l in _locations() if l.get("multi_moon")) == 14
 
 
-def test_festival_victory_location_is_not_tagged():
-    """The festival goal's victory location never holds a real item — it
-    must NOT carry the multi_moon tag, or the matching is short one slot."""
+def test_festival_location_is_tagged_multi_moon():
+    """The festival moon IS a real Multi-Moon boss fight; it must carry
+    multi_moon: true so it can hold a Metro MM when the goal != festival."""
     for l in _locations():
         if l.get("name") == "Metro: A Traditional Festival!":
-            assert l.get("victory") is True
-            assert not l.get("multi_moon")
+            assert l.get("victory") is True, "festival must still be a victory candidate"
+            assert l.get("multi_moon") is True, "festival must be tagged multi_moon"
             return
     raise AssertionError("festival victory location not found")
 
 
-def test_world_drops_one_metro_mm_under_shuffle():
+def test_world_drops_one_metro_mm_only_under_festival_goal():
+    """The Metro MM drop is conditional: festival goal → 13 items for 13
+    fillable locations; default goal → 14 items for 14 locations (festival
+    is a real check). The drop must be gated on goal == 1 (festival)."""
     src = _hooks_src("World.py")
     m = re.search(r"def before_create_items_filler\b.*?(?=\n# |\ndef )",
                   src, re.DOTALL)
@@ -80,7 +87,9 @@ def test_world_drops_one_metro_mm_under_shuffle():
     body = m.group(0)
     assert '"multi_moon_shuffle"' in body
     assert '"Metro Kingdom Multi-Moon"' in body and "pop" in body, \
-        "one Metro Multi-Moon must be dropped to balance the MM matching"
+        "one Metro Multi-Moon must be dropped (under festival goal) to balance the MM matching"
+    assert 'goal' in body and '== 1' in body, \
+        "Metro MM drop must be conditional on goal == 1 (festival), not always active"
 
 
 def test_ruined_pin_is_a_tagged_mm_location():

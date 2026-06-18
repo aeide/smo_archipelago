@@ -5,9 +5,9 @@ Read CLAUDE.md first every session — its invariants (MoonGetHook chokepoint, p
 ordering, three-layer "lie to the game" hook pattern, "read the decomp before picking a
 chokepoint") all apply here.
 
-## Status (2026-06-17)
+## Status (2026-06-18)
 
-**P0–P4 + P6 COMPLETE. Remaining: P5, P7.**
+**P0–P4 + P6 + P6.5 COMPLETE. Remaining: P5, P7.**
 
 | Phase | What | State |
 |---|---|---|
@@ -18,7 +18,8 @@ chokepoint") all apply here.
 | P4 | Ability gating on Switch (every move gated; Side Flip neuter, Up/Down/Spin Throw) | ✅ in-game |
 | **P5** | **Per-kingdom moon colors** | ⬜ Sonnet, small |
 | **P6** | **Update logic** (xlsx ingest → recompile all moon `requires`) | ✅ Generate-validated (2026-06-17) |
-| **P7** | **Entrance shuffle** (headline feature) | ⬜ Opus — NEXT |
+| **P6.5** | **Moon-pipe moons → AP** (54 new locations + `<Kingdom>Peace` gates) | ✅ Generate-validated (2026-06-18); [spike §6](p7-entrance-shuffle-spike.md) |
+| **P7** | **Entrance shuffle** (headline feature) | ⬜ Opus — spike done, P6.5 complete |
 
 P0–P4 implementation detail lives in git history, CLAUDE.md, and `docs/plan-p4-detail.md`
 (the P4 canonical record). This file now covers only the design context that the remaining
@@ -148,6 +149,12 @@ needed for P6:**
    per-door entrance requirements separately from per-moon interior requirements.
 
 ### P7 — Entrance shuffle  *(Opus 4.8; headline feature, last — consumes P0 + P6)*
+
+**Pre-design spike DONE (2026-06-18): [docs/p7-entrance-shuffle-spike.md](p7-entrance-shuffle-spike.md).**
+Chokepoint found + viable (`GameDataFunction::tryChangeNextStage(GameDataHolderWriter, const
+ChangeStageInfo*)`; `ChangeStageInfo.mIsReturn` splits entry/exit at one hook). Exclusion list
+validated (shuffle pool = 85 checked subareas). All four risk items investigated; build order +
+3 open design questions for Devon recorded there. Symbol still needs sail verification.
 
 - apworld: entrance pool = all subarea entrances minus Devon's storyline exclusion list
   (`data/entrance_exclusions.json` — Devon authors; Top-Hat Tower, Inverted Pyramid, etc.).

@@ -70,6 +70,13 @@ class IncludeCloudPeaceMoons(DefaultOnToggle):
     """Turn off to skip Cloud Kingdom side moons (e.g. Picture Match) that are tedious to track down."""
     display_name = "Include Cloud Kingdom Peace Moons"
 
+class MoonRockChecks(DefaultOnToggle):
+    """Turn off to skip all moon-rock locations (the ~54 moons behind moon pipes that
+    open after a kingdom's story is complete). These require world peace in their
+    respective kingdom and are gated in the AP logic via the <Kingdom>Peace() rule.
+    Disabling removes all Moon Rock category checks from every kingdom."""
+    display_name = "Include Moon Rock Checks"
+
 class IncludeDeepWoodsMoons(DefaultOnToggle):
     """Turn off to skip the Wooded Kingdom Deep Woods moons (the foggy secret area):
     Rolling Rock / Glowing / Hard Rock in Deep Woods, By the Babbling Brook,
@@ -218,8 +225,8 @@ class CascadeMoonCount(Range):
     is the smallest count that still satisfies the Cascade kingdom gate."""
     display_name = "Cascade Kingdom Moon Count"
     range_start = 3
-    range_end = 20
-    default = 20
+    range_end = 24
+    default = 24
 
 class SandMoonCount(Range):
     """Number of Sand Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -228,8 +235,8 @@ class SandMoonCount(Range):
     is the smallest count that still satisfies the Sand kingdom gate."""
     display_name = "Sand Kingdom Moon Count"
     range_start = 12
-    range_end = 62
-    default = 62
+    range_end = 68
+    default = 68
 
 class LakeMoonCount(Range):
     """Number of Lake Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -238,8 +245,8 @@ class LakeMoonCount(Range):
     is the smallest count that still satisfies the Lake kingdom gate."""
     display_name = "Lake Kingdom Moon Count"
     range_start = 6
-    range_end = 27
-    default = 27
+    range_end = 29
+    default = 29
 
 class WoodedMoonCount(Range):
     """Number of Wooded Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -248,8 +255,8 @@ class WoodedMoonCount(Range):
     is the smallest count that still satisfies the Wooded kingdom gate."""
     display_name = "Wooded Kingdom Moon Count"
     range_start = 12
-    range_end = 50
-    default = 50
+    range_end = 56
+    default = 56
 
 class LostMoonCount(Range):
     """Number of Lost Kingdom Power Moons in the AP item pool. Reducing this
@@ -259,8 +266,8 @@ class LostMoonCount(Range):
     so the floor equals the threshold directly)."""
     display_name = "Lost Kingdom Moon Count"
     range_start = 10
-    range_end = 21
-    default = 21
+    range_end = 25
+    default = 25
 
 class MetroMoonCount(Range):
     """Number of Metro Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -269,8 +276,8 @@ class MetroMoonCount(Range):
     is the smallest count that still satisfies the Metro kingdom gate."""
     display_name = "Metro Kingdom Moon Count"
     range_start = 16
-    range_end = 53
-    default = 53
+    range_end = 61
+    default = 61
 
 class SnowMoonCount(Range):
     """Number of Snow Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -279,8 +286,8 @@ class SnowMoonCount(Range):
     is the smallest count that still satisfies the Snow kingdom gate."""
     display_name = "Snow Kingdom Moon Count"
     range_start = 8
-    range_end = 34
-    default = 34
+    range_end = 38
+    default = 38
 
 class SeasideMoonCount(Range):
     """Number of Seaside Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -289,8 +296,8 @@ class SeasideMoonCount(Range):
     is the smallest count that still satisfies the Seaside kingdom gate."""
     display_name = "Seaside Kingdom Moon Count"
     range_start = 8
-    range_end = 50
-    default = 50
+    range_end = 54
+    default = 54
 
 class LuncheonMoonCount(Range):
     """Number of Luncheon Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -299,8 +306,8 @@ class LuncheonMoonCount(Range):
     is the smallest count that still satisfies the Luncheon kingdom gate."""
     display_name = "Luncheon Kingdom Moon Count"
     range_start = 14
-    range_end = 49
-    default = 49
+    range_end = 55
+    default = 55
 
 class RuinedMoonCount(Range):
     """Number of Ruined Kingdom Power Moons (and the Multi-Moon) in the AP item
@@ -311,8 +318,8 @@ class RuinedMoonCount(Range):
     Multi-Moon alone clears it."""
     display_name = "Ruined Kingdom Moon Count"
     range_start = 1
-    range_end = 4
-    default = 4
+    range_end = 6
+    default = 6
 
 class BowsersMoonCount(Range):
     """Number of Bowser's Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -321,8 +328,8 @@ class BowsersMoonCount(Range):
     is the smallest count that still satisfies the Bowser's kingdom gate."""
     display_name = "Bowser's Kingdom Moon Count"
     range_start = 6
-    range_end = 38
-    default = 38
+    range_end = 42
+    default = 42
 
 
 # This is called before any options are defined, in case you want to define your own with a clean slate
@@ -347,6 +354,7 @@ def before_options_defined(options: dict) -> dict:
     options["include_luncheon_peace_moons"] = IncludeLuncheonPeaceMoons
     options["include_bowsers_peace_moons"] = IncludeBowsersPeaceMoons
     options["include_cloud_peace_moons"] = IncludeCloudPeaceMoons
+    options["moon_rock_checks"] = MoonRockChecks
     # Per-area annoying cluster toggles
     options["include_deep_woods_moons"] = IncludeDeepWoodsMoons
     options["include_minigame_moons"] = IncludeMinigameMoons

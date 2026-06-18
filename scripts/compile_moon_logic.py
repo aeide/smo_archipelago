@@ -126,6 +126,21 @@ KINGDOM_GATES: dict[str, str] = {
     "Lake":     _LAKE_GATE,
 }
 
+# Peace gates for Moon Rock (post-peace moon-pipe) locations.
+# Cap/Cloud/Lost omitted — peace = kingdom reachability, requires stays "".
+MOON_ROCK_PEACE_GATES: dict[str, str] = {
+    "Cascade":  "{CascadePeace()}",
+    "Sand":     "{SandPeace()}",
+    "Lake":     "{LakePeace()}",
+    "Wooded":   "{WoodedPeace()}",
+    "Metro":    "{MetroPeace()}",
+    "Snow":     "{SnowPeace()}",
+    "Seaside":  "{SeasidePeace()}",
+    "Luncheon": "{LuncheonPeace()}",
+    "Ruined":   "{RuinedPeace()}",
+    "Bowser's": "{BowserPeace()}",
+}
+
 # Keyed by subarea name (matches subareas.json keys).
 SUBAREA_GATES: dict[str, str] = {
     "Unzipping the Chasm":            "|Zipper|",
@@ -210,11 +225,16 @@ def compile_moon(rec: dict) -> str:
     return or_join(method_exprs)
 
 
-def gates_for(location_name: str, loc_subarea_gate: dict[str, str]) -> list[str]:
+def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
+              moon_rock_names: frozenset[str]) -> list[str]:
     out: list[str] = []
     prefix = location_name.split(": ", 1)[0]
     if prefix in KINGDOM_GATES:
         out.append(KINGDOM_GATES[prefix])
+    if location_name in moon_rock_names:
+        peace = MOON_ROCK_PEACE_GATES.get(prefix, "")
+        if peace:
+            out.append(peace)
     if location_name in loc_subarea_gate:
         out.append(loc_subarea_gate[location_name])
     if location_name in LOCATION_EXTRA_GATES:
@@ -234,6 +254,10 @@ def main() -> None:
     # junk_only locations (MK / Dark / Darker-Side filler checks) stay
     # requirement-free so fill can place junk regardless of moveset reachability.
     junk_names = {l["name"] for l in locations if l.get("junk_only")}
+
+    moon_rock_names = frozenset(
+        l["name"] for l in locations if "Moon Rock" in l.get("category", [])
+    )
 
     # location_name -> subarea gate
     loc_subarea_gate: dict[str, str] = {}
@@ -259,7 +283,7 @@ def main() -> None:
             skipped_junk += 1
             continue
         base = compile_moon(rec)
-        gated = and_join([base] + gates_for(ln, loc_subarea_gate))
+        gated = and_join([base] + gates_for(ln, loc_subarea_gate, moon_rock_names))
         compiled[ln] = gated
         if gated == "":
             free_moons.append(ln)

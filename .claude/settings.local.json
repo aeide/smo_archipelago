@@ -135,7 +135,8 @@
       "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; python scripts\\\\compile_moon_logic.py)",
       "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; python -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_moon_requirements.py apworld\\\\smo_archipelago\\\\tests\\\\test_randomize_kingdom_gates.py -q 2>&1 | Select-Object -Last 20)",
       "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; python scripts\\\\install_apworld.py 2>&1 | Select-Object -Last 5)",
-      "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; .venv\\\\Scripts\\\\python scripts\\\\ap_generate.py --player_files_path apworld\\\\smo_archipelago\\\\tests\\\\seeds --outputpath apworld\\\\smo_archipelago\\\\tests\\\\seeds\\\\out --seed 12345 2>&1 | Select-Object -Last 30)"
+      "PowerShell(cd E:\\\\smo_archipelago; $env:PYTHONIOENCODING=\"utf-8\"; .venv\\\\Scripts\\\\python scripts\\\\ap_generate.py --player_files_path apworld\\\\smo_archipelago\\\\tests\\\\seeds --outputpath apworld\\\\smo_archipelago\\\\tests\\\\seeds\\\\out --seed 12345 2>&1 | Select-Object -Last 30)",
+      "Bash(python -)"
     ]
   }
 }

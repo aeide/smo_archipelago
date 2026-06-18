@@ -92,6 +92,12 @@
         ],
         "hidden": true
     },
+    "Moon Rock": {
+        "yaml_option": [
+            "moon_rock_checks"
+        ],
+        "hidden": true
+    },
     "Deep Woods": {
         "yaml_option": [
             "include_deep_woods_moons"
