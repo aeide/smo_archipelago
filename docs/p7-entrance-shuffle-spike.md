@@ -182,8 +182,10 @@ KingdomOrderGate's `visited` mask is deliberately *not* repopulated by save load
 Devon (2026-06-18): the 31 location-less subareas are gated behind **moon pipes that open after
 the kingdom's moon rock is opened (= world peace)**. The Switch side already does the gating
 (`MoonRockHook` opens rocks post-kingdom-peace), but these moons were **never added as AP
-locations** (CLAUDE.md: "Moon-rock moons are NOT yet AP locations (phase 2)"). For pool-scope (B)
-to be meaningful, that phase must happen first:
+locations** at the time of writing. (RESOLVED 2026-06-19 — they are AP locations now; confirmed
+in-game, Devon collected moon-rock moons and received AP items. The old CLAUDE.md "NOT yet AP
+locations (phase 2)" line has been removed.) For pool-scope (B) to be meaningful, that phase had
+to happen first:
 
 - **~60 new AP locations** across 30 subareas (2 each, except `Crazy Cap Store (Moon)` and
   `Moon Kingdom Treasure Vault` at 1 — and those two are shop/vault moons, NOT moon-pipe content,

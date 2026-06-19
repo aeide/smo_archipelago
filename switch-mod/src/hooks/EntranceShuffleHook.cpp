@@ -109,16 +109,20 @@ void logChangeStageInfo(const char* tag, const ChangeStageInfo* info) {
 // behavior; it only emits [entrance:remap-preview] so a walk can confirm the
 // bridge-shipped table matches the doors that actually fire :file.
 //
-// Flip kEntranceRemapApply to true (and rebuild) to enable the actual forward
-// rewrite: the "lie to the game" swap of mChangeStageName + mChangeStageId in
-// the ChangeStageInfo buffer, so a vanilla door commit is redirected to the
-// shuffled interior. NOTE this is FORWARD-only — exits out of a shuffled
-// interior still go to that interior's vanilla parent (they fire :file forward,
-// not :return), so coupled return-to-origin is a SEPARATE next step (origin
-// tracking + exit rewrite). Enabling this alone is correct for a single-door
-// "did I arrive at the shuffled interior?" smoke test, but the exit will land
-// you in the wrong overworld until return handling lands.
-static constexpr bool kEntranceRemapApply = false;
+// Flip kEntranceRemapApply to true (and rebuild) to enable the actual rewrite:
+// the "lie to the game" swap of mChangeStageName + mChangeStageId in the
+// ChangeStageInfo buffer. This is BOTH-directions ready (Step 4 exit rows
+// landed 2026-06-19): processEntranceRemap passes both keys to
+// lookupEntranceRemap, which prefers an entry row matching `dest` else an exit
+// row matching `cur`, and the same mutation body rewrites whichever hit. Coupled
+// return-to-origin is handled two ways: exits that fire :file (changeNextStage
+// with a ChangeStageInfo hardcoded to the vanilla parent overworld) get the
+// exit-by-cur rewrite here; exits that fire :return (returnPrevStage, no info)
+// pop back to wherever Mario came FROM, which under a rewritten forward entry is
+// already the correct origin. Validated read-only via [entrance:remap-preview]
+// across doors/pipes/multi-exit subareas/moon pipes (2026-06-19); the dest==cur
+// guard skips moon-rock same-stage reloads.
+static constexpr bool kEntranceRemapApply = true;
 
 // FixedSafeString<0x80> inline buffer capacity (incl. terminator). mStringTop
 // (cstr ptr @ +0x08) points into this object-owned buffer, so a bounded,

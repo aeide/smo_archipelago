@@ -151,8 +151,11 @@ entrance randomizer (a large rework). No guard test added. See memory
 stage==cur, and NO remap-preview followed. The dest==cur guard correctly skips the
 moon-rock stage reload. 5.1 VALIDATED. MoonRockHook itself works: rock opened,
 cutscene played, moons spawned. NOTE: moon-rock moons ARE AP locations now (Devon
-collected two -> got items for another kingdom) -- CLAUDE.md's "Moon-rock moons are
-NOT yet AP locations (phase 2)" line is STALE, correct it.
+collected two -> got items for another kingdom). The stale CLAUDE.md "Moon-rock moons
+are NOT yet AP locations (phase 2)" line was already gone (v2-plan rewrite); the spike
+doc's leftover quote was corrected 2026-06-19. RESOLVED.
+Moon-rock state also persists correctly across game restart and kingdom revisit
+(Devon confirmed 2026-06-19) -- MoonRockHook regression fully closed.
 
 ## Moon pipe (CapAppearExStage) -- more 5.3 multi-exit confirmation
 - Enter: dest=CapAppearExStage cur=WaterfallWorldHomeStage -> entry-by-dest ->
@@ -178,3 +181,65 @@ Moon-rock activation no longer triggers: world peace + leaving/returning to prio
 isn't arming the moon rocks (MoonRockHook peace-gate). Flagged by Devon 2026-06-19; parked
 for a dedicated follow-up. Side effect: can't validate the 5.1 dest==cur moon-rock guard
 until this is fixed.
+RESOLVED 2026-06-19 — MoonRockHook was never installed; fixed + confirmed in-game.
+See [[moon-rock-activation-regression]].
+
+================================================================================
+# APPLY-MODE VALIDATION WALK (2026-06-19 10:37-10:57, kEntranceRemapApply=TRUE)
+# THE GATE IS FLIPPED. These are real `[entrance:remap-APPLIED]` lines — Mario
+# physically arrives at the shuffled interior and returns to the correct origin.
+================================================================================
+
+All cases below map vanilla intent (`[entrance:file] stage=`) -> landed
+(`-> stage=` in the APPLIED line). Every one matched the preview baseline AND
+Devon visually confirmed the in-game destination.
+
+## Dinosaur Nest door (forward + exit-by-cur)
+- Enter (-> Cloud's Picture Match / Goomba):
+  file stage='TrexPoppunExStage' -> APPLIED stage='FukuwaraiKuriboStage' id='Fukuwarai'. OK
+- Exit (-> back to Cascade, not Cloud):
+  file stage='CloudWorldHomeStage' cur='FukuwaraiKuriboStage'
+  -> APPLIED stage='WaterfallWorldHomeStage' id='RexPoppunEx'. OK (exit-by-cur rewrote
+  the vanilla Cloud parent back to the Cascade origin.)
+
+## Nice Shots with Chain Chomps pipe (forward + TWO exit pipes) — multi-exit live
+- Enter (-> Metro's Swinging Scaffolding):
+  file stage='WanwanClashExStage' -> APPLIED stage='SwingSteelExStage' id='gragra'. OK
+- Exit via entrance pipe (id='gragra'):
+  file stage='CityWorldHomeStage' cur='SwingSteelExStage'
+  -> APPLIED stage='WaterfallWorldHomeStage' id='WanwanExGoal'. OK
+- Exit via completion pipe (id='gragrareturn'):
+  file stage='CityWorldHomeStage' cur='SwingSteelExStage'
+  -> APPLIED stage='WaterfallWorldHomeStage' id='WanwanExGoal'. OK
+  ** Both exit pipes keyed on cur='SwingSteelExStage' collapsed to the same Cascade
+     origin. The 5.3 multi-exit cur-keying design is CONFIRMED in apply mode. **
+
+## Mysterious Clouds moon-pipe (forward + exit-by-cur)
+- Enter (-> Yoshi in the Sea of Clouds):
+  file stage='CapAppearExStage' -> APPLIED stage='YoshiCloudExStage' id='PeachWorldEx1a'. OK
+- Exit (-> back to Cascade, not Mushroom):
+  file stage='PeachWorldHomeStage' cur='YoshiCloudExStage'
+  -> APPLIED stage='WaterfallWorldHomeStage' id='CapAppearExExit'. OK
+
+## Exclusions held (no APPLIED line, vanilla behavior)
+- Sky Garden Tower (Wooded story area): file Tower001 in / Tower002 out, NO remap. OK
+- Spewart boss arena: zero logging (cutscene-warp, never hits the seam). OK
+
+## Odyssey kingdom flight — NOT entrance shuffle (kingdom-order gate)
+Flew toward Wooded, got BACKSTOP-substituted to Lake:
+  [wmap.tryChange.Demo] BACKSTOP substituting stage='ForestWorldHomeStage' -> 'LakeWorldHomeStage'
+  [entrance:file] stage='LakeWorldHomeStage' id='' cur='WaterfallWorldHomeStage'  (NO remap-APPLIED)
+This is the KingdomOrderGate / WorldMapSelectHook collapsing the Lake-vs-Wooded branch
+into the pinned linear order — a SEPARATE system. Entrance shuffle correctly ignored it
+(overworld home-stage, empty id, not in the remap table). Devon flagged a follow-up: the
+gate exposes destinations (e.g. Metro) as selectable before they should be travel-able;
+only the BACKSTOP enforces the real order. Parked as its own investigation — see memory
+[[kingdom-order-gate-premature-destinations]].
+
+================================================================================
+VERDICT: ENTRANCE SHUFFLE IS LIVE AND VALIDATED END-TO-END. Doors, pipes, moon
+pipes, multi-exit subareas, forward entry-by-dest and exit-by-cur return all
+confirmed in apply mode. Story exclusions and boss/cutscene warps untouched.
+The only open item is the (orthogonal) kingdom-order-gate destination-visibility
+follow-up, and the logic-side Rules.py reachability watch for moon-pipe moons.
+================================================================================
