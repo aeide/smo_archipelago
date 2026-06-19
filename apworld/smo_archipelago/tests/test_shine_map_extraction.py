@@ -17,6 +17,7 @@ from client.maps import CaptureMap, MoonResolution, ShineMap
 DATA_DIR = Path(__file__).resolve().parent.parent / "client" / "data"
 SHINE_MAP_PATH = DATA_DIR / "shine_map.json"
 CAPTURE_MAP_PATH = DATA_DIR / "capture_map.json"
+WORLD_SCENARIOS_PATH = DATA_DIR / "world_scenarios.json"
 
 
 def _entries() -> list[dict]:
@@ -75,6 +76,72 @@ def test_extracted_kingdom_set_known() -> None:
     actual = {e["kingdom"] for e in _entries()}
     extra = actual - known
     assert not extra, f"unexpected kingdoms in extraction: {extra}"
+
+
+# -- scenario-gating fields (docs/scenario-gating-logic-design.md) --
+
+SCENARIO_GATING_KEYS = {
+    "progress_bit_flag", "main_scenario_no", "is_moon_rock", "is_grand",
+}
+
+
+def test_scenario_gating_fields_present_and_typed() -> None:
+    for i, e in enumerate(_entries()):
+        missing = SCENARIO_GATING_KEYS - set(e)
+        assert not missing, f"entry {i} missing gating keys {missing}"
+        assert isinstance(e["progress_bit_flag"], int)
+        assert isinstance(e["main_scenario_no"], int)
+        assert isinstance(e["is_moon_rock"], bool)
+        assert isinstance(e["is_grand"], bool)
+
+
+def test_progress_bit_flag_is_nonzero() -> None:
+    """Every moon is placed in at least one scenario, so the mask is never 0."""
+    zero = [e for e in _entries() if e["progress_bit_flag"] == 0]
+    assert not zero, f"{len(zero)} moons with empty ProgressBitFlag mask"
+
+
+def test_some_story_anchors_present() -> None:
+    """main_scenario_no == -1 for ordinary moons; story/grand moons anchor a
+    scenario. The set must be non-empty (40 in SMO 1.0.0) and a strict subset."""
+    entries = _entries()
+    anchors = [e for e in entries if e["main_scenario_no"] != -1]
+    assert anchors, "no story-anchor moons found (main_scenario_no all -1)"
+    assert len(anchors) < len(entries), "every moon flagged as an anchor (wrong)"
+
+
+# -- world_scenarios.json (per-kingdom scenario semantics) --
+
+WORLD_SCENARIO_KEYS = {
+    "home_stage", "world_name", "scenario_num", "clear_main_scenario",
+    "moon_rock_scenario", "after_ending_scenario",
+}
+
+
+def _world_scenarios() -> dict:
+    if not WORLD_SCENARIOS_PATH.exists():
+        pytest.skip(f"{WORLD_SCENARIOS_PATH} not generated; run scripts/extract_shine_map.py")
+    return json.loads(WORLD_SCENARIOS_PATH.read_text(encoding="utf-8"))
+
+
+def test_world_scenarios_schema_and_kingdoms() -> None:
+    known = {
+        "Cap", "Cascade", "Sand", "Lake", "Wooded", "Cloud", "Lost",
+        "Metro", "Snow", "Seaside", "Luncheon", "Ruined", "Bowser's",
+        "Moon", "Mushroom", "Dark Side", "Darker Side",
+    }
+    ws = _world_scenarios()
+    extra = set(ws) - known
+    assert not extra, f"unexpected kingdoms in world_scenarios: {extra}"
+    # All 17 playable kingdoms should be present.
+    assert known - set(ws) == set(), f"missing kingdoms: {known - set(ws)}"
+    for kingdom, rec in ws.items():
+        missing = WORLD_SCENARIO_KEYS - set(rec)
+        assert not missing, f"{kingdom} missing keys {missing}"
+        assert isinstance(rec["scenario_num"], int) and rec["scenario_num"] > 0
+        for k in ("clear_main_scenario", "moon_rock_scenario",
+                  "after_ending_scenario"):
+            assert isinstance(rec[k], int)
 
 
 # -- capture_map.json --

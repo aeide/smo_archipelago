@@ -8,9 +8,25 @@ Backflip/Long Jump need Crouch, GPJ needs Ground Pound).
 ## Summary
 
 - Moon locations compiled: **489**
-- Free (no requirement): **98**
+- Free (no requirement): **82**
 - Kingdom-gated (Metro/Bowser=Spark pylon, Lake=Zipper/jump): **132**
 - Subarea-gated moons: **28**
+
+## Scenario reachability (coarse post_peace gating)
+
+Each `post_peace` moon (rock, OR earliest scenario >= the kingdom's peace scenario) ANDs in `{<Kingdom>Peace()}`. `mid_story` is collapsed to free this pass (anchor gating is the documented follow-up). Cap/Cloud/Lost/Moon and Cascade non-rock moons get NO new gate by design.
+
+- Total peace-gated moons (rock + scenario): **112**
+  - Bowser's: 14
+  - Cascade: 4
+  - Lake: 9
+  - Luncheon: 10
+  - Metro: 12
+  - Ruined: 4
+  - Sand: 21
+  - Seaside: 10
+  - Snow: 15
+  - Wooded: 13
 
 ## Assumptions to verify ("assume MORE")
 

@@ -393,7 +393,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": ""
+    "requires": "{SandPeace()}"
   },
   {
     "name": "Sand: Where the Birds Gather",
@@ -450,7 +450,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": ""
+    "requires": "{SandPeace()}"
   },
   {
     "name": "Sand: The Lurker Under the Stone",
@@ -459,7 +459,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) and {SandPeace()})"
   },
   {
     "name": "Sand: The Treasure of Jaxi Ruins",
@@ -500,7 +500,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "(((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide|) or (|Progressive Crouch:2| and |Wall Slide|))"
+    "requires": "((((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide|) or (|Progressive Crouch:2| and |Wall Slide|)) and {SandPeace()})"
   },
   {
     "name": "Sand: Sand Kingdom Timer Challenge 2",
@@ -509,7 +509,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {SandPeace()})"
   },
   {
     "name": "Sand: Sand Kingdom Timer Challenge 3",
@@ -518,7 +518,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": ""
+    "requires": "{SandPeace()}"
   },
   {
     "name": "Sand: Found in the Sand! Good Dog!",
@@ -527,7 +527,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) or (|Progressive Crouch:2| and |Progressive Ground Pound:1|))"
+    "requires": "((((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) or (|Progressive Crouch:2| and |Progressive Ground Pound:1|)) and {SandPeace()})"
   },
   {
     "name": "Sand: Taking Notes: Jump on the Palm",
@@ -552,7 +552,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "|Lakitu|"
+    "requires": "(|Lakitu| and {SandPeace()})"
   },
   {
     "name": "Sand: Love in the Heart of the Desert",
@@ -561,7 +561,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "|Goomba|"
+    "requires": "(|Goomba| and {SandPeace()})"
   },
   {
     "name": "Sand: Among the Five Cactuses",
@@ -578,7 +578,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "|Lakitu|"
+    "requires": "(|Lakitu| and {SandPeace()})"
   },
   {
     "name": "Sand: Jaxi Reunion!",
@@ -587,7 +587,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": ""
+    "requires": "{SandPeace()}"
   },
   {
     "name": "Sand: Welcome Back, Jaxi!",
@@ -596,7 +596,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": ""
+    "requires": "{SandPeace()}"
   },
   {
     "name": "Sand: Wandering Cactus",
@@ -683,7 +683,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {SandPeace()})"
   },
   {
     "name": "Sand: Ice Cave Treasure",
@@ -781,7 +781,7 @@
       "Long Course"
     ],
     "region": "Sand Kingdom",
-    "requires": "|Mini Rocket|"
+    "requires": "({SandPeace()} and |Mini Rocket|)"
   },
   {
     "name": "Sand: Above a Strange Neighborhood",
@@ -791,7 +791,7 @@
       "Long Course"
     ],
     "region": "Sand Kingdom",
-    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Mini Rocket|)"
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and {SandPeace()} and |Mini Rocket|)"
   },
   {
     "name": "Sand: Secret Path to Tostarena!",
@@ -877,7 +877,7 @@
       "Lake Peace"
     ],
     "region": "Lake Kingdom",
-    "requires": "(|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|)))"
+    "requires": "((|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
   },
   {
     "name": "Lake: Lake Kingdom Timer Challenge 1",
@@ -886,7 +886,7 @@
       "Lake Peace"
     ],
     "region": "Lake Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
   },
   {
     "name": "Lake: Lake Kingdom Timer Challenge 2",
@@ -895,7 +895,7 @@
       "Lake Peace"
     ],
     "region": "Lake Kingdom",
-    "requires": "((((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|) or (|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|)) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+    "requires": "((((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|) or (|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|)) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
   },
   {
     "name": "Lake: Moon Shards in the Lake",
@@ -928,7 +928,7 @@
       "Lake Peace"
     ],
     "region": "Lake Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Lakitu|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Lakitu|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
   },
   {
     "name": "Lake: I Met a Lake Cheep Cheep!",
@@ -937,7 +937,7 @@
       "Lake Peace"
     ],
     "region": "Lake Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Cheep Cheep|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Cheep Cheep|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
   },
   {
     "name": "Lake: Our Secret Little Room",
@@ -971,7 +971,7 @@
       "Lake Peace"
     ],
     "region": "Lake Kingdom",
-    "requires": "(|Puzzle Part (Lake Kingdom)| and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+    "requires": "(|Puzzle Part (Lake Kingdom)| and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
   },
   {
     "name": "Lake: I Feel Underdressed",
@@ -1036,7 +1036,7 @@
       "Hint Art"
     ],
     "region": "Lake Kingdom",
-    "requires": "(|Progressive Ground Pound:1| and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+    "requires": "(|Progressive Ground Pound:1| and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
   },
   {
     "name": "Wooded: Road to Sky Garden",
@@ -1203,7 +1203,7 @@
       "Wooded Peace"
     ],
     "region": "Wooded Kingdom",
-    "requires": "|Glydon|"
+    "requires": "(|Glydon| and {WoodedPeace()})"
   },
   {
     "name": "Wooded: Love in the Forest Ruins",
@@ -1220,7 +1220,7 @@
       "Wooded Peace"
     ],
     "region": "Wooded Kingdom",
-    "requires": "|Sherm|"
+    "requires": "(|Sherm| and {WoodedPeace()})"
   },
   {
     "name": "Wooded: Shopping in Steam Gardens",
@@ -1260,7 +1260,7 @@
       "Wooded Kingdom"
     ],
     "region": "Wooded Kingdom",
-    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {WoodedPeace()})"
   },
   {
     "name": "Wooded: Rolling Rock in the Deep Woods",
@@ -1350,7 +1350,7 @@
       "Wooded Peace"
     ],
     "region": "Wooded Kingdom",
-    "requires": "|Climb|"
+    "requires": "(|Climb| and {WoodedPeace()})"
   },
   {
     "name": "Wooded: Wooded Kingdom Timer Challenge 2",
@@ -1359,7 +1359,7 @@
       "Wooded Peace"
     ],
     "region": "Wooded Kingdom",
-    "requires": "(((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Down Throw| and |Progressive Ground Pound:2|)"
+    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Down Throw| and |Progressive Ground Pound:2|) and {WoodedPeace()})"
   },
   {
     "name": "Wooded: Flooding Pipeway",
@@ -1440,7 +1440,7 @@
       "Wooded Peace"
     ],
     "region": "Wooded Kingdom",
-    "requires": "|Uproot|"
+    "requires": "(|Uproot| and {WoodedPeace()})"
   },
   {
     "name": "Wooded: Above the Clouds",
@@ -1449,7 +1449,7 @@
       "Wooded Peace"
     ],
     "region": "Wooded Kingdom",
-    "requires": "|Uproot|"
+    "requires": "(|Uproot| and {WoodedPeace()})"
   },
   {
     "name": "Wooded: Secret Path to the Steam Gardens!",
@@ -1803,7 +1803,7 @@
       "Metro Peace"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {MetroPeace()})"
   },
   {
     "name": "Metro: How Do They Take Out the Trash?",
@@ -1820,7 +1820,7 @@
       "Metro Peace"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {MetroPeace()})"
   },
   {
     "name": "Metro: Metro Kingdom Timer Challenge 2",
@@ -1829,7 +1829,7 @@
       "Metro Peace"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {MetroPeace()})"
   },
   {
     "name": "Metro: City Gardening: Building Planter",
@@ -2096,7 +2096,7 @@
       "Tourist"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {MetroPeace()})"
   },
   {
     "name": "Metro: Found with Metro Kingdom Art",
@@ -2202,7 +2202,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": ""
+    "requires": "{SnowPeace()}"
   },
   {
     "name": "Snow: The Shiverian Treasure Chest",
@@ -2230,7 +2230,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": ""
+    "requires": "{SnowPeace()}"
   },
   {
     "name": "Snow: Snow Kingdom Timer Challenge 2",
@@ -2240,7 +2240,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": "|Climb|"
+    "requires": "(|Climb| and {SnowPeace()})"
   },
   {
     "name": "Snow: Moon Shards in the Snow",
@@ -2250,7 +2250,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) or ((|Long Jump| and |Progressive Crouch:1|) and |Up Throw|))"
+    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) or ((|Long Jump| and |Progressive Crouch:1|) and |Up Throw|)) and {SnowPeace()})"
   },
   {
     "name": "Snow: Taking Notes: Snow Path Dash",
@@ -2260,7 +2260,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:3|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:3|) and {SnowPeace()})"
   },
   {
     "name": "Snow: Fishing in the Glacier!",
@@ -2271,7 +2271,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": ""
+    "requires": "{SnowPeace()}"
   },
   {
     "name": "Snow: Ice-Dodging Goomba Stack",
@@ -2300,7 +2300,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {SnowPeace()})"
   },
   {
     "name": "Snow: Shopping in Shiveria",
@@ -2319,7 +2319,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": ""
+    "requires": "{SnowPeace()}"
   },
   {
     "name": "Snow: Snowline Circuit Class S",
@@ -2329,7 +2329,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": "|Shiverian Racer|"
+    "requires": "(|Shiverian Racer| and {SnowPeace()})"
   },
   {
     "name": "Snow: Dashing Over Cold Water!",
@@ -2407,7 +2407,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": ""
+    "requires": "{SnowPeace()}"
   },
   {
     "name": "Snow: High-Altitude Spinning",
@@ -2417,7 +2417,7 @@
       "post-metro"
     ],
     "region": "Snow Kingdom",
-    "requires": ""
+    "requires": "{SnowPeace()}"
   },
   {
     "name": "Snow: Found with Snow Kingdom Art",
@@ -2569,7 +2569,7 @@
       "post-metro"
     ],
     "region": "Seaside Kingdom",
-    "requires": "|Gushen|"
+    "requires": "(|Gushen| and {SeasidePeace()})"
   },
   {
     "name": "Seaside: Under a Dangerous Ceiling",
@@ -2687,7 +2687,7 @@
       "post-metro"
     ],
     "region": "Seaside Kingdom",
-    "requires": ""
+    "requires": "{SeasidePeace()}"
   },
   {
     "name": "Seaside: Found on the Beach! Good Dog!",
@@ -2697,7 +2697,7 @@
       "post-metro"
     ],
     "region": "Seaside Kingdom",
-    "requires": "(|Progressive Ground Pound:1| or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|))"
+    "requires": "((|Progressive Ground Pound:1| or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|)) and {SeasidePeace()})"
   },
   {
     "name": "Seaside: Moon Shards in the Sea",
@@ -2734,7 +2734,7 @@
       "post-metro"
     ],
     "region": "Seaside Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Glydon|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Glydon|) and {SeasidePeace()})"
   },
   {
     "name": "Seaside: Good Job, Captain Toad!",
@@ -2773,7 +2773,7 @@
       "Minigame"
     ],
     "region": "Seaside Kingdom",
-    "requires": ""
+    "requires": "{SeasidePeace()}"
   },
   {
     "name": "Seaside: Beach Volleyball: Hero of the Beach!",
@@ -2784,7 +2784,7 @@
       "Minigame"
     ],
     "region": "Seaside Kingdom",
-    "requires": ""
+    "requires": "{SeasidePeace()}"
   },
   {
     "name": "Seaside: Looking Back in the Dark Waterway",
@@ -3085,7 +3085,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "(|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|)"
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and {LuncheonPeace()})"
   },
   {
     "name": "Luncheon: Beneath the Rolling Vegetables",
@@ -3222,7 +3222,7 @@
       "Luncheon Peace"
     ],
     "region": "Luncheon Kingdom",
-    "requires": ""
+    "requires": "{LuncheonPeace()}"
   },
   {
     "name": "Luncheon: Taking Notes: Big Pot Swim",
@@ -3232,7 +3232,7 @@
       "Luncheon Peace"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "|Lava Bubble|"
+    "requires": "(|Lava Bubble| and {LuncheonPeace()})"
   },
   {
     "name": "Luncheon: Magma Swamp: Floating and Sinking",
@@ -3347,7 +3347,7 @@
       "Tourist"
     ],
     "region": "Luncheon Kingdom",
-    "requires": ""
+    "requires": "{LuncheonPeace()}"
   },
   {
     "name": "Luncheon: Found with Luncheon Kingdom Art",
@@ -3399,7 +3399,7 @@
       "Minigame"
     ],
     "region": "Ruined Kingdom",
-    "requires": "(|Progressive Ground Pound:1| and |Mini Rocket|)"
+    "requires": "(|Progressive Ground Pound:1| and {RuinedPeace()} and |Mini Rocket|)"
   },
   {
     "name": "Ruined: Roulette Tower: Stopped",
@@ -3409,7 +3409,7 @@
       "Minigame"
     ],
     "region": "Ruined Kingdom",
-    "requires": "(|Progressive Ground Pound:1| and |Mini Rocket|)"
+    "requires": "(|Progressive Ground Pound:1| and {RuinedPeace()} and |Mini Rocket|)"
   },
   {
     "name": "Bowser's: Infiltrate Bowser's Castle!",
@@ -3496,7 +3496,7 @@
       "Bowser's Peace"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Above the Poison Swamp",
@@ -3506,7 +3506,7 @@
       "Bowser's Peace"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "((((|Long Jump| and |Progressive Crouch:1|) and |Pokio|) or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:2|)) and |Spark pylon|)"
+    "requires": "((((|Long Jump| and |Progressive Crouch:1|) and |Pokio|) or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:2|)) and |Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Knocking Down the Nice Frame",
@@ -3553,7 +3553,7 @@
       "Bowser's Peace"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Exterminate the Ogres!",
@@ -3571,7 +3571,7 @@
       "Bowser's Kingdom"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Taking Notes: Between Spinies",
@@ -3667,7 +3667,7 @@
       "Bowser's Peace"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Lakitu|) and |Spark pylon|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Lakitu|) and |Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Good to See You, Captain Toad!",
@@ -3695,7 +3695,7 @@
       "Bowser's Peace"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Scene of Crossing the Poison Swamp",
@@ -3723,7 +3723,7 @@
       "Bowser's Peace"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "(|Pokio| and |Spark pylon|)"
+    "requires": "(|Pokio| and |Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Down and Up the Spinning Tower",
@@ -3733,7 +3733,7 @@
       "Bowser's Peace"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "(|Pokio| and |Spark pylon|)"
+    "requires": "(|Pokio| and |Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Jizo's Big Adventure",
@@ -3744,7 +3744,7 @@
       "Precision Capture"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "((((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2| and |Jizo|) or ((|Long Jump| and |Progressive Crouch:1|) and |Wall Slide| and |Jizo|) or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Jizo|)) and |Spark pylon|)"
+    "requires": "((((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2| and |Jizo|) or ((|Long Jump| and |Progressive Crouch:1|) and |Wall Slide| and |Jizo|) or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Jizo|)) and |Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Jizo and the Hidden Room",
@@ -3755,7 +3755,7 @@
       "Precision Capture"
     ],
     "region": "Bowser's Kingdom",
-    "requires": "((((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2| and |Jizo|) or ((|Long Jump| and |Progressive Crouch:1|) and |Wall Slide| and |Jizo|) or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Jizo|)) and |Spark pylon|)"
+    "requires": "((((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2| and |Jizo|) or ((|Long Jump| and |Progressive Crouch:1|) and |Wall Slide| and |Jizo|) or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Jizo|)) and |Spark pylon| and {BowserPeace()})"
   },
   {
     "name": "Bowser's: Dashing Above the Clouds",

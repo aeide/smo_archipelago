@@ -290,6 +290,15 @@ class RawShine:
     is_moon_rock: bool
     is_achievement: bool
     home_stage: str  # the HomeStage whose ShineList contained this entry
+    # --- scenario-gating fields (see docs/scenario-gating-logic-design.md) ---
+    # ProgressBitFlag: bitmask over the kingdom's scenarios; bit S set ==> this
+    #   moon is placed/collectable while the kingdom is in scenario S (0-indexed).
+    # MainScenarioNo: the story scenario this moon ANCHORS (grand/story moons);
+    #   -1 for ordinary moons. NOTE: this is 0-indexed, while the WorldList
+    #   ClearMainScenario/MoonRockScenario numbers appear 1-indexed -- the
+    #   reconciliation is deliberately left to the logic layer, not baked here.
+    progress_bit_flag: int
+    main_scenario_no: int
 
 
 @dataclass
@@ -299,6 +308,10 @@ class ResolvedShine:
     kingdom: str
     shine_id: str
     shine_uid: int
+    progress_bit_flag: int
+    main_scenario_no: int
+    is_moon_rock: bool
+    is_grand: bool
 
 
 @dataclass
@@ -954,7 +967,65 @@ def walk_shine_lists(romfs: Path) -> list[RawShine]:
                 is_moon_rock=bool(s["IsMoonRock"]) if "IsMoonRock" in s else False,
                 is_achievement=bool(s["IsAchievement"]) if "IsAchievement" in s else False,
                 home_stage=home,
+                progress_bit_flag=int(s["ProgressBitFlag"]) if "ProgressBitFlag" in s else 0,
+                main_scenario_no=int(s["MainScenarioNo"]) if "MainScenarioNo" in s else -1,
             ))
+    return out
+
+
+def extract_world_scenarios(romfs: Path) -> dict:
+    """Per-kingdom scenario semantics from SystemData/WorldList.szs.
+
+    Emits, keyed by kingdom display name (resolved via KINGDOM_FOR_HOMESTAGE
+    from each entry's `Name` home stage), the scenario numbers that turn a
+    moon's raw `ProgressBitFlag` / `MainScenarioNo` into AP gates:
+
+      scenario_num         total scenario count for the kingdom
+      clear_main_scenario  WorldPeace  (kingdom story beaten)
+      moon_rock_scenario   MoonRockBroken
+      after_ending_scenario  post-credits free-roam
+
+    These are FUNCTIONAL numbers + functional internal names only (no Nintendo
+    expressive content), but the output co-locates with shine_map.json and is
+    gitignored by location. The 1-indexed convention of these numbers vs. the
+    0-indexed ProgressBitFlag is intentionally preserved raw; reconciliation is
+    the logic layer's job (docs/scenario-gating-logic-design.md).
+    """
+    sarc = oead.Sarc(oead.yaz0.decompress(
+        (romfs / "SystemData" / "WorldList.szs").read_bytes()))
+    files = {f.name: bytes(f.data) for f in sarc.get_files()}
+    if "WorldList.byml" not in files:
+        print("WARN: WorldList.byml not in WorldList.szs", file=sys.stderr)
+        return {}
+    worlds = oead.byml.from_binary(files["WorldList.byml"])
+
+    # WorldList.byml names the Ruined kingdom's home stage
+    # 'BossRaidWorldHomeStage', but ShineInfo + KINGDOM_FOR_HOMESTAGE key it as
+    # 'AttackWorldHomeStage'. Bridge the one disagreement so Ruined isn't dropped.
+    WORLDLIST_NAME_ALIAS = {"BossRaidWorldHomeStage": "AttackWorldHomeStage"}
+
+    out: dict[str, dict] = {}
+    for w in worlds:
+        try:
+            home = str(w["Name"])
+        except KeyError:
+            continue
+        home = WORLDLIST_NAME_ALIAS.get(home, home)
+        kingdom = KINGDOM_FOR_HOMESTAGE.get(home)
+        if kingdom is None:
+            # Home stages outside the playable-kingdom set (Special1/2, etc.)
+            # may not be in the moon map; skip but note them.
+            print(f"WARN: WorldList home '{home}' not in KINGDOM_FOR_HOMESTAGE",
+                  file=sys.stderr)
+            continue
+        out[kingdom] = {
+            "home_stage": home,
+            "world_name": str(w["WorldName"]) if "WorldName" in w else "",
+            "scenario_num": int(w["ScenarioNum"]) if "ScenarioNum" in w else -1,
+            "clear_main_scenario": int(w["ClearMainScenario"]) if "ClearMainScenario" in w else -1,
+            "moon_rock_scenario": int(w["MoonRockScenario"]) if "MoonRockScenario" in w else -1,
+            "after_ending_scenario": int(w["AfterEndingScenario"]) if "AfterEndingScenario" in w else -1,
+        }
     return out
 
 
@@ -1141,6 +1212,9 @@ def extract(romfs: Path) -> tuple[list[ResolvedShine], ReviewReport]:
         resolved.append(ResolvedShine(
             stage_name=r.stage_name, object_id=r.object_id,
             kingdom=kingdom, shine_id=text, shine_uid=r.unique_id,
+            progress_bit_flag=r.progress_bit_flag,
+            main_scenario_no=r.main_scenario_no,
+            is_moon_rock=r.is_moon_rock, is_grand=r.is_grand,
         ))
 
     review.unmatched_apworld = sorted(apworld_names - seen_names)
@@ -1161,7 +1235,10 @@ def write_outputs(resolved: list[ResolvedShine], review: ReviewReport,
                   out: Path, review_path: Path) -> None:
     out_data = [
         {"stage_name": r.stage_name, "object_id": r.object_id,
-         "kingdom": r.kingdom, "shine_id": r.shine_id, "shine_uid": r.shine_uid}
+         "kingdom": r.kingdom, "shine_id": r.shine_id, "shine_uid": r.shine_uid,
+         "progress_bit_flag": r.progress_bit_flag,
+         "main_scenario_no": r.main_scenario_no,
+         "is_moon_rock": r.is_moon_rock, "is_grand": r.is_grand}
         for r in resolved
     ]
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -1208,6 +1285,9 @@ def main(argv: list[str] | None = None) -> int:
                     help=f"output shine_map.json (default: {DEFAULT_OUT})")
     ap.add_argument("--review", type=Path, default=DEFAULT_REVIEW,
                     help=f"output mismatch report (default: {DEFAULT_REVIEW})")
+    ap.add_argument("--world-out", type=Path, default=None,
+                    help="output world_scenarios.json (per-kingdom scenario "
+                         "numbers); default: alongside --out")
     ap.add_argument("--cap-out", type=Path, default=DEFAULT_CAP_OUT,
                     help=f"output capture_map.json (default: {DEFAULT_CAP_OUT})")
     ap.add_argument("--cap-review", type=Path, default=DEFAULT_CAP_REVIEW,
@@ -1285,6 +1365,21 @@ def main(argv: list[str] | None = None) -> int:
         )
     write_outputs(resolved, review, args.out, args.review)
 
+    # Per-kingdom scenario semantics (WorldList) -> world_scenarios.json,
+    # alongside shine_map.json unless --world-out overrides.
+    world_out = args.world_out if args.world_out is not None \
+        else args.out.parent / "world_scenarios.json"
+    try:
+        world_scen = extract_world_scenarios(romfs)
+    except Exception as e:
+        return _fail(
+            f"failed to parse WorldList ({type(e).__name__}: {e}).\n"
+            "  Re-dump SMO 1.0.0 from a clean retail source and rerun."
+        )
+    world_out.parent.mkdir(parents=True, exist_ok=True)
+    world_out.write_text(json.dumps(world_scen, indent=2, ensure_ascii=False) + "\n",
+                         encoding="utf-8")
+
     s = review.stats
     print(f"== moons ==")
     print(f"raw shines:           {s['raw_shines']}")
@@ -1296,6 +1391,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  name mismatches:    {s['name_mismatches']} (out-of-apworld-scope; still emitted)")
     print(f"  apworld unhit:      {s['apworld_unhit']}")
     print(f"review report:        {args.review}")
+    print(f"world scenarios:      {len(world_scen)} kingdoms -> {world_out}")
 
     try:
         cap_entries, cap_review = extract_captures(romfs)

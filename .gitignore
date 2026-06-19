@@ -44,6 +44,11 @@ apworld/smo_archipelago/client/data/shine_map.json
 apworld/smo_archipelago/client/data/shine_map_review.json
 apworld/smo_archipelago/client/data/capture_map.json
 apworld/smo_archipelago/client/data/capture_map_review.json
+# world_scenarios.json is functional (kingdom internal names + scenario
+# numbers) and could be committed for Rules.py to consume at gen time, but
+# it's a generated artifact — keep it ignored until that placement decision
+# is made (see docs/scenario-gating-logic-design.md §6).
+apworld/smo_archipelago/client/data/world_scenarios.json
 
 # Live-AP loopback test artifacts (generated seeds; regenerated on demand
 # by apworld/smo_archipelago/tests/test_ap_loopback.py).

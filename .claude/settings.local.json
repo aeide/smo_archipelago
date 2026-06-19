@@ -170,7 +170,19 @@
       "PowerShell(python scripts/install_apworld.py)",
       "PowerShell(python vendor/Archipelago/Generate.py 2>&1)",
       "PowerShell(python E:\\\\smo_archipelago\\\\scripts\\\\_probe_nested_collision.py)",
-      "PowerShell(cd E:\\\\smo_archipelago; git log --oneline --all -S \"installMoonRockHook\\(\\)\" ; Write-Output \"=== grep all tracked files for caller ===\"; git grep -n \"installMoonRockHook\" $\\(git rev-list --all\\) -- 2>$null | Select-Object -First 20)"
+      "PowerShell(cd E:\\\\smo_archipelago; git log --oneline --all -S \"installMoonRockHook\\(\\)\" ; Write-Output \"=== grep all tracked files for caller ===\"; git grep -n \"installMoonRockHook\" $\\(git rev-list --all\\) -- 2>$null | Select-Object -First 20)",
+      "PowerShell(git -C E:\\\\smo_archipelago status)",
+      "PowerShell(git -C E:\\\\smo_archipelago log --oneline -8)",
+      "PowerShell(git -C E:\\\\smo_archipelago diff switch-mod/src/hooks/EntranceShuffleHook.cpp)",
+      "PowerShell(git -C E:\\\\smo_archipelago diff .claude/settings.local.json)",
+      "PowerShell(git -C E:\\\\smo_archipelago diff --submodule=log switch-mod/sys)",
+      "PowerShell(git -C E:\\\\smo_archipelago add CLAUDE.md docs/devon-p7-entrance-testing-results.md docs/p7-entrance-shuffle-spike.md switch-mod/src/hooks/EntranceShuffleHook.cpp)",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" -u \"E:\\\\smo_archipelago\\\\scripts\\\\_probe_shine_scenario.py\")",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" -u \"E:\\\\smo_archipelago\\\\scripts\\\\_probe_scenario_meaning.py\")",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" -u \"E:\\\\smo_archipelago\\\\scripts\\\\_probe_bitflag_decode.py\")",
+      "PowerShell($py = \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\"; if \\(Test-Path $py\\) { & $py \"E:\\\\smo_archipelago\\\\scripts\\\\_probe_scenario_meaning.py\" 2>&1 | Select-Object -First 60 } else { \"venv python not found at $py\" })",
+      "PowerShell(\"cleaned\")",
+      "PowerShell(python E:\\\\smo_archipelago\\\\scripts\\\\_probe_scenario_gate.py)"
     ]
   }
 }
