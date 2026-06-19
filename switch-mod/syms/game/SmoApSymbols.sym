@@ -266,6 +266,30 @@ _ZNK18PlayerStateHipDrop18isEnableLandCancelEv
 _ZNK11PlayerConst16getTurnJumpPowerEv
 _ZNK11PlayerConst15getTurnJumpVelHEv
 _ZNK11PlayerConst18getTurnJumpGravityEv
+// P7 — entrance shuffle (EntranceShuffleHook). GameDataFunction::tryChangeNextStage
+// (GameDataHolderWriter, const ChangeStageInfo*) — the chokepoint all door / pipe /
+// painting / area subarea transitions funnel through (findAreaAndChangeNextStage and
+// direct door triggers call it; the With{Race,DemoWorldWarp,WorldWarpHole,Closet,
+// TimeBalloon} variants are special-case paths, and returnPrevStage is a separate exit
+// path verified via OdysseyDecomp 2026-06-18). Phase 1 = pure logger; Phase 2 rewrites
+// the ChangeStageInfo target. Itanium mangling derived from the same GameDataHolderWriter
+// pattern as tryChangeNextStageWithDemoWorldWarp above: "tryChangeNextStage"=18,
+// "ChangeStageInfo"=15 → PK15ChangeStageInfo. VERIFY before shipping (missing symbol
+// aborts module init at sail loadSymbols): llvm-nm --dynamic main.nso | grep tryChangeNextStageE
+_ZN16GameDataFunction18tryChangeNextStageE20GameDataHolderWriterPK15ChangeStageInfo
+
+// P7 — entrance shuffle, DEEPER chokepoint (Step 3.5, 2026-06-18). The logger
+// walk proved tryChangeNextStage above misses direct-actor entries (Push-Block
+// Peril ENTRY, Dinosaur Nest, Top-Hat Tower fired NO entrance line — only the
+// PushBlockExStage EXIT pipe did). All forward transitions converge at
+// GameDataFile::changeNextStage(const ChangeStageInfo*, s32 raceType) via
+// GameDataHolder::changeNextStage -> mPlayingFile->changeNextStage (OdysseyDecomp
+// src/System/GameDataHolder.cpp). returnPrevStage is the separate exit path.
+// Both HIT [rodata] in main.nso (check_nso_symbols.py 2026-06-18). The trailing
+// `i` on changeNextStage is the s32 raceType; the no-`i` form is a substring only.
+_ZN12GameDataFile15changeNextStageEPK15ChangeStageInfoi
+_ZN12GameDataFile15returnPrevStageEv
+
 // Cap Bounce (cap vault) — bouncing off held Cappy is delivered by the cap's
 // touch-jump sensor message. v2 hooked rs::sendMsgPlayerCapTrample (the cap-TRAMPLE
 // reaction — the cap wobbling to being stepped on); that logged but did NOT stop

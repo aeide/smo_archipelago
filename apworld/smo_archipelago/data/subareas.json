@@ -159,14 +159,21 @@
       "Sand: Ice Cave Treasure"
     ]
   },
-  "Sphynx Treasure Vault": {
+  "Sphynx Treasure Vault (Sand)": {
     "kingdom": "Sand Kingdom",
     "csv_names": [
-      "Sphynx Treasure Vault: Sphynx's Treasure Vault",
+      "Sphynx Treasure Vault: Sphynx's Treasure Vault"
+    ],
+    "location_names": [
+      "Sand: Sphynx's Treasure Vault"
+    ]
+  },
+  "Sphynx Treasure Vault (Seaside)": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
       "Sphynx Treasure Vault: The Sphynx's Underwater Vault"
     ],
     "location_names": [
-      "Sand: Sphynx's Treasure Vault",
       "Seaside: The Sphynx's Underwater Vault"
     ]
   },
@@ -179,16 +186,30 @@
       "Sand: A Rumble from the Sandy Floor"
     ]
   },
-  "Costume Room": {
+  "Costume Room (Sand)": {
     "kingdom": "Sand Kingdom",
     "csv_names": [
-      "Costume Room: Dancing with New Friends",
-      "Costume Room: Exploring for Treasure",
+      "Costume Room: Dancing with New Friends"
+    ],
+    "location_names": [
+      "Sand: Dancing with New Friends"
+    ]
+  },
+  "Costume Room (Wooded)": {
+    "kingdom": "Wooded Kingdom",
+    "csv_names": [
+      "Costume Room: Exploring for Treasure"
+    ],
+    "location_names": [
+      "Wooded: Exploring for Treasure"
+    ]
+  },
+  "Costume Room (Seaside)": {
+    "kingdom": "Seaside Kingdom",
+    "csv_names": [
       "Costume Room: A Relaxing Dance"
     ],
     "location_names": [
-      "Sand: Dancing with New Friends",
-      "Wooded: Exploring for Treasure",
       "Seaside: A Relaxing Dance"
     ]
   },
@@ -784,7 +805,7 @@
     ]
   },
   "Shiveria Town": {
-    "kingdom": "Seaside Kingdom",
+    "kingdom": "Snow Kingdom",
     "csv_names": [
       "Shiveria Town: The Icicle Barrier",
       "Shiveria Town: The Ice Wall Barrier",
@@ -810,7 +831,7 @@
     ]
   },
   "Class A Race": {
-    "kingdom": "Seaside Kingdom",
+    "kingdom": "Snow Kingdom",
     "csv_names": [
       "Class A Race: The Bound Bowl Grand Prix"
     ],

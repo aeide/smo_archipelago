@@ -1,0 +1,534 @@
+"""
+entrance_logic.py — P7 entrance shuffle helpers.
+
+Provides gate constants and compile helpers for the entrance shuffle option.
+Imported by hooks/World.py; has no AP imports so it's usable by the test suite
+directly.
+
+Design notes
+------------
+* SUBAREA_ENTRANCE_GATES / KINGDOM_ENTRANCE_GATES mirror
+  compile_moon_logic.SUBAREA_GATES / KINGDOM_GATES — they describe item
+  requirements for the DOOR to a subarea, not its interior.
+* compile_interior_requires(record) mirrors compile_moon() from
+  compile_moon_logic.py, producing a requires string with NO gates — only the
+  move-set methods.  Gates go on the Entrance access-rule lambda.
+* evaluate_interior_requires() is a simplified requires-string evaluator for
+  |item:count| tokens and AND/OR/parens.  Interior-only requires strings never
+  contain {FunctionName()} calls (added by gates_for() in the compile script,
+  not by compile_moon()), so the simplified evaluator suffices.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from BaseClasses import CollectionState, MultiWorld
+    from worlds.AutoWorld import World
+
+_DATA_DIR = Path(__file__).parent / "data"
+
+# ---------------------------------------------------------------------------
+# Boolean expression helpers (defined first — used by gate constants below)
+# ---------------------------------------------------------------------------
+
+def _and_join(parts: list[str]) -> str:
+    parts = [p for p in parts if p]
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    return "(" + " and ".join(parts) + ")"
+
+
+def _or_join(parts: list[str]) -> str:
+    parts = [p for p in parts if p]
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    return "(" + " or ".join(parts) + ")"
+
+
+# ---------------------------------------------------------------------------
+# Item fragment tables (mirror compile_moon_logic.py)
+# ---------------------------------------------------------------------------
+
+JUMP_FRAG: dict[str, str] = {
+    "PJ1":        "|Progressive Jump:1|",
+    "PJ2":        "|Progressive Jump:2|",
+    "CAP_BOUNCE": "|Cap Bounce|",
+    "BACKFLIP":   "(|Backflip| and |Progressive Crouch:1|)",
+    "SIDE_FLIP":  "|Side Flip|",
+    "GPJ":        "(|Ground Pound Jump| and |Progressive Ground Pound:1|)",
+    "LONG_JUMP":  "(|Long Jump| and |Progressive Crouch:1|)",
+}
+
+HEIGHT_SATISFIERS: dict[str, list[str]] = {
+    "double":     ["PJ1", "CAP_BOUNCE", "BACKFLIP", "SIDE_FLIP", "GPJ", "PJ2"],
+    "cap_return": ["CAP_BOUNCE", "BACKFLIP", "SIDE_FLIP", "GPJ", "PJ2"],
+    "backflip":   ["CAP_BOUNCE", "BACKFLIP", "SIDE_FLIP", "GPJ", "PJ2"],
+    "gpj":        ["GPJ", "PJ2"],
+    "triple":     ["PJ2"],
+}
+
+THROW_FRAG: dict[str, str] = {
+    "up": "|Up Throw|", "down": "|Down Throw|", "spin": "|Spin Throw|",
+}
+
+OTHER_FRAG: dict[str, str | None] = {
+    "ground_pound": "|Progressive Ground Pound:1|",
+    "dive":         "|Progressive Ground Pound:2|",
+    "crouch":       "|Progressive Crouch:1|",
+    "roll":         "|Progressive Crouch:2|",
+    "roll_boost":   "|Progressive Crouch:3|",
+    "wall_slide":   "|Wall Slide|",
+    "climb":        "|Climb|",
+    "cap_bounce":   "|Cap Bounce|",
+    "bonk_roll":    "|Progressive Crouch:2|",
+    "single":       None,
+}
+
+FREE_CAPTURES = frozenset({"Frog", "Chain Chomp"})
+
+# ---------------------------------------------------------------------------
+# Gate constants (depend on helpers — defined after them)
+# ---------------------------------------------------------------------------
+
+_HIGH_JUMP = _or_join([
+    JUMP_FRAG["BACKFLIP"], JUMP_FRAG["SIDE_FLIP"],
+    JUMP_FRAG["PJ2"], JUMP_FRAG["GPJ"],
+])
+
+_LAKE_GATE = _or_join([
+    "|Zipper|",
+    _and_join([_HIGH_JUMP, "|Cap Bounce|",
+               _or_join(["|Progressive Ground Pound:2|", "|Wall Slide|"])]),
+])
+
+_NARROW_VALLEY_GATE = _or_join([
+    "|Gushen|",
+    _and_join([JUMP_FRAG["PJ2"], "|Wall Slide|", "|Cap Bounce|"]),
+])
+
+# Kingdom prefix → entry-gate requires string (overworld traversal prereq).
+# Matches compile_moon_logic.KINGDOM_GATES.  Lake is included here by name.
+KINGDOM_ENTRANCE_GATES: dict[str, str] = {
+    "Metro":    "|Spark pylon|",
+    "Bowser's": "|Spark pylon|",
+    "Lake":     _LAKE_GATE,
+}
+
+# Subarea name → entry-gate requires string.
+# Mirrors compile_moon_logic.SUBAREA_GATES.  Sewers is included (it's excluded
+# from the pool via entrance_exclusions.json, but listed here for completeness).
+SUBAREA_ENTRANCE_GATES: dict[str, str] = {
+    "Unzipping the Chasm":              "|Zipper|",
+    "Sewers":                           "|Manhole|",
+    "Rotating Maze Shards":             "|Manhole|",
+    "Swinging Along the High-Rises":    "|Mini Rocket|",
+    "A Sea of Clouds":                  "|Mini Rocket|",
+    "Strange Neighborhood":             "|Mini Rocket|",
+    "Shards in the Fog":                "|Mini Rocket|",
+    "Picture Match (Mario)":            "|Mini Rocket|",
+    "Roulette Tower":                   "|Mini Rocket|",
+    "Shards Under Siege":               "|Taxi|",
+    "Flying Through the Narrow Valley": _NARROW_VALLEY_GATE,
+    "Fork-Flickin to the Summit":       "|Lava Bubble|",
+    "Shards in the Cheese Rocks":       "|Hammer Bro|",
+    "Spinning Athletics":               "|Lava Bubble|",
+}
+
+# Kingdom prefix → peace-function name (from hooks/Rules.py).
+# Cap, Cloud, Lost omitted — their peace = kingdom reachability; no extra gate.
+MOON_PIPE_PEACE_FUNCS: dict[str, str] = {
+    "Cascade":  "CascadePeace",
+    "Sand":     "SandPeace",
+    "Lake":     "LakePeace",
+    "Wooded":   "WoodedPeace",
+    "Metro":    "MetroPeace",
+    "Snow":     "SnowPeace",
+    "Seaside":  "SeasidePeace",
+    "Luncheon": "LuncheonPeace",
+    "Ruined":   "RuinedPeace",
+    "Bowser's": "BowserPeace",
+}
+
+
+def get_kingdom_entrance_gate(kingdom_prefix: str) -> str:
+    """Return the kingdom entrance gate requires string, or '' if none."""
+    return KINGDOM_ENTRANCE_GATES.get(kingdom_prefix, "")
+
+
+def kingdom_prefix_from_name(kingdom_name: str) -> str:
+    """Convert a full kingdom name to the prefix used in KINGDOM_ENTRANCE_GATES."""
+    if kingdom_name == "Bowser's Kingdom":
+        return "Bowser's"
+    # Night Metro counts as Metro for gate purposes.
+    if kingdom_name == "Night Metro":
+        return "Metro"
+    return kingdom_name.removesuffix(" Kingdom").strip()
+
+
+# ---------------------------------------------------------------------------
+# Interior-only requires compiler (mirrors compile_moon() from
+# compile_moon_logic.py, WITHOUT the gates_for() additions)
+# ---------------------------------------------------------------------------
+
+def _capture_term(groups: list[list[str]]) -> str | None:
+    if not groups:
+        return None
+    or_parts: list[str] = []
+    for g in groups:
+        items = [c for c in g if c not in FREE_CAPTURES]
+        if not items:
+            return None  # whole group is free
+        or_parts.append(_and_join([f"|{c}|" for c in items]))
+    return _or_join(or_parts)
+
+
+def _compile_method(m: dict, groups: list[list[str]]) -> str:
+    terms: list[str] = []
+    jh = m.get("jump_height")
+    if jh == "long_jump":
+        terms.append(JUMP_FRAG["LONG_JUMP"])
+    elif jh in HEIGHT_SATISFIERS:
+        terms.append(_or_join([JUMP_FRAG[k] for k in HEIGHT_SATISFIERS[jh]]))
+    throws = m.get("cap_throws", [])
+    if throws and not ({"neutral", "none"} & set(throws)):
+        terms.append(_or_join([THROW_FRAG[t] for t in throws if t in THROW_FRAG]))
+    for o in m.get("other_required", []):
+        if o == "capture":
+            ct = _capture_term(groups)
+            if ct is not None:
+                terms.append(ct)
+        else:
+            frag = OTHER_FRAG.get(o)
+            if frag is not None:
+                terms.append(frag)
+    return _and_join(terms)
+
+
+def compile_interior_requires(record: dict) -> str:
+    """Compile a moon record to its interior-only requires string (no gates).
+
+    Mirrors compile_moon_logic.compile_moon() exactly; returns only the
+    move-set requirement without any kingdom gate, subarea gate, or peace gate.
+    """
+    methods = [v for v in record["methods"].values() if v is not None]
+    groups = record["capture_groups"]
+    method_exprs: list[str] = []
+    for m in methods:
+        e = _compile_method(m, groups)
+        if e not in method_exprs:
+            method_exprs.append(e)
+    if any(e == "" for e in method_exprs):
+        return ""  # at least one fully-baseline method → free
+    return _or_join(method_exprs)
+
+
+def load_data_json(filename: str) -> dict:
+    """Load data/<filename> as JSON, zip-safe (bundled .apworld OR loose source).
+
+    pathlib cannot traverse into an .apworld zip — the inner path
+    (``…/meatballs.apworld/meatballs/data/<file>``) looks like a real FS path and
+    raises FileNotFoundError. So generation-time data loads must go through
+    importlib.resources. Falls back to the source-tree filesystem for the test
+    suite (where ``__package__`` may be empty). Mirrors load_entrance_stages but
+    re-raises FileNotFoundError so a genuinely-missing required file is loud.
+    """
+    try:
+        from importlib.resources import files
+        text = (
+            files(__package__).joinpath("data", filename).read_text(encoding="utf-8")
+        )
+        return json.loads(text)
+    except FileNotFoundError:
+        raise
+    except Exception:
+        pass
+    return json.loads((_DATA_DIR / filename).read_text(encoding="utf-8"))
+
+
+def build_interior_requires_map(
+    location_table: list[dict],
+    requirements_path: Path | None = None,
+) -> dict[str, str]:
+    """Build {location_name: interior_req_str} for every location that has a
+    record in moon_requirements.json.  Locations absent from requirements get
+    "" (free).
+    """
+    try:
+        if requirements_path is not None:
+            requirements: dict = json.loads(
+                requirements_path.read_text(encoding="utf-8"))
+        else:
+            requirements = load_data_json("moon_requirements.json")
+    except FileNotFoundError:
+        return {}
+
+    loc_to_record: dict[str, dict] = {}
+    for rec in requirements.values():
+        ln = rec.get("location_name")
+        if ln:
+            loc_to_record[ln] = rec
+
+    result: dict[str, str] = {}
+    for loc in location_table:
+        name = loc["name"]
+        rec = loc_to_record.get(name)
+        result[name] = compile_interior_requires(rec) if rec is not None else ""
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Pool helpers
+# ---------------------------------------------------------------------------
+
+def build_entrance_pool(
+    subareas: dict,
+    exclusions: dict,
+) -> list[str]:
+    """Return the sorted list of in-pool subarea names (all subareas - excluded).
+
+    `subareas`    — parsed subareas.json (keys = subarea names).
+    `exclusions`  — parsed entrance_exclusions.json (nested kingdom→{name→...}).
+    """
+    excluded: set[str] = set()
+    for kingdom_exc in exclusions.values():
+        for name in kingdom_exc:
+            excluded.add(name)
+    return sorted(name for name in subareas if name not in excluded)
+
+
+# ---------------------------------------------------------------------------
+# P7 Step 4 — stage-level remap resolution (apworld -> Switch)
+# ---------------------------------------------------------------------------
+# The Switch hook (EntranceShuffleHook) operates on raw SMO stage names, not AP
+# subarea display names. The bridge therefore resolves the slot_data bijection
+# {door_subarea: interior_subarea} into stage-level quads via
+# data/entrance_stages.json before shipping them in EntranceMapMsg. Keeping the
+# resolution here (a pure dict transform, no AP imports) lets switch_server call
+# it and lets the test suite exercise it directly.
+
+def load_entrance_stages() -> dict:
+    """Load data/entrance_stages.json, zip-safe (bundled apworld OR loose source).
+
+    Tries importlib.resources against this module's own package first (works
+    inside the .apworld zip where Path() can't reach virtual entries), then
+    falls back to the filesystem for dev / test runs from the source tree.
+    Returns {} if the table is unavailable.
+    """
+    try:
+        from importlib.resources import files
+        text = (
+            files(__package__).joinpath("data", "entrance_stages.json")
+            .read_text(encoding="utf-8")
+        )
+        return json.loads(text)
+    except Exception:
+        pass
+    try:
+        return json.loads(
+            (_DATA_DIR / "entrance_stages.json").read_text(encoding="utf-8")
+        )
+    except FileNotFoundError:
+        return {}
+
+
+def compile_stage_remaps(
+    bijection: dict[str, str],
+    entrance_stages: dict,
+) -> list[dict]:
+    """Resolve a {door_subarea: interior_subarea} bijection into Switch-bound
+    stage-level remap rows, BOTH directions.
+
+    For a coupled bijection the return target is a pure function of the
+    permutation, so exits are precomputed here exactly like entries — no
+    runtime origin tracking on the Switch (see docs/p7-step4-return-design.md).
+    Each shuffled pair (door D, interior I = σ(D)) emits TWO rows, tagged with
+    a `kind` discriminator so the Switch knows which key to match on:
+
+        # ENTRY — fires when you walk through the door that vanilla leads to D;
+        #         matched against the inbound dest stage (D.stage is unique).
+        {"kind": "entry", "from": D.stage,
+         "to_stage": I.stage,            "to_id": I.primary_entry.entry_id}
+
+        # EXIT  — fires when you LEAVE interior I; matched against the CURRENT
+        #         stage (I.stage), NOT the dest, because the vanilla exit dest
+        #         is the shared kingdom overworld and can't disambiguate which
+        #         interior you're in. Rewrites to door D's exterior coordinate.
+        {"kind": "exit",  "from": I.stage,
+         "to_stage": D.primary_exit.dest, "to_id": D.primary_exit.entry_id}
+
+    Identity pairs (σ(D) == D) are skipped — both rows would rewrite a vanilla
+    transition to itself. `entrance_stages` is parsed data/entrance_stages.json,
+    keyed by subarea display name. A pair is skipped (stays vanilla) when either
+    subarea is missing from the table, or the needed primary_entry / primary_exit
+    fields are absent; the entry row can land even if the exit row can't (a
+    missing primary_exit drops only the exit half). Callers can diff the
+    entry-row count against the non-identity pair count to surface drift.
+    """
+    rows: list[dict] = []
+    for door, interior in bijection.items():
+        if door == interior:
+            continue  # identity — both rows would be vanilla no-ops
+        door_rec = entrance_stages.get(door)
+        int_rec = entrance_stages.get(interior)
+        if not door_rec or not int_rec:
+            continue
+        door_stage = door_rec.get("stage")
+        int_stage = int_rec.get("stage")
+        primary_entry = int_rec.get("primary_entry") or {}
+        entry_id = primary_entry.get("entry_id")
+        # ENTRY row — needs the door's stage (match key) + the interior's stage
+        # and arrival id (rewrite target).
+        if door_stage and int_stage and entry_id:
+            rows.append({"kind": "entry", "from": door_stage,
+                         "to_stage": int_stage, "to_id": entry_id})
+        # EXIT row — keyed on the interior's stage (cur at exit time); rewrites
+        # to the ORIGIN door's exterior. Independent of the entry row landing.
+        door_exit = door_rec.get("primary_exit") or {}
+        exit_dest = door_exit.get("dest")
+        exit_id = door_exit.get("entry_id")
+        if int_stage and exit_dest and exit_id:
+            rows.append({"kind": "exit", "from": int_stage,
+                         "to_stage": exit_dest, "to_id": exit_id})
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Moon-pipe detection
+# ---------------------------------------------------------------------------
+
+def build_moonpipe_subarea_set(
+    subareas: dict,
+    location_table: list[dict],
+) -> frozenset[str]:
+    """Return the set of subarea names where ALL locations are Moon Rock checks.
+
+    A Moon Rock location has "Moon Rock" in its category list.
+    """
+    moon_rock_names: frozenset[str] = frozenset(
+        loc["name"]
+        for loc in location_table
+        if "Moon Rock" in loc.get("category", [])
+    )
+    result: set[str] = set()
+    for sub_name, info in subareas.items():
+        locs = info.get("location_names", [])
+        if locs and all(ln in moon_rock_names for ln in locs):
+            result.add(sub_name)
+    return frozenset(result)
+
+
+# ---------------------------------------------------------------------------
+# Interior requires evaluator
+# ---------------------------------------------------------------------------
+# Interior-only requires strings contain only |item:count| tokens and boolean
+# operators (AND/OR/parens).  No {FunctionName()} calls needed.
+
+_ITEM_RE = re.compile(r'\|([^|]+)\|')
+
+
+def evaluate_interior_requires(
+    state: "CollectionState",
+    req_str: str,
+    world: "World",
+    player: int,
+) -> bool:
+    """Evaluate a move-set requires string against the current collection state.
+
+    Handles |item:count| and boolean AND/OR/parens.  Does NOT handle
+    {FunctionName()} — interior-only strings never contain those.
+    """
+    from .Rules import infix_to_postfix, evaluate_postfix  # module-level fns
+
+    if not req_str:
+        return True
+
+    result = req_str
+    # Replace each |item:count| token with 1/0 based on collection state.
+    # Iterate over all non-overlapping matches and replace left-to-right.
+    offset = 0
+    tokens = list(_ITEM_RE.finditer(req_str))
+    parts: list[str] = []
+    prev_end = 0
+    for m in tokens:
+        parts.append(result[prev_end:m.start()])
+        item_str = m.group(1)
+        segments = item_str.split(":")
+        item_name = segments[0].strip()
+        count = int(segments[1].strip()) if len(segments) > 1 else 1
+        has = state.count(item_name, player) >= count
+        parts.append("1" if has else "0")
+        prev_end = m.end()
+    parts.append(result[prev_end:])
+    result = "".join(parts)
+
+    result = re.sub(r'\s+and\s+', '&', result, flags=re.IGNORECASE)
+    result = re.sub(r'\s+or\s+', '|', result, flags=re.IGNORECASE)
+    result = result.strip()
+    if not result:
+        return True
+    try:
+        postfix = infix_to_postfix(result, "entrance_logic")
+        return evaluate_postfix(postfix, "entrance_logic")
+    except Exception:
+        return True  # fail-open on malformed string
+
+
+# ---------------------------------------------------------------------------
+# Door access rule factory
+# ---------------------------------------------------------------------------
+
+def make_door_access_rule(
+    door_subarea: str,
+    door_kingdom_name: str,
+    is_moon_pipe: bool,
+    world: "World",
+    multiworld: "MultiWorld",
+    player: int,
+) -> "Callable[[CollectionState], bool]":
+    """Return a lambda(state) -> bool for a door's entrance access rule.
+
+    Combines kingdom gate + subarea entrance gate + (if moon-pipe) peace gate.
+    All checks are evaluated lazily at fill/play time; no AP state is read here.
+    """
+    from .hooks import Rules as HookRules  # lazy to avoid circular at import
+
+    checks: list[Callable] = []
+
+    # Kingdom gate
+    door_prefix = kingdom_prefix_from_name(door_kingdom_name)
+    kg = get_kingdom_entrance_gate(door_prefix)
+    if kg:
+        checks.append(lambda state, r=kg, w=world, p=player:
+                       evaluate_interior_requires(state, r, w, p))
+
+    # Subarea entrance gate
+    sg = SUBAREA_ENTRANCE_GATES.get(door_subarea, "")
+    if sg:
+        checks.append(lambda state, r=sg, w=world, p=player:
+                       evaluate_interior_requires(state, r, w, p))
+
+    # Peace gate (moon-pipe door)
+    if is_moon_pipe:
+        peace_fn_name = MOON_PIPE_PEACE_FUNCS.get(door_prefix, "")
+        if peace_fn_name:
+            peace_fn = getattr(HookRules, peace_fn_name, None)
+            if callable(peace_fn):
+                checks.append(lambda state, f=peace_fn, w=world, mw=multiworld, p=player:
+                               f(w, mw, state, p))
+
+    if not checks:
+        return lambda state: True
+
+    def combined(state: "CollectionState", _checks: list = checks) -> bool:
+        return all(c(state) for c in _checks)
+
+    return combined

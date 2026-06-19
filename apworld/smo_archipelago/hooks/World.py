@@ -1,6 +1,6 @@
 # Object classes from AP core, to represent an entire MultiWorld and this individual World that's part of it
 from worlds.AutoWorld import World
-from BaseClasses import ItemClassification, MultiWorld
+from BaseClasses import ItemClassification, MultiWorld, Region, Entrance
 
 # Item/Location subclasses extending AP core, used during generation
 from ..Items import SMOItem
@@ -15,6 +15,8 @@ from ..Helpers import is_location_enabled, is_option_enabled, get_option_value
 
 # calling logging.info("message") anywhere below in this file will output the message to both console and log file
 import logging
+import json
+from pathlib import Path
 
 
 # Thresholds from KingdomMoons(K, N) clauses in data/regions.json. These are
@@ -94,9 +96,69 @@ FESTIVAL_ITEMS_TO_DROP = frozenset({
 
 
 
+def _load_entrance_data() -> tuple[dict, dict]:
+    """Load and return (subareas, exclusions) dicts from data/ (zip-safe).
+
+    Goes through entrance_logic.load_data_json so it works inside the bundled
+    .apworld zip — pathlib can't traverse into the zip (see load_data_json).
+    """
+    from ..entrance_logic import load_data_json
+    subareas = load_data_json("subareas.json")
+    exclusions = load_data_json("entrance_exclusions.json")
+    return subareas, exclusions
+
+
+def _roll_entrance_bijection(
+    world: World,
+    pool: list[str],
+) -> dict[str, str]:
+    """Roll a random bijection (door_subarea → interior_subarea) over pool."""
+    shuffled = list(pool)
+    world.random.shuffle(shuffled)
+    return {door: interior for door, interior in zip(pool, shuffled)}
+
+
 # Called before regions and locations are created. Victory location is included, but Victory event is not placed yet.
 def before_create_regions(world: World, multiworld: MultiWorld, player: int):
-    pass
+    if not is_option_enabled(multiworld, player, "entrance_shuffle"):
+        return
+
+    from ..entrance_logic import (
+        build_entrance_pool, build_interior_requires_map, build_moonpipe_subarea_set,
+    )
+
+    subareas, exclusions = _load_entrance_data()
+    pool = build_entrance_pool(subareas, exclusions)
+    bijection = _roll_entrance_bijection(world, pool)
+
+    # Build the set of location names that live in pooled subareas.
+    shuffled_locs: set[str] = set()
+    for sub_name in pool:
+        info = subareas[sub_name]
+        shuffled_locs.update(info.get("location_names", []))
+
+    # Compute interior-only requires (no gates) for every shuffled location.
+    # Stored per-world so we never mutate the shared location_table dicts.
+    interior_requires = build_interior_requires_map(world.location_table)
+    filtered_interior_req: dict[str, str] = {
+        name: interior_requires.get(name, "") for name in shuffled_locs
+    }
+
+    # Identify moon-pipe subareas (all locations in the subarea are Moon Rock).
+    moonpipe_subareas = build_moonpipe_subarea_set(subareas, world.location_table)
+
+    # Store on world for use by after_create_regions / after_set_rules / slot_data.
+    world._entrance_map: dict[str, str] = bijection
+    world._entrance_shuffled_locs: set[str] = shuffled_locs
+    world._interior_requires: dict[str, str] = filtered_interior_req
+    world._entrance_subareas: dict = subareas
+    world._entrance_moonpipe: frozenset[str] = moonpipe_subareas
+    world._entrance_pool: list[str] = pool
+
+    logging.info(
+        "entrance_shuffle: rolled bijection over %d subareas (player %d)",
+        len(pool), player
+    )
 
 # Called after regions and locations are created, in case you want to see or modify that information. Victory location is included.
 def after_create_regions(world: World, multiworld: MultiWorld, player: int):
@@ -118,6 +180,97 @@ def after_create_regions(world: World, multiworld: MultiWorld, player: int):
                     region.locations.remove(location)
     if hasattr(multiworld, "clear_location_cache"):
         multiworld.clear_location_cache()
+
+    _wire_entrance_shuffle(world, multiworld, player)
+
+
+def _kingdom_region_for_subarea(
+    subarea_name: str,
+    subareas: dict,
+    multiworld: "MultiWorld",
+    player: int,
+) -> Region | None:
+    """Return the AP Region object for the kingdom that contains door_subarea."""
+    info = subareas.get(subarea_name, {})
+    kingdom_name = info.get("kingdom", "")
+    # Map special kingdom names to their AP region names (from regions.json).
+    # "Night Metro" is a separate region in regions.json; most metro-subarea
+    # doors are in the daytime Metro Kingdom.
+    try:
+        return multiworld.get_region(kingdom_name, player)
+    except Exception:
+        return None
+
+
+
+def _wire_entrance_shuffle(world: World, multiworld: MultiWorld, player: int) -> None:
+    """Create subarea interior Regions + door Entrance objects for entrance shuffle."""
+    bijection: dict[str, str] | None = getattr(world, "_entrance_map", None)
+    if bijection is None:
+        return
+
+    from ..entrance_logic import make_door_access_rule
+    from worlds.generic.Rules import set_rule
+
+    subareas: dict = world._entrance_subareas
+    moonpipe: frozenset[str] = world._entrance_moonpipe
+    shuffled_locs: set[str] = world._entrance_shuffled_locs
+
+    # Step 1: Create an interior Region for each pooled subarea.
+    # Gather location objects by subarea name first (they're currently in their
+    # original kingdom regions).
+    interior_regions: dict[str, Region] = {}
+    for sub_name in world._entrance_pool:
+        interior_reg = Region(f"{sub_name} Interior", player, multiworld)
+        interior_regions[sub_name] = interior_reg
+        multiworld.regions.append(interior_reg)
+
+    # Step 2: Move SMOLocation objects from their original regions to the
+    # appropriate interior regions.
+    loc_to_subarea: dict[str, str] = {}
+    for sub_name, info in subareas.items():
+        if sub_name not in interior_regions:
+            continue
+        for loc_name in info.get("location_names", []):
+            loc_to_subarea[loc_name] = sub_name
+
+    for region in multiworld.regions:
+        if region.player != player:
+            continue
+        for loc_obj in list(region.locations):
+            sub_name = loc_to_subarea.get(loc_obj.name)
+            if sub_name is not None and sub_name in interior_regions:
+                region.locations.remove(loc_obj)
+                interior_regions[sub_name].locations.append(loc_obj)
+                loc_obj.parent_region = interior_regions[sub_name]
+
+    if hasattr(multiworld, "clear_location_cache"):
+        multiworld.clear_location_cache()
+
+    # Step 3: Create one Entrance per door subarea pointing to the shuffled interior.
+    for door_subarea, interior_subarea in bijection.items():
+        door_kingdom_region = _kingdom_region_for_subarea(door_subarea, subareas, multiworld, player)
+        if door_kingdom_region is None:
+            logging.warning("entrance_shuffle: no region found for door '%s'", door_subarea)
+            continue
+
+        interior_reg = interior_regions.get(interior_subarea)
+        if interior_reg is None:
+            logging.warning("entrance_shuffle: no interior region for '%s'", interior_subarea)
+            continue
+
+        entrance_name = f"{door_subarea} -> {interior_subarea} Interior"
+        entrance = Entrance(player, entrance_name, door_kingdom_region)
+        entrance.connect(interior_reg)
+        door_kingdom_region.exits.append(entrance)
+
+        # Set the door's access rule.
+        is_moon_pipe = door_subarea in moonpipe  # door IS a moon-pipe opening
+        rule = make_door_access_rule(
+            door_subarea, subareas.get(door_subarea, {}).get("kingdom", ""),
+            is_moon_pipe, world, multiworld, player
+        )
+        set_rule(entrance, rule)
 
 # Pure roll helpers for randomize_kingdom_gates live in kingdom_gates.py
 # (AP-free, directly importable by the test suite — same pattern as
@@ -391,6 +544,11 @@ def after_create_items(item_pool: list, world: World, multiworld: MultiWorld, pl
 
 # Called before rules for accessing regions and locations are created.
 def before_set_rules(world: World, multiworld: MultiWorld, player: int):
+    # entrance_shuffle: the shared location_table dicts still have their
+    # original "region" fields (needed by set_rules to apply region-level
+    # access rules). However, for shuffled locations the regionCheck from
+    # the original kingdom is wrong once doors are remapped. We handle that
+    # in after_set_rules by overriding the rules after set_rules completes.
     pass
 
 # Locations whose Multi Moon / Power Moon can become PERMANENTLY UNOBTAINABLE on
@@ -527,9 +685,47 @@ def after_set_rules(world: World, multiworld: MultiWorld, player: int):
     _apply_junk_only_rules(world, multiworld, player)
     if is_option_enabled(multiworld, player, "multi_moon_shuffle"):
         _apply_multi_moon_rules(world, multiworld, player)
+    # Entrance shuffle: override location access rules for shuffled locations.
+    # set_rules would have applied "interior_requires AND original_regionCheck".
+    # With remapped doors, the regionCheck comes from the wrong kingdom, so we
+    # replace it with just the interior_requires (the door entrance handles the
+    # kingdom gate + peace gate).
+    if is_option_enabled(multiworld, player, "entrance_shuffle"):
+        _apply_entrance_shuffle_location_rules(world, multiworld, player)
     # Must run last so it wins over the access rules set in set_rules.
     if is_option_enabled(multiworld, player, "no_logic"):
         _apply_no_logic(world, multiworld, player)
+
+
+def _apply_entrance_shuffle_location_rules(
+    world: World, multiworld: MultiWorld, player: int
+) -> None:
+    """Override access rules for shuffled locations to interior-only requires.
+
+    set_rules bakes in the original-kingdom regionCheck, which is wrong when
+    doors are remapped.  We replace each shuffled location's access_rule with
+    a closure that only evaluates the interior-only requires string.
+    """
+    from worlds.generic.Rules import set_rule
+    from ..entrance_logic import evaluate_interior_requires
+
+    interior_req_map: dict[str, str] = getattr(world, "_interior_requires", {})
+    shuffled_locs: set[str] = getattr(world, "_entrance_shuffled_locs", set())
+
+    for loc_name in shuffled_locs:
+        try:
+            loc_obj = multiworld.get_location(loc_name, player)
+        except Exception:
+            continue
+        req_str = interior_req_map.get(loc_name, "")
+        if req_str:
+            set_rule(
+                loc_obj,
+                lambda state, r=req_str, w=world, p=player:
+                    evaluate_interior_requires(state, r, w, p),
+            )
+        else:
+            set_rule(loc_obj, lambda state: True)
 
 # The item name to create is provided before the item is created, in case you want to make changes to it
 def before_create_item(item_name: str, world: World, multiworld: MultiWorld, player: int) -> str:
@@ -555,6 +751,11 @@ def before_fill_slot_data(slot_data: dict, world: World, multiworld: MultiWorld,
     rolled = getattr(world, "rolled_kingdom_gates", None)
     if rolled:
         slot_data["kingdom_gates"] = dict(rolled)
+    # Entrance shuffle bijection: {door_subarea: interior_subarea}.
+    # The Switch mod reads this to remap door loads. Absent when off.
+    entrance_map = getattr(world, "_entrance_map", None)
+    if entrance_map is not None:
+        slot_data["entrance_map"] = entrance_map
     return slot_data
 
 # This is called after slot data is set and provides the slot data at the time, in case you want to check and modify it after the world fills it

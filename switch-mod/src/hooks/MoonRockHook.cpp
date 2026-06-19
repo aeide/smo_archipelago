@@ -260,10 +260,25 @@ void installMoonRockHook() {
     resolve(smoap::sym::kWorldListGetMoonRockScenarioNo,
             s_getMoonRockScenarioNo, "getMoonRockScenarioNo");
 
+    // Install the trampoline via the runtime dynsym lookup + installAtPtr, NOT
+    // installAtSym. installAtSym resolves through the sail symbol DB and
+    // HK_ABORT_UNLESS-es the ENTIRE module at boot when the symbol isn't
+    // registered there (detail.h lookupSymbolFromDb) — and isEnableOpenMoonRock
+    // was never added to SmoApSymbols.sym. hk::ro::lookupSymbol instead reads
+    // main.nso's dynsym directly and returns 0 on miss, so a bad/inlined symbol
+    // degrades to vanilla (logged) rather than bricking boot — the same graceful
+    // contract as the resolve() reads above.
+    const ptr enableAddr = hk::ro::lookupSymbol(
+        "_ZN16GameDataFunction20isEnableOpenMoonRockEPKN2al9LiveActorE");
+    if (enableAddr == 0) {
+        SMOAP_LOG_ERROR("[moon-rock] isEnableOpenMoonRock lookup FAILED — hook "
+                        "NOT installed; rocks stay vanilla (post-game only)");
+        return;
+    }
     SMOAP_LOG_INFO("installing MoonRockHook -> "
-                   "GameDataFunction::isEnableOpenMoonRock (peace-gated)");
-    moonRockEnableHook.installAtSym<
-        "_ZN16GameDataFunction20isEnableOpenMoonRockEPKN2al9LiveActorE">();
+                   "GameDataFunction::isEnableOpenMoonRock @ %p (peace-gated)",
+                   reinterpret_cast<void*>(enableAddr));
+    moonRockEnableHook.installAtPtr(enableAddr);
 }
 
 }  // namespace smoap::hooks

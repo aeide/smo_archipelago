@@ -1081,6 +1081,22 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
         }
         SMOAP_LOG_INFO("[p3-ability] applied %zu ability entries (enforce=%d)",
                        as.entry_count, as.enforce ? 1 : 0);
+    } else if (eq(m.t, "entrance_map")) {
+        // P7 entrance shuffle — full-overwrite (possibly chunked) remap of
+        // vanilla door destinations to shuffled interiors. The first chunk
+        // carries reset=true to clear the table; follow-up chunks merge by
+        // `from`. An empty reset=true message reverts to vanilla. The apworld
+        // resolves the subarea-name bijection into stage quads before sending,
+        // so the Switch just stores (from_stage -> to_stage/to_id).
+        auto& st = ApState::instance();
+        const auto& em = m.entrance_map;
+        st.applyEntranceMap(em.entries, em.entry_count, em.reset);
+        if (em.truncated) {
+            SMOAP_LOG_WARN("[entrance] entrance_map chunk truncated at %zu entries "
+                           "(bump kEntranceMapMax?)", em.entry_count);
+        }
+        SMOAP_LOG_INFO("[entrance] applied %zu remap entries (reset=%d)",
+                       em.entry_count, em.reset ? 1 : 0);
     } else {
         SMOAP_LOG_WARN("unknown message t=%s", m.t);
     }

@@ -1,0 +1,4736 @@
+{
+  "Poison Tides": {
+    "kingdom": "Cap Kingdom",
+    "stage": "PoisonWaveExStage",
+    "parents": [
+      "CapWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CapWorldHomeStage",
+      "entry_id": "PoisonWaveExEnt",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CapWorldHomeStage",
+      "entry_id": "PoisonWaveExExit",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "CapWorldHomeStage",
+        "entry_id": "PoisonWaveExEnt",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CapWorldHomeStage",
+        "entry_id": "PoisonWaveExEnt",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "CapWorldHomeStage",
+        "entry_id": "PoisonWaveExExit",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Push Block Peril": {
+    "kingdom": "Cap Kingdom",
+    "stage": "PushBlockExStage",
+    "parents": [
+      "CapWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CapWorldHomeStage",
+      "entry_id": "PushBlockExStageEnt",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CapWorldHomeStage",
+      "entry_id": "PushBlockExStageEntDokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CapWorldHomeStage",
+        "entry_id": "PushBlockExStageEnt",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CapWorldHomeStage",
+        "entry_id": "PushBlockExStageEnt",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "CapWorldHomeStage",
+        "entry_id": "PushBlockExStageEntDokan",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Frog Pond": {
+    "kingdom": "Cap Kingdom",
+    "stage": "FrogSearchExStage",
+    "parents": [
+      "CapWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CapWorldHomeStage",
+      "entry_id": "FrogSearchExStageEnt",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CapWorldHomeStage",
+      "entry_id": "FrogSearchExStageEnt",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "CapWorldHomeStage",
+        "entry_id": "FrogSearchExStageEnt",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CapWorldHomeStage",
+        "entry_id": "FrogSearchExStageEnt",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Precision Rolling": {
+    "kingdom": "Cap Kingdom",
+    "stage": "RollingExStage",
+    "parents": [
+      "CapWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CapWorldHomeStage",
+      "entry_id": "rollingstart",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "CapWorldHomeStage",
+      "entry_id": "rollinggoal",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CapWorldHomeStage",
+        "entry_id": "rollingstart",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CapWorldHomeStage",
+        "entry_id": "rollingstart",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "CapWorldHomeStage",
+        "entry_id": "rollinggoal",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Dinosaur Nest": {
+    "kingdom": "Cascade Kingdom",
+    "stage": "TrexPoppunExStage",
+    "parents": [
+      "WaterfallWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "WaterfallWorldHomeStage",
+      "entry_id": "RexPoppunEx",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "WaterfallWorldHomeStage",
+      "entry_id": "RexPoppunEx",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "WaterfallWorldHomeStage",
+        "entry_id": "RexPoppunEx",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "WaterfallWorldHomeStage",
+        "entry_id": "RexPoppunEx",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Nice Shots with Chain Chomps": {
+    "kingdom": "Cascade Kingdom",
+    "stage": "WanwanClashExStage",
+    "parents": [
+      "WaterfallWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "WaterfallWorldHomeStage",
+      "entry_id": "WanwanExStart",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "WaterfallWorldHomeStage",
+      "entry_id": "WanwanExGoal",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "WaterfallWorldHomeStage",
+        "entry_id": "WanwanExStart",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "WaterfallWorldHomeStage",
+        "entry_id": "WanwanExStart",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "WaterfallWorldHomeStage",
+        "entry_id": "WanwanExGoal",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "8-Bit Chasm Lifts": {
+    "kingdom": "Cascade Kingdom",
+    "stage": "Lift2DExStage",
+    "parents": [
+      "WaterfallWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "WaterfallWorldHomeStage",
+      "entry_id": "Lift2D",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "WaterfallWorldHomeStage",
+      "entry_id": "Lift2DExit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "WaterfallWorldHomeStage",
+        "entry_id": "Lift2D",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "WaterfallWorldHomeStage",
+        "entry_id": "Lift2D",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "WaterfallWorldHomeStage",
+        "entry_id": "Lift2DExit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Mysterious Clouds": {
+    "kingdom": "Cascade Kingdom",
+    "stage": "CapAppearExStage",
+    "parents": [
+      "WaterfallWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "WaterfallWorldHomeStage",
+      "entry_id": "CapAppearExEnt",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "WaterfallWorldHomeStage",
+      "entry_id": "CapAppearExExit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "WaterfallWorldHomeStage",
+        "entry_id": "CapAppearExEnt",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "WaterfallWorldHomeStage",
+        "entry_id": "CapAppearExExit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "WaterfallWorldHomeStage",
+        "entry_id": "CapAppearExEnt",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Gusty Bridges": {
+    "kingdom": "Cascade Kingdom",
+    "stage": "WindBlowExStage",
+    "parents": [
+      "WaterfallWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "WaterfallWorldHomeStage",
+      "entry_id": "WindBlowExStart",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "WaterfallWorldHomeStage",
+      "entry_id": "WindBlowExGoal",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "WaterfallWorldHomeStage",
+        "entry_id": "WindBlowExStart",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "WaterfallWorldHomeStage",
+        "entry_id": "WindBlowExStart",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "WaterfallWorldHomeStage",
+        "entry_id": "WindBlowExGoal",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Deepest Underground": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldUnderground001Stage",
+    "parents": [
+      "SandWorldHomeStage",
+      "SandWorldUnderground000Stage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldUnderground000Stage",
+      "entry_id": "Yadokari00",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "Out",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "start",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "Out",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SandWorldUnderground000Stage",
+        "entry_id": "Yadokari00",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldUnderground000Stage",
+        "entry_id": "Yadokari00",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "Out",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Crazy Cap Store": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldShopStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "bar1",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "bar1",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "bar2",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "bar1",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "bar1",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "bar2",
+        "unit": "DoorWarpStageChange"
+      }
+    ]
+  },
+  "Tostarena Slots": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldSlotStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "town",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "town",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "town",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "town",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Inverted Pyramid": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldPyramid001Stage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "pyramid04",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "pyramid04",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "pyramid04",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "pyramid04",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Underground Ruins": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldUnderground000Stage",
+    "parents": [
+      "SandWorldHomeStage",
+      "SandWorldUnderground001Stage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldUnderground001Stage",
+      "entry_id": "Yadokari00",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "Under01",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "icestart",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "Under01",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SandWorldUnderground001Stage",
+        "entry_id": "Yadokari00",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldUnderground001Stage",
+        "entry_id": "Yadokari00",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "Under01",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Ice Cave": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldPressExStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "arijigoku",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "arijigoku1",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "arijigoku",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "arijigoku2",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "arijigoku1",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "arijigoku2",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "arijigoku1",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Sphynx Treasure Vault (Sand)": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldSecretStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "hide",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "hide",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "hide",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "hide",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Sphynx Treasure Vault (Seaside)": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "SeaWorldSecretStage",
+    "parents": [
+      "SeaWorldSphinxQuizZone"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldSphinxQuizZone",
+      "entry_id": "TreasureEventWorldSea",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "TreasureEventWorldSea",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldSphinxQuizZone",
+        "entry_id": "TreasureEventWorldSea",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "TreasureEventWorldSea",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Rumbling Floor House": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldVibrationStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "shindo",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "shindo",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "shindo",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "shindo",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Costume Room (Sand)": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldCostumeStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "abc",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "abc",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "abc",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "abc",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Costume Room (Wooded)": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "ForestWorldWoodsCostumeStage",
+    "parents": [
+      "ForestWorldWoodsStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldWoodsStage",
+      "entry_id": "Explorer_Bonus",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldWoodsStage",
+      "entry_id": "Explorer_Bonus",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldWoodsStage",
+        "entry_id": "Explorer_Bonus",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldWoodsStage",
+        "entry_id": "Explorer_Bonus",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Costume Room (Seaside)": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "SeaWorldCostumeStage",
+    "parents": [
+      "SeaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldHomeStage",
+      "entry_id": "CostumeEventSeaWorld",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "CostumeEventSeaWorld",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldHomeStage",
+        "entry_id": "CostumeEventSeaWorld",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "CostumeEventSeaWorld",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Transparent Lifts": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldMeganeExStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "wall",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "anki2",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "wall",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "wall",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "anki2",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Bullet Bill Maze": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldKillerExStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "doukutu1",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "doukutu1",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "doukutu1",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "doukutu2",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "doukutu1",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "doukutu2",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Jaxi Driving": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldSphinxExStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "aaa",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "run00return",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "aaa",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "run00",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "run00",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "run00return",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Strange Neighborhood": {
+    "kingdom": "Sand Kingdom",
+    "stage": "SandWorldRotateExStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "biru",
+      "unit": "BazookaElectric"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "birureturn",
+      "unit": "BazookaElectric"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "biru",
+        "unit": "BazookaElectric"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "birureturn",
+        "unit": "BazookaElectric"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "biru",
+        "unit": "BazookaElectric"
+      }
+    ]
+  },
+  "The Invisible Maze": {
+    "kingdom": "Sand Kingdom",
+    "stage": "MeganeLiftExStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "meganelift01",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "meganelift01",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "meganelift01",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "meganelift02",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "meganelift01",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "meganelift02",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Colossal Ruins": {
+    "kingdom": "Sand Kingdom",
+    "stage": "RocketFlowerExStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "rocket",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "rocket",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "rocket",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "rocket",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Freezing Waterway": {
+    "kingdom": "Sand Kingdom",
+    "stage": "WaterTubeExStage",
+    "parents": [
+      "SandWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SandWorldHomeStage",
+      "entry_id": "EX_2DHosui",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SandWorldHomeStage",
+      "entry_id": "EX_2DHosui_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "EX_2DHosui",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SandWorldHomeStage",
+        "entry_id": "EX_2DHosui_Exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "EX_2DHosui",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "EX_2DHosui_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Secret Flower Field": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "ForestWorldBossStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "boss001",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "boss001",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "boss001",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "boss002",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "boss001",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "boss002",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Sky Garden Tower": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "ForestWorldTowerStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "Tower001",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "Tower001",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "Tower001",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "Tower002",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "Tower002",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "Tower001",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Spinning-Platforms Treasure Vault": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "ForestWorldBonusStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "bonus",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "bonus",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "bonus2",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "bonus",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "bonus",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "bonus2",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Deep Woods": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "ForestWorldWoodsStage",
+    "parents": [
+      "ForestWorldHomeStage",
+      "ForestWorldWoodsCostumeStage",
+      "ForestWorldWoodsTreasureStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldWoodsCostumeStage",
+      "entry_id": "Explorer_Bonus",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "Jyukai001v",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "Jyukai001",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "Jyukai003",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "ForestWorldWoodsCostumeStage",
+        "entry_id": "Explorer_Bonus",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "ForestWorldWoodsTreasureStage",
+        "entry_id": "TreasureTree",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "Jyukai001v",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "Jyukai002",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "Jyukai004",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "Jyukai003v",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "ForestWorldWoodsCostumeStage",
+        "entry_id": "Explorer_Bonus",
+        "unit": "DoorWarpStageChange"
+      },
+      {
+        "dest": "ForestWorldWoodsTreasureStage",
+        "entry_id": "TreasureTree",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Deep Woods Treasure Vault": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "ForestWorldWoodsTreasureStage",
+    "parents": [
+      "ForestWorldWoodsStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldWoodsStage",
+      "entry_id": "TreasureTree",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldWoodsStage",
+      "entry_id": "TreasureTree",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldWoodsStage",
+        "entry_id": "TreasureTree",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldWoodsStage",
+        "entry_id": "TreasureTree",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Flooding Pipeway": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "ForestWorldWaterExStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "EX_Water",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "EX_Water_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "EX_Water_Exit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "EX_Water",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "EX_Water_Exit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "EX_Water",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Shards in the Fog": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "FogMountainExStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "EX_Mist",
+      "unit": "BazookaElectric"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "EX_Mist",
+      "unit": "BazookaElectric"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "EX_Mist",
+        "unit": "BazookaElectric"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "EX_Mist",
+        "unit": "BazookaElectric"
+      }
+    ]
+  },
+  "Flower Road": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "RailCollisionExStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "EX_RailCollision",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "EX_RailCollision_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "EX_RailCollision",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "EX_RailCollision_Exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "EX_RailCollision",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "EX_RailCollision_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Crowded Elevator": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "ShootingElevatorExStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "EX_Tankuro",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "EX_Tankuro_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "EX_Tankuro",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "EX_Tankuro_Exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "EX_Tankuro",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "EX_Tankuro_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Walking on Clouds": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "ForestWorldCloudBonusExStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "EXCloud",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "EXCloud",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "EXCloud",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "EXCloud",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Invisible Road": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "PackunPoisonExStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "PoisonEx",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "PoisonEx_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "PoisonEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "PoisonEx_Exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "PoisonEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "PoisonEx_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Herding Sheep": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "AnimalChaseExStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "EX_AnimalChase",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "EX_AnimalChase",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "EX_AnimalChase",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "EX_AnimalChase",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Breakdown Road": {
+    "kingdom": "Wooded Kingdom",
+    "stage": "KillerRoadExStage",
+    "parents": [
+      "ForestWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ForestWorldHomeStage",
+      "entry_id": "KillerRoad",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "ForestWorldHomeStage",
+      "entry_id": "KillerRoad",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ForestWorldHomeStage",
+        "entry_id": "KillerRoad",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ForestWorldHomeStage",
+        "entry_id": "KillerRoad",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Crazy Cap Store (Lake)": {
+    "kingdom": "Lake Kingdom",
+    "stage": "LakeWorldShopStage",
+    "parents": [
+      "LakeWorldTownZone"
+    ],
+    "primary_entry": {
+      "parent": "LakeWorldTownZone",
+      "entry_id": "LakeWorldShop",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "LakeWorldHomeStage",
+      "entry_id": "LakeWorldShop",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LakeWorldTownZone",
+        "entry_id": "LakeWorldShop",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LakeWorldHomeStage",
+        "entry_id": "LakeWorldShop",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Puzzle Room": {
+    "kingdom": "Lake Kingdom",
+    "stage": "GotogotonExStage",
+    "parents": [
+      "LakeWorldTownZone"
+    ],
+    "primary_entry": {
+      "parent": "LakeWorldTownZone",
+      "entry_id": "Goton",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "LakeWorldHomeStage",
+      "entry_id": "Goton",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LakeWorldTownZone",
+        "entry_id": "Goton",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LakeWorldHomeStage",
+        "entry_id": "Goton",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Unzipping the Chasm": {
+    "kingdom": "Lake Kingdom",
+    "stage": "FastenerExStage",
+    "parents": [
+      "LakeWorldTownZone"
+    ],
+    "primary_entry": {
+      "parent": "LakeWorldTownZone",
+      "entry_id": "FastenerEx",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "LakeWorldHomeStage",
+      "entry_id": "FastenerEx",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LakeWorldTownZone",
+        "entry_id": "FastenerEx",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LakeWorldHomeStage",
+        "entry_id": "FastenerEx",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Jump, Grab, Cling, Climb": {
+    "kingdom": "Lake Kingdom",
+    "stage": "TrampolineWallCatchExStage",
+    "parents": [
+      "LakeWorldTownZone"
+    ],
+    "primary_entry": {
+      "parent": "LakeWorldTownZone",
+      "entry_id": "CapTrampolineA",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "LakeWorldHomeStage",
+      "entry_id": "CapTrampolineA",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LakeWorldTownZone",
+        "entry_id": "CapTrampolineA",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "LakeWorldTownZone",
+        "entry_id": "CapTrampolineB",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LakeWorldHomeStage",
+        "entry_id": "CapTrampolineA",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "LakeWorldHomeStage",
+        "entry_id": "CapTrampolineB",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Waves of Poison": {
+    "kingdom": "Lake Kingdom",
+    "stage": "FrogPoisonExStage",
+    "parents": [
+      "LakeWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LakeWorldHomeStage",
+      "entry_id": "LakeWorldMoonEX1a",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "LakeWorldHomeStage",
+      "entry_id": "LakeWorldMoonEX1a",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "LakeWorldHomeStage",
+        "entry_id": "LakeWorldMoonEX1a",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "LakeWorldHomeStage",
+        "entry_id": "LakeWorldMoonEX1b",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LakeWorldHomeStage",
+        "entry_id": "LakeWorldMoonEX1a",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "LakeWorldHomeStage",
+        "entry_id": "LakeWorldMoonEX1b",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Picture Match (Goomba)": {
+    "kingdom": "Lake Kingdom",
+    "stage": "FukuwaraiKuriboStage",
+    "parents": [
+      "CloudWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CloudWorldHomeStage",
+      "entry_id": "Fukuwarai",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "CloudWorldHomeStage",
+      "entry_id": "Fukuwarai",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CloudWorldHomeStage",
+        "entry_id": "Fukuwarai",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CloudWorldHomeStage",
+        "entry_id": "Fukuwarai",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "2D Cube": {
+    "kingdom": "Cloud Kingdom",
+    "stage": "Cube2DExStage",
+    "parents": [
+      "CloudWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CloudWorldHomeStage",
+      "entry_id": "cube",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "CloudWorldHomeStage",
+      "entry_id": "cube",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CloudWorldHomeStage",
+        "entry_id": "cube",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CloudWorldHomeStage",
+        "entry_id": "cube",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Crazy Cap Store (Lost)": {
+    "kingdom": "Lost Kingdom",
+    "stage": "ClashWorldShopStage",
+    "parents": [
+      "ClashWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ClashWorldHomeStage",
+      "entry_id": "Kinopio",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "ClashWorldHomeStage",
+      "entry_id": "Kinopio",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "ClashWorldHomeStage",
+        "entry_id": "Kinopio",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ClashWorldHomeStage",
+        "entry_id": "Kinopio",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Stretch and Traverse the Jungle": {
+    "kingdom": "Lost Kingdom",
+    "stage": "ImomuPoisonExStage",
+    "parents": [
+      "ClashWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ClashWorldHomeStage",
+      "entry_id": "imomu_01",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "ClashWorldHomeStage",
+      "entry_id": "imomu_01",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ClashWorldHomeStage",
+        "entry_id": "imomu_01",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "ClashWorldHomeStage",
+        "entry_id": "imomu_02",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ClashWorldHomeStage",
+        "entry_id": "imomu_01",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "ClashWorldHomeStage",
+        "entry_id": "imomu_02",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Klepto 2 - Lava Boogaloo": {
+    "kingdom": "Lost Kingdom",
+    "stage": "JangoExStage",
+    "parents": [
+      "ClashWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "ClashWorldHomeStage",
+      "entry_id": "ClashWorldMoonEX2",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "ClashWorldHomeStage",
+      "entry_id": "ClashWorldMoonEX2",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "ClashWorldHomeStage",
+        "entry_id": "ClashWorldMoonEX2",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "ClashWorldHomeStage",
+        "entry_id": "ClashWorldMoonEX2",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Sewers": {
+    "kingdom": "Metro Kingdom",
+    "stage": "CityWorldFactoryStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "under001enter",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "under001enter",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "under001enter",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "under001enter",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Crazy Cap Store (Metro)": {
+    "kingdom": "Metro Kingdom",
+    "stage": "CityWorldShop01Stage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "shop_coin",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "shop_coin",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "shop_corect",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "shop_coin",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "shop_coin",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "shop_corect",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Metro Kingdom Slots": {
+    "kingdom": "Metro Kingdom",
+    "stage": "CityWorldSandSlotStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "Bonus",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "Bonus",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "Bonus",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "Bonus",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "RC Race": {
+    "kingdom": "Metro Kingdom",
+    "stage": "RadioControlExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "car",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "car",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "car",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "car",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Rainbow Notes": {
+    "kingdom": "Metro Kingdom",
+    "stage": "Note2D3DRoomExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "onpu",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "onpu",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "onpu",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "onpu",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Inside New Donk City Tower": {
+    "kingdom": "Metro Kingdom",
+    "stage": "CityWorldMainTowerStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "main_enter",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "main_exit",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "main_enter",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "main_exit",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "main_exit",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "main_enter",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Crowded Alleyway": {
+    "kingdom": "Metro Kingdom",
+    "stage": "CityPeopleRoadStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "gunsyu",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "gunsyudokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "gunsyu",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "gunsyudokan",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "gunsyu",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "gunsyudokan",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Rewiring the Neighborhood": {
+    "kingdom": "Metro Kingdom",
+    "stage": "ElectricWireExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "densen",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "densendokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "densen",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "densen",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "densendokan",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Shards Under Siege": {
+    "kingdom": "Metro Kingdom",
+    "stage": "ShootingCityExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "taxi",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "taxireturn",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "taxi",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "taxireturn",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "taxi",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Rotating Maze Shards": {
+    "kingdom": "Metro Kingdom",
+    "stage": "CapRotatePackunExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "kaitendokan",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "kaitendokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "kaitendokan",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "kaitendokan",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "kaitendokan",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Swinging Along the High-Rises": {
+    "kingdom": "Metro Kingdom",
+    "stage": "PoleGrabCeilExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "tenjo",
+      "unit": "BazookaElectric"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "tenjo",
+      "unit": "BazookaElectric"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "tenjo",
+        "unit": "BazookaElectric"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "tenjo",
+        "unit": "BazookaElectric"
+      }
+    ]
+  },
+  "Bullet Billding": {
+    "kingdom": "Metro Kingdom",
+    "stage": "PoleKillerExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "bou",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "boureturn",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "bou",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "bou",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "boureturn",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Scooter Escape!": {
+    "kingdom": "Metro Kingdom",
+    "stage": "TrexBikeExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "bike02",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "bike02return",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "bike02",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "bike02",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "bike02return",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "On the Big Screen": {
+    "kingdom": "Metro Kingdom",
+    "stage": "Theater2DExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "theater",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "theater",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "theater",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "theater",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Pitchblack Mountain": {
+    "kingdom": "Metro Kingdom",
+    "stage": "DonsukeExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "donsuke",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "donsuke",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "donsuke",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "donsuke",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Swinging Scaffolding": {
+    "kingdom": "Metro Kingdom",
+    "stage": "SwingSteelExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "gragra",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "gragrareturn",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "gragra",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "gragrareturn",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "gragra",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "gragrareturn",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Scooter Daredevil": {
+    "kingdom": "Metro Kingdom",
+    "stage": "BikeSteelExStage",
+    "parents": [
+      "CityWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "CityWorldHomeStage",
+      "entry_id": "bike",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "CityWorldHomeStage",
+      "entry_id": "bikereturn",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "bike",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "CityWorldHomeStage",
+        "entry_id": "bikereturn",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "bikereturn",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "CityWorldHomeStage",
+        "entry_id": "bike",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Wriggling Power Moon": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "SeaWorldSneakingManStage",
+    "parents": [
+      "SeaWorldLighthouseZone"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldLighthouseZone",
+      "entry_id": "RoomEventWorldSea",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "RoomEventWorldSea",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldLighthouseZone",
+        "entry_id": "RoomEventWorldSea",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "RoomEventWorldSea",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Underwater Tunnel": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "SeaWorldUtsuboCaveStage",
+    "parents": [
+      "SeaWorldLighthouseZone"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldLighthouseZone",
+      "entry_id": "PukupukuCaveStart",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "PukupukuCaveGoal",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldLighthouseZone",
+        "entry_id": "PukupukuCaveStart",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SeaWorldLighthouseZone",
+        "entry_id": "PukupukuCaveGoal",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "PukupukuCaveStart",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "PukupukuCaveGoal",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Rumbling Floor Cave": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "SeaWorldVibrationStage",
+    "parents": [
+      "SeaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldHomeStage",
+      "entry_id": "shindo_Lv2",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "shindo_Lv2",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldHomeStage",
+        "entry_id": "shindo_Lv2",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "shindo_Lv2",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "A Sea of Clouds": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "CloudExStage",
+    "parents": [
+      "SeaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldHomeStage",
+      "entry_id": "SeaWorldEX2",
+      "unit": "BazookaElectric"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "SeaWorldEX2Return",
+      "unit": "BazookaElectric"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldEX2",
+        "unit": "BazookaElectric"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldEX2",
+        "unit": "BazookaElectric"
+      },
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldEX2Return",
+        "unit": "BazookaElectric"
+      }
+    ]
+  },
+  "Flying Through the Narrow Valley": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "WaterValleyExStage",
+    "parents": [
+      "SeaWorldWallCaveWestZone"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldWallCaveWestZone",
+      "entry_id": "SeaWorldEX1a",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "SeaWorldEX1a",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldWallCaveWestZone",
+        "entry_id": "SeaWorldEX1a",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SeaWorldWallCaveWestZone",
+        "entry_id": "SeaWorldEX1b",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldEX1a",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldEX1b",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Stretching Up the Sinking Island": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "SenobiTowerExStage",
+    "parents": [
+      "SeaWorldLavaZone"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldLavaZone",
+      "entry_id": "SeaWorldEX3a",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "SeaWorldEX3a",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldLavaZone",
+        "entry_id": "SeaWorldEX3a",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SeaWorldLavaZone",
+        "entry_id": "SeaWorldEX3b",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldEX3a",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldEX3b",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Stop, Poke, and Roll": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "ReflectBombExStage",
+    "parents": [
+      "SeaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldHomeStage",
+      "entry_id": "SeaWorldMoonEX1a",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "SeaWorldMoonEX1a",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldMoonEX1a",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldMoonEX1b",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldMoonEX1b",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldMoonEX1a",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Spinning Maze": {
+    "kingdom": "Seaside Kingdom",
+    "stage": "TogezoRotateExStage",
+    "parents": [
+      "SeaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SeaWorldHomeStage",
+      "entry_id": "SeaWorldMoonEX2",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SeaWorldHomeStage",
+      "entry_id": "SeaWorldMoonEX2",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldMoonEX2",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SeaWorldHomeStage",
+        "entry_id": "SeaWorldMoonEX2",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Shiveria Town": {
+    "kingdom": "Snow Kingdom",
+    "stage": "SnowWorldTownStage",
+    "parents": [
+      "SnowWorldCostumeStage",
+      "SnowWorldHomeStage",
+      "SnowWorldLobby000Stage",
+      "SnowWorldShopStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldShopStage",
+      "entry_id": "ShopDoor",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldCostumeStage",
+      "entry_id": "SnowCostumeEx",
+      "unit": "DoorWarpStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldCostumeStage",
+        "entry_id": "SnowCostumeEx",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "SnowUGEnt",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "SnowUGExit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SnowWorldLobby000Stage",
+        "entry_id": "RaceTrackExit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SnowWorldShopStage",
+        "entry_id": "ShopDoor",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldLobby000Stage",
+        "entry_id": "RaceEntrance",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "TestOkamoto027Stage",
+        "entry_id": "RaceTrackExit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "SnowWorldCostumeStage",
+        "entry_id": "SnowCostumeEx",
+        "unit": "DoorWarpStageChange"
+      },
+      {
+        "dest": "SnowWorldShopStage",
+        "entry_id": "ShopDoor",
+        "unit": "DoorWarpStageChange"
+      }
+    ]
+  },
+  "Class A Race": {
+    "kingdom": "Snow Kingdom",
+    "stage": "SnowWorldLobby001Stage",
+    "parents": [],
+    "primary_entry": null,
+    "primary_exit": null,
+    "entries": [],
+    "exits": []
+  },
+  "Crazy Cap Store (Snow)": {
+    "kingdom": "Snow Kingdom",
+    "stage": "SnowWorldShopStage",
+    "parents": [
+      "SnowWorldTownStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldTownStage",
+      "entry_id": "ShopDoor",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldTownStage",
+      "entry_id": "ShopDoor",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldTownStage",
+        "entry_id": "ShopDoor",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldTownStage",
+        "entry_id": "ShopDoor",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Shards in the Cold Room": {
+    "kingdom": "Snow Kingdom",
+    "stage": "IceWalkerExStage",
+    "parents": [
+      "SnowWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldHomeStage",
+      "entry_id": "FigureWalker",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldHomeStage",
+      "entry_id": "FigureWalker",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "FigureWalker",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "FigureWalker",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Class A Lobby": {
+    "kingdom": "Snow Kingdom",
+    "stage": "SnowWorldLobby000Stage",
+    "parents": [
+      "SnowWorldTownStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldTownStage",
+      "entry_id": "RaceEntrance",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldTownStage",
+      "entry_id": "RaceTrackExit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldTownStage",
+        "entry_id": "RaceEntrance",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldTownStage",
+        "entry_id": "RaceTrackExit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Dashing Over Cold Water": {
+    "kingdom": "Snow Kingdom",
+    "stage": "IceWaterDashExStage",
+    "parents": [
+      "SnowWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldHomeStage",
+      "entry_id": "EX_IceWaterDash",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldHomeStage",
+      "entry_id": "EX_IceWaterDash_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "EX_IceWaterDash",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "EX_IceWaterDash",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "EX_IceWaterDash_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Freezing Water": {
+    "kingdom": "Snow Kingdom",
+    "stage": "IceWaterBlockExStage",
+    "parents": [
+      "SnowWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldHomeStage",
+      "entry_id": "EX_IceWater",
+      "unit": "DoorAreaChangeCap"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldHomeStage",
+      "entry_id": "EX_IceWater_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "EX_IceWater",
+        "unit": "DoorAreaChangeCap"
+      },
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "EX_IceWater_Exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "EX_IceWater",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "EX_IceWater_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Ty-Foo Sliding Puzzle": {
+    "kingdom": "Snow Kingdom",
+    "stage": "ByugoPuzzleExStage",
+    "parents": [
+      "SnowWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldHomeStage",
+      "entry_id": "ByugoPuzzle",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldHomeStage",
+      "entry_id": "ByugoPuzzle",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "ByugoPuzzle",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "ByugoPuzzle",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Cold Room": {
+    "kingdom": "Snow Kingdom",
+    "stage": "SnowWorldCostumeStage",
+    "parents": [
+      "SnowWorldTownStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldTownStage",
+      "entry_id": "SnowCostumeEx",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldTownStage",
+      "entry_id": "SnowCostumeEx",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldTownStage",
+        "entry_id": "SnowCostumeEx",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldTownStage",
+        "entry_id": "SnowCostumeEx",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Spinning Above the Clouds": {
+    "kingdom": "Snow Kingdom",
+    "stage": "SnowWorldCloudBonusExStage",
+    "parents": [
+      "SnowWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldHomeStage",
+      "entry_id": "EX_SkyBonus",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldHomeStage",
+      "entry_id": "EX_SkyBonus",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "EX_SkyBonus",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "EX_SkyBonus",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Class S Lobby": {
+    "kingdom": "Snow Kingdom",
+    "stage": "SnowWorldLobbyExStage",
+    "parents": [
+      "SnowWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldHomeStage",
+      "entry_id": "MoonRace",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldHomeStage",
+      "entry_id": "MoonRace",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "MoonRace",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "MoonRace",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Wintery Flower Road": {
+    "kingdom": "Snow Kingdom",
+    "stage": "KillerRailCollisionExStage",
+    "parents": [
+      "SnowWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SnowWorldHomeStage",
+      "entry_id": "EX_RailCol2",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SnowWorldHomeStage",
+      "entry_id": "EX_RailCol2_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "EX_RailCol2_Exit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SnowWorldHomeStage",
+        "entry_id": "EX_RailCol2",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "EX_RailCol2",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "SnowWorldHomeStage",
+        "entry_id": "EX_RailCol2_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Crazy Cap Store (Luncheon)": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "LavaWorldShopStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "shop",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "shop",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "shop",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "shop",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Luncheon Kingdom Slots": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "LavaBonus1Zone",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "town",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "town",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "town",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "town",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Simmering in the Kitchen": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "LavaWorldCostumeStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "CostumeEventWorldLava",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "CostumeEventWorldLava",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "CostumeEventWorldLava",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "CostumeEventWorldLava",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "CostumeOut",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Luncheon Treasure Vault": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "LavaWorldTreasureStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "TreasureEventWorldLava",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "TreasureEventWorldLava",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "TreasureEventWorldLava",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "TreasureEventWorldLava",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Magma Swamp": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "LavaWorldUpDownExStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "KeyMoveEx",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "KeyMoveExDokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "KeyMoveEx",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "KeyMoveExDokan",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "KeyMoveEx",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "KeyMoveExDokan",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Narrow Magma Path": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "LavaWorldBubbleLaneExStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "PechoBubbleEx",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "PechoBubbleExDokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "PechoBubbleEx",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "PechoBubbleExDokan",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "PechoBubbleEx",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "PechoBubbleExDokan",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Fork-Flickin to the Summit": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "ForkExStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "ForkEX",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "ForkEX",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "ForkEX",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "ForkEX",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Shards in the Cheese Rocks": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "LavaWorldExcavationExStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "MartinCubeEx",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "MartinCubeEx",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "MartinCubeEx",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "MartinCubeEx",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Spinning Athletics": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "LavaWorldClockExStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "BBQEx",
+      "unit": "DoorAreaChangeCap"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "BBQExDokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "BBQExDokan",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "BBQEx",
+        "unit": "DoorAreaChangeCap"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "BBQEx",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "BBQExDokan",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Blazing Above the Gears": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "GabuzouClockExStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "GabuzouClockEx",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "GabuzouClockExdokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "GabuzouClockEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "GabuzouClockExdokan",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "GabuzouClockExdokan",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "GabuzouClockEx",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Volcano Cave Cruising": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "CapAppearLavaLiftExStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "LavaLiftEx",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "LavaLiftExdokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "LavaLiftEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "LavaLiftExdokan",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "LavaLiftEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "LavaLiftExdokan",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Lava Island Fly-By": {
+    "kingdom": "Luncheon Kingdom",
+    "stage": "LavaWorldFenceLiftExStage",
+    "parents": [
+      "LavaWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "LavaWorldHomeStage",
+      "entry_id": "FenceLiftEx",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "LavaWorldHomeStage",
+      "entry_id": "FenceLiftExdokan",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "FenceLiftEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "LavaWorldHomeStage",
+        "entry_id": "FenceLiftExdokan",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "FenceLiftExdokan",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "LavaWorldHomeStage",
+        "entry_id": "FenceLiftEx",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Roulette Tower": {
+    "kingdom": "Ruined Kingdom",
+    "stage": "DotTowerExStage",
+    "parents": [
+      "BossRaidWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "BossRaidWorldHomeStage",
+      "entry_id": "BossRaidWorldEx01_Eixt",
+      "unit": "BazookaElectric"
+    },
+    "primary_exit": {
+      "dest": "BossRaidWorldHomeStage",
+      "entry_id": "BossRaidWorldEx01_Eixt",
+      "unit": "BazookaElectric"
+    },
+    "entries": [
+      {
+        "parent": "BossRaidWorldHomeStage",
+        "entry_id": "BossRaidWorldEx01_Eixt",
+        "unit": "BazookaElectric"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "BossRaidWorldHomeStage",
+        "entry_id": "BossRaidWorldEx01_Eixt",
+        "unit": "BazookaElectric"
+      }
+    ]
+  },
+  "Mummy Army": {
+    "kingdom": "Ruined Kingdom",
+    "stage": "BullRunExStage",
+    "parents": [
+      "BossRaidWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "BossRaidWorldHomeStage",
+      "entry_id": "BossRaidWorldMoonEx02_Enter",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "BossRaidWorldHomeStage",
+      "entry_id": "BossRaidWorldMoonEx02_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "BossRaidWorldHomeStage",
+        "entry_id": "BossRaidWorldMoonEx02_Enter",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "BossRaidWorldHomeStage",
+        "entry_id": "BossRaidWorldMoonEx02_Exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "BossRaidWorldHomeStage",
+        "entry_id": "BossRaidWorldMoonEx02_Enter",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "BossRaidWorldHomeStage",
+        "entry_id": "BossRaidWorldMoonEx02_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Crazy Cap Store (Bowser's)": {
+    "kingdom": "Bowser's Kingdom",
+    "stage": "SkyWorldShopStage",
+    "parents": [
+      "SkyWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SkyWorldHomeStage",
+      "entry_id": "shop",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SkyWorldHomeStage",
+      "entry_id": "shop",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SkyWorldHomeStage",
+        "entry_id": "shop",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "shop",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Bowser's Kingdom Treasure Vault": {
+    "kingdom": "Bowser's Kingdom",
+    "stage": "SkyWorldTreasureStage",
+    "parents": [
+      "SkyWorldCastleZone"
+    ],
+    "primary_entry": {
+      "parent": "SkyWorldCastleZone",
+      "entry_id": "shop_dress",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SkyWorldHomeStage",
+      "entry_id": "shop_dress",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SkyWorldCastleZone",
+        "entry_id": "shop_dress",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "shop_dress",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Scene in the Folding Screen": {
+    "kingdom": "Bowser's Kingdom",
+    "stage": "SkyWorldCostumeStage",
+    "parents": [
+      "SkyWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "SkyWorldHomeStage",
+      "entry_id": "byoubu",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "SkyWorldHomeStage",
+      "entry_id": "byoubu",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SkyWorldHomeStage",
+        "entry_id": "byoubu",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "byoubu",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Spinning Tower": {
+    "kingdom": "Bowser's Kingdom",
+    "stage": "TsukkunRotateExStage",
+    "parents": [
+      "SkyWorldCastleZone"
+    ],
+    "primary_entry": {
+      "parent": "SkyWorldCastleZone",
+      "entry_id": "tukkun000_enter",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SkyWorldHomeStage",
+      "entry_id": "tukkun000_exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SkyWorldCastleZone",
+        "entry_id": "tukkun000_enter",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "SkyWorldCastleZone",
+        "entry_id": "tukkun000_exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "tukkun000_enter",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "tukkun000_exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Jizo's Great Adventure": {
+    "kingdom": "Bowser's Kingdom",
+    "stage": "JizoSwitchExStage",
+    "parents": [
+      "SkyWorldCastleZone"
+    ],
+    "primary_entry": {
+      "parent": "SkyWorldCastleZone",
+      "entry_id": "jizo01",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SkyWorldHomeStage",
+      "entry_id": "jizo01",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SkyWorldCastleZone",
+        "entry_id": "jizo01",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SkyWorldCastleZone",
+        "entry_id": "jizo02",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "jizo01",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "jizo02",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Dashing Above the Clouds": {
+    "kingdom": "Bowser's Kingdom",
+    "stage": "SkyWorldCloudBonusExStage",
+    "parents": [
+      "SkyWorldCastleZone"
+    ],
+    "primary_entry": {
+      "parent": "SkyWorldCastleZone",
+      "entry_id": "sora001",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "SkyWorldHomeStage",
+      "entry_id": "sora001",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "SkyWorldCastleZone",
+        "entry_id": "sora001",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "sora001",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Hexagon Tower": {
+    "kingdom": "Bowser's Kingdom",
+    "stage": "KaronWingTowerStage",
+    "parents": [
+      "SkyWorldCastleZone"
+    ],
+    "primary_entry": {
+      "parent": "SkyWorldCastleZone",
+      "entry_id": "Patakaron02",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SkyWorldHomeStage",
+      "entry_id": "Patakaron02",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SkyWorldCastleZone",
+        "entry_id": "Patakaron02",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "Patakaron02",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Wooden Tower": {
+    "kingdom": "Bowser's Kingdom",
+    "stage": "TsukkunClimbExStage",
+    "parents": [
+      "SkyWorldCastleZone"
+    ],
+    "primary_entry": {
+      "parent": "SkyWorldCastleZone",
+      "entry_id": "tukkun001_enter",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "SkyWorldHomeStage",
+      "entry_id": "tukkun001_exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "SkyWorldCastleZone",
+        "entry_id": "tukkun001_enter",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "SkyWorldCastleZone",
+        "entry_id": "tukkun001_exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "tukkun001_enter",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "SkyWorldHomeStage",
+        "entry_id": "tukkun001_exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Underground Caverns": {
+    "kingdom": "Moon Kingdom",
+    "stage": "MoonWorldCaptureParadeStage",
+    "parents": [
+      "MoonWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "MoonWorldHomeStage",
+      "entry_id": "bbb",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "MoonWorldHomeStage",
+      "entry_id": "bbb",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "bbb",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "ccc",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "MoonWorldHomeStage",
+        "entry_id": "bbb",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "MoonWorldHomeStage",
+        "entry_id": "vvv",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Wedding Room": {
+    "kingdom": "Moon Kingdom",
+    "stage": "MoonWorldWeddingRoomStage",
+    "parents": [
+      "MoonWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "MoonWorldHomeStage",
+      "entry_id": "aaa",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "MoonWorldHomeStage",
+      "entry_id": "aaa",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "aaa",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "fff",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "MoonWorldHomeStage",
+        "entry_id": "aaa",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Crazy Cap Store (Moon)": {
+    "kingdom": "Moon Kingdom",
+    "stage": "MoonWorldShopRoom",
+    "parents": [
+      "MoonWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "MoonWorldHomeStage",
+      "entry_id": "ddd",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "MoonWorldHomeStage",
+      "entry_id": "ddd",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "ddd",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "MoonWorldHomeStage",
+        "entry_id": "ddd",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Moon Kingdom Treasure Vault": {
+    "kingdom": "Moon Kingdom",
+    "stage": "MoonWorldSphinxRoom",
+    "parents": [
+      "MoonWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "MoonWorldHomeStage",
+      "entry_id": "ggg",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "MoonWorldHomeStage",
+      "entry_id": "ggg",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "ggg",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "MoonWorldHomeStage",
+        "entry_id": "ggg",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "8-Bit Galaxy": {
+    "kingdom": "Moon Kingdom",
+    "stage": "Galaxy2DExStage",
+    "parents": [
+      "MoonWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "MoonWorldHomeStage",
+      "entry_id": "dot00",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "MoonWorldHomeStage",
+      "entry_id": "dot00",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "dot00",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "dot01",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "MoonWorldHomeStage",
+        "entry_id": "dot01",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "MoonWorldHomeStage",
+        "entry_id": "dot00",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Giant Swings": {
+    "kingdom": "Moon Kingdom",
+    "stage": "MoonAthleticExStage",
+    "parents": [
+      "MoonWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "MoonWorldHomeStage",
+      "entry_id": "moon",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "MoonWorldHomeStage",
+      "entry_id": "moon_exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "moon",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "MoonWorldHomeStage",
+        "entry_id": "moon_exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "MoonWorldHomeStage",
+        "entry_id": "moon",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "MoonWorldHomeStage",
+        "entry_id": "moon_exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Crazy Cap Store (Mushroom)": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "PeachWorldShopStage",
+    "parents": [
+      "PeachWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "PeachWorldShopA",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "PeachWorldShopA",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "PeachWorldShopA",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "PeachWorldShopA",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Picture Match (Mario)": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "FukuwaraiMarioStage",
+    "parents": [
+      "PeachWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "Fukuwarai2",
+      "unit": "BazookaElectric"
+    },
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "Fukuwarai2",
+      "unit": "BazookaElectric"
+    },
+    "entries": [
+      {
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "Fukuwarai2",
+        "unit": "BazookaElectric"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "Fukuwarai2",
+        "unit": "BazookaElectric"
+      }
+    ]
+  },
+  "Peach's Castle": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "PeachWorldCastleStage",
+    "parents": [
+      "PeachWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "PeachCastleGate",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "PeachCastleGate",
+      "unit": "ChangeStageArea"
+    },
+    "entries": [
+      {
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "PeachCastleGate",
+        "unit": "ChangeStageArea"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "PeachCastleGate",
+        "unit": "ChangeStageArea"
+      }
+    ]
+  },
+  "Castle Courtyard 64": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "PeachWorldCostumeStage",
+    "parents": [
+      "PeachWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "CostumeEventWorldPeach",
+      "unit": "DoorWarpStageChange"
+    },
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "CostumeEventWorldPeach",
+      "unit": "DoorWarpStageChange"
+    },
+    "entries": [
+      {
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "CostumeEventWorldPeach",
+        "unit": "DoorWarpStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "CostumeEventWorldPeach",
+        "unit": "DoorWarpStageChange"
+      }
+    ]
+  },
+  "Yoshi in the Sea of Clouds": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "YoshiCloudExStage",
+    "parents": [
+      "PeachWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "PeachWorldEx1a",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "PeachWorldEx1a",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "PeachWorldEx1a",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "PeachWorldEx1a",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "8-Bit Bullet Bills": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "DotHardExStage",
+    "parents": [
+      "PeachWorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "PeachWorldEx2a",
+      "unit": "ChangeStageArea"
+    },
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "PeachWorldEx2a",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "PeachWorldEx2a",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "PeachWorldEx2a",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "PeachWorldEx2a",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Knucklotec Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "RevengeBossKnuckleStage",
+    "parents": [
+      "PeachWorldPictureBossKnuckleStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldPictureBossKnuckleStage",
+      "entry_id": "PictureBossKnuckle",
+      "unit": "PictureStageChange"
+    },
+    "primary_exit": null,
+    "entries": [
+      {
+        "parent": "PeachWorldPictureBossKnuckleStage",
+        "entry_id": "PictureBossKnuckle",
+        "unit": "PictureStageChange"
+      }
+    ],
+    "exits": []
+  },
+  "Torkdrift Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "RevengeForestBossStage",
+    "parents": [
+      "PeachWorldPictureBossForestStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldPictureBossForestStage",
+      "entry_id": "PictureBossForest",
+      "unit": "PictureStageChange"
+    },
+    "primary_exit": null,
+    "entries": [
+      {
+        "parent": "PeachWorldPictureBossForestStage",
+        "entry_id": "PictureBossForest",
+        "unit": "PictureStageChange"
+      }
+    ],
+    "exits": []
+  },
+  "Mechawiggler Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "RevengeMofumofuStage",
+    "parents": [
+      "PeachWorldPictureMofumofuStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldPictureMofumofuStage",
+      "entry_id": "PictureMofumofu",
+      "unit": "PictureStageChange"
+    },
+    "primary_exit": null,
+    "entries": [
+      {
+        "parent": "PeachWorldPictureMofumofuStage",
+        "entry_id": "PictureMofumofu",
+        "unit": "PictureStageChange"
+      }
+    ],
+    "exits": []
+  },
+  "Mollusque-Lanceur Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "RevengeGiantWanderBossStage",
+    "parents": [
+      "PeachWorldPictureGiantWanderBossStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldPictureGiantWanderBossStage",
+      "entry_id": "PictureGiantWanderBoss",
+      "unit": "PictureStageChange"
+    },
+    "primary_exit": null,
+    "entries": [
+      {
+        "parent": "PeachWorldPictureGiantWanderBossStage",
+        "entry_id": "PictureGiantWanderBoss",
+        "unit": "PictureStageChange"
+      }
+    ],
+    "exits": []
+  },
+  "Cookatiel Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "RevengeBossMagmaStage",
+    "parents": [
+      "PeachWorldPictureBossMagmaStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldPictureBossMagmaStage",
+      "entry_id": "PictureBossMagma",
+      "unit": "PictureStageChange"
+    },
+    "primary_exit": null,
+    "entries": [
+      {
+        "parent": "PeachWorldPictureBossMagmaStage",
+        "entry_id": "PictureBossMagma",
+        "unit": "PictureStageChange"
+      }
+    ],
+    "exits": []
+  },
+  "Lord of Lightning Boss Re-fight": {
+    "kingdom": "Mushroom Kingdom",
+    "stage": "RevengeBossRaidStage",
+    "parents": [
+      "PeachWorldPictureBossRaidStage"
+    ],
+    "primary_entry": {
+      "parent": "PeachWorldPictureBossRaidStage",
+      "entry_id": "PictureBossRaid",
+      "unit": "PictureStageChange"
+    },
+    "primary_exit": null,
+    "entries": [
+      {
+        "parent": "PeachWorldPictureBossRaidStage",
+        "entry_id": "PictureBossRaid",
+        "unit": "PictureStageChange"
+      }
+    ],
+    "exits": []
+  },
+  "Breakdown Road Capless": {
+    "kingdom": "Dark Side",
+    "stage": "KillerRoadNoCapExStage",
+    "parents": [
+      "Special1WorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "Special1WorldHomeStage",
+      "entry_id": "KillerRoadNoCapEx",
+      "unit": "DoorAreaChangeCap"
+    },
+    "primary_exit": {
+      "dest": "Special1WorldHomeStage",
+      "entry_id": "KillerRoadNoCapEx",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "KillerRoadNoCapEx",
+        "unit": "DoorAreaChangeCap"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "KillerRoadNoCapEx",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Invisible Road Capless": {
+    "kingdom": "Dark Side",
+    "stage": "PackunPoisonNoCapExStage",
+    "parents": [
+      "Special1WorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "Special1WorldHomeStage",
+      "entry_id": "PackunPoisonNoCapEx",
+      "unit": "DoorAreaChangeCap"
+    },
+    "primary_exit": {
+      "dest": "Special1WorldHomeStage",
+      "entry_id": "PackunPoisonNoCapEx_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "PackunPoisonNoCapEx_Exit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "PackunPoisonNoCapEx",
+        "unit": "DoorAreaChangeCap"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "PackunPoisonNoCapEx_Exit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "PackunPoisonNoCapEx",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Vanishing Road Capless": {
+    "kingdom": "Dark Side",
+    "stage": "BikeSteelNoCapExStage",
+    "parents": [
+      "Special1WorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "Special1WorldHomeStage",
+      "entry_id": "BikeSteelNoCapEx",
+      "unit": "DoorAreaChangeCap"
+    },
+    "primary_exit": {
+      "dest": "Special1WorldHomeStage",
+      "entry_id": "BikeSteelNoCapEx_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "BikeSteelNoCapEx_Exit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "BikeSteelNoCapEx",
+        "unit": "DoorAreaChangeCap"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "BikeSteelNoCapEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "BikeSteelNoCapEx_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Yoshi Under Siege": {
+    "kingdom": "Dark Side",
+    "stage": "ShootingCityYoshiExStage",
+    "parents": [
+      "Special1WorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "Special1WorldHomeStage",
+      "entry_id": "ShootingCityYoshiEx",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "Special1WorldHomeStage",
+      "entry_id": "ShootingCityYoshiEx_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "ShootingCityYoshiEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "ShootingCityYoshiEx_Exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "ShootingCityYoshiEx_Exit",
+        "unit": "DokanStageChange"
+      },
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "ShootingCityYoshiEx",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Yoshi on the Sinking Island": {
+    "kingdom": "Dark Side",
+    "stage": "SenobiTowerYoshiExStage",
+    "parents": [
+      "Special1WorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "Special1WorldHomeStage",
+      "entry_id": "SenobiTowerYoshiEx",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "Special1WorldHomeStage",
+      "entry_id": "SenobiTowerYoshiEx_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "SenobiTowerYoshiEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "SenobiTowerYoshiEx_Exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "SenobiTowerYoshiEx",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "SenobiTowerYoshiEx_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  },
+  "Yoshi's Magma Swamp": {
+    "kingdom": "Dark Side",
+    "stage": "LavaWorldUpDownYoshiExStage",
+    "parents": [
+      "Special1WorldHomeStage"
+    ],
+    "primary_entry": {
+      "parent": "Special1WorldHomeStage",
+      "entry_id": "LavaWorldUpDownYoshiEx",
+      "unit": "DokanStageChange"
+    },
+    "primary_exit": {
+      "dest": "Special1WorldHomeStage",
+      "entry_id": "LavaWorldUpDownYoshiEx_Exit",
+      "unit": "DokanStageChange"
+    },
+    "entries": [
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "LavaWorldUpDownYoshiEx",
+        "unit": "DokanStageChange"
+      },
+      {
+        "parent": "Special1WorldHomeStage",
+        "entry_id": "LavaWorldUpDownYoshiEx_Exit",
+        "unit": "DokanStageChange"
+      }
+    ],
+    "exits": [
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "LavaWorldUpDownYoshiEx",
+        "unit": "ChangeStageArea"
+      },
+      {
+        "dest": "Special1WorldHomeStage",
+        "entry_id": "LavaWorldUpDownYoshiEx_Exit",
+        "unit": "DokanStageChange"
+      }
+    ]
+  }
+}

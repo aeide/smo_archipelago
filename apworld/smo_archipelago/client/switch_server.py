@@ -30,6 +30,7 @@ from .protocol import (
     CappyMsg,
     CheckedReplayMsg,
     CoinGrant,
+    EntranceMapMsg,
     ErrMsg,
     HelloAckMsg,
     ItemMsg,
@@ -745,6 +746,63 @@ class SwitchServer:
             for k, v in self._kingdom_gates.items()
         ]))
 
+    def set_entrance_map(self, m: dict[str, str]) -> None:
+        """Stash the P7 entrance-shuffle bijection for delivery to the Switch.
+
+        `m` is {door_subarea_name: interior_subarea_name} in AP form (the raw
+        strings from slot_data["entrance_map"]). Stored verbatim; HELLO replays
+        re-ship across Switch reconnects. Empty dict is meaningful — it clears
+        any stale remap table (entrance_shuffle off, or no-shuffle seed).
+        """
+        self._state.set_entrance_map(m)
+
+    async def push_entrance_map(self) -> None:
+        """Resolve the stashed bijection to stage quads and ship to the Switch.
+
+        The stored form is the AP-name bijection {door_subarea: interior_subarea}
+        from slot_data; the Switch hook works on raw SMO stage names, so we
+        resolve here via data/entrance_stages.json (compile_stage_remaps) and
+        send the quads full-overwrite, chunked at ENTRANCE_MAP_CHUNK (the ~119
+        doors overrun the 8 KiB line cap). The first chunk carries reset=True;
+        an empty bijection sends a single reset=True clear so the Switch reverts
+        to vanilla.
+
+        No-op when set_entrance_map has never been called (HELLO before AP
+        Connected — the context handler re-pushes once slot_data lands).
+        """
+        if not self._state.is_entrance_map_configured():
+            return
+        # Lazy imports: keep the SMOClient module-load path off entrance_logic
+        # (which lazily pulls hooks/Rules) until an actual shuffle seed connects.
+        from ..entrance_logic import compile_stage_remaps, load_entrance_stages
+        from .protocol import ENTRANCE_MAP_CHUNK
+
+        bijection = self._state.get_entrance_map()
+        rows = compile_stage_remaps(bijection, load_entrance_stages())
+        # rows now carry both entry + exit kinds. Drift is measured on the entry
+        # rows only: every non-identity pair should yield one entry row, so a
+        # shortfall means a door failed to resolve against entrance_stages.json.
+        # (Exit rows can legitimately be fewer — a subarea with no primary_exit.)
+        entry_rows = sum(1 for r in rows if r.get("kind") == "entry")
+        non_identity = sum(1 for d, i in bijection.items() if d != i)
+        dropped = non_identity - entry_rows
+        if dropped > 0:
+            log.warning(
+                "[entrance] %d/%d shuffled doors unresolved against "
+                "entrance_stages.json (shipping %d rows: %d entry + %d exit)",
+                dropped, non_identity, len(rows), entry_rows,
+                len(rows) - entry_rows,
+            )
+
+        quads = rows
+        if not quads:
+            # Empty (or fully-unresolved) — send one reset to clear the Switch.
+            await self._send(EntranceMapMsg(entries=[], reset=True))
+            return
+        for i in range(0, len(quads), ENTRANCE_MAP_CHUNK):
+            chunk = quads[i:i + ENTRANCE_MAP_CHUNK]
+            await self._send(EntranceMapMsg(entries=chunk, reset=(i == 0)))
+
     def set_shop_labels(self, entries: list[dict]) -> None:
         """Stash the per-shop label entries for shipping to the Switch.
 
@@ -1162,6 +1220,10 @@ class SwitchServer:
         # AP logic. No-op when SMOContext hasn't delivered slot_data yet
         # (the Connected handler re-pushes once it lands).
         await self.push_kingdom_gates()
+
+        # P7 entrance shuffle: ship the bijection so the Switch remaps subarea
+        # stage transitions. No-op when slot_data hasn't landed yet.
+        await self.push_entrance_map()
 
         # P1 coin grant: Cap Kingdom Power Moons convert to 100 coins each
         # instead of spending the Odyssey hatch. Running lifetime total so

@@ -662,6 +662,46 @@ class AbilityStateMsg:
         return {"t": self.t, "entries": self.entries, "enforce": self.enforce}
 
 
+# Entrance-map chunk size. The resolved bijection is ~119 stage quads; at
+# ~70-100 bytes each that overruns the 8 KiB line cap, so push_entrance_map
+# splits into chunks of this many entries. 48 keeps a worst-case chunk
+# (long stage names) comfortably under the cap. The Switch's parser cap is
+# kEntranceMapMax=64, so this stays under that too.
+ENTRANCE_MAP_CHUNK = 48
+
+
+@dataclass
+class EntranceMapMsg:
+    """Bridge -> Switch: resolved entrance-shuffle remap table (chunked).
+
+    The apworld resolves slot_data["entrance_map"] (a {door_subarea:
+    interior_subarea} bijection of AP display names) into stage-level quads via
+    data/entrance_stages.json BEFORE sending, so the Switch does a flat stage
+    lookup + ChangeStageInfo rewrite without needing the subarea-name table.
+
+    Each entry: {"kind": <"entry"|"exit">, "from": <match-key stage>,
+    "to_stage": <rewrite dest stage>, "to_id": <rewrite arrival id>}.
+    ENTRY rows match the inbound dest stage (you walk through a door); EXIT
+    rows match the CURRENT stage (you leave a shuffled interior — the return
+    target is precomputed because a coupled bijection's exit is deterministic).
+    A row with no "kind" is treated as an entry by older Switch builds. When
+    SMO fires GameDataFile::changeNextStage, the EntranceShuffleHook looks up
+    the dest as an entry key first, then the current stage as an exit key, and
+    rewrites the destination to (to_stage, to_id).
+
+    FULL-OVERWRITE, possibly chunked: the first chunk carries reset=True to
+    clear the Switch table; follow-up chunks merge by `from` (the bijection can
+    exceed the 8 KiB line cap at ~119 doors, so push_entrance_map splits at
+    ENTRANCE_MAP_CHUNK). An empty reset=True message reverts to vanilla
+    (entrance_shuffle off / no-shuffle seed).
+
+    Sent on AP Connected (slot_data["entrance_map"]) and on every HELLO replay.
+    """
+    t: str = "entrance_map"
+    entries: list[dict] = field(default_factory=list)  # [{"from","to_stage","to_id"}]
+    reset: bool = False
+
+
 @dataclass
 class MoonLabelMsg:
     """M6 phase A.5 - Channel A: replace the moon-get cutscene's pane text

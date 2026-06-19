@@ -462,6 +462,50 @@ bool parseKingdomGates(Reader& r, KingdomGates& out) {
     return true;
 }
 
+bool parseEntranceMap(Reader& r, EntranceMap& out) {
+    // P7 — full-overwrite (possibly chunked) entrance remap. `reset` (bool) and
+    // `entries` (array of {from, to_stage, to_id}) may arrive in either order;
+    // overflow past kEntranceMapMax is parse-and-discarded so the JSON stays
+    // well-formed and the consumer logs truncation.
+    out.entry_count = 0;
+    out.reset = false;
+    out.truncated = false;
+    std::string_view key;
+    while (r.nextField(key)) {
+        if (key == "reset") {
+            if (!r.nextBool(out.reset)) return false;
+        } else if (key == "entries") {
+            if (!r.enterArray()) return false;
+            while (r.hasMoreInArray()) {
+                if (!r.enterObject()) return false;
+                EntranceRemapEntry entry;
+                std::string_view k2;
+                while (r.nextField(k2)) {
+                    if      (k2 == "from")     { if (!readIntoField(r, entry.from)) return false; }
+                    else if (k2 == "to_stage") { if (!readIntoField(r, entry.to_stage)) return false; }
+                    else if (k2 == "to_id")    { if (!readIntoField(r, entry.to_id)) return false; }
+                    else if (k2 == "kind")     {
+                        char kind[kCheckFieldCap];
+                        if (!readIntoField(r, kind)) return false;
+                        entry.is_exit = (std::strcmp(kind, "exit") == 0);
+                    }
+                    else                       { return false; }
+                }
+                if (!r.exitObject()) return false;
+                if (out.entry_count < kEntranceMapMax) {
+                    out.entries[out.entry_count++] = entry;
+                } else {
+                    out.truncated = true;
+                }
+            }
+            if (!r.exitArray()) return false;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool parseCappy(Reader& r, Cappy& out) {
     std::string_view key;
     while (r.nextField(key)) {
@@ -623,6 +667,7 @@ bool decode(const char* data, std::size_t len, DecodedMsg& out) {
     else if (eqStr(out.t, "shop_labels"))    ok = parseShopLabels(r, out.shop_labels);
     else if (eqStr(out.t, "coin_grant"))     ok = parseCoinGrant(r, out.coin_grant);
     else if (eqStr(out.t, "ability_state"))  ok = parseAbilityState(r, out.ability_state);
+    else if (eqStr(out.t, "entrance_map"))   ok = parseEntranceMap(r, out.entrance_map);
     else {
         // Unknown type: leave out.t set so handleLine can warn. Don't bother
         // draining the rest of the object — caller treats unknown as ignored.

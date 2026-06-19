@@ -105,6 +105,11 @@ class BridgeState:
         # others are connected-but-idle (KickMsg(reason="inactive")).
         self._switches: dict[str, dict] = {}
         self._active_device_id: str | None = None
+        # P7 entrance shuffle bijection. {door_subarea: interior_subarea} (AP names).
+        # Populated from slot_data["entrance_map"] on AP Connected.
+        # Empty dict = vanilla (entrance_shuffle off or seed without shuffle).
+        self.entrance_map: dict[str, str] = {}
+        self._entrance_map_configured: bool = False
 
     # ---------- AP <-> internal ----------
 
@@ -324,6 +329,20 @@ class BridgeState:
         """
         with self._lock:
             return int(self.moons_received_by_kingdom.get(kingdom, 0))
+
+    def set_entrance_map(self, m: dict[str, str]) -> None:
+        """Store the P7 entrance-shuffle bijection from slot_data."""
+        with self._lock:
+            self.entrance_map = {str(k): str(v) for k, v in (m or {}).items()}
+            self._entrance_map_configured = True
+
+    def get_entrance_map(self) -> dict[str, str]:
+        with self._lock:
+            return dict(self.entrance_map)
+
+    def is_entrance_map_configured(self) -> bool:
+        with self._lock:
+            return self._entrance_map_configured
 
     def set_shine_palette(self, entries: dict[int, int]) -> None:
         """Replace the (shine_uid -> palette) table with the given entries.

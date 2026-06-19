@@ -457,6 +457,60 @@ public:
             g.store(-1, std::memory_order_relaxed);
     }
 
+    // ---- P7 entrance shuffle remap table -----------------------------------
+    //
+    // Bridge ships an `entrance_map` message (full-overwrite, possibly chunked)
+    // resolving each vanilla door's destination stage to the shuffled interior.
+    // EntranceShuffleHook reads this from the frame thread (inside
+    // GameDataFile::changeNextStage) to rewrite the ChangeStageInfo target so
+    // the door lands Mario in a different subarea than vanilla.
+    //
+    // Threading: the worker thread (ApClient::handleLine -> applyEntranceMap) is
+    // the sole writer; the frame-thread hook reads via lookupEntranceRemap. The
+    // seqlock (even=stable, odd=writing) matches the ability_table / shop_labels
+    // pattern so the hook re-reads without a lock. A torn / contended read
+    // returns "no remap" so the transition falls through to vanilla rather than
+    // warping somewhere wrong — fail-safe, like the other lock-free readers.
+    //
+    // Holds BOTH directions: an entry row (is_exit=false) keyed by the inbound
+    // dest stage, and an exit row (is_exit=true) keyed by the interior's own
+    // stage (cur at exit time). Both directions share the pool of subarea
+    // stages, so an entry key and an exit key can be the SAME string for
+    // different transitions — merge/lookup must therefore key on (from,is_exit),
+    // not from alone. ~238 rows worst case (119 pairs x 2); cap 256 with
+    // headroom. 256 slots x (3 x 64 + 1) ~= 50 KiB BSS. Fixed buffers per the
+    // M6.1 allocator-safety contract.
+    struct EntranceRemapSlot {
+        char from[kCheckFieldCap] = {};       // match key (entry: dest; exit: cur)
+        char to_stage[kCheckFieldCap] = {};   // rewrite dest stage
+        char to_id[kCheckFieldCap] = {};      // rewrite arrival entrance id
+        bool is_exit = false;                 // false=entry (dest key), true=exit (cur key)
+    };
+    static constexpr std::size_t kEntranceRemapMax = 256;
+    EntranceRemapSlot entrance_remap[kEntranceRemapMax]{};
+    std::size_t entrance_remap_count = 0;
+    std::atomic<std::uint32_t> entrance_remap_seq{0};
+
+    // Worker-thread write. `reset` clears the table before applying (first chunk
+    // of a send); a follow-up chunk with reset=false merges by (from,is_exit)
+    // (overwrites a matching slot, else appends). Idempotent under HELLO replay.
+    void applyEntranceMap(const EntranceRemapEntry* entries, std::size_t count,
+                          bool reset);
+
+    // Frame-thread read, two-key. Prefers an ENTRY row matching `dest_stage`
+    // (the inbound ChangeStageInfo dest); failing that, an EXIT row matching
+    // `cur_stage` (getCurrentStageName — the interior being left). On hit fills
+    // to_stage / to_id (null-terminated) and returns true. Lock-free seqlock
+    // read; a torn / contended read returns false (vanilla). `cur_stage` may be
+    // null (caller couldn't resolve it) — then only the entry key is tried.
+    bool lookupEntranceRemap(const char* dest_stage,
+                             const char* cur_stage,
+                             char (&to_stage)[kCheckFieldCap],
+                             char (&to_id)[kCheckFieldCap]) const;
+
+    // Worker-thread clear — empties the table (entrance_shuffle off / seed swap).
+    void clearEntranceMap();
+
     // M7 Path A — sticky "Mario has actually traveled to this kingdom"
     // bitmask, indexed by kingdomBitForWorldId (0..16). Populated ONLY from
     // stage-transition hooks (TryChangeDemoWorldWarp + TryChangeWorldWarpHole

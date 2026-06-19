@@ -983,6 +983,12 @@ class SMOContext(CommonContext):
                     str(k): int(v) for k, v in raw_gates.items()
                 })
                 await self.switch.push_kingdom_gates()
+                # P7 entrance shuffle: bijection from slot_data to the Switch.
+                raw_entrance_map = slot_data.get("entrance_map") or {}
+                self.switch.set_entrance_map(
+                    {str(k): str(v) for k, v in raw_entrance_map.items()}
+                )
+                await self.switch.push_entrance_map()
                 # Shop moon label substitution. Depends on the datapackage
                 # being hot (loc_name_to_id) AND scout cache lookups
                 # working — both are true by the time we reach here.

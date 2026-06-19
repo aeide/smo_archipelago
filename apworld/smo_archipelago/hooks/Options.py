@@ -169,6 +169,18 @@ class NoLogic(Toggle):
     is still being authored. NOT for real playthroughs — seeds may be unwinnable."""
     display_name = "No Logic (testing)"
 
+class EntranceShuffle(Toggle):
+    """Shuffle subarea entrances (P7 feature, default OFF — work in progress).
+
+    When on, every non-story subarea door leads to a randomly-assigned subarea
+    interior (a global bijection over ~116 pooled subareas). Story-critical
+    areas (Sewers, Shiveria Town, Wedding Room, etc.) are excluded from the
+    pool and stay in their vanilla locations.
+
+    The bijection is stored in slot_data as `entrance_map` and sent to the
+    Switch mod at connect time so it can remap door loads in real time."""
+    display_name = "Entrance Shuffle"
+
 class TalkatooMode(Toggle):
     """Talkatoo% mode: Talkatoo's speech bubble names 3 of YOUR AP-pool moons from the current
     kingdom, refilling as you collect them. Composable with the other include_* / capturesanity
@@ -336,6 +348,7 @@ class BowsersMoonCount(Range):
 def before_options_defined(options: dict) -> dict:
     options["goal"] = Goal
     options["no_logic"] = NoLogic
+    options["entrance_shuffle"] = EntranceShuffle
     options["capturesanity"] = Capturesanity
     options["abilitysanity"] = AbilitySanity
     options["talkatoo_mode"] = TalkatooMode

@@ -75,6 +75,8 @@ class _StubSwitch:
         self.push_shop_label_calls: int = 0
         self.kingdom_gates_calls: list[dict[str, int]] = []
         self.push_kingdom_gates_calls: int = 0
+        self.entrance_map_calls: list[dict[str, str]] = []
+        self.push_entrance_map_calls: int = 0
 
     async def send_item(self, item: ItemMsg) -> None:
         self.items.append(item)
@@ -132,6 +134,12 @@ class _StubSwitch:
 
     async def push_kingdom_gates(self) -> None:
         self.push_kingdom_gates_calls += 1
+
+    def set_entrance_map(self, m: dict[str, str]) -> None:
+        self.entrance_map_calls.append({k: str(v) for k, v in m.items()})
+
+    async def push_entrance_map(self) -> None:
+        self.push_entrance_map_calls += 1
 
     async def drain_pending_snapshot(self) -> None:
         """M6 phase C reconcile path — Connected calls this. The real

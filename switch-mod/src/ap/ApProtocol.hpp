@@ -551,6 +551,42 @@ struct AbilityState {
     bool enforce = true;
 };
 
+// P7 — Bridge -> Switch entrance-shuffle remap table (full-overwrite, chunked).
+//
+// Sent on AP Connected and re-shipped on every HELLO replay. Each entry maps a
+// vanilla door's destination stage (`from`) to the shuffled interior: when SMO
+// fires GameDataFile::changeNextStage with mChangeStageName == `from`, the
+// EntranceShuffleHook rewrites the destination to (`to_stage`, `to_id`).
+//
+// The apworld resolves the slot_data subarea-name bijection into these stage-
+// level quads (via data/entrance_stages.json) BEFORE sending, so the Switch
+// never needs the subarea-name table — it does a flat stage lookup + buffer
+// rewrite. FULL-OVERWRITE semantics: the first chunk carries reset=true to
+// clear the table; follow-up chunks (the bijection can exceed the 8 KiB line
+// cap at ~119 doors) merge by `from`. An empty reset=true message reverts to
+// vanilla. The apworld chunks at <= 48 entries to stay well under the line cap.
+//
+// Fixed-buffer storage (same M6.1 allocator-safety contract every inbound
+// struct uses). Per-chunk parser cap 64 — overflow sets `truncated`.
+inline constexpr std::size_t kEntranceMapMax = 64;
+
+struct EntranceRemapEntry {
+    char from[kCheckFieldCap] = {};       // match key (entry: dest stage; exit: cur stage)
+    char to_stage[kCheckFieldCap] = {};   // rewrite dest stage
+    char to_id[kCheckFieldCap] = {};      // rewrite arrival entrance id
+    // false = ENTRY row (match against the inbound dest stage); true = EXIT row
+    // (match against getCurrentStageName, the interior being left). A wire row
+    // with no "kind" parses as entry (back-compat with the entry-only build).
+    bool is_exit = false;
+};
+
+struct EntranceMap {
+    EntranceRemapEntry entries[kEntranceMapMax]{};
+    std::size_t entry_count = 0;
+    bool reset = false;     // first chunk clears the table before applying
+    bool truncated = false;
+};
+
 // (de)serialization --------------------------------------------------------
 // Implementations in ApProtocol.cpp use util/Json.hpp (no STL exceptions).
 //
@@ -593,6 +629,7 @@ struct DecodedMsg {
     ShopLabels shop_labels{};
     CoinGrant coin_grant{};
     AbilityState ability_state{};
+    EntranceMap entrance_map{};
 };
 bool decode(const char* data, std::size_t len, DecodedMsg& out);
 

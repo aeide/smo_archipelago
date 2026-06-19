@@ -379,6 +379,110 @@ bool ApState::abilityAtLeast(const char* name, int level) const {
     return abilityCount(name) >= level;
 }
 
+void ApState::applyEntranceMap(const EntranceRemapEntry* entries,
+                               std::size_t count, bool reset) {
+    // P7 — full-overwrite (possibly chunked) entrance remap. Worker thread only.
+    // Seqlock bracket (even=stable, odd=writing) matches applyAbilityState so
+    // the frame-thread hook (lookupEntranceRemap) can re-read without a lock.
+    const auto seq0 = entrance_remap_seq.load(std::memory_order_relaxed);
+    entrance_remap_seq.store(seq0 + 1, std::memory_order_release);  // even -> odd
+
+    if (reset) entrance_remap_count = 0;
+
+    for (std::size_t i = 0; i < count; ++i) {
+        const auto& e = entries[i];
+        if (e.from[0] == '\0') continue;
+        // Merge by (from, is_exit) — an entry key and an exit key can be the
+        // same stage string for different transitions, so the direction is part
+        // of the identity. Overwrite a matching slot (idempotent HELLO replay /
+        // multi-chunk update), else append.
+        std::size_t slot = entrance_remap_count;
+        for (std::size_t j = 0; j < entrance_remap_count; ++j) {
+            if (entrance_remap[j].is_exit == e.is_exit &&
+                std::strcmp(entrance_remap[j].from, e.from) == 0) {
+                slot = j;
+                break;
+            }
+        }
+        if (slot == entrance_remap_count) {
+            if (entrance_remap_count >= kEntranceRemapMax) {
+                SMOAP_LOG_WARN("[entrance] remap table full at %zu; dropping '%s'",
+                               kEntranceRemapMax, e.from);
+                continue;
+            }
+            ++entrance_remap_count;
+        }
+        std::memcpy(entrance_remap[slot].from, e.from, kCheckFieldCap);
+        std::memcpy(entrance_remap[slot].to_stage, e.to_stage, kCheckFieldCap);
+        std::memcpy(entrance_remap[slot].to_id, e.to_id, kCheckFieldCap);
+        entrance_remap[slot].from[kCheckFieldCap - 1] = '\0';
+        entrance_remap[slot].to_stage[kCheckFieldCap - 1] = '\0';
+        entrance_remap[slot].to_id[kCheckFieldCap - 1] = '\0';
+        entrance_remap[slot].is_exit = e.is_exit;
+    }
+
+    entrance_remap_seq.store(seq0 + 2, std::memory_order_release);  // odd -> even
+}
+
+bool ApState::lookupEntranceRemap(const char* dest_stage,
+                                  const char* cur_stage,
+                                  char (&to_stage)[kCheckFieldCap],
+                                  char (&to_id)[kCheckFieldCap]) const {
+    const bool have_dest = dest_stage && *dest_stage;
+    const bool have_cur = cur_stage && *cur_stage;
+    if (!have_dest && !have_cur) return false;
+    // Seqlock read (mirrors abilityCount): retry on odd seq / torn snapshot.
+    // Fail-safe — a contended read returns false so the transition stays
+    // vanilla rather than warping Mario to a half-written remap target.
+    //
+    // Two-key, entry-first: an ENTRY row matching the inbound dest stage wins
+    // (you walked through a shuffled door, including a nested deeper door whose
+    // dest is itself an interior). Only if no entry matches do we try an EXIT
+    // row matching the current stage (you're leaving a shuffled interior — its
+    // vanilla forward exit fires :file with an overworld dest, which is not an
+    // entry key, so it falls through to here).
+    for (int attempt = 0; attempt < 8; ++attempt) {
+        const std::uint32_t s0 = entrance_remap_seq.load(std::memory_order_acquire);
+        if (s0 & 1u) continue;  // writer mid-update
+        std::size_t n = entrance_remap_count;
+        if (n > kEntranceRemapMax) n = kEntranceRemapMax;
+        int hit = -1;
+        if (have_dest) {
+            for (std::size_t i = 0; i < n; ++i) {
+                if (!entrance_remap[i].is_exit &&
+                    std::strcmp(entrance_remap[i].from, dest_stage) == 0) {
+                    hit = static_cast<int>(i);
+                    break;
+                }
+            }
+        }
+        if (hit < 0 && have_cur) {
+            for (std::size_t i = 0; i < n; ++i) {
+                if (entrance_remap[i].is_exit &&
+                    std::strcmp(entrance_remap[i].from, cur_stage) == 0) {
+                    hit = static_cast<int>(i);
+                    break;
+                }
+            }
+        }
+        if (hit >= 0) {
+            copyCheckField(to_stage, entrance_remap[hit].to_stage);
+            copyCheckField(to_id, entrance_remap[hit].to_id);
+        }
+        const std::uint32_t s1 = entrance_remap_seq.load(std::memory_order_acquire);
+        if (s0 == s1) return hit >= 0;  // stable snapshot
+        // else torn — retry
+    }
+    return false;  // contended; fall through to vanilla
+}
+
+void ApState::clearEntranceMap() {
+    const auto seq0 = entrance_remap_seq.load(std::memory_order_relaxed);
+    entrance_remap_seq.store(seq0 + 1, std::memory_order_release);  // even -> odd
+    entrance_remap_count = 0;
+    entrance_remap_seq.store(seq0 + 2, std::memory_order_release);  // odd -> even
+}
+
 void ApState::maybeApplyInboundKill() {
     if (!inbound_kill_pending.exchange(false, std::memory_order_acq_rel)) return;
     if (!deathlink_enabled.load(std::memory_order_relaxed)) {

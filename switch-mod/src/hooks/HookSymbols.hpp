@@ -640,6 +640,64 @@ inline constexpr const char* kRsGetGrowFlowerTime =
     "_ZN2rs17getGrowFlowerTimeEPKN2al9LiveActorEPKNS0_11PlacementIdE";
 
 // =============================================================================
+// P7 — entrance shuffle (EntranceShuffleHook).
+// =============================================================================
+//
+// GameDataFunction::tryChangeNextStage(GameDataHolderWriter, const ChangeStageInfo*)
+// The chokepoint every door / pipe / painting / ChangeStageArea subarea transition
+// funnels through: findAreaAndChangeNextStage and direct door triggers all call it
+// (verified against MonsterDruide1/OdysseyDecomp src/System/GameDataFunction.cpp,
+// 2026-06-18). The With{Race,DemoWorldWarp,WorldWarpHole,Closet,TimeBalloon}
+// siblings call writer->changeNextStage directly (special-case paths), and
+// returnPrevStage is a separate exit path — Step 3's in-game walkthrough confirms
+// which door types actually carry mIsReturn through here.
+//
+// The ChangeStageInfo* is passed by pointer, so mChangeStageName / mChangeStageId /
+// mIsReturn are fully materialized in memory (not inlined). Layout per
+// OdysseyHeaders game/Sequence/ChangeStageInfo.h (sizeof 0x278): mChangeStageId @ 0x00,
+// mChangeStageName @ 0x98, mIsReturn @ 0x1C8, mScenarioNo @ 0x1CC (each FixedSafeString
+// is 0x98 bytes; its cstr ptr sits at +0x08 within).
+//
+// Mangling pattern matches tryChangeNextStageWithDemoWorldWarp above.
+// VERIFY: llvm-nm --dynamic main.nso | grep tryChangeNextStageE
+inline constexpr const char* kGameDataFunctionTryChangeNextStage =
+    "_ZN16GameDataFunction18tryChangeNextStageE20GameDataHolderWriterPK15ChangeStageInfo";
+
+// -----------------------------------------------------------------------------
+// DEEPER chokepoint (Step 3.5, 2026-06-18). The in-game logger walk proved
+// GameDataFunction::tryChangeNextStage is NOT universal: shop / house / slots
+// fire it, but Push-Block-Peril ENTRY, Dinosaur Nest, and Top-Hat Tower do NOT
+// (only the EXIT pipe out of PushBlockExStage fired it). Those entries reach the
+// next-stage commit via a direct actor call that bypasses the GameDataFunction
+// free function. Per OdysseyDecomp the convergence is:
+//   GameDataFunction::tryChangeNextStage(writer, info)
+//     -> writer->changeNextStage(info)          [GameDataHolderAccessor::operator-> -> GameDataHolder]
+//     -> GameDataHolder::changeNextStage(info, raceType)   [mIsStageChanging guard]
+//     -> mPlayingFile->changeNextStage(info, raceType)     [GameDataFile -- THE deep commit]
+// So GameDataFile::changeNextStage(const ChangeStageInfo*, s32) is the universal
+// forward chokepoint (analogous to GameDataFile::setGotShine being the 5-way
+// moon chokepoint). GameDataHolder::changeNextStage is a thin 4-line forwarder
+// and a prime inline candidate, so we hook one level deeper at GameDataFile
+// where setGotShine precedent proves the body stays out-of-line.
+//
+// Same ChangeStageInfo* arg -> same field offsets as the tryChangeNextStage hook.
+// The trailing `i` is the s32 raceType (GameDataFile::RaceType, default 0). The
+// no-`i` form is only a substring of this symbol, not a real overload.
+// HIT [rodata] in .romfs-cache/main (check_nso_symbols.py, 2026-06-18).
+inline constexpr const char* kGameDataFileChangeNextStage =
+    "_ZN12GameDataFile15changeNextStageEPK15ChangeStageInfoi";
+
+// GameDataFile::returnPrevStage() — the SEPARATE exit/return path. Door exits
+// that carry NO ChangeStageInfo (Crazy Cap exit, Tostarena Slots exit, Dinosaur
+// Nest exit, Top-Hat exit all logged NO entrance line) are expected to flow
+// through here. Logging it answers the Step 4 gate question: do exits use the
+// return stack (likely correct for free once we only rewrote the forward target)
+// or do they need an explicit override. void, no args.
+// HIT [rodata] in .romfs-cache/main (check_nso_symbols.py, 2026-06-18).
+inline constexpr const char* kGameDataFileReturnPrevStage =
+    "_ZN12GameDataFile15returnPrevStageEv";
+
+// =============================================================================
 // Legacy / aliasing — kept so existing call sites don't break.
 // =============================================================================
 inline constexpr const char* kSeadGameSystemCtor       = kGameSystemInit;

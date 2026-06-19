@@ -52,6 +52,10 @@ void tickAbilityGate();
 void installWorldMapSelectHook();
 void installMoonLabelHook();
 void installShineAppearanceHook();
+// Peace-gated Moon Rocks: trampolines GameDataFunction::isEnableOpenMoonRock
+// so a kingdom's moon rock opens after its main story completes (world peace)
+// instead of full game clear. See hooks/MoonRockHook.cpp.
+void installMoonRockHook();
 void installCreditsStartHook();
 void installShopItemMessageHook();
 void installCappyMessageTextHooks();
@@ -72,6 +76,9 @@ void installTalkatooMenuMarkHook();
 // wait on seed-pot moons to a single area re-entry. See
 // hooks/GrowSeedInstantHook.cpp.
 void installGrowSeedInstantHook();
+// P7 entrance shuffle — Step 3 logger on tryChangeNextStage. See
+// hooks/EntranceShuffleHook.cpp.
+void installEntranceShuffleHook();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
@@ -298,6 +305,9 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("installing ShineAppearanceHook (AP-classification moon color)");
     smoap::hooks::installShineAppearanceHook();
 
+    SMOAP_LOG_INFO("installing MoonRockHook (peace-gated isEnableOpenMoonRock)");
+    smoap::hooks::installMoonRockHook();
+
     SMOAP_LOG_INFO("resolving M6-phase-C snapshot enumeration symbols");
     smoap::game::installSnapshotSymbols();
 
@@ -346,6 +356,9 @@ extern "C" void hkMain() {
 
     SMOAP_LOG_INFO("installing GrowSeedInstantHook (rs::getGrowFlowerTime -> 1 for planted)");
     smoap::hooks::installGrowSeedInstantHook();
+
+    SMOAP_LOG_INFO("installing EntranceShuffleHook (P7 Step 3 logger -> tryChangeNextStage)");
+    smoap::hooks::installEntranceShuffleHook();
 
 #ifdef SMOAP_HAS_DEBUG_RENDERER
     // Install the Nvn bootstrap trampoline so ImGuiBackendNvn auto-wires
