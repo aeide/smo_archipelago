@@ -118,5 +118,125 @@ class TestBuildPostPeaceNames:
         assert "Sand: RockByFlag" not in out  # rock-by-flag not double-added here
 
 
+class TestBuildMidStoryAnchors:
+    # Minimal world_scenarios with the fields the classifier reads.
+    WS = {
+        "Sand":  {"scenario_num": 7, "clear_main_scenario": 3},   # peace_bit 2
+        "Metro": {"scenario_num": 11, "clear_main_scenario": 4},  # peace_bit 3
+        "Cascade": {"scenario_num": 7, "clear_main_scenario": 7}, # peace trap
+        "Cap":   {"scenario_num": 6, "clear_main_scenario": 2},   # peace_bit 1, floor 1
+    }
+
+    def test_degrades_without_data(self):
+        anchors, stats = cml.build_mid_story_anchors(None, None, set(), set())
+        assert anchors == {} and stats == {}
+
+    def test_sand_mid_story_uses_first_grand(self):
+        shine = [
+            # grand advancer at bit 0 (collecting it enters scenario 1)
+            {"kingdom": "Sand", "shine_id": "Showdown", "progress_bit_flag": 0b001,
+             "is_moon_rock": False, "is_grand": True},
+            # the peace grand at bit 1 (NOT the mid anchor)
+            {"kingdom": "Sand", "shine_id": "Hole", "progress_bit_flag": 0b010,
+             "is_moon_rock": False, "is_grand": True},
+            # a mid_story moon: earliest scenario 1 (< peace_bit 2)
+            {"kingdom": "Sand", "shine_id": "MidMoon", "progress_bit_flag": 0b010,
+             "is_moon_rock": False, "is_grand": False},
+            # a first_visit moon (bit 0) — stays free
+            {"kingdom": "Sand", "shine_id": "EarlyMoon", "progress_bit_flag": 0b001,
+             "is_moon_rock": False, "is_grand": False},
+        ]
+        locs = {"Sand: Showdown", "Sand: Hole", "Sand: MidMoon", "Sand: EarlyMoon"}
+        anchors, stats = cml.build_mid_story_anchors(shine, self.WS, set(), locs)
+        # Both the ordinary mid moon AND the peace grand "Hole" (itself at bit 1, < the
+        # peace_bit 2) chain onto the earlier bit-0 advancer "Showdown". The chain is
+        # transitive and never self-references (Showdown != Hole). The first-visit
+        # "EarlyMoon" stays free.
+        assert anchors == {
+            "Sand: MidMoon": "{canReachLocation(Sand: Showdown)}",
+            "Sand: Hole": "{canReachLocation(Sand: Showdown)}",
+        }
+        assert stats == {"Sand": 2}
+
+    def test_metro_missing_bit1_grand_and_festival_self_ref(self):
+        # Metro has grands at bit 0 and bit 2 but none at bit 1.
+        #  * Mid1 (bit 1) -> its bit-0 advancer "Pest".
+        #  * Mid2 (bit 2) -> no bit-1 advancer, so it over-gates to {MetroPeace()}.
+        #  * Festival (bit 2, the peace anchor itself) must be SKIPPED — gating it on
+        #    the peace predicate would self-reference (MetroPeace == canReach(Festival))
+        #    and make Metro permanently incompletable.
+        shine = [
+            {"kingdom": "Metro", "shine_id": "Pest", "progress_bit_flag": 0b001,
+             "is_moon_rock": False, "is_grand": True},
+            {"kingdom": "Metro", "shine_id": "Festival", "progress_bit_flag": 0b100,
+             "is_moon_rock": False, "is_grand": True},
+            {"kingdom": "Metro", "shine_id": "Mid1", "progress_bit_flag": 0b010,   # bit1
+             "is_moon_rock": False, "is_grand": False},
+            {"kingdom": "Metro", "shine_id": "Mid2", "progress_bit_flag": 0b100,   # bit2
+             "is_moon_rock": False, "is_grand": False},
+        ]
+        locs = {"Metro: Pest", "Metro: Festival", "Metro: Mid1", "Metro: Mid2"}
+        anchors, _ = cml.build_mid_story_anchors(shine, self.WS, set(), locs)
+        assert anchors["Metro: Mid1"] == "{canReachLocation(Metro: Pest)}"   # bit0
+        assert anchors["Metro: Mid2"] == cml.MOON_ROCK_PEACE_GATES["Metro"]  # over-gate
+        assert "Metro: Festival" not in anchors                              # self-ref skip
+
+    def test_cascade_is_deferred(self):
+        # Cascade is intentionally excluded from mid_story this pass: its clear scenario
+        # is its LAST (after_ending earlier), so the bit band has no clean advancer
+        # chain, and gating its ~19 post-first-visit moons starves the early fill
+        # spheres enough to fail generation. Its moons stay free (player-controlled
+        # first advance). A dedicated Cascade pass is the documented follow-up.
+        shine = [
+            {"kingdom": "Cascade", "shine_id": "Multi", "progress_bit_flag": 0b0000001,
+             "is_moon_rock": False, "is_grand": True},
+            {"kingdom": "Cascade", "shine_id": "ChainArea", "progress_bit_flag": 0b0000010,
+             "is_moon_rock": False, "is_grand": False},  # bit1, no bit0
+        ]
+        locs = {"Cascade: Multi", "Cascade: ChainArea"}
+        anchors, stats = cml.build_mid_story_anchors(shine, self.WS, set(), locs)
+        assert anchors == {}
+        assert "Cascade" not in stats
+
+    def test_post_peace_moon_excluded(self):
+        # A moon already in post_peace_names is not also mid-gated.
+        shine = [
+            {"kingdom": "Sand", "shine_id": "Showdown", "progress_bit_flag": 0b001,
+             "is_moon_rock": False, "is_grand": True},
+            {"kingdom": "Sand", "shine_id": "MidMoon", "progress_bit_flag": 0b010,
+             "is_moon_rock": False, "is_grand": False},
+        ]
+        locs = {"Sand: Showdown", "Sand: MidMoon"}
+        anchors, _ = cml.build_mid_story_anchors(
+            shine, self.WS, {"Sand: MidMoon"}, locs)
+        assert "Sand: MidMoon" not in anchors
+
+    def test_anchor_missing_from_locations_drops_to_no_gate(self):
+        # If the resolved anchor isn't a real location and there's no peace fallback,
+        # the moon is left free rather than referencing a phantom location.
+        shine = [
+            {"kingdom": "Sand", "shine_id": "Showdown", "progress_bit_flag": 0b001,
+             "is_moon_rock": False, "is_grand": True},
+            {"kingdom": "Sand", "shine_id": "MidMoon", "progress_bit_flag": 0b010,
+             "is_moon_rock": False, "is_grand": False},
+        ]
+        # "Sand: Showdown" intentionally absent from the location set.
+        locs = {"Sand: MidMoon"}
+        anchors, _ = cml.build_mid_story_anchors(shine, self.WS, set(), locs)
+        # Sand has a peace fragment, so it falls back to that rather than free.
+        assert anchors["Sand: MidMoon"] == cml.MOON_ROCK_PEACE_GATES["Sand"]
+
+    def test_rock_moon_excluded(self):
+        shine = [
+            {"kingdom": "Sand", "shine_id": "Showdown", "progress_bit_flag": 0b001,
+             "is_moon_rock": False, "is_grand": True},
+            {"kingdom": "Sand", "shine_id": "RockMoon", "progress_bit_flag": 0b010,
+             "is_moon_rock": True, "is_grand": False},
+        ]
+        locs = {"Sand: Showdown", "Sand: RockMoon"}
+        anchors, _ = cml.build_mid_story_anchors(shine, self.WS, set(), locs)
+        assert "Sand: RockMoon" not in anchors
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))

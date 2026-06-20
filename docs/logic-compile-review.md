@@ -8,25 +8,35 @@ Backflip/Long Jump need Crouch, GPJ needs Ground Pound).
 ## Summary
 
 - Moon locations compiled: **489**
-- Free (no requirement): **82**
+- Free (no requirement): **77**
 - Kingdom-gated (Metro/Bowser=Spark pylon, Lake=Zipper/jump): **132**
 - Subarea-gated moons: **28**
 
 ## Scenario reachability (coarse post_peace gating)
 
-Each `post_peace` moon (rock, OR earliest scenario >= the kingdom's peace scenario) ANDs in `{<Kingdom>Peace()}`. `mid_story` is collapsed to free this pass (anchor gating is the documented follow-up). Cap/Cloud/Lost/Moon and Cascade non-rock moons get NO new gate by design.
+Each `post_peace` moon (rock, OR earliest scenario >= the kingdom's peace scenario) ANDs in `{<Kingdom>Peace()}`. Cap/Cloud/Lost/Moon and Cascade non-rock moons get NO peace gate by design (Cascade's clear scenario is its last, not peace).
 
-- Total peace-gated moons (rock + scenario): **112**
+- Total peace-gated moons (rock + scenario): **113**
   - Bowser's: 14
   - Cascade: 4
   - Lake: 9
   - Luncheon: 10
-  - Metro: 12
+  - Metro: 13
   - Ruined: 4
   - Sand: 21
   - Seaside: 10
   - Snow: 15
   - Wooded: 13
+
+## Scenario reachability (mid_story anchor gating)
+
+Each `mid_story` moon (first-visit < earliest scenario < peace) ANDs in `{canReachLocation(<advancer moon>)}` — the grand story moon (at bit min_scenario-1) whose collection advances the kingdom into that scenario. When no grand sits at that exact bit (e.g. Metro lacks a bit-1 grand) the moon over-gates to the kingdom `{<Kingdom>Peace()}` fragment instead; the peace-anchor moon itself is skipped so it never self-references. Cascade is DEFERRED from mid_story this pass (its clear scenario is its last, so its bit layers form no clean advancer chain, and gating its moons starved the early fill spheres) — its post-first-visit moons stay free; a dedicated Cascade pass is the follow-up.
+
+- Total mid_story-gated moons: **60**
+  - Luncheon: 10 (via canReachLocation advancer)
+  - Metro: 39 (via canReachLocation advancer; the few without an exact-bit grand over-gate to peace)
+  - Sand: 4 (via canReachLocation advancer)
+  - Wooded: 7 (via canReachLocation advancer)
 
 ## Assumptions to verify ("assume MORE")
 

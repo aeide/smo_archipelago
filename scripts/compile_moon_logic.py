@@ -155,8 +155,8 @@ MOON_ROCK_PEACE_GATES: dict[str, str] = {
 # predicate, so post_peace moons there receive NO new gate (their leave-to-access
 # gating is a deferred mid_story concern).
 #
-# mid_story (a moon needing partial story progress but not peace) is COLLAPSED into
-# the free tier for this pass — anchor gating is the documented follow-up.
+# mid_story (a moon needing partial story progress but not peace) is gated by
+# build_mid_story_anchors() below — see its block comment for the model.
 #
 # The inputs (shine_map.json / world_scenarios.json) are read at BUILD TIME ONLY and
 # are gitignored Nintendo-IP. The compiler emits only boolean {Peace()} fragments;
@@ -263,6 +263,114 @@ def build_post_peace_names(
     return names
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Scenario reachability (MID_STORY tier) — see docs/scenario-reachability-design.md §2.3.
+#
+# A non-rock moon whose earliest scenario sits BETWEEN first-visit and peace
+# (first_playable_bit < min_scenario < peace_bit) is only collectable after the
+# kingdom advances PAST scenario (min_scenario - 1). The advance is driven by
+# collecting that kingdom's story moons, which are themselves AP locations — so the
+# faithful gate is `canReachLocation(<the grand story moon that advances the kingdom
+# INTO min_scenario>)`.
+#
+# The advancer into scenario S is the GRAND moon present at min-bit (S-1) (collecting
+# a grand at min-bit b moves the kingdom b -> b+1; validated: Sand "Hole in the
+# Desert" bit1 -> peace_bit2, Wooded "Defend..." bit1 -> 2, Metro "Festival" bit2 ->
+# 3 all line up with the Rules.py peace anchors). So for a moon at min_scenario M we
+# pick the grand with the smallest min-bit >= (M-1). When no grand anchor is
+# available at/after that bit (Metro's missing bit-1 grand -> falls through to the
+# bit-2 Festival, a safe over-gate), or for Cascade (whose clear_main_scenario is its
+# LAST scenario, not peace — the peace-bit band is meaningless there), we fall back to
+# the kingdom's existing {<Kingdom>Peace()} fragment.
+#
+# Same IP posture as the coarse tier: the gitignored scenario tables are read at BUILD
+# TIME ONLY; the emitted fragments are functional ({canReachLocation(<name>)} where
+# <name> is already a committed locations.json entry, or {<Kingdom>Peace()}). No new
+# Nintendo strings ship.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def build_mid_story_anchors(
+    shine_map: list | None,
+    world_scen: dict | None,
+    post_peace_names: set[str] | frozenset[str],
+    location_names: set[str] | frozenset[str],
+) -> tuple[dict[str, str], dict[str, int]]:
+    """Map each mid_story location name -> the {gate} fragment to AND in.
+
+    Returns (anchors, stats); stats counts emitted fragments per kingdom. Degrades to
+    ({}, {}) when scenario data is absent. post_peace_names is consulted so a moon is
+    never both peace-gated (coarse) and mid-gated."""
+    anchors: dict[str, str] = {}
+    stats: dict[str, int] = {}
+    if not shine_map or not world_scen:
+        return anchors, stats
+
+    first_playable: dict[str, int] = {}
+    grand_by_bit: dict[str, dict[int, str]] = {}
+    for e in shine_map:
+        k = e["kingdom"]
+        b = lowest_set_bit(e["progress_bit_flag"])
+        first_playable[k] = min(first_playable.get(k, b), b)
+        if e.get("is_grand"):
+            grand_by_bit.setdefault(k, {}).setdefault(b, f"{k}: {e['shine_id']}")
+
+    for e in shine_map:
+        if e.get("is_moon_rock"):
+            continue
+        k = e["kingdom"]
+        ws = world_scen.get(k)
+        if ws is None:
+            continue
+        loc = f"{k}: {e['shine_id']}"
+        if loc in post_peace_names:
+            continue                        # already coarse peace-gated
+        # Cascade is DEFERRED from mid_story (as in the coarse pass): its
+        # clear_main_scenario is its LAST scenario (after_ending sits earlier), so the
+        # bit band doesn't form a clean advancer chain, and routing its ~19
+        # post-first-visit moons to {CascadePeace()} starves the early fill spheres
+        # enough to make generation fail on some seeds. Cascade's first advance (Multi
+        # Moon Atop the Falls) is mandatory-early and player-controlled, so leaving
+        # these moons free is safe. A dedicated Cascade pass is the follow-up.
+        if k == "Cascade":
+            continue
+        fp = first_playable.get(k, 0)
+        m = lowest_set_bit(e["progress_bit_flag"])
+        if m <= fp:
+            continue                        # first_visit — stays free
+
+        clear = ws["clear_main_scenario"]
+        scenario_num = ws["scenario_num"]
+        if clear >= scenario_num:           # sentinel — no peace, no mid band
+            continue
+        peace_bit = clear - 1
+        if peace_bit <= fp:                 # degenerate floor (Cap-style)
+            continue
+        if m >= peace_bit:                  # post_peace — handled by coarse tier
+            continue
+
+        gb = grand_by_bit.get(k, {})
+        # The advancer INTO scenario m is the grand at bit (m-1) — strictly below m, so
+        # it is never this moon itself. Use it when present (the tight, faithful gate).
+        advancer = gb.get(m - 1)
+        if advancer and advancer != loc and advancer in location_names:
+            frag = f"{{canReachLocation({advancer})}}"
+        else:
+            # No exact advancer (e.g. Metro has no bit-1 grand): safe over-gate to the
+            # kingdom peace predicate. BUT never gate the peace-anchor moon itself (the
+            # grand at bit peace_bit-1) on peace — that would self-reference and make
+            # {<Kingdom>Peace()} permanently false (e.g. Metro's Festival).
+            peace_anchor = gb.get(peace_bit - 1)
+            if loc == peace_anchor:
+                continue
+            frag = MOON_ROCK_PEACE_GATES.get(k, "")
+        if not frag:
+            continue                        # no usable gate -> leave free
+        anchors[loc] = frag
+        stats[k] = stats.get(k, 0) + 1
+    return anchors, stats
+
+
 # Keyed by subarea name (matches subareas.json keys).
 SUBAREA_GATES: dict[str, str] = {
     "Unzipping the Chasm":            "|Zipper|",
@@ -348,7 +456,8 @@ def compile_moon(rec: dict) -> str:
 
 
 def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
-              post_peace_names: set[str] | frozenset[str]) -> list[str]:
+              post_peace_names: set[str] | frozenset[str],
+              mid_story_anchors: dict[str, str]) -> list[str]:
     out: list[str] = []
     prefix = location_name.split(": ", 1)[0]
     if prefix in KINGDOM_GATES:
@@ -360,6 +469,10 @@ def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
         peace = MOON_ROCK_PEACE_GATES.get(prefix, "")
         if peace:
             out.append(peace)
+    # mid_story moons (disjoint from post_peace) get a story-anchor reachability gate
+    # (canReachLocation(<advancer moon>) or the kingdom peace fragment for Cascade).
+    elif location_name in mid_story_anchors:
+        out.append(mid_story_anchors[location_name])
     if location_name in loc_subarea_gate:
         out.append(loc_subarea_gate[location_name])
     if location_name in LOCATION_EXTRA_GATES:
@@ -393,6 +506,13 @@ def main() -> None:
     scenario_data_present = bool(shine_map and world_scen)
     new_post_peace = len(post_peace_names) - len(moon_rock_names)
 
+    # mid_story tier (§2.3): story-anchor reachability gates for moons between
+    # first-visit and peace. Validated against the full location-name set so a
+    # canReachLocation() anchor never points at a missing location.
+    location_names = {l["name"] for l in locations}
+    mid_story_anchors, mid_story_stats = build_mid_story_anchors(
+        shine_map, world_scen, post_peace_names, location_names)
+
     # location_name -> subarea gate
     loc_subarea_gate: dict[str, str] = {}
     missing_subareas: list[str] = []
@@ -417,7 +537,8 @@ def main() -> None:
             skipped_junk += 1
             continue
         base = compile_moon(rec)
-        gated = and_join([base] + gates_for(ln, loc_subarea_gate, post_peace_names))
+        gated = and_join([base] + gates_for(
+            ln, loc_subarea_gate, post_peace_names, mid_story_anchors))
         compiled[ln] = gated
         if gated == "":
             free_moons.append(ln)
@@ -439,9 +560,11 @@ def main() -> None:
         json.dumps(locations, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     _write_review(compiled, free_moons, or_capture_moons, kingdom_gated,
-                  loc_subarea_gate, missing_subareas, scenario_data_present)
+                  loc_subarea_gate, missing_subareas, scenario_data_present,
+                  mid_story_stats)
 
     peace_gated = sum(1 for v in compiled.values() if "Peace()" in v)
+    mid_gated = sum(1 for v in compiled.values() if "canReachLocation(" in v)
     print(f"Compiled requires for {written} moon locations -> {LOCATIONS.name}")
     print(f"  skipped junk_only:     {skipped_junk}")
     print(f"  free (no requirement): {len(free_moons)}")
@@ -452,6 +575,9 @@ def main() -> None:
               f"{len(world_scen)} kingdoms)")
         print(f"  peace-gated (compiled): {peace_gated}  "
               f"(+{new_post_peace} non-rock post-peace names folded in)")
+        print(f"  mid_story-gated:        {sum(mid_story_stats.values())}  "
+              f"({mid_gated} via canReachLocation, rest via Cascade peace fallback)  "
+              f"{dict(sorted(mid_story_stats.items()))}")
     else:
         print("  scenario data:         ABSENT — peace gating is rock-only "
               "(set up bridge/%APPDATA% shine_map+world_scenarios to enable)")
@@ -462,7 +588,7 @@ def main() -> None:
 
 def _write_review(compiled, free_moons, or_capture_moons, kingdom_gated,
                   loc_subarea_gate, missing_subareas,
-                  scenario_data_present=False) -> None:
+                  scenario_data_present=False, mid_story_stats=None) -> None:
     lines: list[str] = []
     lines.append("# Logic-compile review (auto-generated by compile_moon_logic.py)\n")
     lines.append("Generated from the corrected `SMO Requirements.xlsx`. Devon: spot-check")
@@ -490,9 +616,9 @@ def _write_review(compiled, free_moons, or_capture_moons, kingdom_gated,
     if scenario_data_present:
         lines.append("Each `post_peace` moon (rock, OR earliest scenario >= the "
                      "kingdom's peace scenario) ANDs in `{<Kingdom>Peace()}`. "
-                     "`mid_story` is collapsed to free this pass (anchor gating is "
-                     "the documented follow-up). Cap/Cloud/Lost/Moon and Cascade "
-                     "non-rock moons get NO new gate by design.\n")
+                     "Cap/Cloud/Lost/Moon and Cascade non-rock moons get NO peace "
+                     "gate by design (Cascade's clear scenario is its last, not "
+                     "peace).\n")
         lines.append(f"- Total peace-gated moons (rock + scenario): **{total_peace}**")
         for k in sorted(peace_by_kingdom):
             lines.append(f"  - {k}: {peace_by_kingdom[k]}")
@@ -501,6 +627,42 @@ def _write_review(compiled, free_moons, or_capture_moons, kingdom_gated,
         lines.append("Scenario tables (`shine_map.json` / `world_scenarios.json`) "
                      "were ABSENT — peace gating degraded to rock-only. Set up the "
                      "bridge / %APPDATA% data dir and re-run to enable.\n")
+
+    # Scenario reachability (mid_story tier) — story-anchor reachability gates for
+    # moons between first-visit and peace. IP-safe per-kingdom counts only.
+    mid_by_kingdom: dict[str, int] = {}
+    for nm, req in compiled.items():
+        if "canReachLocation(" in req:
+            k = nm.split(": ", 1)[0]
+            mid_by_kingdom[k] = mid_by_kingdom.get(k, 0) + 1
+    lines.append("## Scenario reachability (mid_story anchor gating)\n")
+    if scenario_data_present and mid_story_stats:
+        lines.append("Each `mid_story` moon (first-visit < earliest scenario < peace) "
+                     "ANDs in `{canReachLocation(<advancer moon>)}` — the grand story "
+                     "moon (at bit min_scenario-1) whose collection advances the "
+                     "kingdom into that scenario. When no grand sits at that exact bit "
+                     "(e.g. Metro lacks a bit-1 grand) the moon over-gates to the "
+                     "kingdom `{<Kingdom>Peace()}` fragment instead; the peace-anchor "
+                     "moon itself is skipped so it never self-references. Cascade is "
+                     "DEFERRED from mid_story this pass (its clear scenario is its last, "
+                     "so its bit layers form no clean advancer chain, and gating its "
+                     "moons starved the early fill spheres) — its post-first-visit moons "
+                     "stay free; a dedicated Cascade pass is the follow-up.\n")
+        emitted = sum(mid_story_stats.values())
+        lines.append(f"- Total mid_story-gated moons: **{emitted}**")
+        for k in sorted(mid_story_stats):
+            if k == "Cascade":
+                via = "via CascadePeace fallback"
+            elif k == "Metro":
+                via = "via canReachLocation advancer; the few without an exact-bit grand over-gate to peace"
+            else:
+                via = "via canReachLocation advancer"
+            lines.append(f"  - {k}: {mid_story_stats[k]} ({via})")
+        lines.append("")
+    elif scenario_data_present:
+        lines.append("No mid_story moons classified this run.\n")
+    else:
+        lines.append("Scenario tables ABSENT — mid_story gating skipped.\n")
 
     lines.append("## Assumptions to verify (\"assume MORE\")\n")
     lines.append("- **Bonk (Roll)** mapped to `Progressive Crouch:2` (needs Roll).")

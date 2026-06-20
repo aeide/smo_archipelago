@@ -5,6 +5,27 @@ How to turn the extracted per-moon scenario data
 reachability rules, expressed in the pipeline this world already uses. Companion
 to that doc: that one is *what the data means*; this one is *how logic consumes it*.
 
+## Status (2026-06-19)
+
+- **COARSE tier — SHIPPED.** `post_peace` gating (`is_moon_rock OR min_scenario >=
+  peace_bit` → `{<Kingdom>Peace()}`) live in `compile_moon_logic.py`
+  (`build_post_peace_names`).
+- **MID_STORY tier — SHIPPED.** `build_mid_story_anchors` gates 60 moons (Sand 4,
+  Wooded 7, Luncheon 10, Metro 39) on `{canReachLocation(<bit-(m-1) grand advancer>)}`,
+  over-gating to the kingdom peace fragment where no exact-bit grand exists (Metro's
+  bit-1 gap), and skipping the peace-anchor moon itself to avoid self-reference
+  (Metro's Festival). Validated: 22 unit tests, 16/16 fixed-seed fills + a full
+  playthrough generate cleanly, `locations.json` diff is requires-only (no new IP).
+- **Cascade — DEFERRED (the remaining follow-up).** Cascade was intentionally left
+  OUT of mid_story: its `clear_main_scenario=7` is its *last* scenario (`after_ending=3`
+  earlier), so its bit layers don't form a clean advancer chain, and routing its ~19
+  post-first-visit moons to `{CascadePeace()}` starved the early fill spheres enough to
+  fail generation on some seeds (FillError: Crouch/Ground Pound/Cascade Power Moons
+  unplaceable). Its first advance (Multi Moon Atop the Falls) is mandatory-early and
+  player-controlled, so leaving those moons free is safe. A dedicated Cascade pass —
+  deriving its scenario split from observed bit layers + the after-ending revisit, and
+  re-checking fill capacity — is the next step.
+
 ## 0. TL;DR
 
 - Scenario gating is a **new gate layer in `compile_moon_logic.py`**, ANDed onto

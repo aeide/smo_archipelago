@@ -302,7 +302,7 @@
       "Sand Kingdom"
     ],
     "region": "Sand Kingdom",
-    "requires": "",
+    "requires": "{canReachLocation(Sand: Showdown on the Inverted Pyramid)}",
     "progression": true
   },
   {
@@ -425,7 +425,7 @@
       "Sand Kingdom"
     ],
     "region": "Sand Kingdom",
-    "requires": ""
+    "requires": "{canReachLocation(Sand: Showdown on the Inverted Pyramid)}"
   },
   {
     "name": "Sand: Inside a Block Is a Hard Place",
@@ -665,7 +665,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Bullet Bill|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Bullet Bill|) and {canReachLocation(Sand: Showdown on the Inverted Pyramid)})"
   },
   {
     "name": "Sand: Goomba Tower Assembly",
@@ -674,7 +674,7 @@
       "Sand Peace"
     ],
     "region": "Sand Kingdom",
-    "requires": "(|Goomba| or ((|Long Jump| and |Progressive Crouch:1|) and |Goomba|))"
+    "requires": "((|Goomba| or ((|Long Jump| and |Progressive Crouch:1|) and |Goomba|)) and {canReachLocation(Sand: Showdown on the Inverted Pyramid)})"
   },
   {
     "name": "Sand: Under the Mummy's Curse",
@@ -1063,7 +1063,7 @@
       "Wooded Kingdom"
     ],
     "region": "Wooded Kingdom",
-    "requires": "(|Sherm| or (|Sherm| and |Climb|) or (|Sherm| and |Progressive Ground Pound:2|))",
+    "requires": "((|Sherm| or (|Sherm| and |Climb|) or (|Sherm| and |Progressive Ground Pound:2|)) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})",
     "progression": true
   },
   {
@@ -1073,7 +1073,7 @@
       "Wooded Kingdom"
     ],
     "region": "Wooded Kingdom",
-    "requires": "(|Uproot| or (|Climb| and |Uproot|) or (|Progressive Ground Pound:2| and |Uproot|))",
+    "requires": "((|Uproot| or (|Climb| and |Uproot|) or (|Progressive Ground Pound:2| and |Uproot|)) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})",
     "progression": true
   },
   {
@@ -1114,7 +1114,7 @@
       "Wooded Kingdom"
     ],
     "region": "Wooded Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1| and |Climb|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1| and |Climb|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})"
   },
   {
     "name": "Wooded: Atop the Tall Tree",
@@ -1211,7 +1211,7 @@
       "Wooded Kingdom"
     ],
     "region": "Wooded Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Climb|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Climb|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})"
   },
   {
     "name": "Wooded: Inside a Rock in the Forest",
@@ -1252,7 +1252,7 @@
       "Wooded Kingdom"
     ],
     "region": "Wooded Kingdom",
-    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})"
   },
   {
     "name": "Wooded: Make the Secret Flower Field Bloom",
@@ -1386,7 +1386,7 @@
       "Deep Woods"
     ],
     "region": "Wooded Kingdom",
-    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Paragoomba|) and |Mini Rocket|)"
+    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Paragoomba|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)} and |Mini Rocket|)"
   },
   {
     "name": "Wooded: Nut Hidden in the Fog",
@@ -1395,7 +1395,7 @@
       "Deep Woods"
     ],
     "region": "Wooded Kingdom",
-    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Paragoomba|) and |Mini Rocket|)"
+    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Paragoomba|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)} and |Mini Rocket|)"
   },
   {
     "name": "Wooded: Flower Road Run",
@@ -1673,7 +1673,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|",
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})",
     "progression": true
   },
   {
@@ -1682,7 +1682,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|",
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})",
     "progression": true
   },
   {
@@ -1691,7 +1691,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|",
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})",
     "progression": true
   },
   {
@@ -1700,7 +1700,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|",
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})",
     "progression": true
   },
   {
@@ -1709,7 +1709,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "((|Progressive Ground Pound:1| or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:1|)) and |Spark pylon| and |Manhole|)",
+    "requires": "((|Progressive Ground Pound:1| or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:1|)) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)} and |Manhole|)",
     "progression": true
   },
   {
@@ -1753,7 +1753,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(|Climb| and |Spark pylon|)"
+    "requires": "(|Climb| and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Dizzying Heights",
@@ -1761,7 +1761,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(|Climb| and |Spark pylon|)"
+    "requires": "(|Climb| and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Secret Girder Tunnel!",
@@ -1769,7 +1769,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Who Piled Garbage on This?",
@@ -1777,7 +1777,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) and |Spark pylon|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Hidden in the Scrap",
@@ -1786,7 +1786,7 @@
       "Metro Peace"
     ],
     "region": "Metro Kingdom",
-    "requires": "(|Progressive Ground Pound:1| and |Spark pylon|)"
+    "requires": "(|Progressive Ground Pound:1| and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Left at the Café?",
@@ -1794,7 +1794,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) and |Spark pylon|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Caught Hopping on a Building!",
@@ -1811,7 +1811,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Metro Kingdom Timer Challenge 1",
@@ -1837,7 +1837,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: City Gardening: Plaza Planter",
@@ -1845,7 +1845,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: City Gardening: Rooftop Planter",
@@ -1853,7 +1853,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: How You Doin', Captain Toad?",
@@ -1861,7 +1861,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Free Parking: Rooftop Hop",
@@ -1870,7 +1870,7 @@
       "Metro Peace"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Bench Friends",
@@ -1879,7 +1879,7 @@
       "Metro Peace"
     ],
     "region": "Metro Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Shopping in New Donk City",
@@ -1896,7 +1896,7 @@
       "Minigame"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Jump-Rope Hero",
@@ -1905,7 +1905,7 @@
       "Minigame"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Jump-Rope Genius",
@@ -1914,7 +1914,7 @@
       "Minigame"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Remotely Captured Car",
@@ -1922,7 +1922,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: RC Car Pro!",
@@ -1931,7 +1931,7 @@
       "Precision Capture"
     ],
     "region": "Metro Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |RC Car|) and |Spark pylon|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |RC Car|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Taking Notes: In the Private Room",
@@ -1939,7 +1939,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: City Hall Lost & Found",
@@ -1963,7 +1963,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {MetroPeace()})"
   },
   {
     "name": "Metro: Pushing Through the Crowd",
@@ -1988,7 +1988,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|) and |Spark pylon|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Off the Beaten Wire",
@@ -1996,7 +1996,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|) and |Spark pylon|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Moon Shards Under Siege",
@@ -2004,7 +2004,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide| and |Sherm|) and |Spark pylon| and |Taxi|)"
+    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide| and |Sherm|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)} and |Taxi|)"
   },
   {
     "name": "Metro: Sharpshooting Under Siege",
@@ -2013,7 +2013,7 @@
       "Precision Capture"
     ],
     "region": "Metro Kingdom",
-    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide| and |Sherm|) and |Spark pylon| and |Taxi|)"
+    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide| and |Sherm|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)} and |Taxi|)"
   },
   {
     "name": "Metro: Inside the Rotating Maze",
@@ -2021,7 +2021,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and |Manhole|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)} and |Manhole|)"
   },
   {
     "name": "Metro: Outside the Rotating Maze",
@@ -2029,7 +2029,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Spark pylon| and |Manhole|)"
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)} and |Manhole|)"
   },
   {
     "name": "Metro: Hanging from a High-Rise",
@@ -2037,7 +2037,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(|Spark pylon| and |Mini Rocket|)"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)} and |Mini Rocket|)"
   },
   {
     "name": "Metro: Vaulting Up a High-Rise",
@@ -2045,7 +2045,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(|Wall Slide| and |Spark pylon| and |Mini Rocket|)"
+    "requires": "(|Wall Slide| and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)} and |Mini Rocket|)"
   },
   {
     "name": "Metro: Bullet Billding",
@@ -2053,7 +2053,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(|Climb| and |Spark pylon|)"
+    "requires": "(|Climb| and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: One Man's Trash...",
@@ -2061,7 +2061,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "((((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:2| and |Climb|) or |Bullet Bill|) and |Spark pylon|)"
+    "requires": "((((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:2| and |Climb|) or |Bullet Bill|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Motor Scooter: Escape!",
@@ -2069,7 +2069,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Big Jump: Escape!",
@@ -2077,7 +2077,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "|Spark pylon|"
+    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: Secret Path to New Donk City!",
@@ -2085,7 +2085,7 @@
       "Metro Kingdom"
     ],
     "region": "Sand Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Metro: A Tourist in the Metro Kingdom!",
@@ -2105,7 +2105,7 @@
       "Hint Art"
     ],
     "region": "Metro Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1| and |Glydon|) and |Spark pylon|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1| and |Glydon|) and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)})"
   },
   {
     "name": "Snow: The Icicle Barrier",
@@ -2937,7 +2937,7 @@
       "post-metro"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "|Lava Bubble|",
+    "requires": "(|Lava Bubble| and {canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)})",
     "progression": true
   },
   {
@@ -2948,7 +2948,7 @@
       "post-metro"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "((|Volbonan| and |Lava Bubble|) or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide| and |Progressive Ground Pound:2| and (|Volbonan| and |Lava Bubble|)))",
+    "requires": "(((|Volbonan| and |Lava Bubble|) or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide| and |Progressive Ground Pound:2| and (|Volbonan| and |Lava Bubble|))) and {canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)})",
     "progression": true
   },
   {
@@ -3076,7 +3076,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": ""
+    "requires": "{canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)}"
   },
   {
     "name": "Luncheon: Luncheon Kingdom Timer Challenge 3",
@@ -3167,7 +3167,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "|Lava Bubble|"
+    "requires": "(|Lava Bubble| and {canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)})"
   },
   {
     "name": "Luncheon: Treasure Beneath the Cheese Rocks",
@@ -3176,7 +3176,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "|Hammer Bro|"
+    "requires": "(|Hammer Bro| and {canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)})"
   },
   {
     "name": "Luncheon: Light the Two Flames",
@@ -3185,7 +3185,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "(|Fire Bro| or |Lava Bubble|)"
+    "requires": "((|Fire Bro| or |Lava Bubble|) and {canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)})"
   },
   {
     "name": "Luncheon: Light the Far-Off Lanterns",
@@ -3194,7 +3194,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "|Fire Piranha Plant|"
+    "requires": "(|Fire Piranha Plant| and {canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)})"
   },
   {
     "name": "Luncheon: Bon Appétit, Captain Toad!",
@@ -3203,7 +3203,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "|Lava Bubble|"
+    "requires": "(|Lava Bubble| and {canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)})"
   },
   {
     "name": "Luncheon: The Treasure Chest in the Veggies",
@@ -3212,7 +3212,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": ""
+    "requires": "{canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)}"
   },
   {
     "name": "Luncheon: Caught Hopping at the Volcano!",
@@ -3357,7 +3357,7 @@
       "Hint Art"
     ],
     "region": "Luncheon Kingdom",
-    "requires": ""
+    "requires": "{canReachLocation(Luncheon: Big Pot on the Volcano: Dive In!)}"
   },
   {
     "name": "Mushroom: Secret Path to Peach's Castle!",
