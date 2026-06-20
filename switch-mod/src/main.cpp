@@ -56,6 +56,10 @@ void installShineAppearanceHook();
 // so a kingdom's moon rock opens after its main story completes (world peace)
 // instead of full game clear. See hooks/MoonRockHook.cpp.
 void installMoonRockHook();
+// Frame-pump driver for the World Traveling Peach auto-start (sets the global
+// save flag once the current kingdom is at peace, so "Peach in the X Kingdom"
+// moons are collectable without the Mushroom-Kingdom toad). See MoonRockHook.cpp.
+void tickWorldTravelPeach();
 void installCreditsStartHook();
 void installShopItemMessageHook();
 void installCappyMessageTextHooks();
@@ -229,6 +233,7 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
                 smoap::game::runOdysseySoftlockSweep();
             }
         }
+        smoap::hooks::tickWorldTravelPeach();  // self-throttled (~1s)
         smoap::ui::drawHudFrame();
         smoap::ui::drawDebugConsole();
 

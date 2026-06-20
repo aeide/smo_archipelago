@@ -1583,7 +1583,7 @@
       "Lost Kingdom"
     ],
     "region": "Cloud Kingdom",
-    "requires": "|Progressive Ground Pound:1|"
+    "requires": "(|Progressive Ground Pound:1| and {LostPeace()})"
   },
   {
     "name": "Lost: Cave Gardening",
@@ -3856,7 +3856,7 @@
       "Moon Kingdom"
     ],
     "region": "Moon Kingdom",
-    "requires": "|Bowser Statue|"
+    "requires": "(|Bowser Statue| and ((|Parabones| and |Banzai Bill| and |Spark pylon|) or ((|Ground Pound Jump| and |Progressive Ground Pound:1|) and |Cap Bounce| and |Wall Slide|)))"
   },
   {
     "name": "Moon: In a Hole in the Magma",
@@ -3865,7 +3865,7 @@
       "Moon Kingdom"
     ],
     "region": "Moon Kingdom",
-    "requires": "(|Paragoomba| and |Parabones|)"
+    "requires": "((|Paragoomba| and |Parabones|) and ((|Parabones| and |Banzai Bill| and |Spark pylon|) or ((|Ground Pound Jump| and |Progressive Ground Pound:1|) and |Cap Bounce| and |Wall Slide|)))"
   },
   {
     "name": "Moon: Around the Barrier Wall",
@@ -3874,7 +3874,7 @@
       "Moon Kingdom"
     ],
     "region": "Moon Kingdom",
-    "requires": "(|Banzai Bill| and |Progressive Ground Pound:1| and |Progressive Ground Pound:2|)"
+    "requires": "((|Banzai Bill| and |Progressive Ground Pound:1| and |Progressive Ground Pound:2|) and ((|Parabones| and |Banzai Bill| and |Spark pylon|) or ((|Ground Pound Jump| and |Progressive Ground Pound:1|) and |Cap Bounce| and |Wall Slide|)))"
   },
   {
     "name": "Moon: On Top of the Cannon",
@@ -3883,7 +3883,7 @@
       "Moon Kingdom"
     ],
     "region": "Moon Kingdom",
-    "requires": "(|Bullet Bill| and |Progressive Ground Pound:1|)"
+    "requires": "((|Bullet Bill| and |Progressive Ground Pound:1|) and ((|Parabones| and |Banzai Bill| and |Spark pylon|) or ((|Ground Pound Jump| and |Progressive Ground Pound:1|) and |Cap Bounce| and |Wall Slide|)))"
   },
   {
     "name": "Moon: Fly to the Treasure Chest and Back",
@@ -3892,7 +3892,7 @@
       "Moon Kingdom"
     ],
     "region": "Moon Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Banzai Bill|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Banzai Bill|) and ((|Parabones| and |Banzai Bill| and |Spark pylon|) or ((|Ground Pound Jump| and |Progressive Ground Pound:1|) and |Cap Bounce| and |Wall Slide|)))"
   },
   {
     "name": "Moon: Up in the Rafters",
@@ -3904,7 +3904,7 @@
       "Wall Jump"
     ],
     "region": "Moon Kingdom",
-    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2| and |Wall Slide|) or |Wall Slide|)"
+    "requires": "((((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2| and |Wall Slide|) or |Wall Slide|) and ((|Parabones| and |Banzai Bill| and |Spark pylon|) or ((|Ground Pound Jump| and |Progressive Ground Pound:1|) and |Cap Bounce| and |Wall Slide|)))"
   },
   {
     "name": "Arrive in the Mushroom Kingdom",
@@ -3913,7 +3913,7 @@
     ],
     "region": "Moon Kingdom",
     "victory": true,
-    "requires": "{OptOne(Banzai Bill)} and {ParabonesSkip()}"
+    "requires": "((|Parabones| and |Banzai Bill| and |Spark pylon|) or ((|Ground Pound Jump| and |Progressive Ground Pound:1|) and |Cap Bounce| and |Wall Slide|))"
   },
   {
     "name": "Capture: Paragoomba",
@@ -4876,7 +4876,7 @@
       "Moon Rock"
     ],
     "region": "Cap Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|) and |Paragoomba|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Precision Rolling",
@@ -4885,7 +4885,7 @@
       "Moon Rock"
     ],
     "region": "Cap Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|) and |Paragoomba|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cascade: Across the Mysterious Clouds",
@@ -5074,7 +5074,7 @@
       "Moon Rock"
     ],
     "region": "Cloud Kingdom",
-    "requires": "|Progressive Crouch:1|"
+    "requires": "(|Progressive Crouch:1| and {CloudPeace()})"
   },
   {
     "name": "Cloud: The Sixth Face",
@@ -5083,7 +5083,7 @@
       "Moon Rock"
     ],
     "region": "Cloud Kingdom",
-    "requires": "|Progressive Crouch:1|"
+    "requires": "(|Progressive Crouch:1| and {CloudPeace()})"
   },
   {
     "name": "Lost: Stretch and Traverse the Jungle",
@@ -5092,7 +5092,7 @@
       "Moon Rock"
     ],
     "region": "Lost Kingdom",
-    "requires": ""
+    "requires": "{LostPeace()}"
   },
   {
     "name": "Lost: Aglow in the Jungle",
@@ -5101,7 +5101,7 @@
       "Moon Rock"
     ],
     "region": "Lost Kingdom",
-    "requires": ""
+    "requires": "{LostPeace()}"
   },
   {
     "name": "Lost: Chasing Klepto",
@@ -5110,7 +5110,7 @@
       "Moon Rock"
     ],
     "region": "Lost Kingdom",
-    "requires": "|Progressive Ground Pound:1|"
+    "requires": "(|Progressive Ground Pound:1| and {LostPeace()})"
   },
   {
     "name": "Lost: Extremely Hot Bath",
@@ -5119,7 +5119,7 @@
       "Moon Rock"
     ],
     "region": "Lost Kingdom",
-    "requires": "(|Progressive Ground Pound:1| and |Lava Bubble|)"
+    "requires": "((|Progressive Ground Pound:1| and |Lava Bubble|) and {LostPeace()})"
   },
   {
     "name": "Metro: Up on the Big Screen",
@@ -5435,7 +5435,8 @@
     ],
     "region": "Moon Kingdom",
     "requires": "",
-    "junk_only": true
+    "junk_only": true,
+    "moon_postwin": true
   },
   {
     "name": "Moon: Center of the Galaxy",
@@ -5444,7 +5445,8 @@
     ],
     "region": "Moon Kingdom",
     "requires": "",
-    "junk_only": true
+    "junk_only": true,
+    "moon_postwin": true
   },
   {
     "name": "Moon: Edge of the Galaxy",
@@ -5453,7 +5455,8 @@
     ],
     "region": "Moon Kingdom",
     "requires": "",
-    "junk_only": true
+    "junk_only": true,
+    "moon_postwin": true
   },
   {
     "name": "Moon: Navigating Giant Swings",
@@ -5462,7 +5465,8 @@
     ],
     "region": "Moon Kingdom",
     "requires": "",
-    "junk_only": true
+    "junk_only": true,
+    "moon_postwin": true
   },
   {
     "name": "Moon: A Swing on Top of a Swing",
@@ -5471,7 +5475,8 @@
     ],
     "region": "Moon Kingdom",
     "requires": "",
-    "junk_only": true
+    "junk_only": true,
+    "moon_postwin": true
   },
   {
     "name": "Cap: The Forgotten Treasure",
@@ -5480,7 +5485,7 @@
       "Extra"
     ],
     "region": "Cap Kingdom",
-    "requires": "((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:1|)"
+    "requires": "(((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:1|) and {CapPeace()})"
   },
   {
     "name": "Cap: Taxi Flying Through Bonneton",
@@ -5489,7 +5494,7 @@
       "Extra"
     ],
     "region": "Cap Kingdom",
-    "requires": ""
+    "requires": "{CapPeace()}"
   },
   {
     "name": "Cap: Bonneter Blockade",
@@ -5498,7 +5503,7 @@
       "Extra"
     ],
     "region": "Cap Kingdom",
-    "requires": "|Paragoomba|"
+    "requires": "(|Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Cap Kingdom Regular Cup",
@@ -5507,7 +5512,7 @@
       "Cup"
     ],
     "region": "Cap Kingdom",
-    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {CapPeace()})"
   },
   {
     "name": "Cap: Peach in the Cap Kingdom",
@@ -5516,7 +5521,7 @@
       "Peach"
     ],
     "region": "Cap Kingdom",
-    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {CapPeace()})"
   },
   {
     "name": "Cap: Found with Cap Kingdom Art",
@@ -5525,7 +5530,7 @@
       "Hint Art"
     ],
     "region": "Cap Kingdom",
-    "requires": "|Progressive Ground Pound:1|"
+    "requires": "(|Progressive Ground Pound:1| and {CapPeace()})"
   },
   {
     "name": "Cap: Next to Glasses Bridge",
@@ -6263,7 +6268,7 @@
       "Peach"
     ],
     "region": "Cloud Kingdom",
-    "requires": ""
+    "requires": "{CloudPeace()}"
   },
   {
     "name": "Cloud: Digging in the...Cloud?",
@@ -6317,7 +6322,7 @@
       "Extra"
     ],
     "region": "Lost Kingdom",
-    "requires": "|Binoculars|"
+    "requires": "(|Binoculars| and {LostPeace()})"
   },
   {
     "name": "Lost: I Met a Tropical Wiggler!",
@@ -6326,7 +6331,7 @@
       "Extra"
     ],
     "region": "Lost Kingdom",
-    "requires": "|Progressive Ground Pound:1|"
+    "requires": "(|Progressive Ground Pound:1| and {LostPeace()})"
   },
   {
     "name": "Lost: Lost Kingdom Regular Cup",
@@ -6335,7 +6340,7 @@
       "Cup"
     ],
     "region": "Lost Kingdom",
-    "requires": "(|Progressive Ground Pound:1| and |Wall Slide|)"
+    "requires": "((|Progressive Ground Pound:1| and |Wall Slide|) and {LostPeace()})"
   },
   {
     "name": "Lost: Peach in the Lost Kingdom",
@@ -6344,7 +6349,7 @@
       "Peach"
     ],
     "region": "Lost Kingdom",
-    "requires": "(|Progressive Ground Pound:1| and |Wall Slide|)"
+    "requires": "((|Progressive Ground Pound:1| and |Wall Slide|) and {LostPeace()})"
   },
   {
     "name": "Lost: The Shining Fruit",
@@ -7308,7 +7313,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": "|Progressive Ground Pound:1|"
+    "requires": "(|Progressive Ground Pound:1| and {MoonPeace()})",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Found on the Moon, Good Dog!",
@@ -7318,7 +7324,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": "|Progressive Ground Pound:1|"
+    "requires": "(|Progressive Ground Pound:1| and {MoonPeace()})",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Moon Shards on the Moon",
@@ -7328,7 +7335,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": "|Wall Slide|"
+    "requires": "(|Wall Slide| and {MoonPeace()})",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Moon Quiz: Amazing!",
@@ -7338,7 +7346,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "{MoonPeace()}",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Thanks, Captain Toad!",
@@ -7348,7 +7357,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "{MoonPeace()}",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Walking on the Moon!",
@@ -7358,7 +7368,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "{MoonPeace()}",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Moon Kingdom Regular Cup",
@@ -7368,7 +7379,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": "|Wall Slide|"
+    "requires": "(|Wall Slide| and {MoonPeace()})",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Doctor in the House",
@@ -7378,7 +7390,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "{MoonPeace()}",
+    "moon_postwin": true
   },
   {
     "name": "Moon: A Tourist in the Moon Kingdom!",
@@ -7388,7 +7401,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "{MoonPeace()}",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Peach in the Moon Kingdom",
@@ -7398,7 +7412,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": "|Wall Slide|"
+    "requires": "(|Wall Slide| and {MoonPeace()})",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Found with Moon Kingdom Art",
@@ -7408,7 +7423,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": "|Progressive Ground Pound:1|"
+    "requires": "(|Progressive Ground Pound:1| and {MoonPeace()})",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Mysterious Flying Object",
@@ -7418,7 +7434,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Hidden on the Side of the Cliff",
@@ -7428,7 +7445,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Jumping High as a Frog",
@@ -7438,7 +7456,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Moon Kingdom Timer Challenge 2",
@@ -7448,7 +7467,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Walking on the Moon: Again!",
@@ -7458,7 +7478,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Moon Kingdom Master Cup",
@@ -7468,7 +7489,8 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": "|Wall Slide|"
+    "requires": "|Wall Slide|",
+    "moon_postwin": true
   },
   {
     "name": "Moon: Taking Notes: In Low Gravity",
@@ -7478,6 +7500,7 @@
       "post-metro"
     ],
     "region": "Moon Kingdom",
-    "requires": ""
+    "requires": "",
+    "moon_postwin": true
   }
 ]

@@ -653,6 +653,42 @@ def _apply_junk_only_rules(world: World, multiworld: MultiWorld, player: int) ->
                 )
 
 
+# Goal values (Options.py Goal) whose route makes the Moon post-win layers (re-arrival
+# + moon-rock) reachable. Empty today: under both mushroom_kingdom (0, leaving Moon ends
+# the game) and festival (1, Moon dropped entirely) those moons are uncollectable. A
+# future Dark/Darker-Side goal would add its value here to lift the filler restriction.
+GOALS_WITH_MOON_POSTWIN = frozenset()
+
+
+def _apply_moon_postwin_rules(world: World, multiworld: MultiWorld, player: int) -> None:
+    """Force the Moon Kingdom post-win layer to filler.
+
+    The re-arrival (leave-and-return) and moon-rock Moon moons are physically
+    uncollectable before the game-clear goal (leaving Moon = win), so the AP fill must
+    never strand a progression OR useful item behind one. They are tagged
+    `moon_postwin: true` in locations.json by compile_moon_logic.py (shine_map-driven).
+    Restriction matches junk_only strength and is gated on the goal via
+    GOALS_WITH_MOON_POSTWIN so a future Dark/Darker-Side goal collects them normally.
+    """
+    if get_option_value(multiworld, player, "goal") in GOALS_WITH_MOON_POSTWIN:
+        return
+    postwin_names = {
+        loc["name"] for loc in world.location_table if loc.get("moon_postwin")
+    }
+    if not postwin_names:
+        return
+    from worlds.generic.Rules import add_item_rule
+    for region in multiworld.regions:
+        if region.player != player:
+            continue
+        for location in region.locations:
+            if location.name in postwin_names:
+                add_item_rule(
+                    location,
+                    lambda item: not item.advancement and not item.useful,
+                )
+
+
 def _apply_no_logic(world: World, multiworld: MultiWorld, player: int) -> None:
     """no_logic testing mode: make every location and region trivially reachable.
 
@@ -689,6 +725,7 @@ def _apply_no_logic(world: World, multiworld: MultiWorld, player: int) -> None:
 def after_set_rules(world: World, multiworld: MultiWorld, player: int):
     _apply_filler_only_rules(world, multiworld, player)
     _apply_junk_only_rules(world, multiworld, player)
+    _apply_moon_postwin_rules(world, multiworld, player)
     if is_option_enabled(multiworld, player, "multi_moon_shuffle"):
         _apply_multi_moon_rules(world, multiworld, player)
     # Entrance shuffle: override location access rules for shuffled locations.

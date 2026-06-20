@@ -117,10 +117,93 @@ for validation — see §5.)
 
 ## 3. Special cases
 
-- **Cap (leave-to-access).** Cap has no `*Peace()` and its moons need "having left
-  Cap once." In the linear chain that's "Cascade reachable." Gate Cap's
-  `first_visit`-but-bit≥1 moons on `canReachLocation(<first Cascade moon>)` or a
-  dedicated `CapDeparture()` predicate. Cloud/Lost similarly have no peace gate.
+- **Cap/Cloud/Lost/Moon (re-arrival, "leave and come back") — SHIPPED via
+  `build_rearrival_names` (2026-06-20).** These four have no boss-style `*Peace()`;
+  their post-first-visit layers need "having left and returned." Every non-rock moon
+  with `min_scenario > first_playable_bit` (broader than the coarse `>= peace_bit`
+  test the floor guard skips for Cap/Cloud) ANDs in a `canReachRegion`-based predicate
+  (`hooks/Rules.py`): `{CapPeace}`→`Sand Kingdom`, `{CloudPeace}`/`{LostPeace}`→
+  `Night Metro`, `{MoonPeace}`→`Mushroom Kingdom`. Cap/Cloud are redundant-but-harmless
+  (region already behind the hub); **Lost is load-bearing** (the layer sits behind
+  enough Lost moons to reach Night Metro); Moon is currently a no-op (Moon→Mushroom is
+  ungated — the "leave Moon = win" coupling). Tests: `TestBuildRearrivalNames` /
+  `TestRearrivalGatesFor` in `test_scenario_gating.py`.
+
+### Moon Kingdom — three moon layers + goal coupling — SHIPPED (2026-06-20)
+
+Devon's ground-truth breakdown of Moon Kingdom moon availability (total 38):
+
+| layer | Devon count | when available | in logic for CURRENT goal? |
+|---|---|---|---|
+| arrival | 14 | from first arrival | **YES** — only these |
+| re-arrival | 13 | after defeating Bowser, **leaving, and returning** | NO (current goal) / YES (Dark/Darker goal) |
+| moon rock | 11 | after breaking the Moon Rock | NO (current goal) / YES (Dark/Darker goal) |
+
+For the **current goal** (`mushroom_kingdom`; "leave Moon = win"), only the first-visit
+moons are collectable. The re-arrival + moon-rock layers sit at/after the win and are
+physically uncollectable, so **no progression/useful item may be stranded behind them.**
+
+**Enforcement (filler restriction, not reachability):** default `accessibility` is
+**full**, so the 24 post-win moons cannot simply be made unreachable (that FillErrors).
+Instead they are forced to **filler** (junk-only strength: `not advancement and not
+useful`) while staying reachable. This is the safe, accessibility-compatible way to keep
+them out of the goal's logic.
+
+- **Classification is shine_map-driven** (`build_moon_postwin_names` in
+  `compile_moon_logic.py`): a Moon moon is post-win iff `is_moon_rock` OR
+  `min_scenario > first_playable_bit`. By shine_map this is 23 AP locations (16
+  re-arrival + 7 rock); the arrival layer is the 15 moons at `min_scenario ==
+  first_playable_bit (0)`. (Devon's 14/13/11 split totals the same 38; the ±1 boundary
+  is safe because any moon present in scenario 0 is collectable on the first visit even
+  if it sits behind the boss, so leaving it progression-eligible can't strand anything.)
+- The compiler tags each with `"moon_postwin": true` in `locations.json` (boolean, IP-safe;
+  only adjusted when shine_map is present so a no-data run never wipes the flags).
+- `hooks/World.py _apply_moon_postwin_rules` (run from `after_set_rules`) applies the
+  filler item-rule, **gated on the goal** via `GOALS_WITH_MOON_POSTWIN` (empty today —
+  both `mushroom_kingdom` and `festival`, which drops Moon entirely, leave the layer
+  uncollectable). **A future Dark/Darker-Side goal** adds its option value to that
+  frozenset to collect the post-win moons normally.
+- `{MoonPeace}` remains a no-op marker (Moon→Mushroom ungated); the `moon_postwin` flag,
+  not reachability, is the enforcement signal.
+
+Validated: `TestBuildMoonPostwinNames`; compiler reports `moon-postwin-tagged: 23`;
+Generate passes and the spoiler shows all 23 hold only filler-classified Power Moons
+(no abilities/captures/Spark pylon/Multi-Moons).
+
+### Moon Cave traversal gate — SHIPPED (2026-06-20)
+
+To clear **Moon Cave** (subarea `Underground Caverns` in `subareas.json`, kingdom
+`Moon Kingdom`) and beat the game, the player needs **either** full item set:
+
+- **(Parabones AND Banzai Bill AND Spark pylon)**, OR
+- **(Ground Pound Jump AND Cap Bounce AND Wall Slide)**
+
+Implemented in `compile_moon_logic.py` as `MOON_CAVE_TRAVERSAL` (emitted fragment:
+`((|Parabones| and |Banzai Bill| and |Spark pylon|) or ((|Ground Pound Jump| and
+|Progressive Ground Pound:1|) and |Cap Bounce| and |Wall Slide|))`). GPJ folds in its
+`Progressive Ground Pound:1` prerequisite exactly as elsewhere in the compiler — a
+correctness tightening over the literal 3-item set B (you cannot ground-pound-jump
+without ground pound); flip `JUMP_FRAG["GPJ"]` → bare `|Ground Pound Jump|` to revert.
+
+ANDed onto:
+- the 5 `Underground Caverns` moons (`Moon: Under the Bowser Statue`,
+  `Moon: Fly to the Treasure Chest and Back`, `Moon: In a Hole in the Magma`,
+  `Moon: Around the Barrier Wall`, `Moon: On Top of the Cannon`), built from
+  `subareas.json`;
+- `Moon: Up in the Rafters` (Wedding Room subarea, but only cave-reachable —
+  `MOON_CAVE_EXTRA_LOCATIONS`);
+- the game-clear **goal location** `Arrive in the Mushroom Kingdom` (`victory: true`),
+  set directly in `main()` — this replaces the old `{ParabonesSkip()}` stub (which was a
+  vacuous `return True`) so at least one set is guaranteed placeable-and-reachable before
+  the end.
+
+Because each cave location's `requires` now contains all six items, AP fill cannot place
+any of the six there (the location would be unreachable without the item in hand) — that
+satisfies "the items may hide in Moon Kingdom but not in Moon Cave moons" for free. The
+ability set (B) is capture-independent, so the goal stays reachable even with capturesanity
+off. Tests: `TestMoonCaveTraversal` in `test_scenario_gating.py`. Validated: 38 unit tests
+green, `compile_moon_logic.py` reports `moon-cave-gated: 6/6 cave moons + goal`, Generate
+passes (no FillError, with entrance shuffle + randomized kingdom gates active).
 - **Cascade anomaly (SHIPPED via `build_cascade_anchors`).** `clear_main_scenario=7`
   is Cascade's *last* scenario, with `after_ending=3` earlier — don't treat Cascade's
   `clear` as a generic peace bit. Cascade is handled by a dedicated pass that derives

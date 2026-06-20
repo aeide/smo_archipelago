@@ -1168,11 +1168,17 @@
     "kingdom": "Moon Kingdom",
     "csv_names": [
       "Underground Caverns: Under the Bowser Statue",
-      "Underground Caverns: Fly to the Treasure Chest and Back"
+      "Underground Caverns: Fly to the Treasure Chest and Back",
+      "Moon: In a Hole in the Magma",
+      "Moon: Around the Barrier Wall",
+      "Moon: On Top of the Cannon"
     ],
     "location_names": [
       "Moon: Under the Bowser Statue",
-      "Moon: Fly to the Treasure Chest and Back"
+      "Moon: Fly to the Treasure Chest and Back",
+      "Moon: In a Hole in the Magma",
+      "Moon: Around the Barrier Wall",
+      "Moon: On Top of the Cannon"
     ]
   },
   "Wedding Room": {

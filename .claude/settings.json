@@ -14,7 +14,16 @@
       "PowerShell(cd E:\\\\smo_archipelago; $py = if \\(Test-Path .venv\\\\Scripts\\\\python.exe\\) { \".venv\\\\Scripts\\\\python.exe\" } else { \"python\" }; & $py -c \"import json,collections; L=json.load\\(open\\(r'apworld/smo_archipelago/data/locations.json',encoding='utf-8'\\)\\); n=[x['name'] for x in L]; d=[k for k,v in collections.Counter\\(n\\).items\\(\\) if v>1]; print\\('total locations:',len\\(L\\)\\); print\\('duplicates:',d\\); R=json.load\\(open\\(r'apworld/smo_archipelago/data/moon_requirements.json',encoding='utf-8'\\)\\); print\\('req with location_name:',sum\\(1 for v in R.values\\(\\) if v.get\\('location_name'\\)\\),'/',len\\(R\\)\\); empty=[x['name'] for x in L if x.get\\('requires'\\)=='' and \\('Moon' in x.get\\('category',[]\\) or True\\)]; print\\('new entries with empty requires:', sum\\(1 for x in L if x.get\\('requires'\\)==''\\)\\)\")",
       "PowerShell(cd E:\\\\smo_archipelago; $py = if \\(Test-Path .venv\\\\Scripts\\\\python.exe\\) { \".venv\\\\Scripts\\\\python.exe\" } else { \"python\" }; & $py scripts\\\\import_moon_requirements.py 2>&1 | Select-String -Pattern \"Moon blocks parsed|Matched to|Unmatched|parse error\" | Select-Object -First 8)",
       "Bash(.venv/Scripts/python.exe -c ' *)",
-      "PowerShell(cd E:\\\\smo_archipelago; $py = if \\(Test-Path .venv\\\\Scripts\\\\python.exe\\) { \".venv\\\\Scripts\\\\python.exe\" } else { \"python\" }; & $py -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_moon_requirements.py apworld\\\\smo_archipelago\\\\tests\\\\test_scenario_gating.py apworld\\\\smo_archipelago\\\\tests\\\\test_progression_moons.py apworld\\\\smo_archipelago\\\\tests\\\\test_kingdom_moon_count.py apworld\\\\smo_archipelago\\\\tests\\\\test_moon_rock_checks.py -q 2>&1 | Select-Object -Last 6)"
+      "PowerShell(cd E:\\\\smo_archipelago; $py = if \\(Test-Path .venv\\\\Scripts\\\\python.exe\\) { \".venv\\\\Scripts\\\\python.exe\" } else { \"python\" }; & $py -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_moon_requirements.py apworld\\\\smo_archipelago\\\\tests\\\\test_scenario_gating.py apworld\\\\smo_archipelago\\\\tests\\\\test_progression_moons.py apworld\\\\smo_archipelago\\\\tests\\\\test_kingdom_moon_count.py apworld\\\\smo_archipelago\\\\tests\\\\test_moon_rock_checks.py -q 2>&1 | Select-Object -Last 6)",
+      "Bash(git stash *)",
+      "Bash(python -m pytest apworld/smo_archipelago/tests/test_entrance_shuffle.py -q)",
+      "Bash(python vendor/Archipelago/Generate.py)",
+      "PowerShell(python scripts\\\\compile_moon_logic.py)",
+      "PowerShell(python -m pytest apworld/smo_archipelago/tests/test_scenario_gating.py -q 2>&1)",
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main startWorldTravelingPeach 12GameDataFile24startWorldTravelingPeach _ZN16GameDataFunction24startWorldTravelingPeach talkWorldTravelingPeach WorldTravelingPeach)",
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main _ZN12GameDataFile24startWorldTravelingPeachEv _ZNK12GameDataFile26isStartWorldTravelingPeachEv _ZN12GameDataFile26isStartWorldTravelingPeachEv)",
+      "PowerShell($py = if \\(Test-Path .venv\\\\Scripts\\\\python.exe\\) { \".venv\\\\Scripts\\\\python.exe\" } else { \"python\" }; & $py -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_scenario_gating.py -q 2>&1 | Select-Object -Last 8)",
+      "Bash(git add *)"
     ]
   }
 }

@@ -135,6 +135,23 @@ KINGDOM_GATES: dict[str, str] = {
     "Lake":     _LAKE_GATE,
 }
 
+# Re-arrival ("leave and come back") gates — the four kingdoms with no boss-style
+# world-peace cutscene (Cap/Cloud/Lost/Moon). Their post-first-visit moon layers only
+# open on RE-ARRIVAL, which the AP graph models as "the kingdom's revisit hub / next
+# kingdom is reachable". A moon here is in the re-arrival layer iff its earliest
+# scenario is past the first-visit wave (min_scenario > first_playable_bit) — a broader
+# rule than the coarse post_peace `>= peace_bit` test, which the floor guard (Cap/Cloud
+# start at bit 1) would otherwise skip entirely. Predicates live in hooks/Rules.py
+# (canReachRegion-based). Cap/Cloud are redundant-but-harmless (their region already
+# sits behind the hub); Lost is load-bearing (Night Metro needs enough Lost moons);
+# Moon is currently a no-op (Moon -> Mushroom ungated) kept for uniformity.
+REARRIVAL_PEACE_GATES: dict[str, str] = {
+    "Cap":   "{CapPeace()}",
+    "Cloud": "{CloudPeace()}",
+    "Lost":  "{LostPeace()}",
+    "Moon":  "{MoonPeace()}",
+}
+
 # Peace gates for Moon Rock (post-peace moon-pipe) locations.
 # Cap/Cloud/Lost omitted — peace = kingdom reachability, requires stays "".
 MOON_ROCK_PEACE_GATES: dict[str, str] = {
@@ -159,9 +176,9 @@ MOON_ROCK_PEACE_GATES: dict[str, str] = {
 #                  moon is ever present in).
 #   peace_bit    = clear_main_scenario - 1   (from world_scenarios.json).
 # post_peace moons AND in {<Kingdom>Peace()} (folded with MOON_ROCK_PEACE_GATES so
-# a rock moon is gated once, not twice). Cap/Cloud/Lost/Moon have no *Peace()
-# predicate, so post_peace moons there receive NO new gate (their leave-to-access
-# gating is a deferred mid_story concern).
+# a rock moon is gated once, not twice). Cap/Cloud/Lost/Moon have no boss-style
+# *Peace() predicate in this coarse tier; their post-first-visit ("re-arrival") layer
+# is instead handled by build_rearrival_names + REARRIVAL_PEACE_GATES (see below).
 #
 # mid_story (a moon needing partial story progress but not peace) is gated by
 # build_mid_story_anchors() below — see its block comment for the model.
@@ -268,6 +285,61 @@ def build_post_peace_names(
             e["progress_bit_flag"], ws, first_playable.get(kingdom, 0), kingdom
         ):
             names.add(f"{kingdom}: {e['shine_id']}")
+    return names
+
+
+def build_rearrival_names(shine_map: list | None) -> set[str]:
+    """Non-rock moons in the REARRIVAL_PEACE_GATES kingdoms (Cap/Cloud/Lost/Moon)
+    whose earliest scenario is past the first-visit wave (min_scenario >
+    first_playable_bit) — the "leave and come back" re-arrival layer. Keyed by AP
+    location name. Degrades to empty when scenario data is absent. Only shine_map is
+    needed (the rule is purely the per-kingdom bit floor, not world_scenarios).
+
+    Rocks are excluded: their AP gate is the locations.json "Moon Rock" category +
+    the runtime MoonRockHook, and these kingdoms intentionally carry no rock peace
+    predicate (MOON_ROCK_PEACE_GATES omits them)."""
+    names: set[str] = set()
+    if not shine_map:
+        return names
+    first_playable: dict[str, int] = {}
+    for e in shine_map:
+        k = e["kingdom"]
+        b = lowest_set_bit(e["progress_bit_flag"])
+        first_playable[k] = min(first_playable.get(k, b), b)
+    for e in shine_map:
+        k = e["kingdom"]
+        if k not in REARRIVAL_PEACE_GATES or e.get("is_moon_rock"):
+            continue
+        if lowest_set_bit(e["progress_bit_flag"]) > first_playable.get(k, 0):
+            names.add(f"{k}: {e['shine_id']}")
+    return names
+
+
+def build_moon_postwin_names(shine_map: list | None) -> set[str]:
+    """Moon Kingdom moons that CANNOT be collected before the game-clear goal.
+
+    Under the current goal (mushroom_kingdom — leaving Moon ends the game) only the
+    first-visit layer (min_scenario == first_playable_bit) is collectable. Everything
+    else is post-win: the re-arrival layer (min_scenario > first_playable_bit, only
+    reached by leaving and returning) AND the moon-rock layer (is_moon_rock). Both are
+    physically uncollectable before the win, so they must hold only filler — no
+    progression/useful item may be stranded behind an uncollectable check.
+
+    Returned names are tagged `moon_postwin: true` in locations.json; the runtime hook
+    (_apply_moon_postwin_rules) enforces the filler restriction, gated on the goal so a
+    future Dark/Darker-Side goal can lift it. Keyed by AP location name; degrades to
+    empty without shine_map. (A moon present in scenario 0 is collectable on the first
+    visit even if it sits behind the boss, so min_scenario==fp is a safe arrival floor.)"""
+    names: set[str] = set()
+    if not shine_map:
+        return names
+    moon = [e for e in shine_map if e["kingdom"] == "Moon"]
+    if not moon:
+        return names
+    fp = min(lowest_set_bit(e["progress_bit_flag"]) for e in moon)
+    for e in moon:
+        if e.get("is_moon_rock") or lowest_set_bit(e["progress_bit_flag"]) > fp:
+            names.add(f"Moon: {e['shine_id']}")
     return names
 
 
@@ -476,6 +548,35 @@ MOON_ROCK_REACH_CAPTURE: dict[str, str] = {
     "Luncheon": "|Lava Bubble|",
 }
 
+# Moon Cave traversal gate (Devon-sourced 2026-06-20). To clear Moon Cave (the
+# "Underground Caverns" subarea) and beat the game the player needs EITHER the
+# capture set (Parabones + Banzai Bill + Spark pylon) OR the ability set (Ground
+# Pound Jump + Cap Bounce + Wall Slide). GPJ folds in its Progressive Ground Pound
+# prerequisite exactly as everywhere else in this file (you cannot ground-pound-jump
+# without ground pound) — a correctness tightening over Devon's literal 3-item set B;
+# flip JUMP_FRAG["GPJ"] back to a bare "|Ground Pound Jump|" here if undesired.
+#
+# ANDed onto (a) every "Underground Caverns" moon, (b) "Moon: Up in the Rafters"
+# (also reached only after clearing the cave), and (c) the game-clear goal location
+# (so at least one set is guaranteed reachable before the end). Because each cave
+# location's `requires` then contains all six items, AP fill can never place any of
+# them in a cave location (it would be unreachable) — that satisfies "the items may
+# hide in Moon Kingdom but not in Moon Cave moons" for free. The ability set is
+# capture-independent, so the goal stays reachable even with capturesanity off.
+MOON_CAVE_TRAVERSAL = or_join([
+    and_join(["|Parabones|", "|Banzai Bill|", "|Spark pylon|"]),
+    and_join([JUMP_FRAG["GPJ"], "|Cap Bounce|", "|Wall Slide|"]),
+])
+
+# Cave-reachable moons NOT in the "Underground Caverns" subarea list. "Up in the
+# Rafters" lives in the Wedding Room subarea (whose other moons are NOT cave-gated),
+# so it is added by name rather than by subarea.
+MOON_CAVE_EXTRA_LOCATIONS = frozenset({"Moon: Up in the Rafters"})
+
+# Game-clear goal location (victory). Gated on MOON_CAVE_TRAVERSAL so the six cave
+# items are guaranteed placed-and-reachable before the end of the game.
+GOAL_LOCATION = "Arrive in the Mushroom Kingdom"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Compilation
 # ─────────────────────────────────────────────────────────────────────────────
@@ -537,7 +638,9 @@ def compile_moon(rec: dict) -> str:
 def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
               post_peace_names: set[str] | frozenset[str],
               mid_story_anchors: dict[str, str],
-              moon_rock_names: set[str] | frozenset[str]) -> list[str]:
+              moon_rock_names: set[str] | frozenset[str],
+              rearrival_names: set[str] | frozenset[str] = frozenset(),
+              moon_cave_names: set[str] | frozenset[str] = frozenset()) -> list[str]:
     out: list[str] = []
     prefix = location_name.split(": ", 1)[0]
     if prefix in KINGDOM_GATES:
@@ -557,6 +660,15 @@ def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
     # (canReachLocation(<advancer moon>) or the kingdom peace fragment for Cascade).
     elif location_name in mid_story_anchors:
         out.append(mid_story_anchors[location_name])
+    # Re-arrival ("leave and come back") layer for Cap/Cloud/Lost/Moon — independent of
+    # the post_peace/mid_story branches above (the post_peace branch appends nothing for
+    # these kingdoms since MOON_ROCK_PEACE_GATES omits them). See REARRIVAL_PEACE_GATES.
+    if location_name in rearrival_names and prefix in REARRIVAL_PEACE_GATES:
+        out.append(REARRIVAL_PEACE_GATES[prefix])
+    # Moon Cave traversal: every "Underground Caverns" moon + "Up in the Rafters" is
+    # reachable only after clearing the cave, so AND in one of the two traversal sets.
+    if location_name in moon_cave_names:
+        out.append(MOON_CAVE_TRAVERSAL)
     if location_name in loc_subarea_gate:
         out.append(loc_subarea_gate[location_name])
     if location_name in LOCATION_EXTRA_GATES:
@@ -587,7 +699,17 @@ def main() -> None:
     shine_map = _load_scenario_table("shine_map.json", require_field="progress_bit_flag")
     world_scen = _load_scenario_table("world_scenarios.json")
     post_peace_names = build_post_peace_names(moon_rock_names, shine_map, world_scen)
+    rearrival_names = build_rearrival_names(shine_map)
+    # Moon Kingdom post-win layer (re-arrival + moon-rock) — uncollectable before the
+    # mushroom_kingdom goal, so tagged for the runtime filler restriction.
+    moon_postwin_names = build_moon_postwin_names(shine_map)
     scenario_data_present = bool(shine_map and world_scen)
+
+    # Moon Cave traversal: the "Underground Caverns" subarea moons + "Up in the
+    # Rafters" all require clearing the cave (one of the two MOON_CAVE_TRAVERSAL sets).
+    moon_cave_names = set(
+        subareas.get("Underground Caverns", {}).get("location_names", [])
+    ) | set(MOON_CAVE_EXTRA_LOCATIONS)
     new_post_peace = len(post_peace_names) - len(moon_rock_names)
 
     # mid_story tier (§2.3): story-anchor reachability gates for moons between
@@ -634,7 +756,7 @@ def main() -> None:
         base = compile_moon(rec)
         gated = and_join([base] + gates_for(
             ln, loc_subarea_gate, post_peace_names, mid_story_anchors,
-            moon_rock_names))
+            moon_rock_names, rearrival_names, moon_cave_names))
         compiled[ln] = gated
         if gated == "":
             free_moons.append(ln)
@@ -644,8 +766,23 @@ def main() -> None:
     # Write requires back into locations.json for compiled moons.
     written = 0
     kingdom_gated = 0
+    goal_gated = False
     for loc in locations:
         nm = loc["name"]
+        # The game-clear goal isn't a moon (not in moon_requirements), so set its
+        # traversal gate directly: one of the two Moon Cave sets must be reachable
+        # before the end of the game. This replaces the older {ParabonesSkip()} stub.
+        if nm == GOAL_LOCATION:
+            loc["requires"] = MOON_CAVE_TRAVERSAL
+            goal_gated = True
+            continue
+        # Moon post-win tag: only adjust when shine_map is present (authoritative);
+        # never wipe the flags on a no-data run.
+        if shine_map and loc.get("region") == "Moon Kingdom":
+            if nm in moon_postwin_names:
+                loc["moon_postwin"] = True
+            elif "moon_postwin" in loc:
+                del loc["moon_postwin"]
         if nm not in compiled:
             continue
         loc["requires"] = compiled[nm]
@@ -661,11 +798,21 @@ def main() -> None:
 
     peace_gated = sum(1 for v in compiled.values() if "Peace()" in v)
     mid_gated = sum(1 for v in compiled.values() if "canReachLocation(" in v)
+    rearrival_gated = sum(
+        1 for v in compiled.values()
+        if any(g in v for g in REARRIVAL_PEACE_GATES.values()))
+    cave_gated = sum(1 for nm in moon_cave_names if nm in compiled)
     print(f"Compiled requires for {written} moon locations -> {LOCATIONS.name}")
     print(f"  skipped junk_only:     {skipped_junk}")
     print(f"  free (no requirement): {len(free_moons)}")
     print(f"  kingdom-gated:         {kingdom_gated}")
     print(f"  subarea-gated:         {len(loc_subarea_gate)}")
+    print(f"  moon-cave-gated:       {cave_gated}/{len(moon_cave_names)} cave moons"
+          f"{' + goal' if goal_gated else ' (GOAL LOCATION NOT FOUND)'}")
+    if shine_map:
+        print(f"  moon-postwin-tagged:   {len(moon_postwin_names)} "
+              f"(re-arrival + moon-rock layers; runtime forces filler under "
+              f"mushroom_kingdom goal)")
     if scenario_data_present:
         print(f"  scenario data:         loaded ({len(shine_map)} moons, "
               f"{len(world_scen)} kingdoms)")
@@ -674,6 +821,9 @@ def main() -> None:
         print(f"  mid_story-gated:        {sum(mid_story_stats.values())}  "
               f"({mid_gated} via canReachLocation, rest via Cascade dedicated pass)  "
               f"{dict(sorted(mid_story_stats.items()))}")
+        print(f"  re-arrival-gated:       {rearrival_gated}  "
+              f"(Cap/Cloud/Lost/Moon 'leave and come back' layer, "
+              f"{len(rearrival_names)} candidate names)")
     else:
         print("  scenario data:         ABSENT — peace gating is rock-only "
               "(set up bridge/%APPDATA% shine_map+world_scenarios to enable)")

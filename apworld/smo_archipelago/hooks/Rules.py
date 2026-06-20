@@ -21,6 +21,34 @@ def CascadePeace(world: World, multiworld: MultiWorld, state: CollectionState, p
     """World peace in Cascade Kingdom: player can collect the story-completing moon."""
     return canReachLocation(world, multiworld, state, player, "Cascade: Multi Moon Atop the Falls")
 
+# ── Re-arrival ("leave and come back") peace for Cap/Cloud/Lost/Moon ──────────────
+# These four kingdoms have no boss-style "world peace" cutscene; instead their post-
+# first-visit moon layers only open on RE-ARRIVAL — after the player has left the
+# kingdom and can return. The faithful trigger is "the next kingdom in the travel
+# graph is reachable" (you've collected enough to leave, so you can come back). For
+# Cap/Cloud the gate is redundant-but-harmless (their region already sits behind that
+# hub); for Lost it is load-bearing (gates the layer behind enough Lost moons to reach
+# Night Metro); for Moon it is currently a no-op (Moon -> Mushroom is ungated, the
+# "leave Moon = win" coupling) but kept for uniformity + future goal changes.
+
+def CapPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
+    """Re-arrival in Cap Kingdom: reachable once the Sand hub (Cap's revisit route) is."""
+    return canReachRegion(world, multiworld, state, player, "Sand Kingdom")
+
+def CloudPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
+    """Re-arrival in Cloud Kingdom: reachable once Night Metro (Cloud's revisit route) is."""
+    return canReachRegion(world, multiworld, state, player, "Night Metro")
+
+def LostPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
+    """Re-arrival in Lost Kingdom: reachable once the player has progressed past Lost
+    (Night Metro reachable == enough Lost moons to leave)."""
+    return canReachRegion(world, multiworld, state, player, "Night Metro")
+
+def MoonPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
+    """Re-arrival in Moon Kingdom: reachable once the player has progressed past Moon
+    (Mushroom Kingdom reachable). Currently a no-op (Moon -> Mushroom is ungated)."""
+    return canReachRegion(world, multiworld, state, player, "Mushroom Kingdom")
+
 def SandPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
     """World peace in Sand Kingdom: player can collect the story-completing moon."""
     return canReachLocation(world, multiworld, state, player, "Sand: The Hole in the Desert")
@@ -362,5 +390,12 @@ def OptAll(world: World, multiworld: MultiWorld, state: CollectionState, player:
 def canReachLocation(world: World, multiworld: MultiWorld, state: CollectionState, player: int, location: str):
     """Can the player reach the given location?"""
     if state.can_reach_location(location, player):
+        return True
+    return False
+
+# Rule to expose the can_reach_region core function
+def canReachRegion(world: World, multiworld: MultiWorld, state: CollectionState, player: int, region: str):
+    """Can the player reach the given region?"""
+    if state.can_reach_region(region, player):
         return True
     return False

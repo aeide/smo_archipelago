@@ -86,10 +86,31 @@ For the 213:
   new subarea moons are now listed there (was the one real gap). ✓
 - **peace / scenario gates** — from `shine_map.json` / `world_scenarios.json`, joined by
   the moon's `<Kingdom>: <name>`. ✓ on the romfs machine (see below).
-- **Inherent caveat (unchanged from existing moons):** Cap/Cloud/Lost/Moon have no
-  `*Peace()` predicate, so their post-peace moons (e.g. "Peach in the Cap Kingdom",
-  Moon-Kingdom post-game moons) get no peace gate — same treatment the existing moons in
-  those kingdoms already receive. Moon moons are filler items, so this can't FillError.
+- **Cap/Cloud/Lost/Moon re-arrival gating — DONE (2026-06-20).** These four kingdoms
+  have no boss-style world-peace cutscene; their post-first-visit moon layers only open
+  on RE-ARRIVAL ("leave and come back"). The compiler now classifies every non-rock moon
+  whose earliest scenario is past the first-visit wave (`min_scenario > first_playable_bit`,
+  a broader rule than the coarse `>= peace_bit` test the floor guard would skip) via
+  `build_rearrival_names` and ANDs in a `canReachRegion`-based predicate
+  (`{CapPeace}`/`{CloudPeace}`/`{LostPeace}`/`{MoonPeace}` in `hooks/Rules.py`):
+  Cap→`Sand Kingdom`, Cloud/Lost→`Night Metro`, Moon→`Mushroom Kingdom`. Cap/Cloud are
+  redundant-but-harmless (region already sits behind the hub); **Lost is load-bearing**
+  (gates 9 moons behind enough Lost moons to reach Night Metro); Moon is currently a no-op
+  (Moon→Mushroom ungated — the "leave Moon = win" coupling). 31 non-junk re-arrival moons
+  gated (5 more are `junk_only`, left free by design). Tests: `test_scenario_gating.py`
+  (`TestBuildRearrivalNames`, `TestRearrivalGatesFor`). Generate passes (no FillError).
+- **Moon Kingdom post-win split + Moon Cave traversal — DONE (2026-06-20).** Moon's
+  re-arrival + moon-rock layers (23 AP locations, shine_map: `is_moon_rock` OR
+  `min_scenario > first_playable_bit`) are uncollectable before the `mushroom_kingdom`
+  goal ("leave Moon = win"). Since default `accessibility` is **full** they can't be made
+  unreachable, so they're **forced to filler** (`build_moon_postwin_names` tags
+  `moon_postwin: true`; `hooks/World.py _apply_moon_postwin_rules` applies the item-rule,
+  goal-gated via `GOALS_WITH_MOON_POSTWIN` for a future Dark/Darker goal). Separately, the
+  Moon Cave (`Underground Caverns`) + `Up in the Rafters` + the goal location are gated on
+  `MOON_CAVE_TRAVERSAL` = `(Parabones & Banzai Bill & Spark pylon) OR (Ground Pound Jump &
+  Cap Bounce & Wall Slide)`. Tests: `TestBuildMoonPostwinNames`, `TestMoonCaveTraversal`.
+  Generate passes; spoiler confirms all 23 post-win locations hold only filler. Full
+  detail: [scenario-reachability-design.md](scenario-reachability-design.md) §3.
 
 ### ⚠ MANDATORY follow-up on the machine WITH the gitignored romfs data
 

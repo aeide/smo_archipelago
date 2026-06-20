@@ -300,6 +300,57 @@ class TestBuildCascadeAnchors:
         assert n == 1
 
 
+class TestBuildRearrivalNames:
+    def test_degrades_without_data(self):
+        assert cml.build_rearrival_names(None) == set()
+        assert cml.build_rearrival_names([]) == set()
+
+    def test_classifies_layer_excludes_first_visit_and_rocks(self):
+        shine = [
+            # Cap starts at bit 1 (first-visit) -> excluded
+            {"kingdom": "Cap", "shine_id": "Start", "progress_bit_flag": 0b0010,
+             "is_moon_rock": False},
+            # Cap bit 2 (> first_playable 1) -> re-arrival
+            {"kingdom": "Cap", "shine_id": "Revisit", "progress_bit_flag": 0b0100,
+             "is_moon_rock": False},
+            # Cap bit 3 rock -> excluded (rocks gated elsewhere)
+            {"kingdom": "Cap", "shine_id": "RockMoon", "progress_bit_flag": 0b1000,
+             "is_moon_rock": True},
+            # Lost starts at bit 0 -> bit 1 is re-arrival
+            {"kingdom": "Lost", "shine_id": "Early", "progress_bit_flag": 0b0001,
+             "is_moon_rock": False},
+            {"kingdom": "Lost", "shine_id": "Late", "progress_bit_flag": 0b0010,
+             "is_moon_rock": False},
+            # Sand is NOT a re-arrival kingdom -> never added even past first-visit
+            {"kingdom": "Sand", "shine_id": "Mid", "progress_bit_flag": 0b0100,
+             "is_moon_rock": False},
+        ]
+        out = cml.build_rearrival_names(shine)
+        assert out == {"Cap: Revisit", "Lost: Late"}
+        assert "Cap: Start" not in out         # first-visit wave stays free
+        assert "Cap: RockMoon" not in out      # rocks excluded
+        assert "Sand: Mid" not in out          # non-re-arrival kingdom
+
+
+class TestRearrivalGatesFor:
+    def test_gates_for_appends_rearrival_predicate(self):
+        loc = "Lost: Late"
+        gates = cml.gates_for(loc, {}, set(), {}, set(), {loc})
+        assert "{LostPeace()}" in gates
+        # A re-arrival kingdom location NOT in the rearrival set gets no gate.
+        free = cml.gates_for("Lost: Early", {}, set(), {}, set(), set())
+        assert "{LostPeace()}" not in free
+        # Each re-arrival kingdom maps to its own predicate.
+        assert "{CapPeace()}" in cml.gates_for(
+            "Cap: Revisit", {}, set(), {}, set(), {"Cap: Revisit"})
+        assert "{MoonPeace()}" in cml.gates_for(
+            "Moon: Pipe", {}, set(), {}, set(), {"Moon: Pipe"})
+
+    def test_default_rearrival_arg_is_noop(self):
+        # Back-compat: gates_for without the rearrival arg behaves as before.
+        assert cml.gates_for("Lost: Late", {}, set(), {}, set()) == []
+
+
 class TestMoonRockReachCapture:
     def test_constants(self):
         assert cml.MOON_ROCK_REACH_CAPTURE["Cap"] == "|Paragoomba|"
@@ -312,6 +363,68 @@ class TestMoonRockReachCapture:
         # A non-rock Cap location (not in moon_rock_names) gets no reach capture.
         non_rock = cml.gates_for("Cap: Some Overworld Moon", {}, set(), {}, set())
         assert "|Paragoomba|" not in non_rock
+
+
+class TestMoonCaveTraversal:
+    def test_fragment_has_both_sets(self):
+        frag = cml.MOON_CAVE_TRAVERSAL
+        # Capture set A.
+        assert "|Parabones|" in frag
+        assert "|Banzai Bill|" in frag
+        assert "|Spark pylon|" in frag
+        # Ability set B (GPJ folds in its Progressive Ground Pound prerequisite).
+        assert "|Ground Pound Jump|" in frag
+        assert "|Progressive Ground Pound:1|" in frag
+        assert "|Cap Bounce|" in frag
+        assert "|Wall Slide|" in frag
+        # The two sets are OR-combined (either path clears the cave).
+        assert " or " in frag
+
+    def test_rafters_is_an_extra_cave_location(self):
+        assert "Moon: Up in the Rafters" in cml.MOON_CAVE_EXTRA_LOCATIONS
+
+    def test_gates_for_appends_traversal_to_cave_moon(self):
+        loc = "Moon: In a Hole in the Magma"
+        gates = cml.gates_for(loc, {}, set(), {}, set(), frozenset(), {loc})
+        assert cml.MOON_CAVE_TRAVERSAL in gates
+        # A Moon location NOT in the cave set gets no traversal gate.
+        free = cml.gates_for("Moon: Some Overworld Moon", {}, set(), {}, set())
+        assert cml.MOON_CAVE_TRAVERSAL not in free
+
+    def test_default_cave_arg_is_noop(self):
+        # Back-compat: gates_for without the moon_cave arg behaves as before.
+        assert cml.gates_for("Moon: In a Hole in the Magma", {}, set(), {}, set()) == []
+
+
+class TestBuildMoonPostwinNames:
+    def test_degrades_without_data(self):
+        assert cml.build_moon_postwin_names(None) == set()
+        assert cml.build_moon_postwin_names([]) == set()
+
+    def test_classifies_rearrival_and_rock_excludes_arrival(self):
+        shine = [
+            # Moon first-visit layer (min_scenario == first_playable 0) -> arrival, kept
+            {"kingdom": "Moon", "shine_id": "Boss", "progress_bit_flag": 0b0001,
+             "is_moon_rock": False},
+            {"kingdom": "Moon", "shine_id": "Cave", "progress_bit_flag": 0b0001,
+             "is_moon_rock": False},
+            # Re-arrival layer (min_scenario > 0) -> post-win
+            {"kingdom": "Moon", "shine_id": "Revisit1", "progress_bit_flag": 0b0010,
+             "is_moon_rock": False},
+            {"kingdom": "Moon", "shine_id": "Revisit2", "progress_bit_flag": 0b0100,
+             "is_moon_rock": False},
+            # Moon-rock layer -> post-win even though it shares a bit with arrival
+            {"kingdom": "Moon", "shine_id": "Rock", "progress_bit_flag": 0b0001,
+             "is_moon_rock": True},
+            # A different kingdom is never tagged
+            {"kingdom": "Cap", "shine_id": "Whatever", "progress_bit_flag": 0b0100,
+             "is_moon_rock": True},
+        ]
+        out = cml.build_moon_postwin_names(shine)
+        assert out == {"Moon: Revisit1", "Moon: Revisit2", "Moon: Rock"}
+        assert "Moon: Boss" not in out      # first-visit stays collectable/in-logic
+        assert "Moon: Cave" not in out
+        assert "Cap: Whatever" not in out   # only Moon Kingdom
 
 
 class TestFreeCapturesAndJoin:

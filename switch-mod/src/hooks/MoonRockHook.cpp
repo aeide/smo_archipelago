@@ -78,6 +78,30 @@ inline constexpr bool kCapPeaceFromStart = false;
 // SMO world id 0 = Cap (kKingdoms[0], identity-mapped in kWorldIdToBit).
 inline constexpr int kCapWorldId = 0;
 
+// === Auto-start "World Traveling Peach" (Devon 2026-06-20) =================
+// The "Peach in the X Kingdom" moons require the post-game traveling-Peach
+// NPC to spawn, which vanilla only enables AFTER the player returns to
+// Mushroom Kingdom post-game and talks to a Toad (that Toad calls
+// rs::startWorldTravelingPeach, setting a single GLOBAL save flag). Devon
+// wants Peach to appear automatically once a kingdom's moon rock is openable
+// (= per-kingdom peace, the same gate the rock uses) without the toad detour.
+//
+// Lever: SET the real save flag via GameDataFile::startWorldTravelingPeach()
+// — NOT a hook on the reader. The WorldTravelingNpc appear logic is undecompiled
+// (only the header ships in OdysseyDecomp) and reads the flag inline, so a
+// reader-hook would hit the inlining trap (HIT symbol, no effect). Writing the
+// bit is inlining-proof: every reader (inlined or not) sees the set flag.
+// We piggyback on moonRockEnableHook because it already (a) fires exactly when
+// the rock is openable and (b) hands us a live al::LiveActor* the rs:: wrappers
+// need. Idempotent — the rs::isStart check skips the setter once the flag is up
+// (whether we set it or the vanilla toad did).
+//
+// VALIDATED IN-GAME 2026-06-20 (Devon): Peach appeared in Cascade (rock already
+// broken in a prior session — the frame-pump path, tickWorldTravelPeach) and
+// awarded her moon, and appeared in Lake right after breaking its rock — both
+// without the Mushroom-Kingdom toad. Randomization + collection both correct.
+inline constexpr bool kAutoStartWorldTravelPeach = true;
+
 struct GameDataHolderAccessorMirror {
     void* mData;
 };
@@ -90,11 +114,20 @@ using IsClearWorldMainScenarioFn   = bool (*)(const void* gdf, int world_id);
 using GetScenarioNoFn              = int (*)(const void* gdf, int world_id);
 using GetMainScenarioNoFn          = int (*)(const void* gdf, int world_id);
 using GetMoonRockScenarioNoFn      = int (*)(const void* world_list, int world_id);
+// GameDataFile World-Traveling-Peach flag accessors. The rs:: actor wrappers
+// inline these, so only the GameDataFile members are exported in main.nso
+// dynsym (verified 2026-06-20 via check_nso_symbols.py: the rs:: setter MISSes,
+// GameDataFile::startWorldTravelingPeach HITs). Called on the GameDataFile*
+// (ctx.gdf) — the same pointer the scenario getters above run on.
+using IsStartWorldTravelPeachFn    = bool (*)(const void* gdf);
+using StartWorldTravelPeachFn      = void (*)(void* gdf);
 
 IsClearWorldMainScenarioFn s_isClearWorldMainScenario = nullptr;
 GetScenarioNoFn            s_getScenarioNo            = nullptr;
 GetMainScenarioNoFn        s_getMainScenarioNo        = nullptr;
 GetMoonRockScenarioNoFn    s_getMoonRockScenarioNo    = nullptr;
+IsStartWorldTravelPeachFn  s_isStartWorldTravelPeach  = nullptr;
+StartWorldTravelPeachFn    s_startWorldTravelPeach     = nullptr;
 
 struct GameCtx {
     GameDataHolder* holder = nullptr;
@@ -124,10 +157,36 @@ int moonRockScenarioFor(const GameCtx& ctx, int world_id) {
     return s_getMoonRockScenarioNo(ctx.world_list, world_id);
 }
 
+// Set the global "World Traveling Peach" save flag so the traveling-Peach NPC
+// spawns in kingdoms without the vanilla Mushroom-Kingdom toad. Idempotent: the
+// isStart read skips the setter once the flag is up (set here OR via the toad),
+// so startWorldTravelingPeach runs at most once per save. Cheap flag read; safe
+// to call from the rock predicate. No-op unless the setter symbol resolved.
+void maybeStartWorldTravelPeach() {
+    if constexpr (!kAutoStartWorldTravelPeach) return;
+    if (s_startWorldTravelPeach == nullptr) return;
+    GameCtx ctx;
+    if (!resolveGameCtx(ctx) || ctx.gdf == nullptr) return;
+    if (s_isStartWorldTravelPeach != nullptr && s_isStartWorldTravelPeach(ctx.gdf))
+        return;  // already started (toad or a prior call) — nothing to do
+    s_startWorldTravelPeach(ctx.gdf);
+    static int s_logged = 0;
+    if (s_logged < 4) {
+        ++s_logged;
+        SMOAP_LOG_INFO("[world-travel-peach] startWorldTravelingPeach forced "
+                       "(moon-rock peace) — traveling Peach now appears #%d",
+                       s_logged);
+    }
+}
+
 HkTrampoline<bool, const al::LiveActor*> moonRockEnableHook =
     hk::hook::trampoline([](const al::LiveActor* actor) -> bool {
         const bool orig = moonRockEnableHook.orig(actor);
-        if (orig) return true;  // real post-game: fully vanilla
+        if (orig) {
+            // Real post-game: rock already open. Skip the toad requirement too.
+            maybeStartWorldTravelPeach();
+            return true;
+        }
 
         GameCtx ctx;
         if (!resolveGameCtx(ctx) || s_isClearWorldMainScenario == nullptr) {
@@ -156,6 +215,8 @@ HkTrampoline<bool, const al::LiveActor*> moonRockEnableHook =
                            mr_scenario, s_logged + 1);
             ++s_logged;
         }
+        // Rock is openable (kingdom at peace): enable traveling Peach here too.
+        maybeStartWorldTravelPeach();
         return true;
     });
 
@@ -240,6 +301,46 @@ void tickCapPeaceExperiment() {
     setMainScenarioNo(ctx.gdf, mr);
 }
 
+// Per-frame driver for the World Traveling Peach auto-start. The
+// moonRockEnableHook call sites only fire while the game is QUERYING whether a
+// rock can open — which never happens again once a kingdom's rock is already
+// broken (the original bug: Peach didn't appear in kingdoms cleared in a prior
+// session). This runs from the drawMain pump every frame instead, so it catches
+// already-broken-rock kingdoms. Throttled ~1s; sets the global flag once the
+// CURRENT kingdom is at peace (the same world-clear test the rock gate uses),
+// then self-disables via the isStart read. No-op until the setter resolved.
+void tickWorldTravelPeach() {
+    if constexpr (!kAutoStartWorldTravelPeach) return;
+    if (s_startWorldTravelPeach == nullptr) return;
+
+    static int s_tick = 0;
+    if (++s_tick < 60) return;  // ~1s @ 60fps
+    s_tick = 0;
+
+    GameCtx ctx;
+    if (!resolveGameCtx(ctx) || ctx.gdf == nullptr) return;
+
+    // Already started (toad or a prior call, this or an earlier session)? Done.
+    if (s_isStartWorldTravelPeach != nullptr && s_isStartWorldTravelPeach(ctx.gdf))
+        return;
+
+    // Gate on current-kingdom peace — the same world-clear test moonRockEnableHook
+    // uses. Covers kingdoms whose rock is already broken (they're at peace)
+    // without depending on the rock-enable query ever firing again.
+    if (s_isClearWorldMainScenario == nullptr ||
+        !s_isClearWorldMainScenario(ctx.gdf, ctx.world_id))
+        return;
+
+    s_startWorldTravelPeach(ctx.gdf);
+    static int s_logged = 0;
+    if (s_logged < 4) {
+        ++s_logged;
+        SMOAP_LOG_INFO("[world-travel-peach] startWorldTravelingPeach forced "
+                       "(frame pump, world=%d at peace) #%d",
+                       ctx.world_id, s_logged);
+    }
+}
+
 void installMoonRockHook() {
     auto resolve = [](const char* mangled, auto& out, const char* label) {
         const ptr addr = hk::ro::lookupSymbol(mangled);
@@ -259,6 +360,35 @@ void installMoonRockHook() {
             s_getMainScenarioNo, "getMainScenarioNo");
     resolve(smoap::sym::kWorldListGetMoonRockScenarioNo,
             s_getMoonRockScenarioNo, "getMoonRockScenarioNo");
+
+    // World Traveling Peach auto-start (Devon 2026-06-20): resolve the
+    // GameDataFile flag accessors straight from main.nso dynsym via
+    // hk::ro::lookupSymbol (NOT the sail DB — not registered in SmoApSymbols.sym,
+    // and a miss must soft-degrade, not HK_ABORT the module like installAtSym).
+    // The rs:: actor wrappers inline these so only the GameDataFile members are
+    // exported. Manglings VERIFIED present 2026-06-20 (check_nso_symbols.py):
+    //   _ZN12GameDataFile24startWorldTravelingPeachEv   (void, non-const) HIT
+    //   _ZNK12GameDataFile26isStartWorldTravelingPeachEv (bool, const)    HIT
+    if constexpr (kAutoStartWorldTravelPeach) {
+        const ptr isStartAddr = hk::ro::lookupSymbol(
+            "_ZNK12GameDataFile26isStartWorldTravelingPeachEv");
+        const ptr startAddr = hk::ro::lookupSymbol(
+            "_ZN12GameDataFile24startWorldTravelingPeachEv");
+        s_isStartWorldTravelPeach =
+            reinterpret_cast<IsStartWorldTravelPeachFn>(isStartAddr);
+        s_startWorldTravelPeach =
+            reinterpret_cast<StartWorldTravelPeachFn>(startAddr);
+        if (startAddr == 0) {
+            SMOAP_LOG_ERROR("[world-travel-peach] startWorldTravelingPeach lookup "
+                            "FAILED — Peach auto-appear disabled (toad still "
+                            "required to spawn traveling Peach)");
+        } else {
+            SMOAP_LOG_INFO("[world-travel-peach] auto-start armed "
+                           "(isStart=%p start=%p)",
+                           reinterpret_cast<void*>(isStartAddr),
+                           reinterpret_cast<void*>(startAddr));
+        }
+    }
 
     // Install the trampoline via the runtime dynsym lookup + installAtPtr, NOT
     // installAtSym. installAtSym resolves through the sail symbol DB and
