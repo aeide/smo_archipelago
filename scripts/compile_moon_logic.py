@@ -43,7 +43,11 @@ REVIEW_DOC = REPO_ROOT / "docs" / "logic-compile-review.md"
 # ─────────────────────────────────────────────────────────────────────────────
 
 def and_join(parts: list[str]) -> str:
-    parts = [p for p in parts if p]
+    # AND is idempotent: drop empties and exact-duplicate fragments (preserving
+    # order) so e.g. a moon-rock capture gate doesn't repeat a term the moon's own
+    # method already requires (Luncheon: Treasure of the Lava Islands -> Lava Bubble).
+    seen: set[str] = set()
+    parts = [p for p in parts if p and not (p in seen or seen.add(p))]
     if not parts:
         return ""
     if len(parts) == 1:
@@ -63,7 +67,11 @@ def or_join(parts: list[str]) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # Item fragments (with movement prerequisites folded in)
 # ─────────────────────────────────────────────────────────────────────────────
-FREE_CAPTURES = frozenset({"Frog", "Chain Chomp"})
+# Always-available captures — precollected as fixed starters in hooks/World.py
+# (FIXED_STARTER_CAPTURES), so they never gate. Broode's Chain Chomp is granted up
+# front because Cascade's story moon (Multi Moon Atop the Falls) needs it and the
+# Cascade scenario gating relies on Multi Moon being collectable from arrival.
+FREE_CAPTURES = frozenset({"Frog", "Chain Chomp", "Broode's Chain Chomp"})
 
 JUMP_FRAG: dict[str, str] = {
     "PJ1":       "|Progressive Jump:1|",                                  # Double
@@ -371,6 +379,67 @@ def build_mid_story_anchors(
     return anchors, stats
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Scenario reachability (CASCADE dedicated pass) — see docs/scenario-reachability-design.md §3.
+#
+# Cascade is excluded from the generic mid_story chain because its
+# clear_main_scenario is its LAST scenario (after_ending_scenario sits earlier), so
+# it has no peace-bit band and its single grand (Multi Moon Atop the Falls, bit 0)
+# can't anchor the bit-(m-1) advancer rule for m >= 2. Instead its post-first-visit
+# layers are gated DIRECTLY on {CascadePeace()} (== canReachLocation(Multi Moon Atop
+# the Falls), the mandatory player-controlled first advance):
+#   min_scenario 0  = first_visit (present from arrival) — stays free.
+#   min_scenario 1  = post-first-advance (Chain-Chomp-area) layer — the faithful,
+#                     least-aggressive gate (these genuinely need Multi Moon first).
+#   min_scenario >=2 = after-ending revisit layers (after_ending_scenario=3) — only
+#                     re-entered after leaving and returning, so {CascadePeace()} is a
+#                     safe under-floor for them too.
+#
+# Which layers are actually gated is FILL-CAPACITY-bounded: the gate pulls Broode's
+# Chain Chomp (Multi Moon's required capture, a single progression item) forward,
+# shrinking the early-sphere location pool. Cascade is the 2nd kingdom, so over-gating
+# starves the early fill and produces an intermittent FillError (Progressive Crouch /
+# Ground Pound / Cascade Power Moons unplaceable). CASCADE_GATE_MAX_LAYER caps the
+# inclusive top layer gated; it was set from the fixed-seed fill sweep (1000-1015) —
+# see docs/scenario-reachability-design.md §3 for the sweep result.
+#
+# Same IP posture as the other tiers: gitignored scenario tables read at BUILD TIME
+# ONLY; the emitted fragment is the functional {CascadePeace()} (already a committed
+# Rules.py predicate over a committed locations.json name). No new strings ship.
+# ─────────────────────────────────────────────────────────────────────────────
+CASCADE_GATE_MIN_LAYER = 1   # bit 0 (first_visit) is never gated
+CASCADE_GATE_MAX_LAYER = 3   # inclusive top min_scenario gated (fill-sweep-bounded)
+
+
+def build_cascade_anchors(
+    shine_map: list | None,
+    world_scen: dict | None,
+    location_names: set[str] | frozenset[str],
+) -> tuple[dict[str, str], int]:
+    """Map each gated Cascade location name -> {CascadePeace()}; returns (anchors,
+    count). Degrades to ({}, 0) when scenario data is absent or the anchor location /
+    peace fragment is missing. Gates non-rock Cascade moons whose min_scenario is in
+    [CASCADE_GATE_MIN_LAYER, CASCADE_GATE_MAX_LAYER]; the anchor moon itself (Multi
+    Moon Atop the Falls, bit 0) is always excluded so it never self-references."""
+    anchors: dict[str, str] = {}
+    if not shine_map or not world_scen or "Cascade" not in world_scen:
+        return anchors, 0
+    peace = MOON_ROCK_PEACE_GATES.get("Cascade", "")
+    if not peace or "Cascade: Multi Moon Atop the Falls" not in location_names:
+        return anchors, 0
+    for e in shine_map:
+        if e["kingdom"] != "Cascade" or e.get("is_moon_rock"):
+            continue
+        m = lowest_set_bit(e["progress_bit_flag"])
+        if m < CASCADE_GATE_MIN_LAYER or m > CASCADE_GATE_MAX_LAYER:
+            continue
+        loc = f"Cascade: {e['shine_id']}"
+        if loc == "Cascade: Multi Moon Atop the Falls" or loc not in location_names:
+            continue
+        anchors[loc] = peace
+    return anchors, len(anchors)
+
+
 # Keyed by subarea name (matches subareas.json keys).
 SUBAREA_GATES: dict[str, str] = {
     "Unzipping the Chasm":            "|Zipper|",
@@ -395,6 +464,16 @@ SUBAREA_GATES: dict[str, str] = {
 # Per-moon gates that are not subarea-wide (notes line 12).
 LOCATION_EXTRA_GATES: dict[str, str] = {
     "Sand: Employees Only": "|Progressive Crouch:1|",   # Crazy Cap back room
+}
+
+# Captures required to physically REACH a kingdom's moon rock (and therefore every
+# moon-pipe moon behind it). Only two rocks in the game are capture-gated to reach:
+# Cap's (a Paragoomba glide up to the ledge) and Luncheon's (Lava Bubble to cross the
+# lava). Devon-sourced 2026-06-19. ANDed onto every Moon Rock-category location in the
+# kingdom, on top of any {<Kingdom>Peace()}.
+MOON_ROCK_REACH_CAPTURE: dict[str, str] = {
+    "Cap":      "|Paragoomba|",
+    "Luncheon": "|Lava Bubble|",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -457,11 +536,16 @@ def compile_moon(rec: dict) -> str:
 
 def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
               post_peace_names: set[str] | frozenset[str],
-              mid_story_anchors: dict[str, str]) -> list[str]:
+              mid_story_anchors: dict[str, str],
+              moon_rock_names: set[str] | frozenset[str]) -> list[str]:
     out: list[str] = []
     prefix = location_name.split(": ", 1)[0]
     if prefix in KINGDOM_GATES:
         out.append(KINGDOM_GATES[prefix])
+    # Capture needed to reach the kingdom's moon rock (Cap=Goomba, Luncheon=Lava
+    # Bubble) — applies to every moon-pipe moon behind that rock.
+    if location_name in moon_rock_names and prefix in MOON_ROCK_REACH_CAPTURE:
+        out.append(MOON_ROCK_REACH_CAPTURE[prefix])
     # post_peace_names folds rock moons (locations.json category) with non-rock
     # post-peace moons (scenario classification) so the {<Kingdom>Peace()} gate is
     # appended exactly once. Cap/Cloud/Lost/Moon have no predicate -> no gate.
@@ -513,6 +597,17 @@ def main() -> None:
     mid_story_anchors, mid_story_stats = build_mid_story_anchors(
         shine_map, world_scen, post_peace_names, location_names)
 
+    # Cascade dedicated pass (§3): Cascade is excluded from build_mid_story_anchors
+    # (no peace-bit band / single grand), so its post-first-visit layers are gated
+    # directly on {CascadePeace()} here. Merge into mid_story_anchors so gates_for
+    # appends the fragment via the same path; report under the Cascade stats line
+    # (the review/print code already special-cases "Cascade" as a peace fallback).
+    cascade_anchors, cascade_count = build_cascade_anchors(
+        shine_map, world_scen, location_names)
+    mid_story_anchors.update(cascade_anchors)
+    if cascade_count:
+        mid_story_stats["Cascade"] = cascade_count
+
     # location_name -> subarea gate
     loc_subarea_gate: dict[str, str] = {}
     missing_subareas: list[str] = []
@@ -538,7 +633,8 @@ def main() -> None:
             continue
         base = compile_moon(rec)
         gated = and_join([base] + gates_for(
-            ln, loc_subarea_gate, post_peace_names, mid_story_anchors))
+            ln, loc_subarea_gate, post_peace_names, mid_story_anchors,
+            moon_rock_names))
         compiled[ln] = gated
         if gated == "":
             free_moons.append(ln)
@@ -576,7 +672,7 @@ def main() -> None:
         print(f"  peace-gated (compiled): {peace_gated}  "
               f"(+{new_post_peace} non-rock post-peace names folded in)")
         print(f"  mid_story-gated:        {sum(mid_story_stats.values())}  "
-              f"({mid_gated} via canReachLocation, rest via Cascade peace fallback)  "
+              f"({mid_gated} via canReachLocation, rest via Cascade dedicated pass)  "
               f"{dict(sorted(mid_story_stats.items()))}")
     else:
         print("  scenario data:         ABSENT — peace gating is rock-only "
@@ -616,9 +712,10 @@ def _write_review(compiled, free_moons, or_capture_moons, kingdom_gated,
     if scenario_data_present:
         lines.append("Each `post_peace` moon (rock, OR earliest scenario >= the "
                      "kingdom's peace scenario) ANDs in `{<Kingdom>Peace()}`. "
-                     "Cap/Cloud/Lost/Moon and Cascade non-rock moons get NO peace "
-                     "gate by design (Cascade's clear scenario is its last, not "
-                     "peace).\n")
+                     "Cap/Cloud/Lost/Moon get NO peace gate (no predicate). Cascade "
+                     "non-rock moons are gated by the dedicated Cascade pass below "
+                     "(its clear scenario is its last, so the coarse peace-bit rule "
+                     "doesn't apply).\n")
         lines.append(f"- Total peace-gated moons (rock + scenario): **{total_peace}**")
         for k in sorted(peace_by_kingdom):
             lines.append(f"  - {k}: {peace_by_kingdom[k]}")
@@ -644,15 +741,18 @@ def _write_review(compiled, free_moons, or_capture_moons, kingdom_gated,
                      "(e.g. Metro lacks a bit-1 grand) the moon over-gates to the "
                      "kingdom `{<Kingdom>Peace()}` fragment instead; the peace-anchor "
                      "moon itself is skipped so it never self-references. Cascade is "
-                     "DEFERRED from mid_story this pass (its clear scenario is its last, "
-                     "so its bit layers form no clean advancer chain, and gating its "
-                     "moons starved the early fill spheres) — its post-first-visit moons "
-                     "stay free; a dedicated Cascade pass is the follow-up.\n")
+                     "handled by a DEDICATED pass (build_cascade_anchors): its clear "
+                     "scenario is its last, so it has no peace-bit band — instead every "
+                     "non-rock moon at min_scenario in [CASCADE_GATE_MIN_LAYER, "
+                     "CASCADE_GATE_MAX_LAYER] ANDs in `{CascadePeace()}` directly "
+                     "(== canReach Multi Moon Atop the Falls, the player-controlled first "
+                     "advance, granted-collectable from arrival since Broode's Chain Chomp "
+                     "is a fixed starter). The layer cap is fill-capacity-bounded.\n")
         emitted = sum(mid_story_stats.values())
         lines.append(f"- Total mid_story-gated moons: **{emitted}**")
         for k in sorted(mid_story_stats):
             if k == "Cascade":
-                via = "via CascadePeace fallback"
+                via = "via CascadePeace (dedicated Cascade pass)"
             elif k == "Metro":
                 via = "via canReachLocation advancer; the few without an exact-bit grand over-gate to peace"
             else:

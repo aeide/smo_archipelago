@@ -2,12 +2,14 @@
 
 > Drafted 2026-06-19. Sequel to the forward-remap seam
 > (`EntranceShuffleHook.cpp::processEntranceRemap`, `kEntranceRemapApply` gated OFF).
-> Read `docs/p7-step4-handoff.md` (top status block) first.
+> Current state across both directions: `docs/logic-and-entrance-status.md` §2.
 
-> **IMPLEMENTED 2026-06-19 (read-only preview, still gated OFF).** The bidirectional
-> table from this design is now wired end-to-end behind `kEntranceRemapApply=false`,
-> so a build/deploy emits BOTH entry and exit `[entrance:remap-preview]` lines and
-> changes no in-game behavior. What landed, mapped to the plan below:
+> **SHIPPED + LIVE 2026-06-19. `kEntranceRemapApply` is now `true`** (see
+> `EntranceShuffleHook.cpp`); the apply-mode walk passed end-to-end. This design first
+> landed as a read-only preview behind `kEntranceRemapApply=false`, then the gate was
+> flipped after validation. (Banner corrected — earlier revisions of this doc said
+> "still gated OFF".) The bidirectional table is wired end-to-end. What landed, mapped
+> to the plan below:
 > - **§1 PC** — `entrance_logic.compile_stage_remaps` emits paired `kind:"entry"` /
 >   `kind:"exit"` rows, skips identity pairs; `switch_server.push_entrance_map` ships
 >   them chunked; drift warning recomputed on entry-row count. (25 entrance tests green.)

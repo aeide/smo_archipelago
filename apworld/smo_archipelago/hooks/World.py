@@ -342,24 +342,29 @@ def _demote_surplus_kingdom_moons(item_pool: list,
 
 
 # Fixed starters: always precollected, never placed at randomised locations.
-# Frog and Chain Chomp are the two mandatory starting captures (required for
-# Cap Kingdom and early Cascade respectively). A third capture is chosen at
-# random from the remaining Capture pool each seed.
+# Frog, Chain Chomp, and Broode's Chain Chomp are the three mandatory starting
+# captures: Frog (Cap Kingdom opening), Chain Chomp (early Cascade), and Broode's
+# Chain Chomp (the capture Cascade's story moon "Multi Moon Atop the Falls" needs —
+# granted up front because the Cascade scenario reachability gating leans on Multi
+# Moon being collectable from arrival; see scripts/compile_moon_logic.py
+# build_cascade_anchors). A further capture is chosen at random from the remaining
+# Capture pool each seed.
 #
 # These are removed from item_pool here so adjust_filler_items doesn't try to
 # place them; multiworld.push_precollected makes the AP server hand them to the
 # client at game-start (index 0 of the received-items list), so the Switch-mod
 # receives them via the normal item-receive path before any HELLO replay.
-FIXED_STARTER_CAPTURES: tuple[str, ...] = ("Frog", "Chain Chomp")
+FIXED_STARTER_CAPTURES: tuple[str, ...] = ("Frog", "Chain Chomp", "Broode's Chain Chomp")
 
 
 def _precollect_starting_captures(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> None:
-    """Remove the 3 starter captures from the pool and push to precollected.
+    """Remove the starter captures from the pool and push to precollected.
 
-    Frog and Chain Chomp are always precollected. A third capture is chosen
-    uniformly at random from the remaining Capture-category items in the pool
-    (excluding Frog and Chain Chomp). The chosen item is stored on the world
-    object as `world.random_starter_capture` for test introspection.
+    The FIXED_STARTER_CAPTURES (Frog, Chain Chomp, Broode's Chain Chomp) are
+    always precollected. A further capture is chosen uniformly at random from the
+    remaining Capture-category items in the pool (excluding the fixed starters).
+    The chosen item is stored on the world object as
+    `world.random_starter_capture` for test introspection.
 
     If either fixed starter is missing from the pool (shouldn't happen in
     normal generation), logs a warning and skips it rather than crashing.
@@ -414,7 +419,8 @@ def _precollect_starting_captures(item_pool: list, world: World, multiworld: Mul
 
 # The item pool before starting items are processed, in case you want to see the raw item pool at that stage
 def before_create_items_starting(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
-    # Precollect the 3 starting captures (Frog, Chain Chomp, +1 random).
+    # Precollect the starting captures (Frog, Chain Chomp, Broode's Chain Chomp,
+    # +1 random).
     # Must run before the festival-goal trim so the starters are present in
     # the pool when we remove them (festival trim uses item names, not indices,
     # so order doesn't matter, but being explicit avoids edge cases).

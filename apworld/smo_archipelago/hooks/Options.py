@@ -119,6 +119,48 @@ class IncludePrecisionCaptureMoons(DefaultOnToggle):
     generation may fail."""
     display_name = "Include Precision Capture Moons"
 
+# ── Cluster toggles for the 213 moons promoted from moon_requirements.json ──
+# These moons existed in the requirements data but were omitted by the curated
+# upstream location pool. They are now AP checks, tagged into the cluster
+# categories below so a player can opt out of any cluster. All default ON, so
+# the out-of-the-box pool is the full moon set. See
+# scripts/add_missing_moon_locations.py.
+
+class IncludeCupMoons(DefaultOnToggle):
+    """Include the Koopa Freerunning Cup moons (each kingdom's Regular Cup and
+    Master Cup race rewards)."""
+    display_name = "Include Cup Moons"
+
+class IncludePeachMoons(DefaultOnToggle):
+    """Include the 'Peach in the X Kingdom' moons (one per kingdom, available
+    once Peach appears there after the story)."""
+    display_name = "Include Peach Moons"
+
+class IncludeTakingNotesMoons(DefaultOnToggle):
+    """Include the 'Taking Notes' music-note timing-challenge moons."""
+    display_name = "Include Taking Notes Moons"
+
+class IncludeTimerChallengeMoons(DefaultOnToggle):
+    """Include the 'Timer Challenge' moons (collect the moon before the timer
+    expires after hitting a P-switch / lever)."""
+    display_name = "Include Timer Challenge Moons"
+
+class IncludeHatAndSeekMoons(DefaultOnToggle):
+    """Include the 'Hat-and-Seek' moons (find the disguised Bonneter hiding in
+    the kingdom)."""
+    display_name = "Include Hat-and-Seek Moons"
+
+class IncludeCaughtHoppingMoons(DefaultOnToggle):
+    """Include the 'Caught Hopping' moons (catch the bounding rabbit that
+    appears in each kingdom)."""
+    display_name = "Include Caught Hopping Moons"
+
+class IncludeExtraMoons(DefaultOnToggle):
+    """Include the remaining ~140 overworld moons that the curated upstream pool
+    omitted (regular ledge / cave / shop / shard moons with no special cluster).
+    Turn off to play closer to the original curated location set."""
+    display_name = "Include Extra Moons"
+
 class Capturesanity(DefaultOnToggle):
     """Gate captures behind their AP items (default ON).
 
@@ -170,7 +212,11 @@ class NoLogic(Toggle):
     display_name = "No Logic (testing)"
 
 class EntranceShuffle(Toggle):
-    """Shuffle subarea entrances (P7 feature, default OFF — work in progress).
+    """Shuffle subarea entrances (P7 feature, default OFF).
+
+    The Switch-mod remap is LIVE + validated in-game (kEntranceRemapApply=true,
+    coupled-bijection return handling); this option is OFF by default so vanilla
+    seeds are unaffected. Turn on to enable the shuffle.
 
     When on, every non-story subarea door leads to a randomly-assigned subarea
     interior (a global bijection over ~116 pooled subareas). Story-critical
@@ -237,8 +283,8 @@ class CascadeMoonCount(Range):
     is the smallest count that still satisfies the Cascade kingdom gate."""
     display_name = "Cascade Kingdom Moon Count"
     range_start = 3
-    range_end = 24
-    default = 24
+    range_end = 39
+    default = 39
 
 class SandMoonCount(Range):
     """Number of Sand Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -247,8 +293,8 @@ class SandMoonCount(Range):
     is the smallest count that still satisfies the Sand kingdom gate."""
     display_name = "Sand Kingdom Moon Count"
     range_start = 12
-    range_end = 68
-    default = 68
+    range_end = 89
+    default = 89
 
 class LakeMoonCount(Range):
     """Number of Lake Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -257,8 +303,8 @@ class LakeMoonCount(Range):
     is the smallest count that still satisfies the Lake kingdom gate."""
     display_name = "Lake Kingdom Moon Count"
     range_start = 6
-    range_end = 29
-    default = 29
+    range_end = 43
+    default = 43
 
 class WoodedMoonCount(Range):
     """Number of Wooded Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -267,8 +313,8 @@ class WoodedMoonCount(Range):
     is the smallest count that still satisfies the Wooded kingdom gate."""
     display_name = "Wooded Kingdom Moon Count"
     range_start = 12
-    range_end = 56
-    default = 56
+    range_end = 76
+    default = 76
 
 class LostMoonCount(Range):
     """Number of Lost Kingdom Power Moons in the AP item pool. Reducing this
@@ -278,8 +324,8 @@ class LostMoonCount(Range):
     so the floor equals the threshold directly)."""
     display_name = "Lost Kingdom Moon Count"
     range_start = 10
-    range_end = 25
-    default = 25
+    range_end = 35
+    default = 35
 
 class MetroMoonCount(Range):
     """Number of Metro Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -288,8 +334,8 @@ class MetroMoonCount(Range):
     is the smallest count that still satisfies the Metro kingdom gate."""
     display_name = "Metro Kingdom Moon Count"
     range_start = 16
-    range_end = 61
-    default = 61
+    range_end = 81
+    default = 81
 
 class SnowMoonCount(Range):
     """Number of Snow Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -298,8 +344,8 @@ class SnowMoonCount(Range):
     is the smallest count that still satisfies the Snow kingdom gate."""
     display_name = "Snow Kingdom Moon Count"
     range_start = 8
-    range_end = 38
-    default = 38
+    range_end = 56
+    default = 56
 
 class SeasideMoonCount(Range):
     """Number of Seaside Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -308,8 +354,8 @@ class SeasideMoonCount(Range):
     is the smallest count that still satisfies the Seaside kingdom gate."""
     display_name = "Seaside Kingdom Moon Count"
     range_start = 8
-    range_end = 54
-    default = 54
+    range_end = 71
+    default = 71
 
 class LuncheonMoonCount(Range):
     """Number of Luncheon Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -318,8 +364,8 @@ class LuncheonMoonCount(Range):
     is the smallest count that still satisfies the Luncheon kingdom gate."""
     display_name = "Luncheon Kingdom Moon Count"
     range_start = 14
-    range_end = 55
-    default = 55
+    range_end = 68
+    default = 68
 
 class RuinedMoonCount(Range):
     """Number of Ruined Kingdom Power Moons (and the Multi-Moon) in the AP item
@@ -330,8 +376,8 @@ class RuinedMoonCount(Range):
     Multi-Moon alone clears it."""
     display_name = "Ruined Kingdom Moon Count"
     range_start = 1
-    range_end = 6
-    default = 6
+    range_end = 10
+    default = 10
 
 class BowsersMoonCount(Range):
     """Number of Bowser's Kingdom Power Moons (and Multi-Moons) in the AP item pool.
@@ -340,8 +386,8 @@ class BowsersMoonCount(Range):
     is the smallest count that still satisfies the Bowser's kingdom gate."""
     display_name = "Bowser's Kingdom Moon Count"
     range_start = 6
-    range_end = 42
-    default = 42
+    range_end = 62
+    default = 62
 
 
 # This is called before any options are defined, in case you want to define your own with a clean slate
@@ -375,6 +421,14 @@ def before_options_defined(options: dict) -> dict:
     options["include_tourist_moons"] = IncludeTouristMoons
     options["include_long_course_moons"] = IncludeLongCourseMoons
     options["include_precision_capture_moons"] = IncludePrecisionCaptureMoons
+    # Cluster toggles for the 213 promoted moons (scripts/add_missing_moon_locations.py)
+    options["include_cup_moons"] = IncludeCupMoons
+    options["include_peach_moons"] = IncludePeachMoons
+    options["include_taking_notes_moons"] = IncludeTakingNotesMoons
+    options["include_timer_challenge_moons"] = IncludeTimerChallengeMoons
+    options["include_hat_and_seek_moons"] = IncludeHatAndSeekMoons
+    options["include_caught_hopping_moons"] = IncludeCaughtHoppingMoons
+    options["include_extra_moons"] = IncludeExtraMoons
     # Per-kingdom Moon-item-count caps (only kingdoms with KingdomMoons(K, N) gates).
     options["cascade_moon_count"] = CascadeMoonCount
     options["sand_moon_count"] = SandMoonCount

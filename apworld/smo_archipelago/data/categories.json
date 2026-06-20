@@ -134,6 +134,48 @@
         ],
         "hidden": true
     },
+    "Cup": {
+        "yaml_option": [
+            "include_cup_moons"
+        ],
+        "hidden": true
+    },
+    "Peach": {
+        "yaml_option": [
+            "include_peach_moons"
+        ],
+        "hidden": true
+    },
+    "Taking Notes": {
+        "yaml_option": [
+            "include_taking_notes_moons"
+        ],
+        "hidden": true
+    },
+    "Timer Challenge": {
+        "yaml_option": [
+            "include_timer_challenge_moons"
+        ],
+        "hidden": true
+    },
+    "Hat-and-Seek": {
+        "yaml_option": [
+            "include_hat_and_seek_moons"
+        ],
+        "hidden": true
+    },
+    "Caught Hopping": {
+        "yaml_option": [
+            "include_caught_hopping_moons"
+        ],
+        "hidden": true
+    },
+    "Extra": {
+        "yaml_option": [
+            "include_extra_moons"
+        ],
+        "hidden": true
+    },
     "Capture": {
         "hidden": true
     },

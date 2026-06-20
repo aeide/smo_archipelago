@@ -107,7 +107,8 @@
     ],
     "location_names": [
       "Sand: The Hole in the Desert",
-      "Sand: Under the Mummy's Curse"
+      "Sand: Under the Mummy's Curse",
+      "Sand: Binding Band Returned"
     ]
   },
   "Crazy Cap Store": {
@@ -159,21 +160,14 @@
       "Sand: Ice Cave Treasure"
     ]
   },
-  "Sphynx Treasure Vault (Sand)": {
+  "Sphynx Treasure Vault": {
     "kingdom": "Sand Kingdom",
     "csv_names": [
-      "Sphynx Treasure Vault: Sphynx's Treasure Vault"
-    ],
-    "location_names": [
-      "Sand: Sphynx's Treasure Vault"
-    ]
-  },
-  "Sphynx Treasure Vault (Seaside)": {
-    "kingdom": "Seaside Kingdom",
-    "csv_names": [
+      "Sphynx Treasure Vault: Sphynx's Treasure Vault",
       "Sphynx Treasure Vault: The Sphynx's Underwater Vault"
     ],
     "location_names": [
+      "Sand: Sphynx's Treasure Vault",
       "Seaside: The Sphynx's Underwater Vault"
     ]
   },
@@ -186,30 +180,16 @@
       "Sand: A Rumble from the Sandy Floor"
     ]
   },
-  "Costume Room (Sand)": {
+  "Costume Room": {
     "kingdom": "Sand Kingdom",
     "csv_names": [
-      "Costume Room: Dancing with New Friends"
-    ],
-    "location_names": [
-      "Sand: Dancing with New Friends"
-    ]
-  },
-  "Costume Room (Wooded)": {
-    "kingdom": "Wooded Kingdom",
-    "csv_names": [
-      "Costume Room: Exploring for Treasure"
-    ],
-    "location_names": [
-      "Wooded: Exploring for Treasure"
-    ]
-  },
-  "Costume Room (Seaside)": {
-    "kingdom": "Seaside Kingdom",
-    "csv_names": [
+      "Costume Room: Dancing with New Friends",
+      "Costume Room: Exploring for Treasure",
       "Costume Room: A Relaxing Dance"
     ],
     "location_names": [
+      "Sand: Dancing with New Friends",
+      "Wooded: Exploring for Treasure",
       "Seaside: A Relaxing Dance"
     ]
   },
@@ -497,7 +477,8 @@
       "Picture Match (Goomba): Picture Match: A Stellar Goomba!"
     ],
     "location_names": [
-      "Cloud: Picture Match: Basically a Goomba"
+      "Cloud: Picture Match: Basically a Goomba",
+      "Lake: Picture Match: A Stellar Goomba!"
     ]
   },
   "2D Cube": {
@@ -551,7 +532,8 @@
     ],
     "location_names": [
       "Metro: Powering Up the Station",
-      "Metro: Sewer Treasure"
+      "Metro: Sewer Treasure",
+      "Metro: Powering Up the Power Plant"
     ]
   },
   "Crazy Cap Store (Metro)": {
@@ -579,7 +561,8 @@
       "RC Race: RC Car Champ!"
     ],
     "location_names": [
-      "Metro: RC Car Pro!"
+      "Metro: RC Car Pro!",
+      "Metro: RC Car Champ!"
     ]
   },
   "Rainbow Notes": {
@@ -609,7 +592,8 @@
     ],
     "location_names": [
       "Metro: Pushing Through the Crowd",
-      "Metro: High Over the Crowd"
+      "Metro: High Over the Crowd",
+      "Metro: Hat-and-Seek: In the Crowd"
     ]
   },
   "Rewiring the Neighborhood": {
@@ -805,7 +789,7 @@
     ]
   },
   "Shiveria Town": {
-    "kingdom": "Snow Kingdom",
+    "kingdom": "Seaside Kingdom",
     "csv_names": [
       "Shiveria Town: The Icicle Barrier",
       "Shiveria Town: The Ice Wall Barrier",
@@ -827,11 +811,12 @@
       "Snow: Shining in the Snow in Town",
       "Snow: The Shiverian Treasure Chest",
       "Snow: I'm Not Cold!",
-      "Snow: Found with Snow Kingdom Art"
+      "Snow: Found with Snow Kingdom Art",
+      "Snow: Peach in the Snow Kingdom"
     ]
   },
   "Class A Race": {
-    "kingdom": "Snow Kingdom",
+    "kingdom": "Seaside Kingdom",
     "csv_names": [
       "Class A Race: The Bound Bowl Grand Prix"
     ],
@@ -855,7 +840,8 @@
       "Shards in the Cold Room: Even More Walking on Ice!"
     ],
     "location_names": [
-      "Snow: Walking on Ice!"
+      "Snow: Walking on Ice!",
+      "Snow: Even More Walking on Ice!"
     ]
   },
   "Class A Lobby": {
@@ -866,7 +852,9 @@
       "Class A Lobby: Forgotten in the Holding Room"
     ],
     "location_names": [
-      "Snow: Snowline Circuit Class S"
+      "Snow: Snowline Circuit Class S",
+      "Snow: Hat-and-Seek in the Snow",
+      "Snow: Forgotten in the Holding Room"
     ]
   },
   "Dashing Over Cold Water": {
@@ -1195,7 +1183,9 @@
       "Wedding Room: Found with Moon Kingdom Art"
     ],
     "location_names": [
-      "Moon: Up in the Rafters"
+      "Moon: Up in the Rafters",
+      "Moon: Doctor in the House",
+      "Moon: Found with Moon Kingdom Art"
     ]
   },
   "Crazy Cap Store (Moon)": {

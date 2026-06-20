@@ -338,7 +338,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: The Forgotten Treasure"
   },
   "Cap Kingdom: Taxi Flying Through Bonneton": {
     "capture_groups": [],
@@ -362,7 +362,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Taxi Flying Through Bonneton"
   },
   "Cap Kingdom: Bonneter Blockade": {
     "capture_groups": [
@@ -390,7 +390,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Bonneter Blockade"
   },
   "Cap Kingdom: Cap Kingdom Regular Cup": {
     "capture_groups": [],
@@ -409,7 +409,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Cap Kingdom Regular Cup"
   },
   "Cap Kingdom: Peach in the Cap Kingdom": {
     "capture_groups": [],
@@ -428,7 +428,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Peach in the Cap Kingdom"
   },
   "Cap Kingdom: Found with Cap Kingdom Art": {
     "capture_groups": [],
@@ -449,7 +449,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Found with Cap Kingdom Art"
   },
   "Cap Kingdom: Next to Glasses Bridge": {
     "capture_groups": [
@@ -486,7 +486,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Next to Glasses Bridge"
   },
   "Cap Kingdom: Danger Sign": {
     "capture_groups": [
@@ -514,7 +514,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Danger Sign"
   },
   "Cap Kingdom: Under the Big One's Brim": {
     "capture_groups": [],
@@ -541,7 +541,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Under the Big One's Brim"
   },
   "Cap Kingdom: Fly to the Edge of the Fog": {
     "capture_groups": [
@@ -569,7 +569,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Fly to the Edge of the Fog"
   },
   "Cap Kingdom: Spin the Hat, Get a Prize": {
     "capture_groups": [],
@@ -588,7 +588,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Spin the Hat, Get a Prize"
   },
   "Cap Kingdom: Hidden in a Sunken Hat": {
     "capture_groups": [
@@ -636,7 +636,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Hidden in a Sunken Hat"
   },
   "Cap Kingdom: Fog-Shrouded Platform": {
     "capture_groups": [],
@@ -657,7 +657,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Fog-Shrouded Platform"
   },
   "Cap Kingdom: Bird Traveling in the Fog": {
     "capture_groups": [
@@ -693,7 +693,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Bird Traveling in the Fog"
   },
   "Cap Kingdom: Caught Hopping Near the Ship!": {
     "capture_groups": [],
@@ -720,7 +720,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Caught Hopping Near the Ship!"
   },
   "Cap Kingdom: Taking Notes: In the Fog": {
     "capture_groups": [
@@ -756,7 +756,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Taking Notes: In the Fog"
   },
   "Cap Kingdom: Cap Kingdom Timer Challenge 2": {
     "capture_groups": [],
@@ -778,7 +778,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Cap Kingdom Timer Challenge 2"
   },
   "Cap Kingdom: Cap Kingdom Master Cup": {
     "capture_groups": [],
@@ -797,7 +797,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cap: Cap Kingdom Master Cup"
   },
   "Precision Rolling: Roll On and On": {
     "capture_groups": [],
@@ -1414,7 +1414,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Peach in the Cascade Kingdom"
   },
   "Cascade Kingdom: Cascade Kingdom Regular Cup": {
     "capture_groups": [],
@@ -1433,7 +1433,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Cascade Kingdom Regular Cup"
   },
   "Cascade Kingdom: Caveman Cave-Fan": {
     "capture_groups": [],
@@ -1452,7 +1452,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Caveman Cave-Fan"
   },
   "Cascade Kingdom: Shopping in Fossil Falls": {
     "capture_groups": [],
@@ -1499,7 +1499,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Sphynx Traveling to the Waterfall"
   },
   "Cascade Kingdom: Bottom of the Waterfall Basin": {
     "capture_groups": [],
@@ -1520,7 +1520,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Bottom of the Waterfall Basin"
   },
   "Cascade Kingdom: Just a Hat, Skip, and a Jump": {
     "capture_groups": [],
@@ -1542,7 +1542,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Just a Hat, Skip, and a Jump"
   },
   "Cascade Kingdom: Treasure Under the Cliff": {
     "capture_groups": [],
@@ -1564,7 +1564,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Treasure Under the Cliff"
   },
   "Cascade Kingdom: Next to the Stone Arch": {
     "capture_groups": [],
@@ -1583,7 +1583,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Next to the Stone Arch"
   },
   "Cascade Kingdom: Guarded by a Colossal Fossil": {
     "capture_groups": [],
@@ -1604,7 +1604,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Guarded by a Colossal Fossil"
   },
   "Cascade Kingdom: Under the Old Electrical Pole": {
     "capture_groups": [
@@ -1630,7 +1630,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Under the Old Electrical Pole"
   },
   "Cascade Kingdom: Under the Ground": {
     "capture_groups": [
@@ -1656,7 +1656,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Under the Ground"
   },
   "Cascade Kingdom: Inside the Busted Fossil": {
     "capture_groups": [
@@ -1681,7 +1681,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Inside the Busted Fossil"
   },
   "Cascade Kingdom: Caught Hopping at the Waterfall!": {
     "capture_groups": [],
@@ -1700,7 +1700,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Caught Hopping at the Waterfall!"
   },
   "Cascade Kingdom: Taking Notes: Hurry Upward": {
     "capture_groups": [],
@@ -1719,7 +1719,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Taking Notes: Hurry Upward"
   },
   "Cascade Kingdom: Cascade Kingdom Master Cup": {
     "capture_groups": [],
@@ -1738,7 +1738,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cascade: Cascade Kingdom Master Cup"
   },
   "Mysterious Clouds: Across the Mysterious Clouds": {
     "capture_groups": [],
@@ -3446,7 +3446,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Found with Sand Kingdom Art"
   },
   "Sand Kingdom: Jammin' in the Sand Kingdom": {
     "capture_groups": [],
@@ -3474,7 +3474,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Jammin' in the Sand Kingdom"
   },
   "Sand Kingdom: Hat-and-Seek: In the Sand": {
     "capture_groups": [],
@@ -3493,7 +3493,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Hat-and-Seek: In the Sand"
   },
   "Sand Kingdom: Sand Kingdom Regular Cup": {
     "capture_groups": [],
@@ -3532,7 +3532,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Sand Kingdom Regular Cup"
   },
   "Deepest Underground: Binding Band Returned": {
     "capture_groups": [],
@@ -3556,7 +3556,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Binding Band Returned"
   },
   "Sand Kingdom: 'Round-the-World Tourist": {
     "capture_groups": [],
@@ -3575,7 +3575,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: 'Round-the-World Tourist"
   },
   "Sand Kingdom: Peach in the Sand Kingdom": {
     "capture_groups": [
@@ -3603,7 +3603,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Peach in the Sand Kingdom"
   },
   "Sand Kingdom: Mighty Leap from the Palm Tree!": {
     "capture_groups": [],
@@ -3632,7 +3632,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Mighty Leap from the Palm Tree!"
   },
   "Sand Kingdom: On the North Pillar": {
     "capture_groups": [
@@ -3674,7 +3674,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: On the North Pillar"
   },
   "Sand Kingdom: Into the Flowing Sands": {
     "capture_groups": [],
@@ -3693,7 +3693,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Into the Flowing Sands"
   },
   "Sand Kingdom: In the Skies Above the Canyon": {
     "capture_groups": [
@@ -3727,7 +3727,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: In the Skies Above the Canyon"
   },
   "Sand Kingdom: Island in the Poison Swamp": {
     "capture_groups": [],
@@ -3746,7 +3746,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Island in the Poison Swamp"
   },
   "Sand Kingdom: An Invisible Gleam": {
     "capture_groups": [],
@@ -3770,7 +3770,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: An Invisible Gleam"
   },
   "Sand Kingdom: On the Eastern Pillar": {
     "capture_groups": [
@@ -3798,7 +3798,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: On the Eastern Pillar"
   },
   "Sand Kingdom: Caught Hopping in the Desert!": {
     "capture_groups": [],
@@ -3817,7 +3817,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Caught Hopping in the Desert!"
   },
   "Sand Kingdom: Poster Cleanup": {
     "capture_groups": [],
@@ -3843,7 +3843,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Poster Cleanup"
   },
   "Sand Kingdom: Taking Notes: Running Down": {
     "capture_groups": [],
@@ -3870,7 +3870,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Taking Notes: Running Down"
   },
   "Sand Kingdom: Taking Notes: In the Wall Painting": {
     "capture_groups": [],
@@ -3889,7 +3889,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Taking Notes: In the Wall Painting"
   },
   "Sand Kingdom: Love at the Edge of the Desert": {
     "capture_groups": [
@@ -3917,7 +3917,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Love at the Edge of the Desert"
   },
   "Sand Kingdom: More Walking in the Desert!": {
     "capture_groups": [],
@@ -3936,7 +3936,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: More Walking in the Desert!"
   },
   "Sand Kingdom: Sand Kingdom Master Cup": {
     "capture_groups": [],
@@ -3975,7 +3975,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Sand: Sand Kingdom Master Cup"
   },
   "The Invisible Maze: Where the Transparent Platforms End": {
     "capture_groups": [],
@@ -5723,7 +5723,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Swing Around Secret Flower Field"
   },
   "Wooded Kingdom: Jammin' in the Wooded Kingdom": {
     "capture_groups": [],
@@ -5750,7 +5750,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Jammin' in the Wooded Kingdom"
   },
   "Wooded Kingdom: Wooded Kingdom Regular Cup": {
     "capture_groups": [
@@ -5783,7 +5783,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Wooded Kingdom Regular Cup"
   },
   "Wooded Kingdom: Peach in the Wooded Kingdom": {
     "capture_groups": [
@@ -5811,7 +5811,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Peach in the Wooded Kingdom"
   },
   "Wooded Kingdom: High Up in the Cave": {
     "capture_groups": [],
@@ -5832,7 +5832,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: High Up in the Cave"
   },
   "Wooded Kingdom: Lost in the Tall Trees": {
     "capture_groups": [
@@ -5861,7 +5861,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Lost in the Tall Trees"
   },
   "Wooded Kingdom: Looking Down on the Goombas": {
     "capture_groups": [
@@ -5898,7 +5898,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Looking Down on the Goombas"
   },
   "Wooded Kingdom: High Up on a Rock Wall": {
     "capture_groups": [
@@ -5932,7 +5932,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: High Up on a Rock Wall"
   },
   "Wooded Kingdom: The Nut in the Robot Storeroom": {
     "capture_groups": [
@@ -5972,7 +5972,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: The Nut in the Robot Storeroom"
   },
   "Wooded Kingdom: Above the Iron Mountain Path": {
     "capture_groups": [],
@@ -5999,7 +5999,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Above the Iron Mountain Path"
   },
   "Wooded Kingdom: The Nut Under the Observation Deck": {
     "capture_groups": [
@@ -6038,7 +6038,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: The Nut Under the Observation Deck"
   },
   "Wooded Kingdom: Bird Traveling the Forest": {
     "capture_groups": [],
@@ -6057,7 +6057,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Bird Traveling the Forest"
   },
   "Wooded Kingdom: Invader in the Sky Garden": {
     "capture_groups": [
@@ -6091,7 +6091,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Invader in the Sky Garden"
   },
   "Wooded Kingdom: Hot, Hot, Hot from the Campfire": {
     "capture_groups": [
@@ -6116,7 +6116,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Hot, Hot, Hot from the Campfire"
   },
   "Wooded Kingdom: Wooded Kingdom Timer Challenge 3": {
     "capture_groups": [],
@@ -6138,7 +6138,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Wooded Kingdom Timer Challenge 3"
   },
   "Wooded Kingdom: Moon Shards in the Forest": {
     "capture_groups": [
@@ -6163,7 +6163,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Moon Shards in the Forest"
   },
   "Wooded Kingdom: Taking Notes: On Top of the Wall": {
     "capture_groups": [],
@@ -6184,7 +6184,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Taking Notes: On Top of the Wall"
   },
   "Wooded Kingdom: Taking Notes: Stretching": {
     "capture_groups": [
@@ -6219,7 +6219,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Taking Notes: Stretching"
   },
   "Wooded Kingdom: Wooded Kingdom Master Cup": {
     "capture_groups": [
@@ -6252,7 +6252,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: Wooded Kingdom Master Cup"
   },
   "Wooded Kingdom: I Met an Uproot!": {
     "capture_groups": [
@@ -6277,7 +6277,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Wooded: I Met an Uproot!"
   },
   "Invisible Road: Invisible Road: Danger!": {
     "capture_groups": [],
@@ -7309,7 +7309,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Taxi Flying Through Lake Lamode"
   },
   "Lake Kingdom: That Trendy \"Pirate\" Look": {
     "capture_groups": [],
@@ -7337,7 +7337,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: That Trendy \"Pirate\" Look"
   },
   "Lake Kingdom: Space Is \"In\" Right Now": {
     "capture_groups": [],
@@ -7365,7 +7365,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Space Is \"In\" Right Now"
   },
   "Lake Kingdom: That \"Old West\" Style": {
     "capture_groups": [],
@@ -7393,7 +7393,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: That \"Old West\" Style"
   },
   "Lake Kingdom: Lake Kingdom Regular Cup": {
     "capture_groups": [],
@@ -7429,7 +7429,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Lake Kingdom Regular Cup"
   },
   "Lake Kingdom: Peach in the Lake Kingdom": {
     "capture_groups": [],
@@ -7451,7 +7451,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Peach in the Lake Kingdom"
   },
   "Lake Kingdom: Behind the Floodgate": {
     "capture_groups": [],
@@ -7479,7 +7479,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Behind the Floodgate"
   },
   "Lake Kingdom: High-Flying Leap": {
     "capture_groups": [],
@@ -7501,7 +7501,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: High-Flying Leap"
   },
   "Lake Kingdom: Deep, Deep Down": {
     "capture_groups": [],
@@ -7529,7 +7529,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Deep, Deep Down"
   },
   "Lake Kingdom: Rooftop of the Water Plaza": {
     "capture_groups": [],
@@ -7554,7 +7554,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Rooftop of the Water Plaza"
   },
   "Lake Kingdom: Bird Traveling Over the Lake": {
     "capture_groups": [],
@@ -7573,7 +7573,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Bird Traveling Over the Lake"
   },
   "Lake Kingdom: Love by the Lake": {
     "capture_groups": [
@@ -7601,7 +7601,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Love by the Lake"
   },
   "Lake Kingdom: Lake Kingdom Master Cup": {
     "capture_groups": [],
@@ -7637,7 +7637,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Lake Kingdom Master Cup"
   },
   "Waves of Poison: Waves of Poison: Hoppin' Over": {
     "capture_groups": [
@@ -7758,7 +7758,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cloud: Peach in the Cloud Kingdom"
   },
   "Cloud Kingdom: Digging in the...Cloud?": {
     "capture_groups": [],
@@ -7779,7 +7779,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cloud: Digging in the...Cloud?"
   },
   "Cloud Kingdom: High, High Above the Clouds": {
     "capture_groups": [],
@@ -7803,7 +7803,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cloud: High, High Above the Clouds"
   },
   "Cloud Kingdom: Crossing the Cloud Sea": {
     "capture_groups": [],
@@ -7830,7 +7830,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cloud: Crossing the Cloud Sea"
   },
   "Cloud Kingdom: Taking Notes: Up and Down": {
     "capture_groups": [],
@@ -7851,7 +7851,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Cloud: Taking Notes: Up and Down"
   },
   "Picture Match (Goomba): Picture Match: A Stellar Goomba!": {
     "capture_groups": [
@@ -7879,7 +7879,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lake: Picture Match: A Stellar Goomba!"
   },
   "2D Cube: King of the Cube!": {
     "capture_groups": [],
@@ -8457,7 +8457,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Taxi Flying Through Forgotten Isle"
   },
   "Lost Kingdom: I Met a Tropical Wiggler!": {
     "capture_groups": [
@@ -8485,7 +8485,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: I Met a Tropical Wiggler!"
   },
   "Lost Kingdom: Lost Kingdom Regular Cup": {
     "capture_groups": [],
@@ -8510,7 +8510,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Lost Kingdom Regular Cup"
   },
   "Lost Kingdom: Peach in the Lost Kingdom": {
     "capture_groups": [],
@@ -8535,7 +8535,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Peach in the Lost Kingdom"
   },
   "Lost Kingdom: The Shining Fruit": {
     "capture_groups": [],
@@ -8554,7 +8554,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: The Shining Fruit"
   },
   "Lost Kingdom: Jump Down to the Top of a Tree": {
     "capture_groups": [],
@@ -8578,7 +8578,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Jump Down to the Top of a Tree"
   },
   "Lost Kingdom: Line It Up, Blow It Up": {
     "capture_groups": [],
@@ -8602,7 +8602,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Line It Up, Blow It Up"
   },
   "Lost Kingdom: Taking Notes: Stretch and Shrink": {
     "capture_groups": [
@@ -8635,7 +8635,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Taking Notes: Stretch and Shrink"
   },
   "Lost Kingdom: Lost Kingdom Master Cup": {
     "capture_groups": [],
@@ -8660,7 +8660,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Lost Kingdom Master Cup"
   },
   "Lost Kingdom: Lost Kingdom Timer Challenge": {
     "capture_groups": [],
@@ -8684,7 +8684,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Lost: Lost Kingdom Timer Challenge"
   },
   "Stretch and Traverse the Jungle: Stretch and Traverse the Jungle": {
     "capture_groups": [
@@ -10108,7 +10108,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Bird Traveling in the City"
   },
   "Metro Kingdom: Mario Signs His Name": {
     "capture_groups": [
@@ -10136,7 +10136,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Mario Signs His Name"
   },
   "Metro Kingdom: Surprise Clown!": {
     "capture_groups": [],
@@ -10158,7 +10158,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Surprise Clown!"
   },
   "Metro Kingdom: A Request from the Mayor": {
     "capture_groups": [],
@@ -10180,7 +10180,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: A Request from the Mayor"
   },
   "Metro Kingdom: Jammin' in the Metro Kingdom": {
     "capture_groups": [],
@@ -10202,7 +10202,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Jammin' in the Metro Kingdom"
   },
   "Metro Kingdom: Sphynx in the City": {
     "capture_groups": [
@@ -10230,7 +10230,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Sphynx in the City"
   },
   "Metro Kingdom: Free Parking: Leap of Faith": {
     "capture_groups": [],
@@ -10252,7 +10252,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Free Parking: Leap of Faith"
   },
   "Metro Kingdom: Metro Kingdom Regular Cup": {
     "capture_groups": [],
@@ -10274,7 +10274,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Metro Kingdom Regular Cup"
   },
   "Metro Kingdom: Hat-and-Seek: In the City": {
     "capture_groups": [],
@@ -10296,7 +10296,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Hat-and-Seek: In the City"
   },
   "Sewers: Powering Up the Power Plant": {
     "capture_groups": [],
@@ -10325,7 +10325,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Powering Up the Power Plant"
   },
   "On the Big Screen: Up on the Big Screen": {
     "capture_groups": [],
@@ -10385,7 +10385,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Peach in the Metro Kingdom"
   },
   "Metro Kingdom: Hanging Between Buildings": {
     "capture_groups": [],
@@ -10407,7 +10407,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Hanging Between Buildings"
   },
   "Metro Kingdom: Crossing Lines": {
     "capture_groups": [],
@@ -10429,7 +10429,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Crossing Lines"
   },
   "Metro Kingdom: Out of a Crate in the City": {
     "capture_groups": [],
@@ -10451,7 +10451,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Out of a Crate in the City"
   },
   "Metro Kingdom: Bird Traveling in the Park": {
     "capture_groups": [],
@@ -10473,7 +10473,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Bird Traveling in the Park"
   },
   "Metro Kingdom: Metro Kingdom Timer Challenge 3": {
     "capture_groups": [],
@@ -10495,7 +10495,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Metro Kingdom Timer Challenge 3"
   },
   "Metro Kingdom: Found in the Park! Good Dog!": {
     "capture_groups": [],
@@ -10519,7 +10519,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Found in the Park! Good Dog!"
   },
   "RC Race: RC Car Champ!": {
     "capture_groups": [
@@ -10547,7 +10547,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: RC Car Champ!"
   },
   "Metro Kingdom: Metro Kingdom Master Cup": {
     "capture_groups": [],
@@ -10569,7 +10569,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Metro Kingdom Master Cup"
   },
   "Crowded Alleyway: Hat-and-Seek: In the Crowd": {
     "capture_groups": [],
@@ -10588,7 +10588,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Metro: Hat-and-Seek: In the Crowd"
   },
   "Pitchblack Mountain: Scaling Pitchblack Mountain": {
     "capture_groups": [],
@@ -12013,7 +12013,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Seaside Kingdom Regular Cup"
   },
   "Seaside Kingdom: Peach in the Seaside Kingdom": {
     "capture_groups": [],
@@ -12032,7 +12032,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Peach in the Seaside Kingdom"
   },
   "Seaside Kingdom: Above the Parasol: Catch!": {
     "capture_groups": [],
@@ -12051,7 +12051,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Above the Parasol: Catch!"
   },
   "Seaside Kingdom: What Shines Inside the Glass": {
     "capture_groups": [],
@@ -12070,7 +12070,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: What Shines Inside the Glass"
   },
   "Seaside Kingdom: A Fine Detail on the Glass": {
     "capture_groups": [
@@ -12104,7 +12104,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: A Fine Detail on the Glass"
   },
   "Seaside Kingdom: Underwater Highway West: Explore!": {
     "capture_groups": [],
@@ -12123,7 +12123,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Underwater Highway West: Explore!"
   },
   "Seaside Kingdom: Underwater Highway East: Explore!": {
     "capture_groups": [],
@@ -12142,7 +12142,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Underwater Highway East: Explore!"
   },
   "Seaside Kingdom: Rapid Ascent on Hot Spring Island": {
     "capture_groups": [
@@ -12167,7 +12167,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Rapid Ascent on Hot Spring Island"
   },
   "Seaside Kingdom: A Light Next to the Lighthouse": {
     "capture_groups": [
@@ -12206,7 +12206,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: A Light Next to the Lighthouse"
   },
   "Seaside Kingdom: The Tall Rock Shelf in the Deep Ocean": {
     "capture_groups": [],
@@ -12228,7 +12228,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: The Tall Rock Shelf in the Deep Ocean"
   },
   "Seaside Kingdom: At the Base of the Lighthouse": {
     "capture_groups": [],
@@ -12249,7 +12249,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: At the Base of the Lighthouse"
   },
   "Seaside Kingdom: Bird Traveling Over the Ocean": {
     "capture_groups": [
@@ -12286,7 +12286,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Bird Traveling Over the Ocean"
   },
   "Seaside Kingdom: Caught Hopping at Glass Palace!": {
     "capture_groups": [],
@@ -12313,7 +12313,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Caught Hopping at Glass Palace!"
   },
   "Seaside Kingdom: Seaside Kingdom Timer Challenge 3": {
     "capture_groups": [],
@@ -12335,7 +12335,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Seaside Kingdom Timer Challenge 3"
   },
   "Seaside Kingdom: Taking Notes: Ocean-Bottom Maze": {
     "capture_groups": [],
@@ -12354,7 +12354,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Taking Notes: Ocean-Bottom Maze"
   },
   "Seaside Kingdom: Taking Notes in the Sea": {
     "capture_groups": [
@@ -12382,7 +12382,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Taking Notes in the Sea"
   },
   "Seaside Kingdom: Seaside Kingdom Master Cup": {
     "capture_groups": [
@@ -12418,7 +12418,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Seaside: Seaside Kingdom Master Cup"
   },
   "Stop, Poke, and Roll: Aim! Poke!": {
     "capture_groups": [
@@ -13315,7 +13315,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Secret Path to Shiveria!"
   },
   "Shiveria Town: Found with Snow Kingdom Art": {
     "capture_groups": [],
@@ -13364,7 +13364,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Snow Kingdom Regular Cup"
   },
   "Class A Lobby: Hat-and-Seek in the Snow": {
     "capture_groups": [],
@@ -13383,7 +13383,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Hat-and-Seek in the Snow"
   },
   "Shiveria Town: Peach in the Snow Kingdom": {
     "capture_groups": [],
@@ -13402,7 +13402,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Peach in the Snow Kingdom"
   },
   "Snow Kingdom: Shining on High": {
     "capture_groups": [],
@@ -13432,7 +13432,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Shining on High"
   },
   "Snow Kingdom: Above the Freezing Fishing Pond": {
     "capture_groups": [],
@@ -13451,7 +13451,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Above the Freezing Fishing Pond"
   },
   "Snow Kingdom: Ice Floe Swimming": {
     "capture_groups": [],
@@ -13470,7 +13470,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Ice Floe Swimming"
   },
   "Snow Kingdom: Icy Jump Challenge": {
     "capture_groups": [],
@@ -13492,7 +13492,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Icy Jump Challenge"
   },
   "Class A Lobby: Forgotten in the Holding Room": {
     "capture_groups": [],
@@ -13522,7 +13522,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Forgotten in the Holding Room"
   },
   "Snow Kingdom: It Popped Out of the Ice": {
     "capture_groups": [],
@@ -13543,7 +13543,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: It Popped Out of the Ice"
   },
   "Snow Kingdom: Deep in the Cold, Cold Water": {
     "capture_groups": [],
@@ -13564,7 +13564,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Deep in the Cold, Cold Water"
   },
   "Snow Kingdom: Water Pooling in the Crevasse": {
     "capture_groups": [],
@@ -13585,7 +13585,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Water Pooling in the Crevasse"
   },
   "Snow Kingdom: Squirming Under Ice": {
     "capture_groups": [],
@@ -13606,7 +13606,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Squirming Under Ice"
   },
   "Snow Kingdom: Snow Kingdom Timer Challenge 3": {
     "capture_groups": [],
@@ -13625,7 +13625,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Snow Kingdom Timer Challenge 3"
   },
   "Snow Kingdom: Stacked-Up Ice Climb": {
     "capture_groups": [
@@ -13653,7 +13653,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Stacked-Up Ice Climb"
   },
   "Snow Kingdom: I Met a Snow Cheep Cheep!": {
     "capture_groups": [
@@ -13679,7 +13679,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: I Met a Snow Cheep Cheep!"
   },
   "Shards in the Cold Room: Even More Walking on Ice!": {
     "capture_groups": [],
@@ -13701,7 +13701,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Even More Walking on Ice!"
   },
   "Snow Kingdom: Snow Kingdom Master Cup": {
     "capture_groups": [],
@@ -13731,7 +13731,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Snow: Snow Kingdom Master Cup"
   },
   "Class S Lobby: Iceburn Circuit Class A": {
     "capture_groups": [
@@ -15302,7 +15302,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: The Rooftop Lantern"
   },
   "Luncheon Kingdom: Jammin' in the Luncheon Kingdom": {
     "capture_groups": [],
@@ -15321,7 +15321,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Jammin' in the Luncheon Kingdom"
   },
   "Luncheon Kingdom: Mechanic: Repairs Complete!": {
     "capture_groups": [],
@@ -15340,7 +15340,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Mechanic: Repairs Complete!"
   },
   "Luncheon Kingdom: Diving from the Big Pot!": {
     "capture_groups": [
@@ -15368,7 +15368,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Diving from the Big Pot!"
   },
   "Luncheon Kingdom: Hat-and-Seek: Among the Food": {
     "capture_groups": [],
@@ -15387,7 +15387,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Hat-and-Seek: Among the Food"
   },
   "Luncheon Kingdom: Luncheon Kingdom: Regular Cup": {
     "capture_groups": [
@@ -15419,7 +15419,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Luncheon Kingdom: Regular Cup"
   },
   "Luncheon Kingdom: Peach in the Luncheon Kingdom": {
     "capture_groups": [],
@@ -15438,7 +15438,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Peach in the Luncheon Kingdom"
   },
   "Luncheon Kingdom: From Inside a Bright Stone": {
     "capture_groups": [],
@@ -15459,7 +15459,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: From Inside a Bright Stone"
   },
   "Luncheon Kingdom: Under the Meat Plateau": {
     "capture_groups": [
@@ -15495,7 +15495,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Under the Meat Plateau"
   },
   "Luncheon Kingdom: On Top of a Tall, Tall Roof": {
     "capture_groups": [],
@@ -15517,7 +15517,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: On Top of a Tall, Tall Roof"
   },
   "Luncheon Kingdom: From a Crack in the Hard Ground": {
     "capture_groups": [
@@ -15554,7 +15554,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: From a Crack in the Hard Ground"
   },
   "Luncheon Kingdom: By the Cannon Pointed at the Big Pot": {
     "capture_groups": [],
@@ -15575,7 +15575,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: By the Cannon Pointed at the Big Pot"
   },
   "Luncheon Kingdom: Luncheon Kingdom: Master Cup": {
     "capture_groups": [],
@@ -15600,7 +15600,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Luncheon: Luncheon Kingdom: Master Cup"
   },
   "Blazing Above the Gears: Stepping Over the Gears": {
     "capture_groups": [],
@@ -15874,7 +15874,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Ruined: Peach in the Ruined Kingdom"
   },
   "Ruined Kingdom: Caught on a Big Horn": {
     "capture_groups": [
@@ -15902,7 +15902,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Ruined: Caught on a Big Horn"
   },
   "Ruined Kingdom: Upon the Broken Arch": {
     "capture_groups": [],
@@ -15923,7 +15923,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Ruined: Upon the Broken Arch"
   },
   "Ruined Kingdom: Rolling Rock on the Battlefield": {
     "capture_groups": [
@@ -15951,7 +15951,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Ruined: Rolling Rock on the Battlefield"
   },
   "Mummy Army: Charging Through an Army": {
     "capture_groups": [],
@@ -17175,7 +17175,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Sphynx Over Bowser's Castle"
   },
   "Bowser's Kingdom: I Met a Pokio!": {
     "capture_groups": [
@@ -17203,7 +17203,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: I Met a Pokio!"
   },
   "Bowser's Kingdom: Bowser's Kingdom Regular Cup": {
     "capture_groups": [],
@@ -17227,7 +17227,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Bowser's Kingdom Regular Cup"
   },
   "Bowser's Kingdom: A Rumble Under the Arena Floor": {
     "capture_groups": [],
@@ -17252,7 +17252,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: A Rumble Under the Arena Floor"
   },
   "Bowser's Kingdom: Secret Path to Bowser's Castle!": {
     "capture_groups": [],
@@ -17279,7 +17279,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Secret Path to Bowser's Castle!"
   },
   "Bowser's Kingdom: Peach in Bowser's Kingdom": {
     "capture_groups": [],
@@ -17303,7 +17303,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Peach in Bowser's Kingdom"
   },
   "Bowser's Kingdom: Found with Bowser's Kingdom Art": {
     "capture_groups": [],
@@ -17324,7 +17324,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Found with Bowser's Kingdom Art"
   },
   "Bowser's Kingdom: Behind the Tall Wall: Poke, Poke!": {
     "capture_groups": [
@@ -17352,7 +17352,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Behind the Tall Wall: Poke, Poke!"
   },
   "Bowser's Kingdom: From Crates in the Moat": {
     "capture_groups": [],
@@ -17382,7 +17382,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: From Crates in the Moat"
   },
   "Bowser's Kingdom: Caught on the Giant Horn": {
     "capture_groups": [],
@@ -17406,7 +17406,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Caught on the Giant Horn"
   },
   "Bowser's Kingdom: Inside a Block at the Gate": {
     "capture_groups": [
@@ -17434,7 +17434,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Inside a Block at the Gate"
   },
   "Bowser's Kingdom: Small Bird in Bowser's Castle": {
     "capture_groups": [],
@@ -17473,7 +17473,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Small Bird in Bowser's Castle"
   },
   "Bowser's Kingdom: Invader in Bowser's Castle": {
     "capture_groups": [
@@ -17510,7 +17510,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Invader in Bowser's Castle"
   },
   "Bowser's Kingdom: Jumping from Flag to Flag": {
     "capture_groups": [],
@@ -17531,7 +17531,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Jumping from Flag to Flag"
   },
   "Bowser's Kingdom: Bowser's Kingdom Timer Challenge 2": {
     "capture_groups": [],
@@ -17553,7 +17553,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Bowser's Kingdom Timer Challenge 2"
   },
   "Bowser's Kingdom: Taking Notes: On the Wall": {
     "capture_groups": [
@@ -17581,7 +17581,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Taking Notes: On the Wall"
   },
   "Bowser's Kingdom: Taking Notes with a Spinning Throw": {
     "capture_groups": [],
@@ -17600,7 +17600,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Taking Notes with a Spinning Throw"
   },
   "Bowser's Kingdom: Third Courtyard Outskirts": {
     "capture_groups": [],
@@ -17624,7 +17624,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Third Courtyard Outskirts"
   },
   "Bowser's Kingdom: Stone Wall Circuit": {
     "capture_groups": [],
@@ -17648,7 +17648,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Stone Wall Circuit"
   },
   "Bowser's Kingdom: Bowser's Kingdom Master Cup": {
     "capture_groups": [],
@@ -17685,7 +17685,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Bowser's: Bowser's Kingdom Master Cup"
   },
   "Hexagon Tower: Searching Hexagon Tower": {
     "capture_groups": [
@@ -18195,7 +18195,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Sneaking Around in the Crater"
   },
   "Moon Kingdom: Found on the Moon, Good Dog!": {
     "capture_groups": [],
@@ -18216,7 +18216,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Found on the Moon, Good Dog!"
   },
   "Moon Kingdom: Moon Shards on the Moon": {
     "capture_groups": [],
@@ -18237,7 +18237,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Moon Shards on the Moon"
   },
   "Moon Kingdom: Moon Quiz: Amazing!": {
     "capture_groups": [],
@@ -18256,7 +18256,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Moon Quiz: Amazing!"
   },
   "Moon Kingdom: Thanks, Captain Toad!": {
     "capture_groups": [],
@@ -18275,7 +18275,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Thanks, Captain Toad!"
   },
   "Crazy Cap Store (Moon): Shopping in Honeylune Ridge": {
     "capture_groups": [],
@@ -18313,7 +18313,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Walking on the Moon!"
   },
   "Moon Kingdom: Moon Kingdom Regular Cup": {
     "capture_groups": [],
@@ -18334,7 +18334,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Moon Kingdom Regular Cup"
   },
   "Wedding Room: Doctor in the House": {
     "capture_groups": [],
@@ -18353,7 +18353,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Doctor in the House"
   },
   "Moon Kingdom Treasure Vault: Sphynx's Hidden Vault": {
     "capture_groups": [],
@@ -18402,7 +18402,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: A Tourist in the Moon Kingdom!"
   },
   "Moon Kingdom: Peach in the Moon Kingdom": {
     "capture_groups": [],
@@ -18423,7 +18423,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Peach in the Moon Kingdom"
   },
   "Wedding Room: Found with Moon Kingdom Art": {
     "capture_groups": [],
@@ -18444,7 +18444,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Found with Moon Kingdom Art"
   },
   "Moon Kingdom: Mysterious Flying Object": {
     "capture_groups": [],
@@ -18471,7 +18471,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Mysterious Flying Object"
   },
   "Moon Kingdom: Hidden on the Side of the Cliff": {
     "capture_groups": [],
@@ -18490,7 +18490,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Hidden on the Side of the Cliff"
   },
   "Moon Kingdom: Jumping High as a Frog": {
     "capture_groups": [
@@ -18515,7 +18515,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Jumping High as a Frog"
   },
   "Moon Kingdom: Moon Kingdom Timer Challenge 2": {
     "capture_groups": [],
@@ -18534,7 +18534,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Moon Kingdom Timer Challenge 2"
   },
   "Moon Kingdom: Walking on the Moon: Again!": {
     "capture_groups": [],
@@ -18553,7 +18553,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Walking on the Moon: Again!"
   },
   "Moon Kingdom: Moon Kingdom Master Cup": {
     "capture_groups": [],
@@ -18574,7 +18574,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Moon Kingdom Master Cup"
   },
   "Moon Kingdom: Taking Notes: In Low Gravity": {
     "capture_groups": [],
@@ -18593,7 +18593,7 @@
       "4": null,
       "5": null
     },
-    "location_name": null
+    "location_name": "Moon: Taking Notes: In Low Gravity"
   },
   "8-Bit Galaxy: Center of the Galaxy": {
     "capture_groups": [],

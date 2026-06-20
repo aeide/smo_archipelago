@@ -33,13 +33,15 @@ EXPECTED_ROCK_COUNTS = {
 # removal path).
 POST_METRO = {"Snow", "Seaside", "Luncheon", "Ruined", "Bowser's"}
 
-# items.json Power Moon counts AFTER the rock-moon bump (base + rock count).
+# items.json Power Moon counts AFTER the rock-moon bump (base + rock count) AND
+# the 2026-06-19 "promote the 213 omitted moons" bump (scripts/
+# add_missing_moon_locations.py grew each kingdom's count by the number of
+# previously-unmatched moon_requirements moons it gained).
 EXPECTED_PM_COUNTS = {
-    "Cap": 13, "Cascade": 23, "Sand": 66, "Lake": 28, "Wooded": 54,
-    "Cloud": 3, "Lost": 25, "Metro": 59, "Snow": 37, "Seaside": 53,
-    "Luncheon": 53, "Ruined": 5, "Bowser's": 41,
-    # untouched: no rock checks for these
-    "Moon": 14, "Mushroom": 1,
+    "Cap": 31, "Cascade": 38, "Sand": 87, "Lake": 42, "Wooded": 74,
+    "Cloud": 8, "Lost": 35, "Metro": 79, "Snow": 55, "Seaside": 70,
+    "Luncheon": 66, "Ruined": 9, "Bowser's": 61,
+    "Moon": 32, "Mushroom": 1,
 }
 
 

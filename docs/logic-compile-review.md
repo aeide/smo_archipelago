@@ -7,32 +7,33 @@ Backflip/Long Jump need Crouch, GPJ needs Ground Pound).
 
 ## Summary
 
-- Moon locations compiled: **489**
-- Free (no requirement): **77**
-- Kingdom-gated (Metro/Bowser=Spark pylon, Lake=Zipper/jump): **132**
-- Subarea-gated moons: **28**
+- Moon locations compiled: **702**
+- Free (no requirement): **116**
+- Kingdom-gated (Metro/Bowser=Spark pylon, Lake=Zipper/jump): **186**
+- Subarea-gated moons: **29**
 
 ## Scenario reachability (coarse post_peace gating)
 
-Each `post_peace` moon (rock, OR earliest scenario >= the kingdom's peace scenario) ANDs in `{<Kingdom>Peace()}`. Cap/Cloud/Lost/Moon and Cascade non-rock moons get NO peace gate by design (Cascade's clear scenario is its last, not peace).
+Each `post_peace` moon (rock, OR earliest scenario >= the kingdom's peace scenario) ANDs in `{<Kingdom>Peace()}`. Cap/Cloud/Lost/Moon get NO peace gate (no predicate). Cascade non-rock moons are gated by the dedicated Cascade pass below (its clear scenario is its last, so the coarse peace-bit rule doesn't apply).
 
-- Total peace-gated moons (rock + scenario): **113**
-  - Bowser's: 14
-  - Cascade: 4
-  - Lake: 9
-  - Luncheon: 10
-  - Metro: 13
-  - Ruined: 4
-  - Sand: 21
-  - Seaside: 10
-  - Snow: 15
-  - Wooded: 13
+- Total peace-gated moons (rock + scenario): **183**
+  - Bowser's: 20
+  - Cascade: 23
+  - Lake: 15
+  - Luncheon: 17
+  - Metro: 24
+  - Ruined: 5
+  - Sand: 28
+  - Seaside: 12
+  - Snow: 22
+  - Wooded: 17
 
 ## Scenario reachability (mid_story anchor gating)
 
-Each `mid_story` moon (first-visit < earliest scenario < peace) ANDs in `{canReachLocation(<advancer moon>)}` — the grand story moon (at bit min_scenario-1) whose collection advances the kingdom into that scenario. When no grand sits at that exact bit (e.g. Metro lacks a bit-1 grand) the moon over-gates to the kingdom `{<Kingdom>Peace()}` fragment instead; the peace-anchor moon itself is skipped so it never self-references. Cascade is DEFERRED from mid_story this pass (its clear scenario is its last, so its bit layers form no clean advancer chain, and gating its moons starved the early fill spheres) — its post-first-visit moons stay free; a dedicated Cascade pass is the follow-up.
+Each `mid_story` moon (first-visit < earliest scenario < peace) ANDs in `{canReachLocation(<advancer moon>)}` — the grand story moon (at bit min_scenario-1) whose collection advances the kingdom into that scenario. When no grand sits at that exact bit (e.g. Metro lacks a bit-1 grand) the moon over-gates to the kingdom `{<Kingdom>Peace()}` fragment instead; the peace-anchor moon itself is skipped so it never self-references. Cascade is handled by a DEDICATED pass (build_cascade_anchors): its clear scenario is its last, so it has no peace-bit band — instead every non-rock moon at min_scenario in [CASCADE_GATE_MIN_LAYER, CASCADE_GATE_MAX_LAYER] ANDs in `{CascadePeace()}` directly (== canReach Multi Moon Atop the Falls, the player-controlled first advance, granted-collectable from arrival since Broode's Chain Chomp is a fixed starter). The layer cap is fill-capacity-bounded.
 
-- Total mid_story-gated moons: **60**
+- Total mid_story-gated moons: **83**
+  - Cascade: 23 (via CascadePeace (dedicated Cascade pass))
   - Luncheon: 10 (via canReachLocation advancer)
   - Metro: 39 (via canReachLocation advancer; the few without an exact-bit grand over-gate to peace)
   - Sand: 4 (via canReachLocation advancer)
@@ -47,27 +48,33 @@ Each `mid_story` moon (first-visit < earliest scenario < peace) ANDs in `{canRea
 - **Cross-kingdom subareas** keyed by the moon's physical-kingdom prefix
   (e.g. a Wooded moon inside Sand's Costume Room gets no Sand gate).
 
-## Capture OR / AND moons (10) — verify the split
+## Capture OR / AND moons (14) — verify the split
 
+- Cap Kingdom: Next to Glasses Bridge
 - Cascade Kingdom: Multi Moon Atop the Falls
 - Cascade Kingdom: Chomp Through the Rocks
 - Sand Kingdom: On the Leaning Pillar
 - Sand Kingdom: On the Lone Pillar
+- Sand Kingdom: On the North Pillar
 - Luncheon Kingdom: Under the Cheese Rocks
 - Luncheon Kingdom: Overlooking a Bunch of Ingredients
 - Luncheon Kingdom: Light the Lantern on the Small Island
 - Luncheon Kingdom: Golden Turnip Recipe 2
 - Luncheon Kingdom: Light the Two Flames
 - Luncheon Treasure Vault: The Treasure Chest in the Veggies
+- Luncheon Kingdom: The Rooftop Lantern
+- Luncheon Kingdom: Luncheon Kingdom: Regular Cup
 
 ## Sample compiled output (spot-check)
 
 - `Cap: Frog-Jumping Above the Fog`
   - `(free)`
 - `Cascade: Multi Moon Atop the Falls`
-  - `(|Broode's Chain Chomp| or (|T-Rex| and |Broode's Chain Chomp|))`
+  - `(free)`
 - `Sand: Employees Only`
   - `|Progressive Crouch:1|`
+- `Metro: Powering Up the Power Plant`
+  - `(|Spark pylon| and {MetroPeace()} and |Manhole|)`
 - `Seaside: Fly Through the Narrow Valley`
   - `(|Gushen| and (|Gushen| or (|Progressive Jump:2| and |Wall Slide| and |Cap Bounce|)))`
 - `Luncheon: Fork Flickin' to the Summit`

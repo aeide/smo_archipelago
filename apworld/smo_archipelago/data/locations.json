@@ -106,7 +106,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": "(|Broode's Chain Chomp| or (|T-Rex| and |Broode's Chain Chomp|))",
+    "requires": "",
     "progression": true,
     "filler_only": true
   },
@@ -116,7 +116,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) or (|Progressive Crouch:2| and |Progressive Crouch:2|))"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:2|)"
   },
   {
     "name": "Cascade: Behind the Waterfall",
@@ -132,7 +132,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": ""
+    "requires": "{CascadePeace()}"
   },
   {
     "name": "Cascade: Treasure of the Waterfall Basin",
@@ -148,7 +148,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) or |Progressive Ground Pound:2|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Ground Pound:2|) and {CascadePeace()})"
   },
   {
     "name": "Cascade: Across the Floating Isles",
@@ -156,7 +156,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) or |Progressive Ground Pound:2|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Ground Pound:2|) and {CascadePeace()})"
   },
   {
     "name": "Cascade: Cascade Kingdom Timer Challenge 1",
@@ -164,7 +164,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) or |Progressive Ground Pound:2|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Ground Pound:2|) and {CascadePeace()})"
   },
   {
     "name": "Cascade: Cascade Kingdom Timer Challenge 2",
@@ -172,7 +172,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) or (|Long Jump| and |Progressive Crouch:1|))"
+    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) or (|Long Jump| and |Progressive Crouch:1|)) and {CascadePeace()})"
   },
   {
     "name": "Cascade: Good Morning, Captain Toad!",
@@ -180,7 +180,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": "|Progressive Ground Pound:2|"
+    "requires": "(|Progressive Ground Pound:2| and {CascadePeace()})"
   },
   {
     "name": "Cascade: Dinosaur Nest: Big Cleanup!",
@@ -188,7 +188,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": "(|T-Rex| or (|Long Jump| and |Progressive Crouch:1|))"
+    "requires": "((|T-Rex| or (|Long Jump| and |Progressive Crouch:1|)) and {CascadePeace()})"
   },
   {
     "name": "Cascade: Dinosaur Nest: Running Wild!",
@@ -196,7 +196,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": "|T-Rex|"
+    "requires": "(|T-Rex| and {CascadePeace()})"
   },
   {
     "name": "Cascade: Nice Shot with the Chain Chomp!",
@@ -204,7 +204,7 @@
       "Cascade Kingdom"
     ],
     "region": "Cascade Kingdom",
-    "requires": ""
+    "requires": "{CascadePeace()}"
   },
   {
     "name": "Cascade: Very Nice Shot with the Chain Chomp!",
@@ -213,7 +213,7 @@
       "Cascade Peace"
     ],
     "region": "Cascade Kingdom",
-    "requires": ""
+    "requires": "{CascadePeace()}"
   },
   {
     "name": "Cascade: Past the Chasm Lifts",
@@ -222,7 +222,7 @@
       "Cascade Peace"
     ],
     "region": "Cascade Kingdom",
-    "requires": ""
+    "requires": "{CascadePeace()}"
   },
   {
     "name": "Cascade: Hidden Chasm Passage",
@@ -231,7 +231,7 @@
       "Cascade Peace"
     ],
     "region": "Cascade Kingdom",
-    "requires": ""
+    "requires": "{CascadePeace()}"
   },
   {
     "name": "Cascade: Secret Path to Fossil Falls!",
@@ -249,7 +249,7 @@
       "Tourist"
     ],
     "region": "Metro Kingdom",
-    "requires": ""
+    "requires": "{CascadePeace()}"
   },
   {
     "name": "Cascade: Rolling Rock by the Falls",
@@ -257,7 +257,7 @@
       "Cascade Kingdom"
     ],
     "region": "Sand Kingdom",
-    "requires": ""
+    "requires": "{CascadePeace()}"
   },
   {
     "name": "Cascade: Shopping in Fossil Falls",
@@ -265,7 +265,7 @@
       "Cascade Kingdom"
     ],
     "region": "Sand Kingdom",
-    "requires": ""
+    "requires": "{CascadePeace()}"
   },
   {
     "name": "Sand: Atop the Highest Tower",
@@ -989,7 +989,7 @@
       "Lake Peace"
     ],
     "region": "Lake Kingdom",
-    "requires": "(|Zipper| and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and |Zipper|)"
+    "requires": "(|Zipper| and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
   },
   {
     "name": "Lake: Super-Secret Zipper",
@@ -3297,7 +3297,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "(|Hammer Bro| and |Hammer Bro|)"
+    "requires": "|Hammer Bro|"
   },
   {
     "name": "Luncheon: Climb the Cheese Rocks",
@@ -3306,7 +3306,7 @@
       "Luncheon Kingdom"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "(|Hammer Bro| and |Hammer Bro|)"
+    "requires": "|Hammer Bro|"
   },
   {
     "name": "Luncheon: Spinning Athletics End Goal",
@@ -4876,7 +4876,7 @@
       "Moon Rock"
     ],
     "region": "Cap Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|) and |Paragoomba|)"
   },
   {
     "name": "Cap: Precision Rolling",
@@ -4885,7 +4885,7 @@
       "Moon Rock"
     ],
     "region": "Cap Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|)"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|) and |Paragoomba|)"
   },
   {
     "name": "Cascade: Across the Mysterious Clouds",
@@ -5298,7 +5298,7 @@
       "Luncheon Peace"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "{LuncheonPeace()}"
+    "requires": "(|Lava Bubble| and {LuncheonPeace()})"
   },
   {
     "name": "Luncheon: Lanterns on the Gear Steps",
@@ -5309,7 +5309,7 @@
       "Luncheon Peace"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "(|Fire Bro| and {LuncheonPeace()})"
+    "requires": "(|Fire Bro| and |Lava Bubble| and {LuncheonPeace()})"
   },
   {
     "name": "Luncheon: Volcano Cave Cruisin'",
@@ -5320,7 +5320,7 @@
       "Luncheon Peace"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "{LuncheonPeace()}"
+    "requires": "(|Lava Bubble| and {LuncheonPeace()})"
   },
   {
     "name": "Luncheon: Volcano Cave and Mysterious Clouds",
@@ -5331,7 +5331,7 @@
       "Luncheon Peace"
     ],
     "region": "Luncheon Kingdom",
-    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and {LuncheonPeace()})"
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Lava Bubble| and {LuncheonPeace()})"
   },
   {
     "name": "Luncheon: Treasure of the Lava Islands",
@@ -5472,5 +5472,2012 @@
     "region": "Moon Kingdom",
     "requires": "",
     "junk_only": true
+  },
+  {
+    "name": "Cap: The Forgotten Treasure",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:1|)"
+  },
+  {
+    "name": "Cap: Taxi Flying Through Bonneton",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cap: Bonneter Blockade",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "|Paragoomba|"
+  },
+  {
+    "name": "Cap: Cap Kingdom Regular Cup",
+    "category": [
+      "Cap Kingdom",
+      "Cup"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Cap: Peach in the Cap Kingdom",
+    "category": [
+      "Cap Kingdom",
+      "Peach"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Cap: Found with Cap Kingdom Art",
+    "category": [
+      "Cap Kingdom",
+      "Hint Art"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Cap: Next to Glasses Bridge",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cap: Danger Sign",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "|Paragoomba|"
+  },
+  {
+    "name": "Cap: Under the Big One's Brim",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:2|)"
+  },
+  {
+    "name": "Cap: Fly to the Edge of the Fog",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "|Paragoomba|"
+  },
+  {
+    "name": "Cap: Spin the Hat, Get a Prize",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Cap: Hidden in a Sunken Hat",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "(|Paragoomba| or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:2|) or (|Progressive Crouch:2| and |Progressive Crouch:3|))"
+  },
+  {
+    "name": "Cap: Fog-Shrouded Platform",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|)"
+  },
+  {
+    "name": "Cap: Bird Traveling in the Fog",
+    "category": [
+      "Cap Kingdom",
+      "Extra"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "(|Progressive Ground Pound:2| or |Paragoomba|)"
+  },
+  {
+    "name": "Cap: Caught Hopping Near the Ship!",
+    "category": [
+      "Cap Kingdom",
+      "Caught Hopping"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:2|)"
+  },
+  {
+    "name": "Cap: Taking Notes: In the Fog",
+    "category": [
+      "Cap Kingdom",
+      "Taking Notes"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Paragoomba|) or |Paragoomba|)"
+  },
+  {
+    "name": "Cap: Cap Kingdom Timer Challenge 2",
+    "category": [
+      "Cap Kingdom",
+      "Timer Challenge"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Cap: Cap Kingdom Master Cup",
+    "category": [
+      "Cap Kingdom",
+      "Cup"
+    ],
+    "region": "Cap Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Cascade: Peach in the Cascade Kingdom",
+    "category": [
+      "Cascade Kingdom",
+      "Peach"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {CascadePeace()})"
+  },
+  {
+    "name": "Cascade: Cascade Kingdom Regular Cup",
+    "category": [
+      "Cascade Kingdom",
+      "Cup"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {CascadePeace()})"
+  },
+  {
+    "name": "Cascade: Caveman Cave-Fan",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "{CascadePeace()}"
+  },
+  {
+    "name": "Cascade: Sphynx Traveling to the Waterfall",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "(|Binoculars| and {CascadePeace()})"
+  },
+  {
+    "name": "Cascade: Bottom of the Waterfall Basin",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Cascade: Just a Hat, Skip, and a Jump",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Cascade: Treasure Under the Cliff",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cascade: Next to the Stone Arch",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cascade: Guarded by a Colossal Fossil",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cascade: Under the Old Electrical Pole",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "(|T-Rex| and |Progressive Ground Pound:1|)"
+  },
+  {
+    "name": "Cascade: Under the Ground",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "(|T-Rex| and |Progressive Ground Pound:1|)"
+  },
+  {
+    "name": "Cascade: Inside the Busted Fossil",
+    "category": [
+      "Cascade Kingdom",
+      "Extra"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cascade: Caught Hopping at the Waterfall!",
+    "category": [
+      "Cascade Kingdom",
+      "Caught Hopping"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cascade: Taking Notes: Hurry Upward",
+    "category": [
+      "Cascade Kingdom",
+      "Taking Notes"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cascade: Cascade Kingdom Master Cup",
+    "category": [
+      "Cascade Kingdom",
+      "Cup"
+    ],
+    "region": "Cascade Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Sand: Found with Sand Kingdom Art",
+    "category": [
+      "Sand Kingdom",
+      "Hint Art"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and |Progressive Ground Pound:1|) and {SandPeace()})"
+  },
+  {
+    "name": "Sand: Jammin' in the Sand Kingdom",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "{SandPeace()}"
+  },
+  {
+    "name": "Sand: Hat-and-Seek: In the Sand",
+    "category": [
+      "Sand Kingdom",
+      "Hat-and-Seek"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "{SandPeace()}"
+  },
+  {
+    "name": "Sand: Sand Kingdom Regular Cup",
+    "category": [
+      "Sand Kingdom",
+      "Cup"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "{SandPeace()}"
+  },
+  {
+    "name": "Sand: Binding Band Returned",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "(|Progressive Ground Pound:1| and {SandPeace()})"
+  },
+  {
+    "name": "Sand: 'Round-the-World Tourist",
+    "category": [
+      "Sand Kingdom",
+      "Tourist"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "{SandPeace()}"
+  },
+  {
+    "name": "Sand: Peach in the Sand Kingdom",
+    "category": [
+      "Sand Kingdom",
+      "Peach"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "(|Spark pylon| and {SandPeace()})"
+  },
+  {
+    "name": "Sand: Mighty Leap from the Palm Tree!",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "(|Climb| or |Progressive Ground Pound:2|)"
+  },
+  {
+    "name": "Sand: On the North Pillar",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "((|Glydon| or |Spark pylon|) or ((|Long Jump| and |Progressive Crouch:1|) and (|Glydon| or |Spark pylon|)))"
+  },
+  {
+    "name": "Sand: Into the Flowing Sands",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Sand: In the Skies Above the Canyon",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) or ((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|))"
+  },
+  {
+    "name": "Sand: Island in the Poison Swamp",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Sand: An Invisible Gleam",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|)"
+  },
+  {
+    "name": "Sand: On the Eastern Pillar",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Bullet Bill|)"
+  },
+  {
+    "name": "Sand: Caught Hopping in the Desert!",
+    "category": [
+      "Sand Kingdom",
+      "Caught Hopping"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Sand: Poster Cleanup",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) or |Up Throw|)"
+  },
+  {
+    "name": "Sand: Taking Notes: Running Down",
+    "category": [
+      "Sand Kingdom",
+      "Taking Notes"
+    ],
+    "region": "Sand Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Sand: Taking Notes: In the Wall Painting",
+    "category": [
+      "Sand Kingdom",
+      "Taking Notes"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+  },
+  {
+    "name": "Sand: Love at the Edge of the Desert",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": "|Goomba|"
+  },
+  {
+    "name": "Sand: More Walking in the Desert!",
+    "category": [
+      "Sand Kingdom",
+      "Extra"
+    ],
+    "region": "Sand Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Sand: Sand Kingdom Master Cup",
+    "category": [
+      "Sand Kingdom",
+      "Cup"
+    ],
+    "region": "Sand Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Wooded: Swing Around Secret Flower Field",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Climb|) and {WoodedPeace()})"
+  },
+  {
+    "name": "Wooded: Jammin' in the Wooded Kingdom",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "{WoodedPeace()}"
+  },
+  {
+    "name": "Wooded: Wooded Kingdom Regular Cup",
+    "category": [
+      "Wooded Kingdom",
+      "Cup"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "((((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Uproot|) or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|)) and {WoodedPeace()})"
+  },
+  {
+    "name": "Wooded: Peach in the Wooded Kingdom",
+    "category": [
+      "Wooded Kingdom",
+      "Peach"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "((|Climb| and |Sherm| and |Wall Slide| and |Progressive Ground Pound:2|) and {WoodedPeace()})"
+  },
+  {
+    "name": "Wooded: High Up in the Cave",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|)"
+  },
+  {
+    "name": "Wooded: Lost in the Tall Trees",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "((|Sherm| and |Glydon|) and |Climb| and |Wall Slide| and |Progressive Ground Pound:2|)"
+  },
+  {
+    "name": "Wooded: Looking Down on the Goombas",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "(((|Glydon| and |Sherm|) and |Climb| and |Wall Slide| and |Progressive Ground Pound:2|) or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:2|))"
+  },
+  {
+    "name": "Wooded: High Up on a Rock Wall",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Wooded: The Nut in the Robot Storeroom",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "(|Uproot| or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Up Throw|) or (|Climb| and |Progressive Ground Pound:2|))"
+  },
+  {
+    "name": "Wooded: Above the Iron Mountain Path",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Wooded: The Nut Under the Observation Deck",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "((|Progressive Jump:2| and |Wall Slide| and |Progressive Ground Pound:2|) or (|Sherm| and |Progressive Ground Pound:2| and |Wall Slide| and |Climb|))"
+  },
+  {
+    "name": "Wooded: Bird Traveling the Forest",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "(|Progressive Jump:2| and |Up Throw|)"
+  },
+  {
+    "name": "Wooded: Invader in the Sky Garden",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "((|Goomba| and |Uproot|) or (((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|))"
+  },
+  {
+    "name": "Wooded: Hot, Hot, Hot from the Campfire",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "|Fire Bro|"
+  },
+  {
+    "name": "Wooded: Wooded Kingdom Timer Challenge 3",
+    "category": [
+      "Wooded Kingdom",
+      "Timer Challenge"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Wooded: Moon Shards in the Forest",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "|Uproot|"
+  },
+  {
+    "name": "Wooded: Taking Notes: On Top of the Wall",
+    "category": [
+      "Wooded Kingdom",
+      "Taking Notes"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "|Progressive Crouch:2|"
+  },
+  {
+    "name": "Wooded: Taking Notes: Stretching",
+    "category": [
+      "Wooded Kingdom",
+      "Taking Notes"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2| and (|Uproot| and |Fire Bro|)) or (|Progressive Jump:2| and (|Uproot| and |Fire Bro|)))"
+  },
+  {
+    "name": "Wooded: Wooded Kingdom Master Cup",
+    "category": [
+      "Wooded Kingdom",
+      "Cup"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Uproot|) or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|))"
+  },
+  {
+    "name": "Wooded: I Met an Uproot!",
+    "category": [
+      "Wooded Kingdom",
+      "Extra"
+    ],
+    "region": "Wooded Kingdom",
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Uproot|)"
+  },
+  {
+    "name": "Lake: Taxi Flying Through Lake Lamode",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Binoculars|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
+  },
+  {
+    "name": "Lake: That Trendy \"Pirate\" Look",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "((|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
+  },
+  {
+    "name": "Lake: Space Is \"In\" Right Now",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "((|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
+  },
+  {
+    "name": "Lake: That \"Old West\" Style",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "((|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
+  },
+  {
+    "name": "Lake: Lake Kingdom Regular Cup",
+    "category": [
+      "Lake Kingdom",
+      "Cup"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "((|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
+  },
+  {
+    "name": "Lake: Peach in the Lake Kingdom",
+    "category": [
+      "Lake Kingdom",
+      "Peach"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and {LakePeace()})"
+  },
+  {
+    "name": "Lake: Behind the Floodgate",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "(|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|)))"
+  },
+  {
+    "name": "Lake: High-Flying Leap",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+  },
+  {
+    "name": "Lake: Deep, Deep Down",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "(|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|)))"
+  },
+  {
+    "name": "Lake: Rooftop of the Water Plaza",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "(((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:1|) or (((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|)) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+  },
+  {
+    "name": "Lake: Bird Traveling Over the Lake",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "(|Up Throw| and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+  },
+  {
+    "name": "Lake: Love by the Lake",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Goomba|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+  },
+  {
+    "name": "Lake: Lake Kingdom Master Cup",
+    "category": [
+      "Lake Kingdom",
+      "Cup"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "(((|Progressive Ground Pound:2| and |Wall Slide|) or ((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2|)) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+  },
+  {
+    "name": "Cloud: Peach in the Cloud Kingdom",
+    "category": [
+      "Cloud Kingdom",
+      "Peach"
+    ],
+    "region": "Cloud Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cloud: Digging in the...Cloud?",
+    "category": [
+      "Cloud Kingdom",
+      "Extra"
+    ],
+    "region": "Cloud Kingdom",
+    "requires": "(((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:1|)"
+  },
+  {
+    "name": "Cloud: High, High Above the Clouds",
+    "category": [
+      "Cloud Kingdom",
+      "Extra"
+    ],
+    "region": "Cloud Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Cloud: Crossing the Cloud Sea",
+    "category": [
+      "Cloud Kingdom",
+      "Extra"
+    ],
+    "region": "Cloud Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Cloud: Taking Notes: Up and Down",
+    "category": [
+      "Cloud Kingdom",
+      "Taking Notes"
+    ],
+    "region": "Cloud Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Lake: Picture Match: A Stellar Goomba!",
+    "category": [
+      "Lake Kingdom",
+      "Extra"
+    ],
+    "region": "Lake Kingdom",
+    "requires": "((|Progressive Crouch:1| and |Picture Match Part (Goomba)|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
+  },
+  {
+    "name": "Lost: Taxi Flying Through Forgotten Isle",
+    "category": [
+      "Lost Kingdom",
+      "Extra"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "|Binoculars|"
+  },
+  {
+    "name": "Lost: I Met a Tropical Wiggler!",
+    "category": [
+      "Lost Kingdom",
+      "Extra"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Lost: Lost Kingdom Regular Cup",
+    "category": [
+      "Lost Kingdom",
+      "Cup"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "(|Progressive Ground Pound:1| and |Wall Slide|)"
+  },
+  {
+    "name": "Lost: Peach in the Lost Kingdom",
+    "category": [
+      "Lost Kingdom",
+      "Peach"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "(|Progressive Ground Pound:1| and |Wall Slide|)"
+  },
+  {
+    "name": "Lost: The Shining Fruit",
+    "category": [
+      "Lost Kingdom",
+      "Extra"
+    ],
+    "region": "Lost Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Lost: Jump Down to the Top of a Tree",
+    "category": [
+      "Lost Kingdom",
+      "Extra"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Lost: Line It Up, Blow It Up",
+    "category": [
+      "Lost Kingdom",
+      "Extra"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Lost: Taking Notes: Stretch and Shrink",
+    "category": [
+      "Lost Kingdom",
+      "Taking Notes"
+    ],
+    "region": "Lost Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Lost: Lost Kingdom Master Cup",
+    "category": [
+      "Lost Kingdom",
+      "Cup"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "(|Progressive Ground Pound:1| and |Wall Slide|)"
+  },
+  {
+    "name": "Lost: Lost Kingdom Timer Challenge",
+    "category": [
+      "Lost Kingdom",
+      "Timer Challenge"
+    ],
+    "region": "Lost Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Metro: Bird Traveling in the City",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Mario Signs His Name",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Letter| and |Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Surprise Clown!",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: A Request from the Mayor",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Jammin' in the Metro Kingdom",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Sphynx in the City",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Binoculars|) and |Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Free Parking: Leap of Faith",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Metro Kingdom Regular Cup",
+    "category": [
+      "Metro Kingdom",
+      "Cup"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Hat-and-Seek: In the City",
+    "category": [
+      "Metro Kingdom",
+      "Hat-and-Seek"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Powering Up the Power Plant",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()} and |Manhole|)"
+  },
+  {
+    "name": "Metro: Peach in the Metro Kingdom",
+    "category": [
+      "Metro Kingdom",
+      "Peach"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Spark pylon| and {MetroPeace()})"
+  },
+  {
+    "name": "Metro: Hanging Between Buildings",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Metro: Crossing Lines",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Metro: Out of a Crate in the City",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Metro: Bird Traveling in the Park",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Metro: Metro Kingdom Timer Challenge 3",
+    "category": [
+      "Metro Kingdom",
+      "Timer Challenge"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Metro: Found in the Park! Good Dog!",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(|Progressive Ground Pound:1| and |Spark pylon|)"
+  },
+  {
+    "name": "Metro: RC Car Champ!",
+    "category": [
+      "Metro Kingdom",
+      "Extra"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |RC Car|) and |Spark pylon|)"
+  },
+  {
+    "name": "Metro: Metro Kingdom Master Cup",
+    "category": [
+      "Metro Kingdom",
+      "Cup"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Metro: Hat-and-Seek: In the Crowd",
+    "category": [
+      "Metro Kingdom",
+      "Hat-and-Seek"
+    ],
+    "region": "Metro Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Seaside: Seaside Kingdom Regular Cup",
+    "category": [
+      "Seaside Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "{SeasidePeace()}"
+  },
+  {
+    "name": "Seaside: Peach in the Seaside Kingdom",
+    "category": [
+      "Seaside Kingdom",
+      "Peach",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "{SeasidePeace()}"
+  },
+  {
+    "name": "Seaside: Above the Parasol: Catch!",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Seaside: What Shines Inside the Glass",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Seaside: A Fine Detail on the Glass",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Seaside: Underwater Highway West: Explore!",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Seaside: Underwater Highway East: Explore!",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Seaside: Rapid Ascent on Hot Spring Island",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "|Gushen|"
+  },
+  {
+    "name": "Seaside: A Light Next to the Lighthouse",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Climb|) or |Gushen|)"
+  },
+  {
+    "name": "Seaside: The Tall Rock Shelf in the Deep Ocean",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Seaside: At the Base of the Lighthouse",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Seaside: Bird Traveling Over the Ocean",
+    "category": [
+      "Seaside Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "(|Gushen| or |Progressive Ground Pound:2|)"
+  },
+  {
+    "name": "Seaside: Caught Hopping at Glass Palace!",
+    "category": [
+      "Seaside Kingdom",
+      "Caught Hopping",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:2|)"
+  },
+  {
+    "name": "Seaside: Seaside Kingdom Timer Challenge 3",
+    "category": [
+      "Seaside Kingdom",
+      "Timer Challenge",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Seaside: Taking Notes: Ocean-Bottom Maze",
+    "category": [
+      "Seaside Kingdom",
+      "Taking Notes",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Seaside: Taking Notes in the Sea",
+    "category": [
+      "Seaside Kingdom",
+      "Taking Notes",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": "|Cheep Cheep|"
+  },
+  {
+    "name": "Seaside: Seaside Kingdom Master Cup",
+    "category": [
+      "Seaside Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Seaside Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Snow: Secret Path to Shiveria!",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|)"
+  },
+  {
+    "name": "Snow: Snow Kingdom Regular Cup",
+    "category": [
+      "Snow Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "{SnowPeace()}"
+  },
+  {
+    "name": "Snow: Hat-and-Seek in the Snow",
+    "category": [
+      "Snow Kingdom",
+      "Hat-and-Seek",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {SnowPeace()})"
+  },
+  {
+    "name": "Snow: Peach in the Snow Kingdom",
+    "category": [
+      "Snow Kingdom",
+      "Peach",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {SnowPeace()})"
+  },
+  {
+    "name": "Snow: Shining on High",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "(|Progressive Jump:2| or |Progressive Ground Pound:2|)"
+  },
+  {
+    "name": "Snow: Above the Freezing Fishing Pond",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Snow: Ice Floe Swimming",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Snow: Icy Jump Challenge",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "((|Progressive Jump:1| or |Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and {SnowPeace()})"
+  },
+  {
+    "name": "Snow: Forgotten in the Holding Room",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Snow: It Popped Out of the Ice",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:1|)"
+  },
+  {
+    "name": "Snow: Deep in the Cold, Cold Water",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Snow: Water Pooling in the Crevasse",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) and {SnowPeace()})"
+  },
+  {
+    "name": "Snow: Squirming Under Ice",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "(|Progressive Ground Pound:1| and {SnowPeace()})"
+  },
+  {
+    "name": "Snow: Snow Kingdom Timer Challenge 3",
+    "category": [
+      "Snow Kingdom",
+      "Timer Challenge",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Snow: Stacked-Up Ice Climb",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Goomba|) and {SnowPeace()})"
+  },
+  {
+    "name": "Snow: I Met a Snow Cheep Cheep!",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Snow: Even More Walking on Ice!",
+    "category": [
+      "Snow Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Snow: Snow Kingdom Master Cup",
+    "category": [
+      "Snow Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Snow Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Luncheon: The Rooftop Lantern",
+    "category": [
+      "Luncheon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "((|Fire Bro| or |Lava Bubble|) and {LuncheonPeace()})"
+  },
+  {
+    "name": "Luncheon: Jammin' in the Luncheon Kingdom",
+    "category": [
+      "Luncheon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {LuncheonPeace()})"
+  },
+  {
+    "name": "Luncheon: Mechanic: Repairs Complete!",
+    "category": [
+      "Luncheon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "{LuncheonPeace()}"
+  },
+  {
+    "name": "Luncheon: Diving from the Big Pot!",
+    "category": [
+      "Luncheon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "(|Lava Bubble| and {LuncheonPeace()})"
+  },
+  {
+    "name": "Luncheon: Hat-and-Seek: Among the Food",
+    "category": [
+      "Luncheon Kingdom",
+      "Hat-and-Seek",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "{LuncheonPeace()}"
+  },
+  {
+    "name": "Luncheon: Luncheon Kingdom: Regular Cup",
+    "category": [
+      "Luncheon Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide| and (|Fire Bro| or |Lava Bubble|)) and {LuncheonPeace()})"
+  },
+  {
+    "name": "Luncheon: Peach in the Luncheon Kingdom",
+    "category": [
+      "Luncheon Kingdom",
+      "Peach",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "{LuncheonPeace()}"
+  },
+  {
+    "name": "Luncheon: From Inside a Bright Stone",
+    "category": [
+      "Luncheon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Luncheon: Under the Meat Plateau",
+    "category": [
+      "Luncheon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide|) or |Lava Bubble|)"
+  },
+  {
+    "name": "Luncheon: On Top of a Tall, Tall Roof",
+    "category": [
+      "Luncheon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:2| and |Wall Slide|)"
+  },
+  {
+    "name": "Luncheon: From a Crack in the Hard Ground",
+    "category": [
+      "Luncheon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "(|Progressive Ground Pound:1| or (|Fire Bro| and |Progressive Ground Pound:1|))"
+  },
+  {
+    "name": "Luncheon: By the Cannon Pointed at the Big Pot",
+    "category": [
+      "Luncheon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Luncheon: Luncheon Kingdom: Master Cup",
+    "category": [
+      "Luncheon Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Luncheon Kingdom",
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Wall Slide|)"
+  },
+  {
+    "name": "Ruined: Peach in the Ruined Kingdom",
+    "category": [
+      "Ruined Kingdom",
+      "Peach",
+      "post-metro"
+    ],
+    "region": "Ruined Kingdom",
+    "requires": "(|Spark pylon| and {RuinedPeace()})"
+  },
+  {
+    "name": "Ruined: Caught on a Big Horn",
+    "category": [
+      "Ruined Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Ruined Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Ruined: Upon the Broken Arch",
+    "category": [
+      "Ruined Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Ruined Kingdom",
+    "requires": "((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Progressive Ground Pound:1|)"
+  },
+  {
+    "name": "Ruined: Rolling Rock on the Battlefield",
+    "category": [
+      "Ruined Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Ruined Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: Sphynx Over Bowser's Castle",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Bowser's: I Met a Pokio!",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Pokio|) and |Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Bowser's: Bowser's Kingdom Regular Cup",
+    "category": [
+      "Bowser's Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(|Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Bowser's: A Rumble Under the Arena Floor",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) and |Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Bowser's: Secret Path to Bowser's Castle!",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Ground Pound:2|) and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: Peach in Bowser's Kingdom",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Bowser's: Found with Bowser's Kingdom Art",
+    "category": [
+      "Bowser's Kingdom",
+      "Hint Art",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(|Progressive Ground Pound:1| and |Spark pylon| and {BowserPeace()})"
+  },
+  {
+    "name": "Bowser's: Behind the Tall Wall: Poke, Poke!",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(|Pokio| and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: From Crates in the Moat",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|)) and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: Caught on the Giant Horn",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: Inside a Block at the Gate",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Pokio|) and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: Small Bird in Bowser's Castle",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Bowser's: Invader in Bowser's Castle",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "((((|Long Jump| and |Progressive Crouch:1|) and |Goomba|) or |Progressive Ground Pound:2|) and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: Jumping from Flag to Flag",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Climb|) and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: Bowser's Kingdom Timer Challenge 2",
+    "category": [
+      "Bowser's Kingdom",
+      "Timer Challenge",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: Taking Notes: On the Wall",
+    "category": [
+      "Bowser's Kingdom",
+      "Taking Notes",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "(|Pokio| and |Spark pylon|)"
+  },
+  {
+    "name": "Bowser's: Taking Notes with a Spinning Throw",
+    "category": [
+      "Bowser's Kingdom",
+      "Taking Notes",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Bowser's: Third Courtyard Outskirts",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Bowser's: Stone Wall Circuit",
+    "category": [
+      "Bowser's Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "|Spark pylon|"
+  },
+  {
+    "name": "Bowser's: Bowser's Kingdom Master Cup",
+    "category": [
+      "Bowser's Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Bowser's Kingdom",
+    "requires": "((((|Long Jump| and |Progressive Crouch:1|) and |Progressive Crouch:2|) or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:2|)) and |Spark pylon|)"
+  },
+  {
+    "name": "Moon: Sneaking Around in the Crater",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Moon: Found on the Moon, Good Dog!",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Moon: Moon Shards on the Moon",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "|Wall Slide|"
+  },
+  {
+    "name": "Moon: Moon Quiz: Amazing!",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: Thanks, Captain Toad!",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: Walking on the Moon!",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: Moon Kingdom Regular Cup",
+    "category": [
+      "Moon Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "|Wall Slide|"
+  },
+  {
+    "name": "Moon: Doctor in the House",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: A Tourist in the Moon Kingdom!",
+    "category": [
+      "Moon Kingdom",
+      "Tourist",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: Peach in the Moon Kingdom",
+    "category": [
+      "Moon Kingdom",
+      "Peach",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "|Wall Slide|"
+  },
+  {
+    "name": "Moon: Found with Moon Kingdom Art",
+    "category": [
+      "Moon Kingdom",
+      "Hint Art",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "|Progressive Ground Pound:1|"
+  },
+  {
+    "name": "Moon: Mysterious Flying Object",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: Hidden on the Side of the Cliff",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: Jumping High as a Frog",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: Moon Kingdom Timer Challenge 2",
+    "category": [
+      "Moon Kingdom",
+      "Timer Challenge",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: Walking on the Moon: Again!",
+    "category": [
+      "Moon Kingdom",
+      "Extra",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
+  },
+  {
+    "name": "Moon: Moon Kingdom Master Cup",
+    "category": [
+      "Moon Kingdom",
+      "Cup",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": "|Wall Slide|"
+  },
+  {
+    "name": "Moon: Taking Notes: In Low Gravity",
+    "category": [
+      "Moon Kingdom",
+      "Taking Notes",
+      "post-metro"
+    ],
+    "region": "Moon Kingdom",
+    "requires": ""
   }
 ]

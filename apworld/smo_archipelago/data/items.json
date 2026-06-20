@@ -1,7 +1,7 @@
 [
   {
     "name": "Cap Kingdom Power Moon",
-    "count": 13,
+    "count": 31,
     "category": [
       "Moon"
     ],
@@ -9,7 +9,7 @@
   },
   {
     "name": "Cascade Kingdom Power Moon",
-    "count": 23,
+    "count": 38,
     "category": [
       "Moon"
     ],
@@ -25,7 +25,7 @@
   },
   {
     "name": "Sand Kingdom Power Moon",
-    "count": 66,
+    "count": 87,
     "category": [
       "Moon"
     ],
@@ -41,7 +41,7 @@
   },
   {
     "name": "Lake Kingdom Power Moon",
-    "count": 28,
+    "count": 42,
     "category": [
       "Moon"
     ],
@@ -57,7 +57,7 @@
   },
   {
     "name": "Wooded Kingdom Power Moon",
-    "count": 54,
+    "count": 74,
     "category": [
       "Moon"
     ],
@@ -73,7 +73,7 @@
   },
   {
     "name": "Cloud Kingdom Power Moon",
-    "count": 3,
+    "count": 8,
     "category": [
       "Moon"
     ],
@@ -81,7 +81,7 @@
   },
   {
     "name": "Lost Kingdom Power Moon",
-    "count": 25,
+    "count": 35,
     "category": [
       "Moon"
     ],
@@ -89,7 +89,7 @@
   },
   {
     "name": "Metro Kingdom Power Moon",
-    "count": 59,
+    "count": 79,
     "category": [
       "Moon"
     ],
@@ -105,7 +105,7 @@
   },
   {
     "name": "Snow Kingdom Power Moon",
-    "count": 37,
+    "count": 55,
     "category": [
       "Moon",
       "post-metro"
@@ -123,7 +123,7 @@
   },
   {
     "name": "Seaside Kingdom Power Moon",
-    "count": 53,
+    "count": 70,
     "category": [
       "Moon",
       "post-metro"
@@ -141,7 +141,7 @@
   },
   {
     "name": "Luncheon Kingdom Power Moon",
-    "count": 53,
+    "count": 66,
     "category": [
       "Moon",
       "post-metro"
@@ -159,7 +159,7 @@
   },
   {
     "name": "Ruined Kingdom Power Moon",
-    "count": 5,
+    "count": 9,
     "category": [
       "Moon",
       "post-metro"
@@ -177,7 +177,7 @@
   },
   {
     "name": "Bowser's Kingdom Power Moon",
-    "count": 41,
+    "count": 61,
     "category": [
       "Moon",
       "post-metro"
@@ -195,7 +195,7 @@
   },
   {
     "name": "Moon Kingdom Power Moon",
-    "count": 14,
+    "count": 32,
     "category": [
       "Moon",
       "post-metro"

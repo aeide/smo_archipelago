@@ -7,19 +7,19 @@ chokepoint") all apply here.
 
 ## Status (2026-06-18)
 
-**P0–P4 + P6 + P6.5 COMPLETE. Remaining: P5, P7.**
+**P0–P4 + P6 + P6.5 + P7 COMPLETE. Remaining: P5 (per-kingdom moon colors).**
 
 | Phase | What | State |
 |---|---|---|
 | P0 | CSV ingestion → `moon_requirements.json` (435/435 matched) + `subareas.json` (131) | ✅ (superseded by P6) |
 | P1 | Cap Kingdom moons → 100 coins (`coin_grant` wire msg, idempotent high-water) | ✅ in-game |
-| P2 | Capturesanity removed; Frog + Chain Chomp + 1-random precollected starters | ✅ |
+| P2 | Capturesanity (later re-added as a live toggle); Frog + Chain Chomp + Broode's Chain Chomp + 1-random precollected starters | ✅ |
 | P3 | MK→captures / DarkSide→abilities item pool; junk-only MK/DS checks; ability tracking | ✅ |
 | P4 | Ability gating on Switch (every move gated; Side Flip neuter, Up/Down/Spin Throw) | ✅ in-game |
 | **P5** | **Per-kingdom moon colors** | ⬜ Sonnet, small |
 | **P6** | **Update logic** (xlsx ingest → recompile all moon `requires`) | ✅ Generate-validated (2026-06-17) |
 | **P6.5** | **Moon-pipe moons → AP** (54 new locations + `<Kingdom>Peace` gates) | ✅ Generate-validated (2026-06-18); [spike §6](p7-entrance-shuffle-spike.md) |
-| **P7** | **Entrance shuffle** (headline feature) | ⬜ Opus — spike done, P6.5 complete |
+| **P7** | **Entrance shuffle** (headline feature) | ✅ LIVE + validated in-game 2026-06-19 (`kEntranceRemapApply=true`, coupled-bijection return) |
 
 P0–P4 implementation detail lives in git history, CLAUDE.md, and `docs/plan-p4-detail.md`
 (the P4 canonical record). This file now covers only the design context that the remaining
@@ -42,9 +42,10 @@ phases consume + the P5–P7 plans + the P7 subarea/ability/capture correlation 
   capture requirements → `|Gushen|` etc. Plain manual-AP `requires` syntax.
 - **MK / Dark Side vanilla locations are junk-only checks** (`excluded`: filler/traps only,
   never progression/useful), vanilla post-game gating retained.
-- **Starting kit**: single jump + neutral cap throw, plus Frog, Chain Chomp, 1 random capture.
-  Spark Pylon + Bowser precollected this iteration (progression-critical; randomizing them
-  properly is deferred).
+- **Starting kit**: single jump + neutral cap throw, plus Frog, Chain Chomp, **Broode's Chain
+  Chomp** (added later for the Cascade scenario-gating fix), and 1 random capture.
+  (SUPERSEDED: Spark Pylon + Bowser are NO LONGER precollected — they now ride the pool as
+  progression gating items. See `hooks/World.py` `FIXED_STARTER_CAPTURES`.)
 - **Logic difficulties** (P6) from the CSV methods: Intended (M1), Basic Tricks/Skips (≤M2),
   Intermediate (≤M3), Advanced (≤M5).
 - **Entrance shuffle** (P7): every non-storyline subarea entrance in one pool; exits always

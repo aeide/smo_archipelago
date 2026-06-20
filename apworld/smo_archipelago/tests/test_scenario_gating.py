@@ -181,12 +181,12 @@ class TestBuildMidStoryAnchors:
         assert anchors["Metro: Mid2"] == cml.MOON_ROCK_PEACE_GATES["Metro"]  # over-gate
         assert "Metro: Festival" not in anchors                              # self-ref skip
 
-    def test_cascade_is_deferred(self):
-        # Cascade is intentionally excluded from mid_story this pass: its clear scenario
-        # is its LAST (after_ending earlier), so the bit band has no clean advancer
-        # chain, and gating its ~19 post-first-visit moons starves the early fill
-        # spheres enough to fail generation. Its moons stay free (player-controlled
-        # first advance). A dedicated Cascade pass is the documented follow-up.
+    def test_cascade_excluded_from_mid_story(self):
+        # Cascade is handled by the dedicated build_cascade_anchors pass (see
+        # TestBuildCascadeAnchors), NOT by the generic mid_story chain: its clear
+        # scenario is its LAST (after_ending earlier), so the bit band has no clean
+        # advancer chain. build_mid_story_anchors must therefore emit nothing for
+        # Cascade — the dedicated pass owns those gates.
         shine = [
             {"kingdom": "Cascade", "shine_id": "Multi", "progress_bit_flag": 0b0000001,
              "is_moon_rock": False, "is_grand": True},
@@ -236,6 +236,94 @@ class TestBuildMidStoryAnchors:
         locs = {"Sand: Showdown", "Sand: RockMoon"}
         anchors, _ = cml.build_mid_story_anchors(shine, self.WS, set(), locs)
         assert "Sand: RockMoon" not in anchors
+
+
+class TestBuildCascadeAnchors:
+    WS = {"Cascade": {"scenario_num": 7, "clear_main_scenario": 7}}  # peace trap
+
+    def test_degrades_without_data(self):
+        assert cml.build_cascade_anchors(None, None, set()) == ({}, 0)
+        assert cml.build_cascade_anchors([], self.WS, set()) == ({}, 0)
+
+    def test_missing_anchor_location_disables(self):
+        # No "Cascade: Multi Moon Atop the Falls" location -> can't gate (the gate
+        # is canReachLocation on that name), so emit nothing rather than a phantom.
+        shine = [{"kingdom": "Cascade", "shine_id": "ChainArea",
+                  "progress_bit_flag": 0b10, "is_moon_rock": False, "is_grand": False}]
+        assert cml.build_cascade_anchors(shine, self.WS, {"Cascade: ChainArea"}) == ({}, 0)
+
+    def test_gates_post_first_visit_layers(self, monkeypatch):
+        # With the full-gating policy (MAX=3) every non-rock Cascade moon at
+        # min_scenario 1..3 ANDs in {CascadePeace()}; bit-0 first-visit (the Multi
+        # Moon anchor itself) and rock moons are excluded.
+        monkeypatch.setattr(cml, "CASCADE_GATE_MIN_LAYER", 1)
+        monkeypatch.setattr(cml, "CASCADE_GATE_MAX_LAYER", 3)
+        shine = [
+            {"kingdom": "Cascade", "shine_id": "Multi Moon Atop the Falls",
+             "progress_bit_flag": 0b0001, "is_moon_rock": False, "is_grand": True},
+            {"kingdom": "Cascade", "shine_id": "ChainArea",   # bit1
+             "progress_bit_flag": 0b0010, "is_moon_rock": False, "is_grand": False},
+            {"kingdom": "Cascade", "shine_id": "Revisit2",    # bit2
+             "progress_bit_flag": 0b0100, "is_moon_rock": False, "is_grand": False},
+            {"kingdom": "Cascade", "shine_id": "Revisit3",    # bit3
+             "progress_bit_flag": 0b1000, "is_moon_rock": False, "is_grand": False},
+            {"kingdom": "Cascade", "shine_id": "RockMoon",    # rock -> category-gated
+             "progress_bit_flag": 0b0010, "is_moon_rock": True, "is_grand": False},
+        ]
+        locs = {"Cascade: Multi Moon Atop the Falls", "Cascade: ChainArea",
+                "Cascade: Revisit2", "Cascade: Revisit3", "Cascade: RockMoon"}
+        anchors, n = cml.build_cascade_anchors(shine, self.WS, locs)
+        assert anchors == {
+            "Cascade: ChainArea": "{CascadePeace()}",
+            "Cascade: Revisit2": "{CascadePeace()}",
+            "Cascade: Revisit3": "{CascadePeace()}",
+        }
+        assert n == 3
+        assert "Cascade: Multi Moon Atop the Falls" not in anchors  # anchor / bit0
+        assert "Cascade: RockMoon" not in anchors                   # rock excluded
+
+    def test_layer_cap_leaves_revisit_free(self, monkeypatch):
+        # The fill-capacity cap (CASCADE_GATE_MAX_LAYER) bounds the top layer gated;
+        # at MAX=1 only the layer-1 moons gate, deeper revisit layers stay free.
+        monkeypatch.setattr(cml, "CASCADE_GATE_MIN_LAYER", 1)
+        monkeypatch.setattr(cml, "CASCADE_GATE_MAX_LAYER", 1)
+        shine = [
+            {"kingdom": "Cascade", "shine_id": "ChainArea",
+             "progress_bit_flag": 0b0010, "is_moon_rock": False, "is_grand": False},
+            {"kingdom": "Cascade", "shine_id": "Revisit2",
+             "progress_bit_flag": 0b0100, "is_moon_rock": False, "is_grand": False},
+        ]
+        locs = {"Cascade: Multi Moon Atop the Falls", "Cascade: ChainArea",
+                "Cascade: Revisit2"}
+        anchors, n = cml.build_cascade_anchors(shine, self.WS, locs)
+        assert anchors == {"Cascade: ChainArea": "{CascadePeace()}"}
+        assert n == 1
+
+
+class TestMoonRockReachCapture:
+    def test_constants(self):
+        assert cml.MOON_ROCK_REACH_CAPTURE["Cap"] == "|Paragoomba|"
+        assert cml.MOON_ROCK_REACH_CAPTURE["Luncheon"] == "|Lava Bubble|"
+
+    def test_gates_for_appends_capture_to_rock_only(self):
+        rock = "Cap: Roll On and On"
+        gates = cml.gates_for(rock, {}, set(), {}, {rock})
+        assert "|Paragoomba|" in gates
+        # A non-rock Cap location (not in moon_rock_names) gets no reach capture.
+        non_rock = cml.gates_for("Cap: Some Overworld Moon", {}, set(), {}, set())
+        assert "|Paragoomba|" not in non_rock
+
+
+class TestFreeCapturesAndJoin:
+    def test_broodes_chain_chomp_is_free(self):
+        # Granted as a fixed starter in hooks/World.py, so it never gates.
+        assert "Broode's Chain Chomp" in cml.FREE_CAPTURES
+
+    def test_and_join_dedupes_idempotent_terms(self):
+        assert cml.and_join(["|A|", "|A|"]) == "|A|"
+        assert cml.and_join(["|A|", "|B|", "|A|"]) == "(|A| and |B|)"
+        assert cml.and_join(["", "|A|", ""]) == "|A|"
+        assert cml.and_join([]) == ""
 
 
 if __name__ == "__main__":

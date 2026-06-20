@@ -16,15 +16,20 @@ to that doc: that one is *what the data means*; this one is *how logic consumes 
   bit-1 gap), and skipping the peace-anchor moon itself to avoid self-reference
   (Metro's Festival). Validated: 22 unit tests, 16/16 fixed-seed fills + a full
   playthrough generate cleanly, `locations.json` diff is requires-only (no new IP).
-- **Cascade — DEFERRED (the remaining follow-up).** Cascade was intentionally left
-  OUT of mid_story: its `clear_main_scenario=7` is its *last* scenario (`after_ending=3`
-  earlier), so its bit layers don't form a clean advancer chain, and routing its ~19
-  post-first-visit moons to `{CascadePeace()}` starved the early fill spheres enough to
-  fail generation on some seeds (FillError: Crouch/Ground Pound/Cascade Power Moons
-  unplaceable). Its first advance (Multi Moon Atop the Falls) is mandatory-early and
-  player-controlled, so leaving those moons free is safe. A dedicated Cascade pass —
-  deriving its scenario split from observed bit layers + the after-ending revisit, and
-  re-checking fill capacity — is the next step.
+- **Cascade — SHIPPED (dedicated pass, 2026-06-19).** Cascade is excluded from the
+  generic mid_story chain (its `clear_main_scenario=7` is its *last* scenario,
+  `after_ending=3` earlier, so its bit layers form no clean advancer chain) and is
+  instead handled by `build_cascade_anchors`: every non-rock Cascade moon at
+  `min_scenario` in `[CASCADE_GATE_MIN_LAYER=1, CASCADE_GATE_MAX_LAYER=3]` ANDs in
+  `{CascadePeace()}` (== `canReach(Multi Moon Atop the Falls)`, the player-controlled
+  first advance). 19 moons gated. The earlier FillError (routing Cascade to
+  `{CascadePeace()}` starved early spheres — Crouch/Ground Pound/Cascade Power Moons
+  unplaceable) was caused by the gate pulling **Broode's Chain Chomp** (Multi Moon's
+  required capture) forward; the fix was to grant Broode's Chain Chomp as a **fixed
+  starter** (`hooks/World.py` `FIXED_STARTER_CAPTURES`, and a `FREE_CAPTURES` entry in
+  the compiler), which makes Multi Moon collectable from arrival and the gate cheap.
+  Validated: 36/36 fixed-seed fills (1000-1015, 2000-2019) clean, `locations.json` diff
+  requires-only.
 
 ## 0. TL;DR
 
@@ -116,11 +121,18 @@ for validation — see §5.)
   Cap once." In the linear chain that's "Cascade reachable." Gate Cap's
   `first_visit`-but-bit≥1 moons on `canReachLocation(<first Cascade moon>)` or a
   dedicated `CapDeparture()` predicate. Cloud/Lost similarly have no peace gate.
-- **Cascade anomaly.** `clear_main_scenario=7` is Cascade's *last* scenario, with
-  `after_ending=3` earlier — don't treat Cascade's `clear` as a generic peace bit.
-  Special-case Cascade: `post_peace` = `{CascadePeace()}` (Multi Moon Atop the
-  Falls) as today; derive its `mid_story`/`post_peace` split from the observed bit
-  layers, not from `clear_main_scenario`.
+- **Cascade anomaly (SHIPPED via `build_cascade_anchors`).** `clear_main_scenario=7`
+  is Cascade's *last* scenario, with `after_ending=3` earlier — don't treat Cascade's
+  `clear` as a generic peace bit. Cascade is handled by a dedicated pass that derives
+  its split from observed bit layers: bit 0 = first_visit (free); `min_scenario` in
+  `[1, CASCADE_GATE_MAX_LAYER]` ANDs in `{CascadePeace()}` (== `canReach(Multi Moon
+  Atop the Falls)`). The Multi-Moon anchor (bit 0) and rock moons are always excluded.
+  `CASCADE_GATE_MAX_LAYER` caps the top layer gated and is fill-capacity-bounded — it
+  ships at 3 (all post-first-visit layers) because granting **Broode's Chain Chomp**
+  (Multi Moon's required capture) as a fixed starter removed the fill pressure that
+  previously forced the cap down. The two moon rocks that are capture-gated to *reach*
+  (Cap = Paragoomba, Luncheon = Lava Bubble) AND in that capture on every
+  moon-pipe moon behind them (`MOON_ROCK_REACH_CAPTURE`).
 - **Sentinels.** `*_scenario ≥ scenario_num` means "never" (Mushroom/Dark/Darker
   rock=9, no rocks). Treat as no gate of that type.
 - **Narrow masks.** A moon present only in mid scenarios (e.g. Cascade `flag=12` =
