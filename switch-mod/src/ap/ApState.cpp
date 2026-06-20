@@ -296,32 +296,33 @@ void ApState::applyAbilityState(const AbilityEntry* entries, std::size_t count,
     };
 
     // Detect newly-unlocked / leveled abilities BEFORE overwriting so the
-    // comparison is against the previous snapshot. Route bubbles through the
-    // inbound_system_bubbles ring — direct CappyMessenger calls from the worker
-    // thread crash Ryujinx's JIT (same reason as enqueueSystemBubble).
+    // comparison is against the previous snapshot. The per-move "Unlocked X!"
+    // Cappy bubble was removed (redundant with AP's own item-receipt / moon-get
+    // presentation); only the spare-ability coin bubble survives, since the
+    // +100-coin conversion isn't surfaced anywhere else. Route bubbles through
+    // the inbound_system_bubbles ring — direct CappyMessenger calls from the
+    // worker thread crash Ryujinx's JIT (same reason as enqueueSystemBubble).
     for (std::size_t i = 0; i < capped; ++i) {
         const auto& e = entries[i];
         if (e.ability[0] == '\0') continue;
         const int prior = priorCount(e.ability);
         if (e.count <= prior) continue;
-        // Announce each newly-crossed level as the concrete MOVE it unlocks
-        // (the player thinks in moves, not pool-item names). A single /send
-        // crosses one level -> one bubble; a multi-level jump (fresh ApState
-        // on first HELLO after a reboot) announces each move in turn. Levels
-        // past the end of a chain are clone copies that convert to coins.
+        // A single /send crosses one level; a multi-level jump (fresh ApState
+        // on first HELLO after a reboot) crosses each in turn. Levels past the
+        // end of a chain are clone copies that convert to coins.
         for (int level = prior + 1; level <= e.count; ++level) {
             const char* move = abilityMoveAtLevel(e.ability, level);
-            SystemBubble bubble{};
-            if (move != nullptr) {
-                std::snprintf(bubble.text, sizeof(bubble.text),
-                              "Unlocked %s!", move);
-            } else {
+            if (move == nullptr) {
+                // Clone copy past the end of the chain -> coins. Keep this
+                // bubble: the +100-coin grant has no other on-screen signal.
+                SystemBubble bubble{};
                 std::snprintf(bubble.text, sizeof(bubble.text),
                               "Spare ability - +100 coins!");
-            }
-            if (!inbound_system_bubbles.push(bubble)) {
-                SMOAP_LOG_WARN("[p3-ability] system bubble ring full; dropping "
-                               "unlock bubble for '%s' L%d", e.ability, level);
+                if (!inbound_system_bubbles.push(bubble)) {
+                    SMOAP_LOG_WARN("[p3-ability] system bubble ring full; "
+                                   "dropping coin bubble for '%s' L%d",
+                                   e.ability, level);
+                }
             }
             SMOAP_LOG_INFO("[p3-ability] unlocked/leveled '%s' -> '%s' L%d "
                            "(count=%d, was %d)", e.ability,

@@ -26,7 +26,9 @@
       "Bash(git add *)",
       "Bash(git commit -m '@ *)",
       "Bash(git commit *)",
-      "Bash(rm -f .git/COMMIT_EDITMSG_TMP)"
+      "Bash(rm -f .git/COMMIT_EDITMSG_TMP)",
+      "Bash(curl -s \"https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/contents/src/Item\")",
+      "Bash(echo \"---exit $?---\")"
     ]
   }
 }

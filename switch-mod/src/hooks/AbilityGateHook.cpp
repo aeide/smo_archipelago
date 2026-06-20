@@ -156,17 +156,6 @@ std::atomic<int> g_squatWindow{0};
 // read and write; plain pointer is safe (no atomic needed).
 const void* g_squatState = nullptr;
 
-// Logs a suppressed move at most ~once/second so a held input can't spam the
-// log (judge() can read true for several consecutive frames while the button
-// is down). Each move gets its own throttle counter via the template param.
-template <int Slot>
-void logSuppressed(const char* move) {
-    static int s_n = 0;
-    if ((s_n++ % 60) == 0) {
-        SMOAP_LOG_INFO("AbilityGate: suppressed %s (not yet unlocked)", move);
-    }
-}
-
 // Crouch — Progressive Crouch level 1.
 HkTrampoline<bool, PlayerJudgeStartSquat*> squatJudgeHook =
     hk::hook::trampoline([](PlayerJudgeStartSquat* self) -> bool {
@@ -174,7 +163,6 @@ HkTrampoline<bool, PlayerJudgeStartSquat*> squatJudgeHook =
         if (!want) return false;  // move wasn't going to start anyway
         if (smoap::ap::ApState::instance().abilityAtLeast(kProgressiveCrouch, 1))
             return true;
-        logSuppressed<0>("Crouch");
         return false;
     });
 
@@ -185,7 +173,6 @@ HkTrampoline<bool, PlayerJudgeStartRolling*> rollJudgeHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kProgressiveCrouch, 2))
             return true;
-        logSuppressed<1>("Roll");
         return false;
     });
 
@@ -196,7 +183,6 @@ HkTrampoline<bool, PlayerJudgeStartHipDrop*> hipDropJudgeHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kProgressiveGroundPound, 1))
             return true;
-        logSuppressed<2>("Ground Pound");
         return false;
     });
 
@@ -216,7 +202,6 @@ HkTrampoline<bool, PlayerJudgeWallKeep*> wallKeepJudgeHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kWallSlide, 1))
             return true;
-        logSuppressed<6>("Wall Slide");
         return false;
     });
 HkTrampoline<bool, PlayerJudgeWallHitDown*> wallHitDownJudgeHook =
@@ -225,7 +210,6 @@ HkTrampoline<bool, PlayerJudgeWallHitDown*> wallHitDownJudgeHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kWallSlide, 1))
             return true;
-        logSuppressed<6>("Wall Slide");
         return false;
     });
 HkTrampoline<bool, PlayerJudgeWallCatch*> wallCatchJudgeHook =
@@ -234,7 +218,6 @@ HkTrampoline<bool, PlayerJudgeWallCatch*> wallCatchJudgeHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kWallSlide, 1))
             return true;
-        logSuppressed<6>("Wall Slide");
         return false;
     });
 HkTrampoline<bool, PlayerJudgeWallCatchInputDir*> wallCatchInputDirJudgeHook =
@@ -243,7 +226,6 @@ HkTrampoline<bool, PlayerJudgeWallCatchInputDir*> wallCatchInputDirJudgeHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kWallSlide, 1))
             return true;
-        logSuppressed<6>("Wall Slide");
         return false;
     });
 
@@ -270,7 +252,6 @@ HkTrampoline<bool, PlayerJudgeGrabCeil*> grabCeilJudgeHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kLedgeGrab, 1))
             return true;
-        logSuppressed<8>("Ledge Grab");
         return false;
     });
 
@@ -284,7 +265,6 @@ HkTrampoline<bool, PlayerJudgePoleClimb*> poleClimbJudgeHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kClimb, 1))
             return true;
-        logSuppressed<7>("Climb");
         return false;
     });
 
@@ -300,7 +280,6 @@ HkTrampoline<bool, PlayerInput*> rollRestartSwingHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kProgressiveCrouch, 3))
             return true;
-        logSuppressed<3>("Roll Boost");
         return false;
     });
 
@@ -315,7 +294,6 @@ HkTrampoline<bool, PlayerInput*> headSlidingHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kProgressiveGroundPound, 2))
             return true;
-        logSuppressed<9>("Dive");
         return false;
     });
 
@@ -342,7 +320,6 @@ HkTrampoline<bool, PlayerInput*, const void*> throwTypeSpiralHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kSpinThrow, 1))
             return true;
-        logSuppressed<10>("Spin Throw");
         return false;
     });
 
@@ -350,7 +327,7 @@ HkTrampoline<bool, PlayerInput*, const void*> throwTypeSpiralHook =
 // of the gesture's v.y. When the matching item is unowned, force the classifier false
 // so the vertical flick downgrades to a normal forward throw (same neuter shape as
 // Spin Throw). The other direction (and the neutral throw) are untouched. v.y sign →
-// up/down per kUpThrowIsPositiveY (logged so the in-game test confirms the convention).
+// up/down per kUpThrowIsPositiveY.
 HkTrampoline<bool, PlayerInput*, const void*> throwTypeRollingHook =
     hk::hook::trampoline([](PlayerInput* self, const void* vec) -> bool {
         const bool want = throwTypeRollingHook.orig(self, vec);
@@ -361,8 +338,6 @@ HkTrampoline<bool, PlayerInput*, const void*> throwTypeRollingHook =
         const char* needed = isUp ? kUpThrow : kDownThrow;
         if (smoap::ap::ApState::instance().abilityAtLeast(needed, 1))
             return true;
-        if (isUp) logSuppressed<15>("Up Throw");
-        else      logSuppressed<16>("Down Throw");
         return false;  // downgrade vertical flick → normal forward throw
     });
 
@@ -378,7 +353,6 @@ HkTrampoline<bool, PlayerInput*, bool> rollCancelHipDropHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kProgressiveCrouch, 2))
             return true;
-        logSuppressed<1>("Roll");  // share the Roll throttle slot
         return false;
     });
 
@@ -414,7 +388,6 @@ HkTrampoline<void, PlayerContinuousJump*, const void*> continuousJumpCountUpHook
             st.abilityAtLeast(kProgressiveJump, 1) ? 1u : 0u;
         if (self->mCount > maxCount) {
             self->mCount = 0;  // combo terminates -> next chained jump is a single
-            logSuppressed<11>(maxCount == 0 ? "Double Jump" : "Triple Jump");
         }
     });
 
@@ -438,7 +411,6 @@ HkTrampoline<bool, PlayerStateHipDrop*> hipDropLandCancelHook =
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kGroundPoundJump, 1))
             return true;
-        logSuppressed<12>("Ground Pound Jump");
         return false;
     });
 
@@ -518,7 +490,6 @@ HkTrampoline<bool, const void*, const void*> capTouchJumpSendHook =
     hk::hook::trampoline([](const void* source, const void* target) -> bool {
         if (smoap::ap::ApState::instance().abilityAtLeast(kCapBounce, 1))
             return capTouchJumpSendHook.orig(source, target);
-        logSuppressed<14>("Cap Bounce");
         return false;  // not delivered → no bounce
     });
 
@@ -592,8 +563,6 @@ HkTrampoline<bool, PlayerJudgePreInputJump*> preInputJumpHook =
         const char* needed = moving ? kLongJump : kBackflip;
         if (smoap::ap::ApState::instance().abilityAtLeast(needed, 1))
             return true;  // owns the required move — allow
-        if (moving) logSuppressed<4>("Long Jump");
-        else        logSuppressed<5>("Backflip");
         return false;  // swallow the jump; Mario stays crouched
     });
 
