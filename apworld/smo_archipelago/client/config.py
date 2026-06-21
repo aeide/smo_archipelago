@@ -43,19 +43,38 @@ class DeathLinkOptions:
     enabled: bool = False
 
 
+# Kingdom -> palette index for our OWN slot's moon items. The Switch's
+# ShineAppearanceHook reserves a contiguous palette block starting at
+# KINGDOM_PALETTE_BASE; a scouted moon check that grants one of our moon
+# items is colored by the GRANTED moon's kingdom (not the kingdom the check
+# physically sits in). Keep this order in lock-step with kPaletteColors3D /
+# kPaletteColorsDot in switch-mod/src/hooks/ShineAppearanceHook.cpp (block
+# base 5, SMO natural kingdom order incl. Cloud + Dark/Darker).
+KINGDOM_PALETTE_BASE = 5
+KINGDOM_PALETTE_ORDER = (
+    "Cap", "Cascade", "Sand", "Lake", "Wooded", "Cloud", "Lost",
+    "Metro", "Snow", "Seaside", "Luncheon", "Ruined", "Bowser's",
+    "Moon", "Mushroom", "Dark", "Darker",
+)
+_KINGDOM_PALETTE_INDEX = {
+    k: KINGDOM_PALETTE_BASE + i for i, k in enumerate(KINGDOM_PALETTE_ORDER)
+}
+
+
 @dataclass
 class ColorsConfig:
-    """Maps AP item classification -> SMO per-stage shine-animation palette index.
+    """Maps a foreign-game AP item classification -> ShineAppearanceHook
+    recolor-table index.
 
-    SMO ships a per-stage color animation for shines; we trampoline
-    rs::setStageShineAnimFrame to substitute our index whenever the bridge
-    has scouted the shine. Indices are stage-specific (the same number can
-    map to different visual colors across kingdoms), so the defaults below
-    are intentionally conservative — bump per kingdom in slot_data overrides
-    later if needed.
+    The Switch's ShineAppearanceHook holds a fixed Color4f table and tints the
+    moon body material at Shine::init by the index the bridge ships per
+    shine_uid. The classification defaults below cover FOREIGN-game items at our
+    checks (progression=green, useful=yellow, trap=red, filler/junk=grey via the
+    index-0 recolor). Our OWN slot's moon items are colored by the granted
+    moon's kingdom instead — see for_kingdom() / KINGDOM_PALETTE_*.
 
-    A palette of 0 means "leave the stage default frame untouched"; the
-    Switch treats this as "no override" and runs orig() unchanged.
+    Keep these indices in lock-step with kPaletteColors3D/Dot in
+    switch-mod/src/hooks/ShineAppearanceHook.cpp.
     """
     enabled: bool = True
     progression: int = 1
@@ -75,6 +94,18 @@ class ColorsConfig:
         if classification == "trap":
             return self.trap
         return self.filler
+
+    def for_kingdom(self, kingdom: str | None) -> int | None:
+        """Palette index for one of our own slot's moon items, keyed on the
+        GRANTED moon's kingdom.
+
+        Returns None for an unknown/empty kingdom so the caller falls back to
+        the classification color. Short kingdom form ("Cap", "Bowser's",
+        "Dark") as parsed out of the item name by DataPackage.classify_item.
+        """
+        if not kingdom:
+            return None
+        return _KINGDOM_PALETTE_INDEX.get(kingdom)
 
 
 @dataclass

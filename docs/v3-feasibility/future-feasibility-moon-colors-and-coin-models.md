@@ -14,9 +14,108 @@ clearly-separable halves with very different difficulty, so they're rated separa
    bright yellow, Cascade = orange, …; Ruined uses the game's unused purple-coin
    model since it has none of its own).
 
-**Status: investigated, NOT started.**
+**Status: Part 1 IMPLEMENTED in source (2026-06-20), awaiting switch-mod rebuild +
+in-game color tuning. Part 2 NOT started.**
 - **Recolor: ~95% feasible, SMALL** — this is essentially the already-scoped P5; the
-  whole pipeline exists and only needs extending.
+  whole pipeline exists and only needs extending. **DONE in source:** Switch palette
+  table widened to 22 entries (idx 0 recolored grey=junk, idx 2 recolored yellow=useful,
+  idx 5..21 = 17 kingdom colors incl. Cloud + Dark/Darker), the `pal < 5 ? pal : 0`
+  clamp bug fixed (it was collapsing every kingdom index back to 0), client
+  `ColorsConfig.for_kingdom()` + `KINGDOM_PALETTE_*` added, and
+  `_push_palette_for_scout_batch` now colors our-own-slot moon items by the granted
+  moon's kingdom (keyed on the item, not the check's physical kingdom). Lock-step tables:
+  `switch-mod/src/hooks/ShineAppearanceHook.cpp` ↔ `client/config.py`. Requires a
+  switch-mod rebuild (subsdk9) AND `install_apworld.py` (client config ships in the zip)
+  to take effect.
+- **CORRECTION (2026-06-20, from Devon):** vanilla SMO already colors Power Moons per
+  kingdom (Sand = green, etc.). The mechanism is a shader-param color animation named
+  "Color" (`Color_fcl`) on the `BodyMT` material in the shared `ObjectData/Shine.szs`
+  → `Shine.bfres`; `Shine::getColorFrame()` returns the per-kingdom frame index, and the
+  animation is global (a frame is the same color in every stage). **The authentic
+  implementation is therefore to drive that color frame to the GRANTED kingdom's value,
+  not to invent Color4f tints.** The 17 kingdom Color4f entries currently in
+  ShineAppearanceHook are a PLACEHOLDER approximation pending: (1) the al:: setter that
+  sets a named shader-param-anim frame on a LiveActor, and (2) the kingdom→frame map
+  (cheapest to capture by logging `getColorFrame()` per kingdom in-game, since
+  `Shine`/`getColorFrame` is undecompiled). Foreign-game classification colors
+  (green/yellow/red/grey) stay as material tints — they have no vanilla frame.
+- **CAPTURED kingdom→frame map (2026-06-21, in-game `[shine-colorframe]` harvest).**
+  Sampled `Shine::getColorFrame()` on **uncollected** moons in each home stage (a 100%
+  save yields nothing — collected moons are grey ghosts with a null color anim at
+  `this->[0x2E8]` and no frame to read). Vanilla uses only **10 distinct frames**, and
+  **8 kingdoms share frame 0** (the default moon color), which is why the throwaway
+  diagnostic — deduped by frame value — only emitted one line for that whole group:
+
+  | Kingdom | Home stage | Vanilla frame |
+  |---|---|---|
+  | Cap | CapWorldHomeStage | 0 |
+  | Mushroom | PeachWorldHomeStage | 0 |
+  | Cascade | (shares frame 0) | 0 |
+  | Cloud | (shares frame 0) | 0 |
+  | Lost | (shares frame 0) | 0 |
+  | Ruined | (shares frame 0) | 0 |
+  | Dark Side | (shares frame 0) | 0 |
+  | Darker Side | (shares frame 0) | 0 |
+  | Metro | CityWorldHomeStage | 1 |
+  | Wooded | ForestWorldHomeStage | 2 |
+  | Bowser's | SkyWorldHomeStage | 3 |
+  | Snow | SnowWorldHomeStage | 4 |
+  | Sand | SandWorldHomeStage | 5 |
+  | Luncheon | LavaWorldHomeStage | 6 |
+  | Lake | LakeWorldHomeStage | 7 |
+  | Seaside | SeaWorldHomeStage | 8 |
+  | Moon | MoonWorldHomeStage | 9 |
+
+  Because vanilla collapses 8 kingdoms onto frame 0, the frame-override alone cannot
+  give 17 distinct colors. **Devon's decision (2026-06-21):** keep Cap + Mushroom on
+  vanilla frame 0; give the other six frame-0 kingdoms **custom material tints** (the
+  existing Color4f path — they have no vanilla frame of their own): Cascade `#f99a0f`,
+  Lost `#eb1bc4`, Cloud `#e4e9ec`, Ruined `#d1a9cb`, Dark Side + Darker Side `#e4bb8f`
+  (shared). The 10 distinct-frame kingdoms use the authentic frame-override; these six
+  use tints — a **hybrid**.
+- **IMPLEMENTED (2026-06-21), awaiting in-game confirmation.** The hybrid recolor is live
+  in `switch-mod/src/hooks/ShineAppearanceHook.cpp` (switch-mod-only — no apworld rebuild):
+  - The **authentic frame-override** re-drives the vanilla "Color" material anim to the
+    granted kingdom's frame via `rs::setStageShineAnimFrame(actor, nullptr, frame, isMatAnim)`
+    (OdysseyDecomp `src/Util/ItemUtil.cpp`; HIT in 1.0.0 dynsym). Per-kingdom frames live in
+    `kKingdomColorFrame[17]` (indexed by `pal_idx - kKingdomPaletteBase`); `kColorFrameTint`
+    (-1) marks the six tint kingdoms. The frame-override path **returns before** the material
+    write — the two never combine (`setMaterialProgrammable` would freeze the anim we just set).
+  - The **six custom tints** are Devon's hex scaled up to a max channel of ~2.6 (hue preserved,
+    brightness normalized to neighbors — the material write is multiplicative against the gold
+    base, so a tuning pass is expected). They sit in the existing `kPaletteColors3D/Dot` rows
+    6/10/11/16/20/21; the 11 frame-override kingdoms keep their old placeholder Color4f rows as
+    a symbol-miss fallback (unused on the happy path).
+  - **Two unverified knobs (single-flip each, like `kUpThrowIsPositiveY`):** (1) `kColorAnimIsMatAnim`
+    — `false` (Mcl, material-color) is the expected family for a "Color" anim; flip to `true` (Mtp)
+    if the `[shine-frame]` log fires but moons don't recolor. (2) **2D dot shines** (`shine_type==1`):
+    `setStageShineAnimFrame` operates on the actor's "Color" anim regardless of type; if dot models
+    lack that anim the override is a graceful no-op (dot moons would stay vanilla gold) — watch for it
+    and, if so, route dots to the tint path by `shine_type`.
+  - The throwaway `[shine-colorframe]` diagnostic (+ its `getColorFrame` symbol) is **removed**;
+    a small one-time `[shine-frame] override#N ...` log confirms the path fires.
+- **STUB-SHINE CRASH + GUARD (2026-06-21).** The frame-override null-derefs on a **stub
+  linked-Shine** — `Pyramid::init` → `createLinksActorFromFactory` spawns a Shine that has a
+  model (passes `isExistModel`) but **no Mcl "Color" anim player**, so
+  `rs::setStageShineAnimFrame` → `startMclAnimAndSetFrameAndStop` → `AnimPlayerSimple::startAnim`
+  reads a null player (`Invalid memory access at vaddr 0x0`). Guard added before the frame call:
+  `al::isMclAnimExist(self, "Color")` (skips the frame path → falls through to material tint when
+  the anim player is absent). The guard is permissive-on-miss (proceeds if the symbol doesn't
+  resolve).
+  - **Symbol-name bug (fixed 2026-06-21):** the guard first shipped as `al::isExistMclAnim`,
+    which **does not exist** in the binary — `lookupSymbol` logged `isExistMclAnim lookup FAILED`,
+    leaving the guard permissive-on-miss → unguarded → crash would recur. The al convention is
+    **`is<Family>AnimExist`** (`isMclAnimExist`, `isMtpAnimExist`, `isMatAnimExist`), verified
+    against `switch-mod/lib/OdysseyHeaders/al/Library/LiveActor/ActorAnimFunction.h:167`. Renamed
+    in source: `kAlIsExistMclAnim` → `kAlIsMclAnimExist` (`_ZN2al14isMclAnimExistEPKNS_9LiveActorEPKc`;
+    only the name token changed — both names are 14 chars, so the demangled length prefix already
+    matched, which is why the wrong spelling looked plausible). Function pointer `s_isExistMclAnim`
+    → `s_isMclAnimExist`, guard + `resolveSymbol` + log label updated. `isMclAnimExist` is an
+    out-of-line al util (same family as `isExistMaterial`/`isExistModel`, both of which resolve)
+    and null-checks the Mcl player (`getMcl` may return null) → returns false for the stub. **Boot
+    log tell:** success = `isMclAnimExist resolved @ 0x…`; failure = `isMclAnimExist lookup FAILED`.
+    Awaiting build + in-game re-test of the Pyramid/Sand stub-shine case. Handoff:
+    [handoff-shine-recolor-mclanim-guard.md](../handoff-shine-recolor-mclanim-guard.md).
 - **Coin-model swap: ~55% feasible, HIGH effort** — a different class of problem
   (3D model/actor swap, undecompiled actor, romfs unknowns).
 

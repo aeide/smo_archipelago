@@ -199,6 +199,28 @@ is a no-op.
   {"ability":"Backflip","count":1},
   {"ability":"Progressive Ground Pound","count":2}
 ]}
+
+// P5 — per-shine recolor palette. Derived from LocationScouts: the bridge
+// classifies each scouted moon check and ships a palette index per shine_uid,
+// chunked (~200 entries/msg) and replayed on every HELLO. The Switch merges
+// by shine_uid overwrite into ApState::shine_palette[], and ShineAppearanceHook
+// tints the moon body material with the matching color at Shine::init.
+//
+// Palette index ranges (LOCK-STEP with kPaletteColors3D/Dot in
+// switch-mod/src/hooks/ShineAppearanceHook.cpp and ColorsConfig /
+// KINGDOM_PALETTE_* in apworld/.../client/config.py):
+//   0      foreign-game junk/filler -> grey
+//   1      foreign progression      -> green
+//   2      foreign useful           -> yellow
+//   3      foreign trap             -> red
+//   4      (legacy light-green, unused)
+//   5..21  OUR OWN slot's moon items, colored by the GRANTED moon's kingdom
+//          (block base 5; SMO natural kingdom order incl. Cloud + Dark/Darker)
+// 0xFF is the in-memory "no override" sentinel only — never sent on the wire.
+{"t":"shine_scouts","entries":[
+  {"shine_uid":100,"palette":11},
+  {"shine_uid":214,"palette":2}
+]}
 ```
 
 ## State machines

@@ -400,6 +400,20 @@ inline constexpr const char* kRsIsActiveCapMessage =
 inline constexpr const char* kShineInit =
     "_ZN5Shine4initERKN2al13ActorInitInfoE";
 
+// rs::setStageShineAnimFrame(al::LiveActor* actor, const char* stageName,
+//                            s32 shineAnimFrame, bool isMatAnim)
+// Source: MonsterDruide1/OdysseyDecomp src/Util/ItemUtil.cpp. With
+// stageName==nullptr and shineAnimFrame in [0,98], it tail-calls the (inlined)
+// startShineAnimAndSetFrameAndStop(actor, "Color", frame, isMatAnim), which
+// re-drives the vanilla per-kingdom "Color" material anim to `frame` and stops
+// it — the authentic per-kingdom moon recolor. ShineAppearanceHook calls it
+// (not hooks it) to override a moon's color to the GRANTED kingdom's frame.
+// CALLED via hk::ro::lookupSymbol + fn-ptr (graceful on miss), so it is NOT
+// added to the sail .sym (avoids a loadSymbols abort if a build ever lacks it).
+// HIT [rodata] in 1.0.0 main.nso (check_nso_symbols.py, 2026-06-21).
+inline constexpr const char* kRsSetStageShineAnimFrame =
+    "_ZN2rs22setStageShineAnimFrameEPN2al9LiveActorEPKcib";
+
 // al::setMaterialProgrammable(LiveActor*) — toggles the actor's materials
 // from "stage-anim driven" to "code-driven". Precondition for runtime
 // parameter writes.
@@ -436,6 +450,23 @@ inline constexpr const char* kAlIsExistMaterial =
 // this same probe in AppearSwitchTimer/CapTargetInfo for the same reason.
 inline constexpr const char* kAlIsExistModel =
     "_ZN2al12isExistModelEPKNS_9LiveActorE";
+
+// al::isMclAnimExist(const LiveActor*, const char* animName) — probe for the
+// presence of an Mcl (material-color) animation by name. GUARD before the
+// rs::setStageShineAnimFrame frame-override: it ultimately calls
+// al::startMclAnimAndSetFrameAndStop(actor, "Color", frame), which derefs the
+// actor's Mcl AnimPlayerSimple with no null check. Normal Shines carry the
+// "Color" Mcl anim, but stub linked-Shines (e.g. the Pyramid-spawned shine via
+// createLinksActorFromFactory — has a model so isExistModel passes, but no anim
+// players) crash there. Resolved via lookupSymbol (graceful on miss → guard is
+// skipped and the call proceeds as before).
+//
+// NOTE: the al naming convention is is<Family>AnimExist (isMclAnimExist,
+// isMtpAnimExist, isMatAnimExist), NOT isExist<Family>Anim. The earlier
+// "isExistMclAnim" spelling does not exist in the binary and lookupSymbol
+// failed against it (verified against OdysseyHeaders ActorAnimFunction.h:167).
+inline constexpr const char* kAlIsMclAnimExist =
+    "_ZN2al14isMclAnimExistEPKNS_9LiveActorEPKc";
 
 // =============================================================================
 // M7 Path A — fork-cinematic kingdom-order gate (two-layer architecture).

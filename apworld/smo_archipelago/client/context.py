@@ -1312,8 +1312,23 @@ class SMOContext(CommonContext):
             if uid is None:
                 unknown_shine += 1
                 continue
-            classification = classification_from_flags(int(flags or 0))
-            batch_palette[uid] = self.colors.for_classification(classification.value)
+            # If this check grants one of OUR OWN slot's moon items, color it
+            # by the granted moon's kingdom (not the check's physical kingdom,
+            # `cl.kingdom`). Everything else (foreign items, our own
+            # captures/abilities) falls back to the AP classification color.
+            pal = None
+            item_player = ni.get("player") if isinstance(ni, dict) else getattr(ni, "player", None)
+            item_id = ni.get("item") if isinstance(ni, dict) else getattr(ni, "item", None)
+            if self.slot is not None and item_player == self.slot and item_id is not None:
+                item_name = self.dp.item_id_to_name.get(item_id)
+                if item_name:
+                    ci = self.dp.classify_item(item_name)
+                    if ci.kind == ItemKind.MOON:
+                        pal = self.colors.for_kingdom(ci.kingdom)
+            if pal is None:
+                classification = classification_from_flags(int(flags or 0))
+                pal = self.colors.for_classification(classification.value)
+            batch_palette[uid] = pal
 
         if unknown_shine:
             log.warning(

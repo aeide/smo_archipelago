@@ -358,9 +358,11 @@ class ShineScoutsMsg:
     May arrive in multiple chunks; the Switch merges entries by `shine_uid`
     overwrite (each (shine_uid, palette) is a complete fact).
 
-    Entry shape: `{"shine_uid": int, "palette": int}`. Palette is a SMO per-
-    stage shine animation frame index (range varies per stage, typically
-    0..15); 0 means "leave stage default".
+    Entry shape: `{"shine_uid": int, "palette": int}`. Palette is an index
+    into ShineAppearanceHook's fixed recolor table (0..3 = foreign-game
+    classification colors, 4 legacy/unused, 5..21 = our own moon items keyed
+    by the granted moon's kingdom). See config.ColorsConfig / KINGDOM_PALETTE_*
+    and docs/wire-protocol.md for the lock-step layout.
     """
     t: str = "shine_scouts"
     entries: list[dict] = field(default_factory=list)
