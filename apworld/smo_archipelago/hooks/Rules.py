@@ -21,6 +21,14 @@ def CascadePeace(world: World, multiworld: MultiWorld, state: CollectionState, p
     """World peace in Cascade Kingdom: player can collect the story-completing moon."""
     return canReachLocation(world, multiworld, state, player, "Cascade: Multi Moon Atop the Falls")
 
+def CascadeDeparture(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
+    """Departure from Cascade Kingdom: reachable once Sand Kingdom (Cascade's only exit,
+    hence its revisit route) is reachable. Cascade has no boss-style world-peace cutscene
+    and clear_main_scenario is its LAST scenario, so its after-ending + moon-rock layers
+    (scenario >= after_ending_scenario) are only re-entered after LEAVING and returning.
+    Mirrors CapPeace/CloudPeace/LostPeace. See docs/scenario-logic-revisit-june-20.md §5a."""
+    return canReachRegion(world, multiworld, state, player, "Sand Kingdom")
+
 # ── Re-arrival ("leave and come back") peace for Cap/Cloud/Lost/Moon ──────────────
 # These four kingdoms have no boss-style "world peace" cutscene; instead their post-
 # first-visit moon layers only open on RE-ARRIVAL — after the player has left the

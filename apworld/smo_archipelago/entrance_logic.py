@@ -486,6 +486,60 @@ def evaluate_interior_requires(
 # Door access rule factory
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# D3 — subarea scenario gate rule factory (entrance-shuffle ON path)
+# ---------------------------------------------------------------------------
+# compile_moon_logic.py exports data/subarea_scenario_gates.json
+# ({location_name: fragment}) for pooled-subarea moons. Under shuffle ON,
+# _apply_entrance_shuffle_location_rules strips each moon's baked scenario gate
+# (its rule is replaced by move-set-only interior requires), so World.py re-applies
+# the exported fragment to the interior member location. Fragments are AND-joined
+# {Func(args)} predicate calls only (e.g. "{SandPeace()}",
+# "{canReachLocation(Sand: The Hole in the Desert)}"); they never contain |item|
+# tokens (item gates ride the door entrance via make_door_access_rule) — so a tiny
+# {Func()} dispatcher suffices, no need for the full Manual requires parser.
+
+_FUNC_RE = re.compile(r'\{(\w+)\(([^)]*)\)\}')
+
+
+def parse_scenario_fragment(fragment: str) -> list[tuple[str, list[str]]]:
+    """Parse an AND-joined {Func(args)} scenario fragment into (func_name, args)
+    pairs. Pure (no AP imports) so the test suite can exercise it directly. Args are
+    comma-split and stripped; a no-arg call yields []."""
+    out: list[tuple[str, list[str]]] = []
+    for m in _FUNC_RE.finditer(fragment or ""):
+        arg = m.group(2).strip()
+        args = [a.strip() for a in arg.split(",")] if arg else []
+        out.append((m.group(1), args))
+    return out
+
+
+def make_scenario_gate_rule(
+    fragment: str,
+    world: "World",
+    multiworld: "MultiWorld",
+    player: int,
+) -> "Callable[[CollectionState], bool]":
+    """Return lambda(state) -> bool for a scenario gate fragment. Functions resolve
+    against hooks/Rules.py and are ANDed (scenario gates only ever AND). An empty or
+    unresolvable fragment yields an always-True rule (fail-open)."""
+    from .hooks import Rules as HookRules
+
+    calls: list[tuple[Callable, list[str]]] = []
+    for name, args in parse_scenario_fragment(fragment):
+        fn = getattr(HookRules, name, None)
+        if callable(fn):
+            calls.append((fn, args))
+    if not calls:
+        return lambda state: True
+
+    def rule(state: "CollectionState", _calls=calls,
+             w=world, mw=multiworld, p=player) -> bool:
+        return all(fn(w, mw, state, p, *a) for fn, a in _calls)
+
+    return rule
+
+
 def make_door_access_rule(
     door_subarea: str,
     door_kingdom_name: str,

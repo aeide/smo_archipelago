@@ -28,7 +28,14 @@
       "Bash(git commit *)",
       "Bash(rm -f .git/COMMIT_EDITMSG_TMP)",
       "Bash(curl -s \"https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/contents/src/Item\")",
-      "Bash(echo \"---exit $?---\")"
+      "Bash(echo \"---exit $?---\")",
+      "Bash(grep -vE \"^\\\\s*$\")",
+      "PowerShell(cd E:\\\\smo_archipelago\\\\vendor\\\\Archipelago; $seeds=1,2,3,16146892779757521032,99,12345; foreach\\($s in $seeds\\){ $out=python Generate.py --player_files_path _smo_sweep --seed $s --outputpath _smo_sweep\\\\out 2>&1 | Out-String; if\\($out -match \"FillError|Exception|Traceback|Error:\"\\){ Write-Host \"SEED $s : FAIL\"; \\($out -split \"`n\" | Select-String -Pattern \"FillError|Exception|Error|rolled\" | Select-Object -First 6\\) } else { $line = \\($out -split \"`n\" | Select-String -Pattern \"Done|Generation\"\\) | Select-Object -Last 1; Write-Host \"SEED $s : OK  $line\" } })",
+      "PowerShell(cd E:\\\\smo_archipelago\\\\vendor\\\\Archipelago; $seeds=1,2,3,16146892779757521032,99,12345,7,2024; $ok=0; foreach\\($s in $seeds\\){ $out=python Generate.py --player_files_path _smo_sweep --seed $s --outputpath _smo_sweep\\\\out; $code=$LASTEXITCODE; $fill = $out | Select-String -Pattern \"FillError|Traceback|unreachable|not reachable|Could not Fill|Exception:\" ; if\\($code -eq 0 -and -not $fill\\){ Write-Host \"SEED $s : OK \\(exit 0\\)\"; $ok++ } else { Write-Host \"SEED $s : FAIL exit=$code\"; \\($fill | Select-Object -First 8\\); \\($out | Select-Object -Last 12\\) } }; Write-Host \"=== $ok / $\\($seeds.Count\\) generated cleanly ===\")",
+      "Bash(rm -rf vendor/Archipelago/_smo_sweep)",
+      "Bash(git status *)",
+      "PowerShell(cd E:\\\\smo_archipelago; git stash list; \"--- locations.json hash BEFORE ---\"; \\(Get-FileHash apworld\\\\smo_archipelago\\\\data\\\\locations.json -Algorithm MD5\\).Hash; python scripts\\\\compile_moon_logic.py; \"--- locations.json hash AFTER ---\"; \\(Get-FileHash apworld\\\\smo_archipelago\\\\data\\\\locations.json -Algorithm MD5\\).Hash)",
+      "PowerShell(cd E:\\\\smo_archipelago; python scripts\\\\install_apworld.py 2>$null | Out-Null; $log = python vendor\\\\Archipelago\\\\Generate.py --player_files_path \"vendor\\\\Archipelago\\\\_d3_sweep\\\\on\" --outputpath \"vendor\\\\Archipelago\\\\_d3_sweep\\\\out\\\\verify\" --seed 90909 2>&1 | Out-String; \"exit=$LASTEXITCODE\"; \\($log -split \"`n\" | Select-String -Pattern 'D3|re-applied|rolled bijection|FillError'\\) -join \"`n\")"
     ]
   }
 }

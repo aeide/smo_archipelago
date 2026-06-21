@@ -38,7 +38,9 @@ cml = _load_module()
 # world_scenarios.json the extractor emits; these are scenario counts, not names).
 SAND = {"scenario_num": 7, "clear_main_scenario": 3}      # peace_bit = 2
 METRO = {"scenario_num": 11, "clear_main_scenario": 4}    # peace_bit = 3
-CASCADE = {"scenario_num": 7, "clear_main_scenario": 7}   # SENTINEL (clear==num)
+# Cascade: clear==num (SENTINEL for the coarse peace rule); after_ending=3 -> ae_bit=2
+# drives the dedicated pass's CascadePeace/CascadeDeparture split.
+CASCADE = {"scenario_num": 7, "clear_main_scenario": 7, "after_ending_scenario": 3}
 CAP = {"scenario_num": 6, "clear_main_scenario": 2}       # peace_bit = 1, floor = 1
 DARK = {"scenario_num": 2, "clear_main_scenario": 2}      # SENTINEL
 
@@ -93,12 +95,12 @@ class TestClassifyPostPeace:
 
 
 class TestBuildPostPeaceNames:
-    def test_degrades_to_rock_only_without_scenario_data(self):
-        rocks = frozenset({"Sand: Some Rock", "Wooded: Another Rock"})
-        assert cml.build_post_peace_names(rocks, None, None) == set(rocks)
+    def test_degrades_to_empty_without_scenario_data(self):
+        # D2: post_peace is bit-classified only; with no scenario data there is no
+        # category seed to fall back to -> empty.
+        assert cml.build_post_peace_names(None, None) == set()
 
-    def test_folds_rocks_with_scenario_moons(self):
-        rocks = frozenset({"Sand: A Rock"})
+    def test_classifies_by_bit_no_category_seed(self):
         shine = [
             # first-visit (bit 0) -> not added
             {"kingdom": "Sand", "shine_id": "Early", "progress_bit_flag": 0b001,
@@ -106,16 +108,19 @@ class TestBuildPostPeaceNames:
             # post-peace (bit 2 == peace_bit) -> added
             {"kingdom": "Sand", "shine_id": "Late", "progress_bit_flag": 0b100,
              "is_moon_rock": False},
-            # a rock by flag -> skipped here (already covered via rocks set)
+            # §4b regression guard: an is_moon_rock moon with NO "Moon Rock" category is
+            # now gated by its BIT (bit 4 >= peace_bit 2), not skipped/free.
             {"kingdom": "Sand", "shine_id": "RockByFlag", "progress_bit_flag": 0b10000,
              "is_moon_rock": True},
         ]
         world = {"Sand": SAND}
-        out = cml.build_post_peace_names(rocks, shine, world)
-        assert "Sand: A Rock" in out          # rock preserved
-        assert "Sand: Late" in out            # post-peace folded in
+        out = cml.build_post_peace_names(shine, world)
+        assert "Sand: Late" in out            # post-peace by bit
+        assert "Sand: RockByFlag" in out      # disjoint rock now bit-gated (the §4b fix)
         assert "Sand: Early" not in out       # first-visit stays free
-        assert "Sand: RockByFlag" not in out  # rock-by-flag not double-added here
+        # No category seed: a "Moon Rock" category name not present in shine is NOT
+        # injected by this function anymore.
+        assert "Sand: A Category Rock" not in out
 
 
 class TestBuildMidStoryAnchors:
@@ -226,7 +231,10 @@ class TestBuildMidStoryAnchors:
         # Sand has a peace fragment, so it falls back to that rather than free.
         assert anchors["Sand: MidMoon"] == cml.MOON_ROCK_PEACE_GATES["Sand"]
 
-    def test_rock_moon_excluded(self):
+    def test_rock_moon_in_mid_band_now_gated_by_bit(self):
+        # D2: is_moon_rock is no longer a skip. A rock sitting in the mid band
+        # (first_visit < bit < peace_bit) is classified by its bit like any other moon
+        # and gets the story-anchor gate.
         shine = [
             {"kingdom": "Sand", "shine_id": "Showdown", "progress_bit_flag": 0b001,
              "is_moon_rock": False, "is_grand": True},
@@ -235,69 +243,58 @@ class TestBuildMidStoryAnchors:
         ]
         locs = {"Sand: Showdown", "Sand: RockMoon"}
         anchors, _ = cml.build_mid_story_anchors(shine, self.WS, set(), locs)
-        assert "Sand: RockMoon" not in anchors
+        assert anchors["Sand: RockMoon"] == "{canReachLocation(Sand: Showdown)}"
 
 
 class TestBuildCascadeAnchors:
-    WS = {"Cascade": {"scenario_num": 7, "clear_main_scenario": 7}}  # peace trap
+    # after_ending=3 -> ae_bit=2: bit 1 -> CascadePeace, bits >=2 -> CascadeDeparture.
+    WS = {"Cascade": {"scenario_num": 7, "clear_main_scenario": 7,
+                      "after_ending_scenario": 3}}
 
     def test_degrades_without_data(self):
         assert cml.build_cascade_anchors(None, None, set()) == ({}, 0)
         assert cml.build_cascade_anchors([], self.WS, set()) == ({}, 0)
 
-    def test_missing_anchor_location_disables(self):
-        # No "Cascade: Multi Moon Atop the Falls" location -> can't gate (the gate
-        # is canReachLocation on that name), so emit nothing rather than a phantom.
-        shine = [{"kingdom": "Cascade", "shine_id": "ChainArea",
-                  "progress_bit_flag": 0b10, "is_moon_rock": False, "is_grand": False}]
-        assert cml.build_cascade_anchors(shine, self.WS, {"Cascade: ChainArea"}) == ({}, 0)
+    def test_departure_emitted_even_without_peace_anchor(self):
+        # No "Cascade: Multi Moon Atop the Falls" location -> the pre-leave CascadePeace
+        # branch can't fire, but the post-leave (>= ae_bit) layers still gate on
+        # CascadeDeparture (which has no location dependency).
+        shine = [
+            {"kingdom": "Cascade", "shine_id": "ChainArea",   # bit1 (pre-leave)
+             "progress_bit_flag": 0b0010, "is_moon_rock": False, "is_grand": False},
+            {"kingdom": "Cascade", "shine_id": "Revisit2",    # bit2 (>= ae_bit)
+             "progress_bit_flag": 0b0100, "is_moon_rock": False, "is_grand": False},
+        ]
+        anchors, n = cml.build_cascade_anchors(
+            shine, self.WS, {"Cascade: ChainArea", "Cascade: Revisit2"})
+        assert anchors == {"Cascade: Revisit2": "{CascadeDeparture()}"}
+        assert n == 1
+        assert "Cascade: ChainArea" not in anchors  # no peace anchor -> left free
 
-    def test_gates_post_first_visit_layers(self, monkeypatch):
-        # With the full-gating policy (MAX=3) every non-rock Cascade moon at
-        # min_scenario 1..3 ANDs in {CascadePeace()}; bit-0 first-visit (the Multi
-        # Moon anchor itself) and rock moons are excluded.
-        monkeypatch.setattr(cml, "CASCADE_GATE_MIN_LAYER", 1)
-        monkeypatch.setattr(cml, "CASCADE_GATE_MAX_LAYER", 3)
+    def test_splits_pre_leave_peace_from_post_leave_departure(self):
+        # bit 0 (anchor) free; bit 1 -> CascadePeace; bits 2,3 -> CascadeDeparture.
+        # Rocks are classified by their bit, not skipped (D2): the bit-3 rock gets
+        # CascadeDeparture like any other after-ending moon.
         shine = [
             {"kingdom": "Cascade", "shine_id": "Multi Moon Atop the Falls",
              "progress_bit_flag": 0b0001, "is_moon_rock": False, "is_grand": True},
-            {"kingdom": "Cascade", "shine_id": "ChainArea",   # bit1
+            {"kingdom": "Cascade", "shine_id": "ChainArea",   # bit1 -> peace
              "progress_bit_flag": 0b0010, "is_moon_rock": False, "is_grand": False},
-            {"kingdom": "Cascade", "shine_id": "Revisit2",    # bit2
+            {"kingdom": "Cascade", "shine_id": "Revisit2",    # bit2 -> departure
              "progress_bit_flag": 0b0100, "is_moon_rock": False, "is_grand": False},
-            {"kingdom": "Cascade", "shine_id": "Revisit3",    # bit3
-             "progress_bit_flag": 0b1000, "is_moon_rock": False, "is_grand": False},
-            {"kingdom": "Cascade", "shine_id": "RockMoon",    # rock -> category-gated
-             "progress_bit_flag": 0b0010, "is_moon_rock": True, "is_grand": False},
+            {"kingdom": "Cascade", "shine_id": "RockMoon",    # bit3 rock -> departure
+             "progress_bit_flag": 0b1000, "is_moon_rock": True, "is_grand": False},
         ]
         locs = {"Cascade: Multi Moon Atop the Falls", "Cascade: ChainArea",
-                "Cascade: Revisit2", "Cascade: Revisit3", "Cascade: RockMoon"}
+                "Cascade: Revisit2", "Cascade: RockMoon"}
         anchors, n = cml.build_cascade_anchors(shine, self.WS, locs)
         assert anchors == {
             "Cascade: ChainArea": "{CascadePeace()}",
-            "Cascade: Revisit2": "{CascadePeace()}",
-            "Cascade: Revisit3": "{CascadePeace()}",
+            "Cascade: Revisit2": "{CascadeDeparture()}",
+            "Cascade: RockMoon": "{CascadeDeparture()}",
         }
         assert n == 3
-        assert "Cascade: Multi Moon Atop the Falls" not in anchors  # anchor / bit0
-        assert "Cascade: RockMoon" not in anchors                   # rock excluded
-
-    def test_layer_cap_leaves_revisit_free(self, monkeypatch):
-        # The fill-capacity cap (CASCADE_GATE_MAX_LAYER) bounds the top layer gated;
-        # at MAX=1 only the layer-1 moons gate, deeper revisit layers stay free.
-        monkeypatch.setattr(cml, "CASCADE_GATE_MIN_LAYER", 1)
-        monkeypatch.setattr(cml, "CASCADE_GATE_MAX_LAYER", 1)
-        shine = [
-            {"kingdom": "Cascade", "shine_id": "ChainArea",
-             "progress_bit_flag": 0b0010, "is_moon_rock": False, "is_grand": False},
-            {"kingdom": "Cascade", "shine_id": "Revisit2",
-             "progress_bit_flag": 0b0100, "is_moon_rock": False, "is_grand": False},
-        ]
-        locs = {"Cascade: Multi Moon Atop the Falls", "Cascade: ChainArea",
-                "Cascade: Revisit2"}
-        anchors, n = cml.build_cascade_anchors(shine, self.WS, locs)
-        assert anchors == {"Cascade: ChainArea": "{CascadePeace()}"}
-        assert n == 1
+        assert "Cascade: Multi Moon Atop the Falls" not in anchors  # anchor / bit0 free
 
 
 class TestBuildRearrivalNames:
@@ -305,7 +302,7 @@ class TestBuildRearrivalNames:
         assert cml.build_rearrival_names(None) == set()
         assert cml.build_rearrival_names([]) == set()
 
-    def test_classifies_layer_excludes_first_visit_and_rocks(self):
+    def test_classifies_layer_excludes_first_visit_includes_rocks(self):
         shine = [
             # Cap starts at bit 1 (first-visit) -> excluded
             {"kingdom": "Cap", "shine_id": "Start", "progress_bit_flag": 0b0010,
@@ -313,7 +310,8 @@ class TestBuildRearrivalNames:
             # Cap bit 2 (> first_playable 1) -> re-arrival
             {"kingdom": "Cap", "shine_id": "Revisit", "progress_bit_flag": 0b0100,
              "is_moon_rock": False},
-            # Cap bit 3 rock -> excluded (rocks gated elsewhere)
+            # Cap bit 3 rock -> NOW included (D2: rocks classified by bit, gate via
+            # CapPeace == canReachRegion(Sand), i.e. "you have left and can return").
             {"kingdom": "Cap", "shine_id": "RockMoon", "progress_bit_flag": 0b1000,
              "is_moon_rock": True},
             # Lost starts at bit 0 -> bit 1 is re-arrival
@@ -326,9 +324,8 @@ class TestBuildRearrivalNames:
              "is_moon_rock": False},
         ]
         out = cml.build_rearrival_names(shine)
-        assert out == {"Cap: Revisit", "Lost: Late"}
+        assert out == {"Cap: Revisit", "Cap: RockMoon", "Lost: Late"}
         assert "Cap: Start" not in out         # first-visit wave stays free
-        assert "Cap: RockMoon" not in out      # rocks excluded
         assert "Sand: Mid" not in out          # non-re-arrival kingdom
 
 
@@ -401,7 +398,11 @@ class TestBuildMoonPostwinNames:
         assert cml.build_moon_postwin_names(None) == set()
         assert cml.build_moon_postwin_names([]) == set()
 
-    def test_classifies_rearrival_and_rock_excludes_arrival(self):
+    def test_classifies_postwin_purely_by_bit(self):
+        # D2: tagged purely by the scenario bit (min_scenario > first_playable). In real
+        # data every Moon rock already sits at a later scenario, so the bit rule catches
+        # them without an is_moon_rock read. A synthetic rock sharing the arrival bit is
+        # therefore treated as arrival (collectable) — the bit is authoritative.
         shine = [
             # Moon first-visit layer (min_scenario == first_playable 0) -> arrival, kept
             {"kingdom": "Moon", "shine_id": "Boss", "progress_bit_flag": 0b0001,
@@ -413,8 +414,8 @@ class TestBuildMoonPostwinNames:
              "is_moon_rock": False},
             {"kingdom": "Moon", "shine_id": "Revisit2", "progress_bit_flag": 0b0100,
              "is_moon_rock": False},
-            # Moon-rock layer -> post-win even though it shares a bit with arrival
-            {"kingdom": "Moon", "shine_id": "Rock", "progress_bit_flag": 0b0001,
+            # A real moon-rock layer moon sits at a later scenario -> tagged by bit.
+            {"kingdom": "Moon", "shine_id": "Rock", "progress_bit_flag": 0b0100,
              "is_moon_rock": True},
             # A different kingdom is never tagged
             {"kingdom": "Cap", "shine_id": "Whatever", "progress_bit_flag": 0b0100,
@@ -437,6 +438,113 @@ class TestFreeCapturesAndJoin:
         assert cml.and_join(["|A|", "|B|", "|A|"]) == "(|A| and |B|)"
         assert cml.and_join(["", "|A|", ""]) == "|A|"
         assert cml.and_join([]) == ""
+
+
+class TestScenarioFragmentsFor:
+    """scenario_fragments_for isolates the post_peace / mid_story / re-arrival gate
+    fragment(s) — exactly what gates_for appends — for the D3 subarea export."""
+
+    def test_post_peace_fragment(self):
+        assert cml.scenario_fragments_for(
+            "Sand: Late", {"Sand: Late"}, {}, set()) == ["{SandPeace()}"]
+
+    def test_mid_story_fragment(self):
+        anchors = {"Sand: Mid": "{canReachLocation(Sand: The Hole in the Desert)}"}
+        assert cml.scenario_fragments_for(
+            "Sand: Mid", set(), anchors, set()) == [
+                "{canReachLocation(Sand: The Hole in the Desert)}"]
+
+    def test_rearrival_fragment(self):
+        # Cap is in REARRIVAL_PEACE_GATES but not MOON_ROCK_PEACE_GATES, so it gets
+        # only the re-arrival gate.
+        assert cml.scenario_fragments_for(
+            "Cap: Revisit", set(), {}, {"Cap: Revisit"}) == ["{CapPeace()}"]
+
+    def test_post_peace_xor_mid(self):
+        # post_peace wins over mid (mirrors gates_for's if/elif).
+        anchors = {"Sand: X": "{canReachLocation(Sand: The Hole in the Desert)}"}
+        assert cml.scenario_fragments_for(
+            "Sand: X", {"Sand: X"}, anchors, set()) == ["{SandPeace()}"]
+
+    def test_first_visit_no_fragment(self):
+        assert cml.scenario_fragments_for("Sand: Early", set(), {}, set()) == []
+
+
+class TestBuildSubareaScenarioGates:
+    """build_subarea_scenario_gates groups pooled-subarea moons -> {loc: fragment}."""
+
+    SUBAREAS = {
+        # pooled subarea, two members at different layers
+        "Deep Cave": {
+            "kingdom": "Sand Kingdom",
+            "location_names": ["Sand: Late", "Sand: Mid", "Sand: Early"],
+        },
+        # excluded subarea — must be omitted entirely
+        "Sewers": {
+            "kingdom": "Metro Kingdom",
+            "location_names": ["Metro: Festival"],
+        },
+    }
+    EXCLUDED = {"Sewers"}
+    LOC_NAMES = {"Sand: Late", "Sand: Mid", "Sand: Early", "Metro: Festival",
+                 "Sand: Overworld"}
+    POST_PEACE = {"Sand: Late", "Metro: Festival"}
+    ANCHORS = {"Sand: Mid": "{canReachLocation(Sand: The Hole in the Desert)}"}
+
+    def _build(self, junk=frozenset()):
+        return cml.build_subarea_scenario_gates(
+            self.SUBAREAS, self.EXCLUDED, junk, self.LOC_NAMES,
+            self.POST_PEACE, self.ANCHORS, set())
+
+    def test_pooled_members_exported_with_their_own_fragment(self):
+        gates = self._build()
+        assert gates["Sand: Late"] == "{SandPeace()}"
+        assert gates["Sand: Mid"] == "{canReachLocation(Sand: The Hole in the Desert)}"
+
+    def test_first_visit_member_not_exported(self):
+        # Sand: Early has no scenario gate -> absent from the export.
+        assert "Sand: Early" not in self._build()
+
+    def test_excluded_subarea_member_not_exported(self):
+        # Metro: Festival is post_peace but lives in the EXCLUDED Sewers -> omitted.
+        assert "Metro: Festival" not in self._build()
+
+    def test_overworld_nonsubarea_moon_not_exported(self):
+        assert "Sand: Overworld" not in self._build()
+
+    def test_junk_member_skipped(self):
+        gates = self._build(junk={"Sand: Late"})
+        assert "Sand: Late" not in gates
+        assert "Sand: Mid" in gates  # other members still exported
+
+
+class TestSubareaScenarioGatesFileIntegrity:
+    """The committed subarea_scenario_gates.json must agree with locations.json:
+    every exported fragment's predicate(s) appear in the baked requires (they share
+    a compile pass, so any drift means a stale regen). Runs without shine_map — both
+    files are committed."""
+
+    _DATA = Path(__file__).resolve().parents[1] / "data"
+
+    def _load(self, name):
+        import json
+        return json.loads((self._DATA / name).read_text(encoding="utf-8"))
+
+    def test_export_consistent_with_baked_requires(self):
+        import json
+        import re
+        gates_path = self._DATA / "subarea_scenario_gates.json"
+        if not gates_path.exists():
+            pytest.skip("subarea_scenario_gates.json not generated")
+        gates = json.loads(gates_path.read_text(encoding="utf-8"))
+        baked = {l["name"]: l.get("requires", "") for l in self._load("locations.json")}
+        func_re = re.compile(r"\{(\w+\([^)]*\))\}")
+        for loc, frag in gates.items():
+            assert loc in baked, f"{loc} exported but absent from locations.json"
+            for call in func_re.findall(frag):
+                assert call in baked[loc], (
+                    f"{loc}: exported {call} missing from baked requires "
+                    f"{baked[loc]!r} — stale regen?")
 
 
 if __name__ == "__main__":

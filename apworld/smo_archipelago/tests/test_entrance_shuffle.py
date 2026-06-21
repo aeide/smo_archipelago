@@ -161,6 +161,29 @@ def test_compile_interior_requires_no_gates():
     assert "Zipper" not in req
 
 
+def test_parse_scenario_fragment_no_arg():
+    """{Func()} parses to (name, []) — used by the D3 scenario-gate rule factory."""
+    from entrance_logic import parse_scenario_fragment
+    assert parse_scenario_fragment("{SandPeace()}") == [("SandPeace", [])]
+    assert parse_scenario_fragment("{CascadeDeparture()}") == [("CascadeDeparture", [])]
+
+
+def test_parse_scenario_fragment_with_arg():
+    from entrance_logic import parse_scenario_fragment
+    assert parse_scenario_fragment(
+        "{canReachLocation(Sand: The Hole in the Desert)}") == [
+            ("canReachLocation", ["Sand: The Hole in the Desert"])]
+
+
+def test_parse_scenario_fragment_empty_and_anded():
+    from entrance_logic import parse_scenario_fragment
+    assert parse_scenario_fragment("") == []
+    assert parse_scenario_fragment(None) == []
+    # AND-joined fragments yield both calls (composition is all() at rule time).
+    assert parse_scenario_fragment("({CapPeace()} and {SandPeace()})") == [
+        ("CapPeace", []), ("SandPeace", [])]
+
+
 def test_compile_interior_requires_jump_height():
     """Backflip-height moon requires cap_bounce OR backflip+crouch OR side_flip OR GPJ+GP OR triple."""
     from entrance_logic import compile_interior_requires

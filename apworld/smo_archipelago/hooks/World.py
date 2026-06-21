@@ -735,9 +735,61 @@ def after_set_rules(world: World, multiworld: MultiWorld, player: int):
     # kingdom gate + peace gate).
     if is_option_enabled(multiworld, player, "entrance_shuffle"):
         _apply_entrance_shuffle_location_rules(world, multiworld, player)
+        # D3: re-apply the interior-intrinsic scenario gates that the rule
+        # replacement above stripped from pooled-subarea moons. MUST run after
+        # _apply_entrance_shuffle_location_rules (which set_rule-REPLACES the rule);
+        # add_rule here ANDs the scenario gate back on top.
+        _apply_subarea_scenario_gates(world, multiworld, player)
     # Must run last so it wins over the access rules set in set_rules.
     if is_option_enabled(multiworld, player, "no_logic"):
         _apply_no_logic(world, multiworld, player)
+
+
+def _apply_subarea_scenario_gates(
+    world: World, multiworld: MultiWorld, player: int
+) -> None:
+    """Re-apply interior-intrinsic scenario gates to shuffled subarea moons (D3).
+
+    Under entrance_shuffle ON, _apply_entrance_shuffle_location_rules replaces each
+    shuffled location's access rule with its move-set-only interior requires, which
+    DROPS the scenario gate compile_moon_logic.py baked into locations.json. That
+    classification needs the gitignored shine_map (build-time only), so it can't be
+    recomputed at gen time — it's precompiled into data/subarea_scenario_gates.json
+    ({location_name: fragment}, pooled-subarea moons only).
+
+    The gate is interior-intrinsic: it depends on the moon's own kingdom quest state,
+    not on which door now leads in. So it rides the member LOCATION (which moves with
+    the interior region under shuffle), enforced exactly once. Door-side kingdom /
+    subarea-item / moon-pipe-peace gates ride the door entrance separately
+    (make_door_access_rule) and are orthogonal to this scenario gate.
+
+    OFF mode keeps the baked locations.json gate and never calls this.
+    """
+    from ..entrance_logic import load_data_json, make_scenario_gate_rule
+    try:
+        gates: dict = load_data_json("subarea_scenario_gates.json")
+    except FileNotFoundError:
+        return
+
+    from worlds.generic.Rules import add_rule
+
+    shuffled_locs: set[str] = getattr(world, "_entrance_shuffled_locs", set())
+    applied = 0
+    for loc_name, fragment in gates.items():
+        # Every exported key is a pooled-subarea moon and therefore in shuffled_locs;
+        # the guard also skips any toggled-off location removed in after_create_regions.
+        if loc_name not in shuffled_locs:
+            continue
+        try:
+            loc_obj = multiworld.get_location(loc_name, player)
+        except Exception:
+            continue
+        add_rule(loc_obj, make_scenario_gate_rule(
+            fragment, world, multiworld, player))
+        applied += 1
+    logging.info(
+        "entrance_shuffle: re-applied %d interior scenario gates (D3, player %d)",
+        applied, player)
 
 
 def _apply_entrance_shuffle_location_rules(

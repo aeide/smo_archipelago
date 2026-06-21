@@ -36,6 +36,10 @@ DATA_DIR = REPO_ROOT / "apworld" / "smo_archipelago" / "data"
 LOCATIONS = DATA_DIR / "locations.json"
 REQUIREMENTS = DATA_DIR / "moon_requirements.json"
 SUBAREAS = DATA_DIR / "subareas.json"
+ENTRANCE_EXCLUSIONS = DATA_DIR / "entrance_exclusions.json"
+# D3: per-member scenario gate export for the entrance-shuffle ON path. See
+# build_subarea_scenario_gates + hooks/World.py::_apply_subarea_scenario_gates.
+SUBAREA_SCENARIO_GATES = DATA_DIR / "subarea_scenario_gates.json"
 REVIEW_DOC = REPO_ROOT / "docs" / "logic-compile-review.md"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -167,6 +171,13 @@ MOON_ROCK_PEACE_GATES: dict[str, str] = {
     "Bowser's": "{BowserPeace()}",
 }
 
+# Cascade's "you have left and come back" gate (Rules.CascadeDeparture ==
+# canReachRegion("Sand Kingdom")). Cascade has no boss-peace cutscene and its
+# clear_main_scenario is its LAST scenario, so its after-ending + moon-rock layers
+# (bit >= after_ending_scenario-1) gate on departure, not peace. See
+# docs/scenario-logic-revisit-june-20.md §5a.
+CASCADE_DEPARTURE_GATE = "{CascadeDeparture()}"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Scenario reachability (COARSE tier) — see docs/scenario-reachability-design.md.
 #
@@ -257,14 +268,20 @@ def classify_scenario_post_peace(
 
 
 def build_post_peace_names(
-    moon_rock_names: frozenset[str],
     shine_map: list | None,
     world_scen: dict | None,
 ) -> set[str]:
-    """Union of (a) existing Moon Rock category locations and (b) non-rock moons
-    classified post_peace by their progress_bit_flag. Keyed by AP location name
-    (`<kingdom>: <shine_id>`). When scenario data is absent, falls back to (a)."""
-    names: set[str] = set(moon_rock_names)
+    """Non-junk moons classified post_peace purely by their progress_bit_flag
+    (min_scenario >= kingdom peace_bit). Keyed by AP location name
+    (`<kingdom>: <shine_id>`). Degrades to empty when scenario data is absent.
+
+    D2 (docs/scenario-logic-revisit-june-20.md §9): gating is driven SOLELY by the
+    game-provided scenario bit — no `is_moon_rock` read, no `"Moon Rock"` category
+    seed. Boss-kingdom rocks satisfy `min_scenario >= peace_bit` on their own bit, so
+    they land here naturally (this recovers the 39 previously logic-free rock moons).
+    Cascade is handled by build_cascade_anchors (classify returns False for it); the
+    Cap/Cloud/Lost/Moon floor-guard kingdoms are handled by build_rearrival_names."""
+    names: set[str] = set()
     if not shine_map or not world_scen:
         return names
     # Per-kingdom first_playable_bit = min set bit across all of the kingdom's
@@ -276,8 +293,6 @@ def build_post_peace_names(
         first_playable[k] = min(first_playable.get(k, b), b)
     for e in shine_map:
         kingdom = e["kingdom"]
-        if e.get("is_moon_rock"):
-            continue                        # already covered by moon_rock_names
         ws = world_scen.get(kingdom)
         if ws is None:
             continue
@@ -295,9 +310,9 @@ def build_rearrival_names(shine_map: list | None) -> set[str]:
     location name. Degrades to empty when scenario data is absent. Only shine_map is
     needed (the rule is purely the per-kingdom bit floor, not world_scenarios).
 
-    Rocks are excluded: their AP gate is the locations.json "Moon Rock" category +
-    the runtime MoonRockHook, and these kingdoms intentionally carry no rock peace
-    predicate (MOON_ROCK_PEACE_GATES omits them)."""
+    D2: classification is bit-driven only — rocks are NOT excluded. A rock in one of
+    these kingdoms whose earliest scenario is past first-visit is a genuine re-arrival
+    moon and gets the kingdom's {*Peace()} (canReachRegion) gate like any other moon."""
     names: set[str] = set()
     if not shine_map:
         return names
@@ -308,7 +323,7 @@ def build_rearrival_names(shine_map: list | None) -> set[str]:
         first_playable[k] = min(first_playable.get(k, b), b)
     for e in shine_map:
         k = e["kingdom"]
-        if k not in REARRIVAL_PEACE_GATES or e.get("is_moon_rock"):
+        if k not in REARRIVAL_PEACE_GATES:
             continue
         if lowest_set_bit(e["progress_bit_flag"]) > first_playable.get(k, 0):
             names.add(f"{k}: {e['shine_id']}")
@@ -320,10 +335,12 @@ def build_moon_postwin_names(shine_map: list | None) -> set[str]:
 
     Under the current goal (mushroom_kingdom — leaving Moon ends the game) only the
     first-visit layer (min_scenario == first_playable_bit) is collectable. Everything
-    else is post-win: the re-arrival layer (min_scenario > first_playable_bit, only
-    reached by leaving and returning) AND the moon-rock layer (is_moon_rock). Both are
-    physically uncollectable before the win, so they must hold only filler — no
-    progression/useful item may be stranded behind an uncollectable check.
+    at a later scenario (min_scenario > first_playable_bit) is post-win — the re-arrival
+    AND moon-rock layers both sit there, only reachable by leaving and returning, so
+    they must hold only filler (no progression item may be stranded behind an
+    uncollectable check). D2: tagged purely by the scenario bit — no `is_moon_rock`
+    read (verified redundant: all of Moon's rock moons already have min_scenario > the
+    arrival bit, so the bit rule alone catches them).
 
     Returned names are tagged `moon_postwin: true` in locations.json; the runtime hook
     (_apply_moon_postwin_rules) enforces the filler restriction, gated on the goal so a
@@ -338,7 +355,7 @@ def build_moon_postwin_names(shine_map: list | None) -> set[str]:
         return names
     fp = min(lowest_set_bit(e["progress_bit_flag"]) for e in moon)
     for e in moon:
-        if e.get("is_moon_rock") or lowest_set_bit(e["progress_bit_flag"]) > fp:
+        if lowest_set_bit(e["progress_bit_flag"]) > fp:
             names.add(f"Moon: {e['shine_id']}")
     return names
 
@@ -396,8 +413,9 @@ def build_mid_story_anchors(
             grand_by_bit.setdefault(k, {}).setdefault(b, f"{k}: {e['shine_id']}")
 
     for e in shine_map:
-        if e.get("is_moon_rock"):
-            continue
+        # D2: no is_moon_rock skip — a rock in the mid band (first_visit < min_scenario
+        # < peace_bit) is classified by its bit like any other moon. Most rocks sit at
+        # min_scenario >= peace_bit and are dropped below by the post_peace guard.
         k = e["kingdom"]
         ws = world_scen.get(k)
         if ws is None:
@@ -452,35 +470,37 @@ def build_mid_story_anchors(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Scenario reachability (CASCADE dedicated pass) — see docs/scenario-reachability-design.md §3.
+# Scenario reachability (CASCADE dedicated pass) — docs/scenario-logic-revisit-june-20.md §5a.
 #
-# Cascade is excluded from the generic mid_story chain because its
-# clear_main_scenario is its LAST scenario (after_ending_scenario sits earlier), so
-# it has no peace-bit band and its single grand (Multi Moon Atop the Falls, bit 0)
-# can't anchor the bit-(m-1) advancer rule for m >= 2. Instead its post-first-visit
-# layers are gated DIRECTLY on {CascadePeace()} (== canReachLocation(Multi Moon Atop
-# the Falls), the mandatory player-controlled first advance):
-#   min_scenario 0  = first_visit (present from arrival) — stays free.
-#   min_scenario 1  = post-first-advance (Chain-Chomp-area) layer — the faithful,
-#                     least-aggressive gate (these genuinely need Multi Moon first).
-#   min_scenario >=2 = after-ending revisit layers (after_ending_scenario=3) — only
-#                     re-entered after leaving and returning, so {CascadePeace()} is a
-#                     safe under-floor for them too.
+# Cascade has no boss-style world-peace cutscene, and its clear_main_scenario is its
+# LAST scenario (after_ending_scenario sits earlier), so the generic peace-bit rule
+# doesn't apply. Gate every non-first-visit Cascade moon purely on its scenario bit
+# relative to ae_bit = after_ending_scenario - 1 (== 2 for Cascade):
+#   min_scenario 0          = first_visit (present from arrival) — stays free.
+#   1 .. ae_bit-1           = post-first-advance, pre-leave (after Madame Broode but
+#                             before leaving) — {CascadePeace()}. Vacuous-but-correct
+#                             today (Broode's Chain Chomp is a fixed starter, so Multi
+#                             Moon Atop the Falls is reachable from arrival); documents
+#                             intent and survives a future starter change.
+#   >= ae_bit               = after-ending + moon-rock layers — only re-entered after
+#                             LEAVING and returning, so {CascadeDeparture()} (==
+#                             canReachRegion("Sand Kingdom")). THIS is the real gate
+#                             that fixes the leave-deadlock: it forces fill to place the
+#                             kingdom-gate moons among Cascade's 19 pre-leave locations.
 #
-# Which layers are actually gated is FILL-CAPACITY-bounded: the gate pulls Broode's
-# Chain Chomp (Multi Moon's required capture, a single progression item) forward,
-# shrinking the early-sphere location pool. Cascade is the 2nd kingdom, so over-gating
-# starves the early fill and produces an intermittent FillError (Progressive Crouch /
-# Ground Pound / Cascade Power Moons unplaceable). CASCADE_GATE_MAX_LAYER caps the
-# inclusive top layer gated; it was set from the fixed-seed fill sweep (1000-1015) —
-# see docs/scenario-reachability-design.md §3 for the sweep result.
+# This REPLACES the old vacuous "everything -> {CascadePeace()}" pass (which gated bits
+# 1..3 all on an always-true predicate, so the leave-critical bit-2/3 moons looked
+# reachable in sphere 1 and fill stranded them behind the leave-wall — see §4a/§4d of
+# the diagnosis). Rocks are classified by their bit like any other moon (D2: no
+# is_moon_rock read). No CASCADE_GATE_MAX_LAYER cap: with Broode's Chain Chomp a fixed
+# starter the pre-leave layer is free, so the fill-starvation the old cap guarded
+# against no longer exists (§5c).
 #
 # Same IP posture as the other tiers: gitignored scenario tables read at BUILD TIME
-# ONLY; the emitted fragment is the functional {CascadePeace()} (already a committed
-# Rules.py predicate over a committed locations.json name). No new strings ship.
+# ONLY; emitted fragments are functional {CascadePeace()} / {CascadeDeparture()}
+# predicates (committed Rules.py over committed names). No new strings ship.
 # ─────────────────────────────────────────────────────────────────────────────
 CASCADE_GATE_MIN_LAYER = 1   # bit 0 (first_visit) is never gated
-CASCADE_GATE_MAX_LAYER = 3   # inclusive top min_scenario gated (fill-sweep-bounded)
 
 
 def build_cascade_anchors(
@@ -488,27 +508,33 @@ def build_cascade_anchors(
     world_scen: dict | None,
     location_names: set[str] | frozenset[str],
 ) -> tuple[dict[str, str], int]:
-    """Map each gated Cascade location name -> {CascadePeace()}; returns (anchors,
-    count). Degrades to ({}, 0) when scenario data is absent or the anchor location /
-    peace fragment is missing. Gates non-rock Cascade moons whose min_scenario is in
-    [CASCADE_GATE_MIN_LAYER, CASCADE_GATE_MAX_LAYER]; the anchor moon itself (Multi
-    Moon Atop the Falls, bit 0) is always excluded so it never self-references."""
+    """Map each gated Cascade location name -> its scenario fragment; returns
+    (anchors, count). Degrades to ({}, 0) when scenario data is absent. Non-first-visit
+    Cascade moons (min_scenario >= CASCADE_GATE_MIN_LAYER) are split at ae_bit
+    (after_ending_scenario - 1): below ae_bit -> {CascadePeace()} (only if the Multi
+    Moon anchor location exists), at/above ae_bit -> {CascadeDeparture()}. The anchor
+    moon itself (Multi Moon Atop the Falls, bit 0) is always excluded."""
     anchors: dict[str, str] = {}
     if not shine_map or not world_scen or "Cascade" not in world_scen:
         return anchors, 0
+    ws = world_scen["Cascade"]
+    ae_bit = ws.get("after_ending_scenario", 1) - 1
     peace = MOON_ROCK_PEACE_GATES.get("Cascade", "")
-    if not peace or "Cascade: Multi Moon Atop the Falls" not in location_names:
-        return anchors, 0
+    have_peace = bool(peace) and "Cascade: Multi Moon Atop the Falls" in location_names
     for e in shine_map:
-        if e["kingdom"] != "Cascade" or e.get("is_moon_rock"):
+        if e["kingdom"] != "Cascade":
             continue
         m = lowest_set_bit(e["progress_bit_flag"])
-        if m < CASCADE_GATE_MIN_LAYER or m > CASCADE_GATE_MAX_LAYER:
-            continue
+        if m < CASCADE_GATE_MIN_LAYER:
+            continue                        # bit 0 first-visit -> free
         loc = f"Cascade: {e['shine_id']}"
         if loc == "Cascade: Multi Moon Atop the Falls" or loc not in location_names:
             continue
-        anchors[loc] = peace
+        if m >= ae_bit:
+            anchors[loc] = CASCADE_DEPARTURE_GATE
+        elif have_peace:
+            anchors[loc] = peace
+        # else: pre-leave layer but no usable peace anchor -> leave free
     return anchors, len(anchors)
 
 
@@ -635,6 +661,83 @@ def compile_moon(rec: dict) -> str:
     return or_join(method_exprs)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# D3 — subarea scenario gate export (entrance-shuffle ON path)
+#
+# Subarea moons get their scenario gate baked into locations.json `requires` like
+# every other moon (so entrance-shuffle OFF is byte-identical to today). But when
+# entrance shuffle is ON, hooks/World.py moves each pooled-subarea moon into a
+# dynamically-created "<sub> Interior" Region and REPLACES its access rule with the
+# move-set-only interior requires (entrance_logic.build_interior_requires_map) —
+# dropping the baked scenario gate entirely. The scenario classification is driven
+# by the gitignored shine_map (BUILD TIME ONLY), so the apworld can't recompute it
+# at gen time; it must be precompiled into a committed file.
+#
+# scenario_fragments_for() isolates the SCENARIO-tier fragments (post_peace / mid_story
+# / re-arrival) — the same ones gates_for appends — so they can be re-applied to the
+# interior member location under shuffle. Kingdom, subarea-item, moon-rock-capture and
+# moon-cave gates are deliberately NOT exported: under shuffle the kingdom + subarea-
+# item gates ride the DOOR entrance (entrance_logic.make_door_access_rule), and the
+# excluded cave/moonpipe subareas are never pooled. The gate is interior-INTRINSIC
+# (keyed on the moon's own kingdom quest state, not the door), so re-applying it to the
+# member location is correct regardless of which door now leads in — the location moves
+# with the interior region. IP-safe: keyed by committed location names, values are the
+# same functional {Func()} fragments already in locations.json.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def scenario_fragments_for(
+    location_name: str,
+    post_peace_names: set[str] | frozenset[str],
+    mid_story_anchors: dict[str, str],
+    rearrival_names: set[str] | frozenset[str],
+) -> list[str]:
+    """The scenario-tier gate fragment(s) for a location — exactly the post_peace /
+    mid_story / re-arrival fragments gates_for appends, isolated. Mirrors the branch
+    structure in gates_for (post_peace XOR mid_story, then re-arrival appended)."""
+    out: list[str] = []
+    prefix = location_name.split(": ", 1)[0]
+    if location_name in post_peace_names:
+        peace = MOON_ROCK_PEACE_GATES.get(prefix, "")
+        if peace:
+            out.append(peace)
+    elif location_name in mid_story_anchors:
+        out.append(mid_story_anchors[location_name])
+    if location_name in rearrival_names and prefix in REARRIVAL_PEACE_GATES:
+        out.append(REARRIVAL_PEACE_GATES[prefix])
+    return out
+
+
+def build_subarea_scenario_gates(
+    subareas: dict,
+    excluded: set[str] | frozenset[str],
+    junk_names: set[str] | frozenset[str],
+    location_names: set[str] | frozenset[str],
+    post_peace_names: set[str] | frozenset[str],
+    mid_story_anchors: dict[str, str],
+    rearrival_names: set[str] | frozenset[str],
+) -> dict[str, str]:
+    """Map {location_name: scenario_fragment} for every POOLED-subarea moon that
+    carries a scenario gate. Pooled = subareas NOT in the entrance-shuffle exclusion
+    set (those are the ones World.py shuffles + strips). Excluded subareas, overworld
+    (non-subarea) moons, and junk_only checks are omitted — their baked gate is never
+    stripped, so they need no re-application. Fragments equal the scenario portion
+    already baked into locations.json, so the file can never drift from it (both come
+    from the same compile pass)."""
+    gates: dict[str, str] = {}
+    for sub_name, info in subareas.items():
+        if sub_name in excluded:
+            continue
+        for ln in info.get("location_names", []):
+            if ln in junk_names or ln not in location_names:
+                continue
+            frags = scenario_fragments_for(
+                ln, post_peace_names, mid_story_anchors, rearrival_names)
+            if frags:
+                gates[ln] = and_join(frags)
+    return gates
+
+
 def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
               post_peace_names: set[str] | frozenset[str],
               mid_story_anchors: dict[str, str],
@@ -689,16 +792,20 @@ def main() -> None:
     # requirement-free so fill can place junk regardless of moveset reachability.
     junk_names = {l["name"] for l in locations if l.get("junk_only")}
 
+    # The "Moon Rock" category is NO LONGER a scenario-reachability input (D2). It is
+    # retained ONLY for the MOON_ROCK_REACH_CAPTURE capture gates (Cap/Luncheon) in
+    # gates_for, and remains wired to the moon_rock_checks location-enable toggle in
+    # categories.json. Scenario gating is driven purely by the progress_bit_flag below.
     moon_rock_names = frozenset(
         l["name"] for l in locations if "Moon Rock" in l.get("category", [])
     )
 
-    # Scenario reachability (coarse): fold rock moons with non-rock post-peace
-    # moons into a single name set that gets {<Kingdom>Peace()}. Build-time read of
-    # the gitignored scenario tables; degrades to rock-only when absent.
+    # Scenario reachability (coarse): non-junk moons whose earliest scenario is at/after
+    # their kingdom's peace scenario get {<Kingdom>Peace()}, classified purely by bit.
+    # Build-time read of the gitignored scenario tables; degrades to empty when absent.
     shine_map = _load_scenario_table("shine_map.json", require_field="progress_bit_flag")
     world_scen = _load_scenario_table("world_scenarios.json")
-    post_peace_names = build_post_peace_names(moon_rock_names, shine_map, world_scen)
+    post_peace_names = build_post_peace_names(shine_map, world_scen)
     rearrival_names = build_rearrival_names(shine_map)
     # Moon Kingdom post-win layer (re-arrival + moon-rock) — uncollectable before the
     # mushroom_kingdom goal, so tagged for the runtime filler restriction.
@@ -710,7 +817,6 @@ def main() -> None:
     moon_cave_names = set(
         subareas.get("Underground Caverns", {}).get("location_names", [])
     ) | set(MOON_CAVE_EXTRA_LOCATIONS)
-    new_post_peace = len(post_peace_names) - len(moon_rock_names)
 
     # mid_story tier (§2.3): story-anchor reachability gates for moons between
     # first-visit and peace. Validated against the full location-name set so a
@@ -729,6 +835,19 @@ def main() -> None:
     mid_story_anchors.update(cascade_anchors)
     if cascade_count:
         mid_story_stats["Cascade"] = cascade_count
+
+    # D3: per-member scenario gate export for the entrance-shuffle ON path (pooled
+    # subareas only). Computed from the SAME scenario maps gates_for uses, so it can
+    # never drift from the gate baked into locations.json. Written below.
+    try:
+        exclusions = json.loads(
+            ENTRANCE_EXCLUSIONS.read_text(encoding="utf-8"))
+        excluded = {n for kexc in exclusions.values() for n in kexc}
+    except FileNotFoundError:
+        excluded = set()
+    subarea_scenario_gates = build_subarea_scenario_gates(
+        subareas, excluded, junk_names, location_names,
+        post_peace_names, mid_story_anchors, rearrival_names)
 
     # location_name -> subarea gate
     loc_subarea_gate: dict[str, str] = {}
@@ -792,11 +911,20 @@ def main() -> None:
     LOCATIONS.write_text(
         json.dumps(locations, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
+    # D3: write the pooled-subarea scenario gate export (consumed by World.py only
+    # under entrance_shuffle ON; OFF uses the baked locations.json requires above).
+    SUBAREA_SCENARIO_GATES.write_text(
+        json.dumps(dict(sorted(subarea_scenario_gates.items())),
+                   indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+
     _write_review(compiled, free_moons, or_capture_moons, kingdom_gated,
                   loc_subarea_gate, missing_subareas, scenario_data_present,
                   mid_story_stats)
 
     peace_gated = sum(1 for v in compiled.values() if "Peace()" in v)
+    cascade_departure_gated = sum(
+        1 for v in compiled.values() if CASCADE_DEPARTURE_GATE in v)
     mid_gated = sum(1 for v in compiled.values() if "canReachLocation(" in v)
     rearrival_gated = sum(
         1 for v in compiled.values()
@@ -807,6 +935,8 @@ def main() -> None:
     print(f"  free (no requirement): {len(free_moons)}")
     print(f"  kingdom-gated:         {kingdom_gated}")
     print(f"  subarea-gated:         {len(loc_subarea_gate)}")
+    print(f"  subarea-scenario-export: {len(subarea_scenario_gates)} pooled-subarea "
+          f"moons -> {SUBAREA_SCENARIO_GATES.name} (entrance-shuffle ON re-apply)")
     print(f"  moon-cave-gated:       {cave_gated}/{len(moon_cave_names)} cave moons"
           f"{' + goal' if goal_gated else ' (GOAL LOCATION NOT FOUND)'}")
     if shine_map:
@@ -817,7 +947,9 @@ def main() -> None:
         print(f"  scenario data:         loaded ({len(shine_map)} moons, "
               f"{len(world_scen)} kingdoms)")
         print(f"  peace-gated (compiled): {peace_gated}  "
-              f"(+{new_post_peace} non-rock post-peace names folded in)")
+              f"({len(post_peace_names)} post_peace names, bit-classified — D2)")
+        print(f"  cascade-departure:      {cascade_departure_gated}  "
+              f"(Cascade after-ending + rock layers gated on CascadeDeparture)")
         print(f"  mid_story-gated:        {sum(mid_story_stats.values())}  "
               f"({mid_gated} via canReachLocation, rest via Cascade dedicated pass)  "
               f"{dict(sorted(mid_story_stats.items()))}")
@@ -893,16 +1025,18 @@ def _write_review(compiled, free_moons, or_capture_moons, kingdom_gated,
                      "moon itself is skipped so it never self-references. Cascade is "
                      "handled by a DEDICATED pass (build_cascade_anchors): its clear "
                      "scenario is its last, so it has no peace-bit band — instead every "
-                     "non-rock moon at min_scenario in [CASCADE_GATE_MIN_LAYER, "
-                     "CASCADE_GATE_MAX_LAYER] ANDs in `{CascadePeace()}` directly "
-                     "(== canReach Multi Moon Atop the Falls, the player-controlled first "
-                     "advance, granted-collectable from arrival since Broode's Chain Chomp "
-                     "is a fixed starter). The layer cap is fill-capacity-bounded.\n")
+                     "non-first-visit moon is split at ae_bit (after_ending_scenario-1): "
+                     "min_scenario in [1, ae_bit-1] ANDs in `{CascadePeace()}` (pre-leave, "
+                     "vacuous-but-correct since Broode's Chain Chomp is a fixed starter), "
+                     "and min_scenario >= ae_bit ANDs in `{CascadeDeparture()}` "
+                     "(== canReachRegion(Sand Kingdom), the after-ending + moon-rock "
+                     "layers that are only re-entered after leaving). Rocks are classified "
+                     "by bit like any other moon (D2 — no is_moon_rock read).\n")
         emitted = sum(mid_story_stats.values())
         lines.append(f"- Total mid_story-gated moons: **{emitted}**")
         for k in sorted(mid_story_stats):
             if k == "Cascade":
-                via = "via CascadePeace (dedicated Cascade pass)"
+                via = "via CascadePeace (pre-leave) + CascadeDeparture (post-leave) dedicated pass"
             elif k == "Metro":
                 via = "via canReachLocation advancer; the few without an exact-bit grand over-gate to peace"
             else:
