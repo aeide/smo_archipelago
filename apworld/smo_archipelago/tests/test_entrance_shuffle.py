@@ -27,6 +27,10 @@ def _locations() -> list[dict]:
     return json.loads((DATA_DIR / "locations.json").read_text(encoding="utf-8"))
 
 
+def _entrance_stages() -> dict:
+    return json.loads((DATA_DIR / "entrance_stages.json").read_text(encoding="utf-8"))
+
+
 # ---------------------------------------------------------------------------
 # subareas.json data-fix assertions
 # ---------------------------------------------------------------------------
@@ -95,13 +99,43 @@ def test_all_subarea_location_names_unique_across_subareas():
 # Pool size and exclusion correctness
 # ---------------------------------------------------------------------------
 
-def test_entrance_pool_size_is_116():
-    """After data fixes the pool must contain exactly 116 subareas."""
+def test_entrance_pool_size_is_119():
+    """After data fixes the pool must contain exactly 119 subareas."""
     from entrance_logic import build_entrance_pool
     subareas = _subareas()
     exclusions = _exclusions()
     pool = build_entrance_pool(subareas, exclusions)
     assert len(pool) == 119, f"Expected 119 in pool, got {len(pool)}: {sorted(pool)}"
+
+
+def test_pool_is_fully_round_trippable():
+    """Every pooled subarea MUST resolve in entrance_stages.json with a stage and
+    a primary_entry — otherwise the bijection can install a one-way cross-kingdom
+    warp (Mario enters an unresolved subarea's stage vanilla but exits via a
+    partner door's coupling). Regression guard for the Sand->Bowser warp caused by
+    the merged Costume Room / Sphynx Treasure Vault subareas (absent from
+    entrance_stages.json). See entrance_logic.is_round_trippable."""
+    from entrance_logic import build_entrance_pool, is_round_trippable
+    st = _entrance_stages()
+    pool = build_entrance_pool(_subareas(), _exclusions())
+    bad = [n for n in pool if not is_round_trippable(n, st)]
+    assert not bad, f"Non-round-trippable subareas in pool (would warp Mario): {bad}"
+
+
+def test_build_entrance_pool_drops_non_round_trippable():
+    """When entrance_stages is passed, build_entrance_pool drops any subarea that
+    is absent / missing primary_entry, so a stale entrance_stages can never poison
+    the bijection."""
+    from entrance_logic import build_entrance_pool
+    subareas = dict(_subareas())
+    subareas["Bogus Phantom Subarea"] = {
+        "kingdom": "Sand Kingdom", "csv_names": [], "location_names": [],
+    }
+    st = _entrance_stages()
+    unfiltered = build_entrance_pool(subareas, _exclusions())
+    filtered = build_entrance_pool(subareas, _exclusions(), st)
+    assert "Bogus Phantom Subarea" in unfiltered
+    assert "Bogus Phantom Subarea" not in filtered
 
 
 def test_excluded_subareas_absent_from_pool():

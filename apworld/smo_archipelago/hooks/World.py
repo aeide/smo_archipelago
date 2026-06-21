@@ -125,10 +125,16 @@ def before_create_regions(world: World, multiworld: MultiWorld, player: int):
 
     from ..entrance_logic import (
         build_entrance_pool, build_interior_requires_map, build_moonpipe_subarea_set,
+        load_entrance_stages,
     )
 
     subareas, exclusions = _load_entrance_data()
-    pool = build_entrance_pool(subareas, exclusions)
+    # Pass entrance_stages so the pool is restricted to round-trippable subareas:
+    # a member absent from entrance_stages (e.g. a renamed/merged subarea) would
+    # otherwise enter the bijection and produce a one-way cross-kingdom warp
+    # (see is_round_trippable). The slot_data bijection MUST agree with what
+    # push_entrance_map can resolve, so the same filter gates both ends.
+    pool = build_entrance_pool(subareas, exclusions, load_entrance_stages())
     bijection = _roll_entrance_bijection(world, pool)
 
     # Build the set of location names that live in pooled subareas.

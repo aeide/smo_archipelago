@@ -48,7 +48,12 @@
       "PowerShell($r = Invoke-RestMethod -Uri \"https://api.github.com/search/code?q=getColorFrame+repo:MonsterDruide1/OdysseyDecomp\" -Headers @{ \"User-Agent\" = \"smo\"; \"Accept\" = \"application/vnd.github+json\" }; $r.items | ForEach-Object { $_.path })",
       "PowerShell(python E:\\\\smo_archipelago\\\\scripts\\\\check_nso_symbols.py E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso \"_ZN2rs22setStageShineAnimFrameEPN2al9LiveActorEPKcib\" \"setStageShineAnimFrame\" \"_ZN5Shine4initERKN2al13ActorInitInfoE\" \"_ZN2al23setMaterialProgrammableEPNS_9LiveActorE\")",
       "WebFetch(domain:data.jsdelivr.com)",
-      "PowerShell($nso = \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso\"; $nm = \\(Get-Command llvm-nm -ErrorAction SilentlyContinue\\); if \\($nm\\) { $nm.Source } else { \"llvm-nm not on PATH\" }; Get-Item $nso | Select-Object FullName, Length)"
+      "PowerShell($nso = \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso\"; $nm = \\(Get-Command llvm-nm -ErrorAction SilentlyContinue\\); if \\($nm\\) { $nm.Source } else { \"llvm-nm not on PATH\" }; Get-Item $nso | Select-Object FullName, Length)",
+      "Bash(python3 -)",
+      "PowerShell(python scripts\\\\_verify_build_subareas.py)",
+      "PowerShell(python -m pytest apworld/smo_archipelago/tests/test_moon_requirements.py apworld/smo_archipelago/tests/test_entrance_shuffle.py -q 2>&1)",
+      "PowerShell(python scripts\\\\_fix_underground_caverns.py)",
+      "PowerShell(python scripts\\\\_fix_underground_caverns_reqs.py)"
     ]
   }
 }

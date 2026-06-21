@@ -289,20 +289,67 @@ def build_interior_requires_map(
 # Pool helpers
 # ---------------------------------------------------------------------------
 
+def is_round_trippable(name: str, entrance_stages: dict) -> bool:
+    """True if `name` can be a sound shuffle endpoint: it must be present in
+    entrance_stages.json with a `stage` and a `primary_entry.entry_id`.
+
+    Rationale (load-bearing — see the Sand→Bowser one-way-warp bug): the bijection
+    is a permutation over the pool, so EVERY pooled subarea is both some door's
+    interior and some interior's door. compile_stage_remaps drops BOTH rows of a
+    pair when a subarea is missing from entrance_stages (`if not …_rec: continue`),
+    but the partner pairs that map TO/FROM it via resolvable data still install
+    one-way couplings — Mario reaches the unresolved subarea's stage the vanilla
+    way (its own door reverted to vanilla) yet exits via a foreign door's coupling,
+    stranding him in the wrong kingdom. The fix is to never let such a subarea into
+    the pool in the first place. `primary_entry.entry_id` is the inbound key
+    compile_stage_remaps needs to redirect INTO the subarea; without it the entry
+    row drops and the same asymmetry appears. (`primary_exit` is intentionally NOT
+    required: pipe-less interiors — e.g. boss re-fight arenas — exit via the
+    game's return stack (returnPrevStage / :return), which is correct for free and
+    needs no exit row.)
+    """
+    rec = entrance_stages.get(name)
+    if not rec:
+        return False
+    if not rec.get("stage"):
+        return False
+    return bool((rec.get("primary_entry") or {}).get("entry_id"))
+
+
 def build_entrance_pool(
     subareas: dict,
     exclusions: dict,
+    entrance_stages: dict | None = None,
 ) -> list[str]:
-    """Return the sorted list of in-pool subarea names (all subareas - excluded).
+    """Return the sorted list of in-pool subarea names.
 
-    `subareas`    — parsed subareas.json (keys = subarea names).
-    `exclusions`  — parsed entrance_exclusions.json (nested kingdom→{name→...}).
+    `subareas`        — parsed subareas.json (keys = subarea names).
+    `exclusions`      — parsed entrance_exclusions.json (nested kingdom→{name→…}).
+    `entrance_stages` — parsed entrance_stages.json. When provided, subareas that
+                        are NOT round-trippable (see is_round_trippable) are
+                        dropped from the pool and logged, so a stale/renamed/merged
+                        entrance_stages can never poison the bijection with a
+                        one-way warp. When None, no stage filter is applied
+                        (back-compat for pure data-shape tests).
     """
     excluded: set[str] = set()
     for kingdom_exc in exclusions.values():
         for name in kingdom_exc:
             excluded.add(name)
-    return sorted(name for name in subareas if name not in excluded)
+    candidates = [name for name in subareas if name not in excluded]
+    if entrance_stages is None:
+        return sorted(candidates)
+
+    pool = [n for n in candidates if is_round_trippable(n, entrance_stages)]
+    dropped = sorted(set(candidates) - set(pool))
+    if dropped:
+        import logging
+        logging.getLogger(__name__).warning(
+            "entrance_shuffle: dropping %d non-round-trippable subarea(s) from the "
+            "pool (absent from entrance_stages.json or missing primary_entry): %s",
+            len(dropped), ", ".join(dropped),
+        )
+    return sorted(pool)
 
 
 # ---------------------------------------------------------------------------

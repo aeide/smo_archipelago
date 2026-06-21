@@ -53,6 +53,7 @@ DEFAULT_XLSX = REPO_ROOT / "SMO Requirements.xlsx"
 SHEET_NAME = "Moons"
 OUT_REQUIREMENTS = DATA_DIR / "moon_requirements.json"
 OUT_SUBAREAS = DATA_DIR / "subareas.json"
+ENTRANCE_STAGES = DATA_DIR / "entrance_stages.json"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Kingdom prefix normalisation
@@ -340,36 +341,99 @@ def parse_rows(rows: list[list]) -> tuple[list[dict], list[str]]:
 # Subarea builder
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Short kingdom name (the location-name prefix, e.g. "Snow") → full CSV kingdom
+# name (e.g. "Snow Kingdom"). Reverse of KINGDOM_PREFIX_MAP.
+SHORT_TO_FULL_KINGDOM: dict[str, str] = {
+    short: full for full, short in KINGDOM_PREFIX_MAP.items()
+}
+
+
+def _row_kingdom(loc_name: str | None, sheet_kingdom: str | None) -> str | None:
+    """Resolve a subarea moon's kingdom.
+
+    The reconciled location name carries an authoritative short-kingdom prefix
+    (e.g. "Snow: The Icicle Barrier" → Snow Kingdom). Prefer it over sheet order:
+    some subarea blocks (Shiveria Town, Class A Race) appear in the sheet *before*
+    their kingdom's first overworld moon, so "most-recently-seen main kingdom"
+    misassigns them. Fall back to sheet order only for unreconciled moons.
+    """
+    if loc_name and ": " in loc_name:
+        full = SHORT_TO_FULL_KINGDOM.get(loc_name.split(": ", 1)[0].strip())
+        if full:
+            return full
+    return sheet_kingdom
+
+
 def build_subareas(rows: list[list], records: list[dict],
-                   short_lookup: dict[str, str]) -> dict[str, dict]:
-    # Assign subareas to the most-recently-seen main kingdom (sheet order).
+                   short_lookup: dict[str, str],
+                   entrance_stages: dict[str, dict] | None = None) -> dict[str, dict]:
+    # entrance_stages is the authoritative stage topology (entrance_stages.json).
+    # A prefix that spans >1 kingdom is split into per-kingdom "(ShortKingdom)"
+    # entries ONLY when that topology actually has distinct per-kingdom stages
+    # (Costume Room, Sphynx Treasure Vault). One-stage / two-entrance subareas
+    # reached from two kingdoms via a warp painting (Picture Match (Goomba)) have
+    # only the bare merged key in the topology and stay merged. When entrance_stages
+    # is None the importer can't tell genuine splits from cross-kingdom entrances,
+    # so it keeps everything merged (the entrance_logic round-trip filter then
+    # drops any merged member that isn't resolvable — fail-safe, never one-way).
+    entrance_stages = entrance_stages or {}
+    entrance_keys = set(entrance_stages)
+
+    # Sheet-order fallback: most-recently-seen main kingdom per subarea moon.
     current_kingdom: str | None = None
-    subarea_kingdom: dict[str, str] = {}
+    sheet_kingdom: dict[str, str] = {}   # full csv_name -> kingdom (fallback only)
     for idx in _moon_starts(rows):
-        parts = _s(rows[idx][1]).split(": ", 1)
+        csv_name = _s(rows[idx][1])
+        parts = csv_name.split(": ", 1)
         if len(parts) != 2:
             continue
         prefix = parts[0].strip()
         if prefix in MAIN_KINGDOM_PREFIXES:
             current_kingdom = prefix
-        elif current_kingdom and prefix not in subarea_kingdom:
-            subarea_kingdom[prefix] = current_kingdom
+        elif current_kingdom:
+            sheet_kingdom[csv_name] = current_kingdom
 
-    subareas: dict[str, dict] = {}
+    # Pass 1: resolve each subarea moon's prefix + kingdom, and tally which
+    # kingdoms each prefix spans. A prefix that spans >1 kingdom is "split" — its
+    # entries get a "(ShortKingdom)" suffix so each kingdom's distinct subarea
+    # stays a separate, entrance-shuffle-resolvable entry (Costume Room,
+    # Sphynx Treasure Vault). See entrance_logic.is_round_trippable.
+    resolved: list[tuple[str, str, str | None, str | None]] = []  # prefix, csv, kingdom, loc
+    prefix_kingdoms: dict[str, set[str]] = {}
     for rec in records:
-        parts = rec["csv_name"].split(": ", 1)
+        csv_name = rec["csv_name"]
+        parts = csv_name.split(": ", 1)
         if len(parts) != 2:
             continue
         prefix = parts[0].strip()
         if prefix in MAIN_KINGDOM_PREFIXES:
             continue
-        entry = subareas.setdefault(prefix, {
-            "kingdom":        subarea_kingdom.get(prefix),
+        loc = _reconcile(csv_name, short_lookup)
+        kingdom = _row_kingdom(loc, sheet_kingdom.get(csv_name))
+        resolved.append((prefix, csv_name, kingdom, loc))
+        if kingdom:
+            prefix_kingdoms.setdefault(prefix, set()).add(kingdom)
+
+    split_prefixes = {p for p, ks in prefix_kingdoms.items() if len(ks) > 1}
+
+    subareas: dict[str, dict] = {}
+    for prefix, csv_name, kingdom, loc in resolved:
+        key = prefix
+        if prefix in split_prefixes and kingdom:
+            cand = f"{prefix} ({KINGDOM_PREFIX_MAP.get(kingdom, kingdom)})"
+            if cand in entrance_keys:
+                key = cand
+        # For subareas that have a door in the topology, the entrance_stages
+        # kingdom is authoritative (it gates the door) — adopt it. Cross-kingdom
+        # merged subareas (Picture Match (Goomba)) carry the topology's "owning"
+        # kingdom there rather than whichever moon happened to resolve first.
+        entry_kingdom = entrance_stages.get(key, {}).get("kingdom") or kingdom
+        entry = subareas.setdefault(key, {
+            "kingdom":        entry_kingdom,
             "csv_names":      [],
             "location_names": [],
         })
-        entry["csv_names"].append(rec["csv_name"])
-        loc = _reconcile(rec["csv_name"], short_lookup)
+        entry["csv_names"].append(csv_name)
         if loc:
             entry["location_names"].append(loc)
     return subareas
@@ -450,7 +514,13 @@ def main() -> None:
     for rec in records:
         rec["location_name"] = _reconcile(rec["csv_name"], short_lookup)
 
-    subareas = build_subareas(rows, records, short_lookup)
+    entrance_stages: dict[str, dict] | None = None
+    if ENTRANCE_STAGES.exists():
+        entrance_stages = json.loads(ENTRANCE_STAGES.read_text(encoding="utf-8"))
+        print(f"  {len(entrance_stages)} entrance-stage keys (split topology)")
+    else:
+        print("  entrance_stages.json absent — subareas kept merged (no split)")
+    subareas = build_subareas(rows, records, short_lookup, entrance_stages)
 
     # moon_requirements keyed by sheet name (drop the temp csv_name field)
     requirements: dict[str, dict] = {}
