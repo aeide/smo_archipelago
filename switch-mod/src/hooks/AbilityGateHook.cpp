@@ -12,6 +12,7 @@
 //   Crouch       PlayerJudgeStartSquat::judge       <- Progressive Crouch >= 1  [TESTED]
 //   Roll         PlayerJudgeStartRolling::judge     <- Progressive Crouch >= 2  [TESTED]
 //   Ground Pound PlayerJudgeStartHipDrop::judge     <- Progressive Ground Pound >= 1  [TESTED]
+//   GP (input)   PlayerInput::isTriggerHipDrop      <- Progressive Ground Pound >= 1  [confirm in-game] (covers spin-jump down-attack)
 //   Roll Boost   PlayerInput::isTriggerRollingRestartSwing <- Progressive Crouch >= 3  [TESTED]
 //   Roll(GP-out) PlayerInput::isTriggerRollingCancelHipDrop <- Progressive Crouch >= 2  [confirm in-game]
 //   Backflip     Option 3 / ITER 2 (below)          <- Backflip item >= 1  [TESTED]
@@ -27,6 +28,25 @@
 //   GP Jump      PlayerStateHipDrop::isEnableLandCancel <- Ground Pound Jump >= 1  [TESTED]
 //   Side Flip    neuter turn-jump physics (PlayerConst::getTurnJump{Power,VelH,Gravity}) <- Side Flip item >= 1  [confirm in-game]
 //   Cap Bounce   rs::sendMsgPlayerCapTouchJump (sender, skip delivery) <- Cap Bounce item >= 1  [confirm in-game]
+//   Spin         PlayerJudgeStartGroundSpin::judge  <- Spin item >= 1  [confirm in-game]
+//
+// Spin gates the HIGH SPIN JUMP: rotating the stick spins Mario on the ground
+// (the spin jump launches out of that spin for big height — folded into the 496
+// "vault" tier in the apworld logic alongside Backflip/Side Flip/Cap Bounce). The
+// decomp shows PlayerJudgeStartGroundSpin::judge() = mInput->isSpinInput() &&
+// rs::isOnGround(...) — a clean out-of-line IJudge override, same family as the
+// Crouch/Roll/HipDrop judges that already gate cleanly, and on a DIFFERENT input
+// from the cap-throw spin (isSpinInput != the spin-throw gesture), so this is fully
+// separate from the shipped Spin Throw gate. Forcing it false when Spin is unowned
+// suppresses ground-spin ENTRY, so no spin -> no spin jump (the spin animation also
+// goes away, accepted/desirable: "no spin move at all without the item"). The ground
+// pound OUT of a spin jump is NOT gated here — it routes through the generic
+// PlayerJudgeStartHipDrop::judge above, already gated on Progressive Ground Pound>=1.
+// FALLBACK if entry-suppression leaks (e.g. a post-spin jump-boost window in the
+// undecompiled actor body still boosts after a 1-frame spin): neuter the dedicated
+// PlayerConst::getSpinJump{Power,Gravity,MoveSpeedMax} virtuals to normal-jump values
+// the same way Side Flip neuters the turn-jump getters (verify those symbols via the
+// smo-symbol-discovery pipeline before installAtSym — they are UNVERIFIED today).
 //
 // Roll Boost is the shake-while-rolling speed boost (motion-control only), so it
 // is NOT a judge — it's gated at the input predicate that reports the boost
@@ -102,6 +122,7 @@ class PlayerJudgeWallKeep;
 class PlayerJudgeWallCatchInputDir;
 class PlayerJudgePoleClimb;
 class PlayerJudgeGrabCeil;
+class PlayerJudgeStartGroundSpin;
 class PlayerStateHipDrop;
 class PlayerInput;
 // Option 3 (squat-jump suppression) — see plan-p4-detail.md "Option 3".
@@ -129,6 +150,7 @@ constexpr const char* kSideFlip = "Side Flip";
 constexpr const char* kCapBounce = "Cap Bounce";
 constexpr const char* kUpThrow = "Up Throw";
 constexpr const char* kDownThrow = "Down Throw";
+constexpr const char* kSpin = "Spin";
 
 // Up Throw / Down Throw sign convention: the cap-throw gesture Vector2f passed to
 // isThrowTypeRolling has its vertical component in .y. We assume y > 0 == up-flick
@@ -180,6 +202,27 @@ HkTrampoline<bool, PlayerJudgeStartRolling*> rollJudgeHook =
 HkTrampoline<bool, PlayerJudgeStartHipDrop*> hipDropJudgeHook =
     hk::hook::trampoline([](PlayerJudgeStartHipDrop* self) -> bool {
         const bool want = hipDropJudgeHook.orig(self);
+        if (!want) return false;
+        if (smoap::ap::ApState::instance().abilityAtLeast(kProgressiveGroundPound, 1))
+            return true;
+        return false;
+    });
+
+// Ground Pound — INPUT TRIGGER. Covers the SPIN-JUMP down-attack (ground pound
+// out of a spin jump), which the judge above MISSES: that down-attack is handled
+// in the undecompiled exeJump (PlayerActorHakoniwa.cpp is an upstream stub) and
+// uses the dedicated getSpinJumpDownFall* physics, NOT PlayerStateHipDrop (which
+// reads getHipDropSpeed), so it never consults PlayerJudgeStartHipDrop. The decision
+// is inlined in the actor body (no seam), so per the Side Flip lesson we gate its
+// out-of-line INPUT instead: PlayerInput::isTriggerHipDrop is the shared GP-button
+// predicate both the normal hip drop AND the spin-jump down-attack read. Suppressing
+// it blocks EVERY hip drop until Ground Pound is owned — "no ground pound at all
+// without the item" (Devon, 2026-06-22). Same input-suppression shape as Dive.
+// Orig-first; only suppresses a real press. If a spin-jump GP still leaks in-game,
+// the move reads a different trigger (next candidate: isTriggerCapSeparateHipDrop).
+HkTrampoline<bool, PlayerInput*> hipDropTriggerHook =
+    hk::hook::trampoline([](PlayerInput* self) -> bool {
+        const bool want = hipDropTriggerHook.orig(self);
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kProgressiveGroundPound, 1))
             return true;
@@ -264,6 +307,20 @@ HkTrampoline<bool, PlayerJudgePoleClimb*> poleClimbJudgeHook =
         const bool want = poleClimbJudgeHook.orig(self);
         if (!want) return false;
         if (smoap::ap::ApState::instance().abilityAtLeast(kClimb, 1))
+            return true;
+        return false;
+    });
+
+// Spin — Spin item. PlayerJudgeStartGroundSpin::judge() = isSpinInput() &&
+// rs::isOnGround (decomp-confirmed) decides whether the ground spin starts; the
+// high spin jump launches out of that spin. Suppressing entry when Spin is unowned
+// removes the spin (and thus its jump). Same orig-first IJudge shape as the judges
+// above; isSpinInput is NOT the cap-throw spin gesture, so Spin Throw is untouched.
+HkTrampoline<bool, PlayerJudgeStartGroundSpin*> groundSpinJudgeHook =
+    hk::hook::trampoline([](PlayerJudgeStartGroundSpin* self) -> bool {
+        const bool want = groundSpinJudgeHook.orig(self);
+        if (!want) return false;
+        if (smoap::ap::ApState::instance().abilityAtLeast(kSpin, 1))
             return true;
         return false;
     });
@@ -583,7 +640,7 @@ void tickAbilityGate() {
 }
 
 void installAbilityGateHooks() {
-    SMOAP_LOG_INFO("installing AbilityGateHook (Crouch/Roll/GPound/RollBoost/RollCancelHipDrop/WallSlide-family/Climb/LedgeGrab/Dive/SpinThrow/Up+DownThrow/ProgJump/GPJump/SideFlip/CapBounce + squat-jump ITER2)");
+    SMOAP_LOG_INFO("installing AbilityGateHook (Crouch/Roll/GPound/RollBoost/RollCancelHipDrop/WallSlide-family/Climb/LedgeGrab/Dive/SpinThrow/Up+DownThrow/ProgJump/GPJump/SideFlip/CapBounce/Spin + squat-jump ITER2)");
     // judge() is `bool judge() const` — mangled _ZNK<len><Class>5judgeEv.
     // Verified mangling via aarch64 Itanium ABI (no args). These symbols must
     // exist in main.nso (virtual overrides → kept in the vtable); confirm with
@@ -591,6 +648,10 @@ void installAbilityGateHooks() {
     squatJudgeHook.installAtSym<"_ZNK21PlayerJudgeStartSquat5judgeEv">();
     rollJudgeHook.installAtSym<"_ZNK23PlayerJudgeStartRolling5judgeEv">();
     hipDropJudgeHook.installAtSym<"_ZNK23PlayerJudgeStartHipDrop5judgeEv">();
+    // Ground Pound input trigger — gates the SPIN-JUMP down-attack that bypasses the
+    // hip-drop judge (separate undecompiled exeJump path). "isTriggerHipDrop"=16.
+    // Same out-of-line PlayerInput shape as isTriggerHeadSliding.
+    hipDropTriggerHook.installAtSym<"_ZNK11PlayerInput16isTriggerHipDropEv">();
     // Wall Slide — the wall-judge FAMILY (WallCatch alone did NOT gate the slide/
     // jump; WallKeep is the confirmed wall-contact gate per the decomp). Class
     // name lengths: WallKeep=19, WallHitDown=22, WallCatch=20, WallCatchInputDir=28.
@@ -600,6 +661,10 @@ void installAbilityGateHooks() {
     wallCatchInputDirJudgeHook.installAtSym<"_ZNK28PlayerJudgeWallCatchInputDir5judgeEv">();
     // Climb — PlayerJudgePoleClimb::judge (20).
     poleClimbJudgeHook.installAtSym<"_ZNK20PlayerJudgePoleClimb5judgeEv">();
+    // Spin — PlayerJudgeStartGroundSpin::judge ("PlayerJudgeStartGroundSpin"=26).
+    // Out-of-line IJudge override (decomp: isSpinInput() && isOnGround), same family
+    // as the judges above, so it should hook without the Side Flip inlining trouble.
+    groundSpinJudgeHook.installAtSym<"_ZNK26PlayerJudgeStartGroundSpin5judgeEv">();
     // Ledge Grab — PlayerJudgeGrabCeil::judge (19). Decoupled from Wall Slide:
     // sits downstream of the wall judges so it gates the grab on its own item.
     grabCeilJudgeHook.installAtSym<"_ZNK19PlayerJudgeGrabCeil5judgeEv">();

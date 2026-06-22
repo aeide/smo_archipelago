@@ -13,7 +13,8 @@ Compilation model (locked with Devon 2026-06-17):
 Decisions baked in:
   * Height is a FLOOR: a min-height requirement is satisfied by ANY jump item
     reaching >= that height (the "ladder").  Long Jump is its own axis.
-  * Vault == Cap Bounce, so the 496 tier = Backflip OR Side Flip OR Cap Bounce.
+  * Vault == Cap Bounce, so the 496 tier = Backflip OR Side Flip OR Cap Bounce
+    OR Spin (the spin jump's 490 apex is treated as the same vault tier).
   * Movement prerequisites (real-SMO mechanics): Backflip & Long Jump each also
     need Progressive Crouch:1; Ground Pound Jump also needs Progressive Ground
     Pound:1.  Side Flip has no prerequisite.
@@ -83,17 +84,18 @@ JUMP_FRAG: dict[str, str] = {
     "CAP_BOUNCE": "|Cap Bounce|",                                         # = vault
     "BACKFLIP":  "(|Backflip| and |Progressive Crouch:1|)",
     "SIDE_FLIP": "|Side Flip|",
+    "SPIN_JUMP": "|Spin|",                                                # spin jump, 490 ≈ vault (no crouch prereq)
     "GPJ":       "(|Ground Pound Jump| and |Progressive Ground Pound:1|)",
     "LONG_JUMP": "(|Long Jump| and |Progressive Crouch:1|)",
 }
 
 # Min-height enum -> the jump-item keys that reach >= that height.
-# Reach: Double 312 < CapReturn/Vault 400-496 == Backflip/SideFlip/CapBounce 496
-#        < GPJ 514 < Triple 550.  (Long Jump is a separate horizontal axis.)
+# Reach: Double 312 < CapReturn/Vault 400-496 == Backflip/SideFlip/CapBounce/Spin
+#        (Spin 490 ≈ 496) < GPJ 514 < Triple 550.  (Long Jump is a separate horizontal axis.)
 HEIGHT_SATISFIERS: dict[str, list[str]] = {
-    "double":     ["PJ1", "CAP_BOUNCE", "BACKFLIP", "SIDE_FLIP", "GPJ", "PJ2"],
-    "cap_return": ["CAP_BOUNCE", "BACKFLIP", "SIDE_FLIP", "GPJ", "PJ2"],
-    "backflip":   ["CAP_BOUNCE", "BACKFLIP", "SIDE_FLIP", "GPJ", "PJ2"],
+    "double":     ["PJ1", "CAP_BOUNCE", "BACKFLIP", "SIDE_FLIP", "SPIN_JUMP", "GPJ", "PJ2"],
+    "cap_return": ["CAP_BOUNCE", "BACKFLIP", "SIDE_FLIP", "SPIN_JUMP", "GPJ", "PJ2"],
+    "backflip":   ["CAP_BOUNCE", "BACKFLIP", "SIDE_FLIP", "SPIN_JUMP", "GPJ", "PJ2"],
     "gpj":        ["GPJ", "PJ2"],
     "triple":     ["PJ2"],
     # "none"/"single" -> baseline (free); "long_jump" handled separately
@@ -122,7 +124,7 @@ OTHER_FRAG: dict[str, str | None] = {
 # lines 1-16).  ANDed onto every moon in the kingdom / subarea.
 # ─────────────────────────────────────────────────────────────────────────────
 _HIGH_JUMP = or_join([JUMP_FRAG["BACKFLIP"], JUMP_FRAG["SIDE_FLIP"],
-                      JUMP_FRAG["PJ2"], JUMP_FRAG["GPJ"]])
+                      JUMP_FRAG["SPIN_JUMP"], JUMP_FRAG["PJ2"], JUMP_FRAG["GPJ"]])
 
 # Lake overworld: Zipper OR (high jump + Cap Bounce + (Dive OR Wall Slide)).
 # notes "Wall Jump" -> AP item Wall Slide; "Dive" -> Progressive Ground Pound:2.

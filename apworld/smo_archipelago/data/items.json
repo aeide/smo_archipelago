@@ -619,6 +619,14 @@
     "progression": true
   },
   {
+    "name": "Spin",
+    "category": [
+      "Ability"
+    ],
+    "count": 1,
+    "progression": true
+  },
+  {
     "name": "Cap Bounce",
     "category": [
       "Ability"

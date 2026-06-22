@@ -196,6 +196,12 @@ _ZNK20PlayerJudgeWallCatch5judgeEv
 _ZNK28PlayerJudgeWallCatchInputDir5judgeEv
 // Climb — PlayerJudgePoleClimb::judge() const. "PlayerJudgePoleClimb"=20. HIT, TESTED-PASS.
 _ZNK20PlayerJudgePoleClimb5judgeEv
+// Spin (high spin jump) — PlayerJudgeStartGroundSpin::judge() const. Decomp:
+// returns isSpinInput() && rs::isOnGround(...). Gating it false (Spin unowned)
+// suppresses ground-spin entry, so no spin jump. Same IJudge family as the judges
+// above; isSpinInput != the cap-throw spin gesture so Spin Throw is unaffected.
+// "PlayerJudgeStartGroundSpin"=26. VERIFY in dynsym before shipping (llvm-nm).
+_ZNK26PlayerJudgeStartGroundSpin5judgeEv
 // Ledge Grab — PlayerJudgeGrabCeil::judge() const. The decomp confirms judge()
 // returns mIsJudge (a pure entry detector set by rs::findGrabCeilPos*), so forcing
 // it false suppresses ENTRY only (no jump-off coupling — earlier soft-lock fear
@@ -215,6 +221,13 @@ _ZNK11PlayerInput29isTriggerRollingCancelHipDropEb
 // Dive (head slide) — PlayerInput::isTriggerHeadSliding() const. Gated on
 // Progressive Ground Pound>=2. "isTriggerHeadSliding"=20. HIT, TESTED-PASS.
 _ZNK11PlayerInput20isTriggerHeadSlidingEv
+// Ground Pound input trigger — PlayerInput::isTriggerHipDrop() const. Gates the
+// SPIN-JUMP down-attack (ground pound out of a spin jump), which the judge
+// PlayerJudgeStartHipDrop MISSES (that down-attack is the undecompiled exeJump
+// path using getSpinJumpDownFall* physics, not PlayerStateHipDrop). Shared GP-button
+// predicate → suppressing it blocks every hip drop until Progressive Ground Pound>=1.
+// "isTriggerHipDrop"=16. VERIFY in dynsym before shipping (llvm-nm).
+_ZNK11PlayerInput16isTriggerHipDropEv
 // Cap-throw-TYPE classifiers PlayerInput::isThrowType{Spiral,Rolling}
 // (const sead::Vector2f& gesture). Per OdysseyDecomp: Spiral = horizontal-dominant
 // flick (the spin/homing throw → Spin Throw gate), Rolling = vertical-dominant flick

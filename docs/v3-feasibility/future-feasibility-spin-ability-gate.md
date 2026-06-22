@@ -10,9 +10,31 @@ wants:
 2. The **ground pound out of a spin** gated behind owning **Ground Pound** (as it
    should be).
 
-**Status: investigated, NOT started. Estimate ~85% feasible, Low–Medium effort.**
-This is a textbook fit for the existing P4 ability-gate machinery — there's a clean
-judge seam *and* a proven neuter fallback for part 1, and **part 2 already works**.
+**Status: source-complete (Approach A), awaiting build + in-game test (2026-06-22).**
+Estimate ~85% feasible, Low–Medium effort. A textbook fit for the existing P4
+ability-gate machinery — there's a clean judge seam *and* a proven neuter fallback for
+part 1, and **part 2 already works**.
+
+**Implemented this session (Approach A — judge suppression):**
+- apworld: `Spin` added to the `Ability` category in
+  [data/items.json](../../apworld/smo_archipelago/data/items.json) (pool auto-balances
+  via `adjust_filler_items`).
+- logic: `SPIN_JUMP = "|Spin|"` added to `JUMP_FRAG`, to the ≤496 `HEIGHT_SATISFIERS`
+  bands (`double`/`cap_return`/`backflip`) and to `_HIGH_JUMP` in
+  [scripts/compile_moon_logic.py](../../scripts/compile_moon_logic.py) — Spin now
+  satisfies the 496 "vault" tier (not GPJ 514 / Triple 550).
+- switch-mod: `groundSpinJudgeHook` on `PlayerJudgeStartGroundSpin::judge` in
+  [AbilityGateHook.cpp](../../switch-mod/src/hooks/AbilityGateHook.cpp), symbol
+  `_ZNK26PlayerJudgeStartGroundSpin5judgeEv` registered in
+  [SmoApSymbols.sym](../../switch-mod/syms/game/SmoApSymbols.sym).
+
+**Still needs (on Devon's machine, has romfs):** `compile_moon_logic.py` re-run →
+`install_apworld.py` → `Generate.py`; and the switch-mod rebuild + deploy. Then the
+in-game walk below (confirm the judge fires + suppresses the spin jump; confirm a
+Ground-Pound-less spin-jump down-attack is already blocked; check the
+`getSpinJumpDownFall*` edge). Approach B (neuter `getSpinJump*` getters) stays in
+reserve, documented in the hook — its symbols are UNVERIFIED, so verify before any
+`installAtSym`.
 
 ---
 
@@ -128,21 +150,34 @@ Illustrative symbols: `_ZNK11PlayerConst16getSpinJumpPowerEv`,
 A reasonable plan is to ship A and keep B in reserve (or layer B under A as
 belt-and-braces, the way Side Flip neuters rather than suppresses).
 
-### Tier 2b — ground pound out of spin: ALREADY GATED (just verify)
+### Tier 2b — ground pound out of spin: the flagged edge case was REAL (now fixed)
 
-Because the hip drop launched from a spin jump routes through the generic
-`PlayerJudgeStartHipDrop::judge()`, and that judge is **already** trampolined and
-gated on `Progressive Ground Pound >= 1` (the shipped `hipDropJudgeHook` in
-[AbilityGateHook.cpp](../../switch-mod/src/hooks/AbilityGateHook.cpp)), the
-ground-pound-out-of-spin is **already behind owning Ground Pound**. No new hook
-needed — just confirm in-game (spin-jump without Ground Pound owned → the down-attack
-should be blocked).
+The original prediction here was that the hip drop launched from a spin jump routes
+through the generic `PlayerJudgeStartHipDrop::judge()` (already gated), so it would be
+gated "for free." **In-game (2026-06-22) disproved that:** with Ground Pound unowned,
+Mario could still ground-pound out of a spin jump. The flagged "spin plunge" edge was
+real — confirmed by decomp:
 
-**One edge to check:** the spin-jump-specific `getSpinJumpDownFall*` getters. Confirm
-the down-attack out of a spin jump is the *standard* hip drop (gated above) and not a
-separate "spin plunge" that bypasses `PlayerJudgeStartHipDrop`. If it turns out
-separate, neuter those three getters the same way as Tier 2a-B (return the normal
-hip-drop fall values when Ground Pound is unowned) — a small, mechanical add.
+- `PlayerStateHipDrop` (the *normal* hip drop) reads `getHipDropSpeed`, **not** the
+  dedicated `getSpinJumpDownFall*` physics — so the spin-jump down-attack is a
+  **separate** state, not `PlayerStateHipDrop`, and never consults
+  `PlayerJudgeStartHipDrop::judge`.
+- That separate down-attack lives in the **undecompiled** `exeJump`
+  (`PlayerActorHakoniwa.cpp` is an upstream stub) — the trigger is inlined in the actor
+  body, so there is no judge/state seam to hook.
+
+**Fix (shipped this session):** per the Side Flip lesson ("when the decision is
+inlined, attack its out-of-line *input*"), gate the shared GP-button predicate
+`PlayerInput::isTriggerHipDrop()` on `Progressive Ground Pound >= 1`
+(`hipDropTriggerHook` in
+[AbilityGateHook.cpp](../../switch-mod/src/hooks/AbilityGateHook.cpp); symbol
+`_ZNK11PlayerInput16isTriggerHipDropEv`). Both the normal hip drop AND the spin-jump
+down-attack read this predicate, so suppressing it blocks **every** hip drop until
+Ground Pound is owned — exactly "no ground pound until I get Ground Pound" (Devon's
+spec). Neutering the `getSpinJumpDownFall*` getters was the considered alternative but
+rejected: it only changes the *fall physics*, it doesn't make the move *impossible*.
+If an in-game retest shows the spin-jump GP still leaks, the move reads a different
+trigger — next candidate `isTriggerCapSeparateHipDrop` (then a logger spike).
 
 ---
 

@@ -89,7 +89,7 @@ All hooks live in `hooks/AbilityGateHook.cpp`; symbols in `syms/game/SmoApSymbol
 | Progressive Crouch L1 | Crouch | `PlayerJudgeStartSquat::judge` | ≥1 | ✅ |
 | Progressive Crouch L2 | Roll | `PlayerJudgeStartRolling::judge` + `PlayerInput::isTriggerRollingCancelHipDrop` (roll-out-of-GP) | ≥2 | ✅ judge / 🟢 GP-out |
 | Progressive Crouch L3 | Roll Boost | `PlayerInput::isTriggerRollingRestartSwing` (motion shake-while-rolling) | ≥3 | ✅ |
-| Progressive Ground Pound L1 | Ground Pound | `PlayerJudgeStartHipDrop::judge` | ≥1 | ✅ |
+| Progressive Ground Pound L1 | Ground Pound | `PlayerJudgeStartHipDrop::judge` (normal hip drop) **+** `PlayerInput::isTriggerHipDrop` (input trigger — also covers the spin-jump down-attack, a separate undecompiled `exeJump` path using `getSpinJumpDownFall*` physics that bypasses the judge) | ≥1 | ✅ judge / 🟢 input-trigger |
 | Progressive Ground Pound L2 | Dive | `PlayerInput::isTriggerHeadSliding` | ≥2 | ✅ |
 | Wall Slide | Wall catch/slide | `PlayerJudge{WallKeep,WallHitDown,WallCatch,WallCatchInputDir}::judge` family | ≥1 | 🟢 |
 | Ledge Grab | Ledge grab | none — `PlayerJudgeGrabCeil::judge` hook FAILED/abandoned; **Wall Slide is the real gate** (ledge grab is reached via wall-slide, so the Wall Slide family blocks it). The grabCeil hook remains as a downstream no-op. | ≥1 (via Wall Slide) | ✅ (via Wall Slide) |
@@ -103,6 +103,7 @@ All hooks live in `hooks/AbilityGateHook.cpp`; symbols in `syms/game/SmoApSymbol
 | Spin Throw | Spin cap throw | `PlayerInput::isThrowTypeSpiral` (horizontal flick → downgrade to normal throw) | ≥1 | ✅ |
 | Up Throw | Cap throw up | `PlayerInput::isThrowTypeRolling` with `v.y >= 0` (vertical flick, split by sign) | ≥1 | 🟢 |
 | Down Throw | Cap throw down | `PlayerInput::isThrowTypeRolling` with `v.y < 0` | ≥1 | 🟢 |
+| Spin | High spin jump | `PlayerJudgeStartGroundSpin::judge` (decomp: `isSpinInput() && isOnGround`) — suppress ground-spin entry → no spin jump; spin animation also drops. **GP-out-of-spin is gated via the `isTriggerHipDrop` input hook in the Ground Pound row** (in-game proved it does NOT route through `PlayerJudgeStartHipDrop` — separate undecompiled path). Fallback if a post-spin boost window leaks: neuter `PlayerConst::getSpinJump{Power,Gravity,MoveSpeedMax}` like Side Flip (symbols UNVERIFIED). New item (from the spin-ability-gate feasibility doc); also joins the 496 vault tier in `compile_moon_logic.py`. | ≥1 | ✅ spin-jump gated in-game; 🟢 GP-out awaiting confirm |
 | Wall Slide / Prog. GP clones | — | duplicate→100 coins via the P1 coin path; no gate | n/a | ✅ (P3) |
 
 ---
