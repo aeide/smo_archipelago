@@ -13,6 +13,12 @@ This file is a fast-load brief for the **Spicy Meatball Overdrive** project. The
 
 The zip stem `meatballs` was chosen 2026-05-20 because the `worlds.smo` slot was already claimed by another apworld (`.apsmo` namespace conflict). The in-repo folder `apworld/smo_archipelago/` did not change to avoid churning dev-workflow path references.
 
+## ⚠️ This is NOT a "Manual" world — don't call it one
+
+The project is a **fully integrated custom AP world**: a Switch mod auto-detects moons/captures/scenario events and reports them as checks, receives AP items and applies them live, and enforces capture/ability locks. That is the opposite of a Manual world (Archipelago's `Manual` game), where the player hand-clicks checks in a tracker with **zero** game integration.
+
+What IS true — and the source of the recurring confusion — is that the **generation/logic layer** (`apworld/smo_archipelago/`: `Data.py`, `DataValidation.py`, `Game.py`, the `hooks/` dir, `data/*.json`, and the `requires` string DSL in `Rules.py` — `checkRequireStringForArea` / `infix_to_postfix` / `OptOne` / `OptAll` / `ItemValue` / `{Func()}` + `|item|`) is **forked from the Manual template** (via the `empathy-mp3/SMO-manual-AP` upstream, see README). So the seed-generation engine is Manual-derived even though the product is not a Manual world. When a note says "the Manual region engine," it means *that forked generation code specifically* — e.g. the load-bearing quirk that `Rules.py::set_rules` applies a region's `requires` to its **outgoing** entrances (gates egress, not ingress); see [docs/handoff-region-gating-egress.md](docs/handoff-region-gating-egress.md). Correct shorthand: "the apworld's Manual-derived generation layer," never "this Manual world."
+
 ## ⚠️ Dev-environment gotcha: the Linux shell can serve STALE / byte-TRUNCATED files
 
 Confirmed twice now (2026-06-12 and again 2026-06-13). There are two independent paths to

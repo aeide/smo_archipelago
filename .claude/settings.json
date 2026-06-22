@@ -63,7 +63,15 @@
       "Bash(python3 -c ' *)",
       "Bash(find e:/smo_archipelago/switch-mod/sys -name 'Trampoline.h')",
       "Bash(grep -rn \"installAtSym\\\\|installAtPtr\\\\|installAtOffset\\\\|void install\" e:/smo_archipelago/switch-mod/sys/hk/include/hk/hook/Trampoline.h)",
-      "Bash(echo \"\\(exit $?\\)\")"
+      "Bash(echo \"\\(exit $?\\)\")",
+      "Bash(python scripts/_probe_cascade.py)",
+      "PowerShell(cd E:\\\\smo_archipelago; foreach \\($s in 111,222,333,444\\) { $r = python vendor\\\\Archipelago\\\\Generate.py --seed $s --player_files_path vendor\\\\Archipelago\\\\Players --outputpath vendor\\\\Archipelago\\\\output 2>&1; $tail = \\($r | Select-Object -Last 1\\); $cas = \\($r | Select-String \"randomize_kingdom_gates rolled\"\\); Write-Output \"SEED $s -> $tail | $cas\" })",
+      "PowerShell(cd E:\\\\smo_archipelago; $env:SMOAP_LIVE_AP=\"1\"; python -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_cascade_reachability.py -q 2>&1 | Select-Object -Last 12; Remove-Item Env:\\\\SMOAP_LIVE_AP)",
+      "PowerShell(E:\\\\smo_archipelago\\\\.venv\\\\Scripts\\\\python.exe E:\\\\smo_archipelago\\\\scripts\\\\_audit_canreach_probe.py)",
+      "Bash(echo \"=== CloudPeace/LostPeace/MoonPeace usage in compiled data ===\"; grep -rl \"CloudPeace\\\\|LostPeace\\\\|MoonPeace\" apworld/smo_archipelago/data/ 2>/dev/null *)",
+      "Read(//e/smo_archipelago/**)",
+      "PowerShell(E:\\\\smo_archipelago\\\\.venv\\\\Scripts\\\\python.exe E:\\\\smo_archipelago\\\\scripts\\\\_audit_fix_probe.py)",
+      "PowerShell($env:SMOAP_LIVE_AP=1; E:\\\\smo_archipelago\\\\.venv\\\\Scripts\\\\python.exe -m pytest -v E:\\\\smo_archipelago\\\\apworld\\\\smo_archipelago\\\\tests\\\\test_rearrival_reachability.py E:\\\\smo_archipelago\\\\apworld\\\\smo_archipelago\\\\tests\\\\test_cascade_reachability.py 2>&1 | Select-Object -Last 25)"
     ]
   }
 }

@@ -492,14 +492,14 @@
     ]
   },
   "Picture Match (Goomba)": {
-    "kingdom": "Lake Kingdom",
+    "kingdom": "Cloud Kingdom",
     "csv_names": [
       "Picture Match (Goomba): Picture Match: Basically a Goomba",
       "Picture Match (Goomba): Picture Match: A Stellar Goomba!"
     ],
     "location_names": [
       "Cloud: Picture Match: Basically a Goomba",
-      "Lake: Picture Match: A Stellar Goomba!"
+      "Cloud: Picture Match: A Stellar Goomba!"
     ]
   },
   "2D Cube": {
@@ -1189,17 +1189,17 @@
     "kingdom": "Moon Kingdom",
     "csv_names": [
       "Underground Caverns: Under the Bowser Statue",
+      "Underground Caverns: Fly to the Treasure Chest and Back",
       "Underground Caverns: In a Hole in the Magma",
       "Underground Caverns: Around the Barrier Wall",
-      "Underground Caverns: On Top of the Cannon",
-      "Underground Caverns: Fly to the Treasure Chest and Back"
+      "Underground Caverns: On Top of the Cannon"
     ],
     "location_names": [
       "Moon: Under the Bowser Statue",
+      "Moon: Fly to the Treasure Chest and Back",
       "Moon: In a Hole in the Magma",
       "Moon: Around the Barrier Wall",
-      "Moon: On Top of the Cannon",
-      "Moon: Fly to the Treasure Chest and Back"
+      "Moon: On Top of the Cannon"
     ]
   },
   "Wedding Room": {

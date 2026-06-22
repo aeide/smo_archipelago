@@ -6307,12 +6307,12 @@
     "requires": "(|Progressive Ground Pound:1| and {CloudPeace()})"
   },
   {
-    "name": "Lake: Picture Match: A Stellar Goomba!",
+    "name": "Cloud: Picture Match: A Stellar Goomba!",
     "category": [
-      "Lake Kingdom",
+      "Cloud Kingdom",
       "Extra"
     ],
-    "region": "Lake Kingdom",
+    "region": "Cloud Kingdom",
     "requires": "((|Progressive Crouch:1| and |Picture Match Part (Goomba)|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))"
   },
   {
