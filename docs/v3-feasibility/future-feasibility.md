@@ -24,7 +24,14 @@ achievable with the effort noted," not "scheduled."
 | Free Lake/Wooded detour with a combined "both" gate | [future-feasibility-lake-wooded-free-detour.md](future-feasibility-lake-wooded-free-detour.md) | **80%** | Medium |
 | Hide "needed to exit" thresholds as "?" until kingdom reached | [future-feasibility-hide-kingdom-gates-until-arrival.md](future-feasibility-hide-kingdom-gates-until-arrival.md) | **90%** | Low–Med |
 | Moon recolor (by granted kingdom + AP class) + purple-coin model swap | [future-feasibility-moon-colors-and-coin-models.md](future-feasibility-moon-colors-and-coin-models.md) | recolor **95%** / coin models **~55%** | Small / High |
+| "Spin" ability gate (high spin jump + GP-out-of-spin) | [future-feasibility-spin-ability-gate.md](future-feasibility-spin-ability-gate.md) | **85%** | Low–Med |
+| Randomize all background music | [future-feasibility-bgm-randomizer.md](future-feasibility-bgm-randomizer.md) | **70%** | Medium |
+| Costume doors always unlocked (no outfit required) | [future-feasibility-costume-doors-always-open.md](future-feasibility-costume-doors-always-open.md) | **75%** | Medium |
+| Warp paintings always available (not randomized) + in logic | [future-feasibility-warp-paintings-always-open.md](future-feasibility-warp-paintings-always-open.md) | **70%** | Medium |
+| Show AP check name (+ owning player) in story-moon REVEAL cutscene | [future-feasibility-story-moon-check-name.md](future-feasibility-story-moon-check-name.md) | **65%** | Medium |
 | Shopsanity (golden / purple / full) | [future-feasibility-shopsanity.md](future-feasibility-shopsanity.md) | **75%** | High |
+| Odyssey always present + boardable in any visited overworld | [future-feasibility-odyssey-always-available.md](future-feasibility-odyssey-always-available.md) | **85%** | Low–Med |
+| Relocate a save to Cap Kingdom in its peace state (Odyssey landed) | [future-feasibility-save-relocate-to-peace-kingdom.md](future-feasibility-save-relocate-to-peace-kingdom.md) | **70%** (Cascade-landing corollary ~80%) | High |
 | Decoupled / chained entrance randomizer (full any-to-any) | [future-feasibility-decoupled-entrance-randomizer.md](future-feasibility-decoupled-entrance-randomizer.md) | **65%** | Very High |
 
 ---
@@ -130,6 +137,166 @@ a recolored generic coin; in-world-only vs. also the get-cutscene). Full write-u
 
 ---
 
+## "Spin" ability gate (high spin jump + GP-out-of-spin)
+
+**85% · Low–Medium effort.** Add a new **"Spin"** ability item that gates the **high
+spin jump** (rotate the stick to spin, then jump for big height), and ensure the
+**ground pound out of a spin** stays behind owning Ground Pound. A textbook fit for
+the shipped P4 ability-gate machinery, with two parts that both land easily.
+**Part 2 (GP-out) is already done:** the decomp shows the hip drop launched from a
+spin jump routes through the *generic* `PlayerJudgeStartHipDrop::judge` (`isTriggerHipDrop`,
+no spin branch), which is **already** trampolined and gated on `Progressive Ground
+Pound >= 1` — so it just needs an in-game confirm (plus a quick check of the
+spin-specific `getSpinJumpDownFall*` getters in case a separate spin-plunge bypasses
+the judge). **Part 1 (the spin jump)** has a clean primary seam and a proven fallback:
+*Approach A* suppresses `PlayerJudgeStartGroundSpin::judge` (decomp-confirmed
+`isSpinInput() && isOnGround` — same `IJudge` shape as the Crouch/Roll/HipDrop judges
+that already gate cleanly, and separate from the Spin Throw input), removing the spin
+(and thus the jump) when Spin is unowned; *Approach B* is the **exact shipped Side
+Flip mechanism** — neuter the dedicated `PlayerConst::getSpinJump{Power,Gravity,
+MoveSpeedMax}` virtuals to normal-jump values so the spin jump loses its height
+advantage while the animation stays. (There is no `PlayerStateSpinJump`/judge in the
+decomp — the jump lives in the undecompiled actor body, reached via those `getSpinJump*`
+getters, exactly the turn-jump getter pattern Side Flip already neuters.) The apworld
+side is a one-line copy of an existing `Ability` item (`{"name":"Spin","count":1,
+"progression":true}`), auto-plumbed to the mod via the existing `ability_state`
+snapshot — plus a small **logic-ladder** edit (Devon, 2026-06-22): the spin jump's
+490-unit apex matches the existing 496 "vault" tier, so Spin joins
+Backflip/Side Flip/Cap Bounce as a height satisfier in `compile_moon_logic.py`
+(`JUMP_FRAG` + the ≤496 `HEIGHT_SATISFIERS` lists + `_HIGH_JUMP`), making it a real
+progression item that opens height-gated moons. That edit only adds OR-terms (never
+strands a moon) but does require a `compile_moon_logic.py` re-run + regenerate. Points
+off are the usual in-game unknowns: confirming the spin-jump launch
+reads the getters out-of-line (vs. an inlined constant), that ground-spin suppression
+fully kills the jump (vs. a post-spin boost window), the `getSpinJumpDownFall*` edge,
+and minor neuter-scale tuning. Full write-up:
+[future-feasibility-spin-ability-gate.md](future-feasibility-spin-ability-gate.md).
+
+---
+
+## Randomize all background music
+
+**70% · Medium effort.** Shuffle every BGM track (kingdom/sub-area/boss themes) so a
+different one plays in each spot; SE and voice untouched. The **hook is minor** — BGM
+is cleanly **string-keyed** (`al::startBgm(user, "StmRsBgm…", …)` is the single funnel,
+confirmed in the decomp), so randomizing is a one-function "lie to the game" rewrite of
+the name argument, byte-for-byte the entrance-shuffle pattern. What makes it Medium is
+the supporting work, not the seam: you must **enumerate the valid BGM name set** (it
+lives in the sound archive's `SoundItem` tables → a romfs extraction, IP-sensitive and
+therefore gitignored, but a *known model here* — generate a seeded `bgm_table.h` exactly
+like `shine_table.h`/`capture_table.h`). Three real gotchas hold it below 90%: (1)
+**music-synced moons** — the New Donk festival "Jump Up, Super Star!", jump-rope,
+beach volleyball, band sections etc. are timed to their track, so a blind shuffle
+desyncs them; needs a curated blocklist (Devon-supplied, like the scenario-advancer
+audit); (2) **interactive layering** — SMO fades per-situation layers (`startBgmSituation`)
+into the *active* track, so a swapped track loses the original's dynamic layers (graceful
+no-op, but less rich); (3) **stream residency + the demo path** — confirm a foreign
+track isn't silent in another area and that cutscene-locked `DemoSyncedBgmCtrl` music
+(which likely bypasses `al::startBgm`, probably desirably) is handled. No logic
+involvement and no item re-seed — it can be a switch-mod-only feature on a `randomize_music`
+toggle + seed. First step: a one-build hook+log spike that swaps two overworld tracks,
+confirms it plays/doesn't crash/isn't silent, and harvests the name list. Full write-up:
+[future-feasibility-bgm-randomizer.md](future-feasibility-bgm-randomizer.md).
+
+---
+
+## Costume doors always unlocked (no outfit required)
+
+**75% · Medium effort.** Make the seven fitting-room "costume doors" (the locked
+doors to each kingdom's `*WorldCostumeStage`, which vanilla only opens while Mario
+wears the required regional hat + outfit) **always open**. Motivated by the entrance/
+shop shuffle: the demanded outfit is normally bought at that kingdom's Crazy Cap, so
+once shops are shuffled it can become circular to obtain — and sharply, **under
+entrance shuffle the destination mapped *behind* a costume door inherits the outfit
+gate**, so a hard-to-get outfit can strand a shuffled destination, not just the
+fitting-room moon. Key finding: this is **switch-mod-only, no re-seed** — the apworld
+logic tier needs *zero* change because the costume-room moons already carry **no
+outfit requirement** in `moon_requirements.json` (pure movement/capture), so the fill
+already assumes them reachable without the outfit; always-open doors just makes the
+game match what the logic already believes. The work is one in-game gate: the doors
+are `DoorWarpStageChange` actors that compare the worn cap+cloth
+(`getCurrentCostumeTypeName`/`getCurrentCapTypeName`) before firing the
+`changeNextStage` our shuffle already hooks — i.e. the condition sits strictly
+*upstream* of the existing chokepoint, so it must be cracked at the door itself. The
+recommended path is one trampoline forcing the door's warp-condition true (same
+"force-suppress a decision" pattern as `CaptureGate`/`AbilityGateHook`/
+`KingdomOrderGate`); because all seven doors share one generic, data-driven actor
+class, a **single hook fixes them all**. The points off: `DoorWarpStageChange` is
+**not in OdysseyDecomp** (only the switch-gated `DoorCity`/`DoorSnow` are), so a
+`main.nso` sail/disasm pass is needed to locate the condition method, with a residual
+chance it's inlined — mitigated by a byte-patch fallback and by the actor being
+generic/reused (which favors out-of-line, hookable code). Start with a logger-only
+spike to confirm the seam before building. Full write-up:
+[future-feasibility-costume-doors-always-open.md](future-feasibility-costume-doors-always-open.md).
+
+---
+
+## Warp paintings always available (not randomized) + in logic
+
+**70% · Medium effort.** SMO's ~10 **warp paintings** transport Mario to an isolated
+moon-platform in a *different* kingdom; vanilla only opens a painting once its
+destination kingdom is unlocked (Metro/Luncheon/Mushroom are early-view exceptions).
+Devon wants them **left vanilla (NOT shuffled)** but **always usable from the start**,
+with that access **reflected in logic**. The recon is unusually favorable: warp paintings
+are a **named, data-driven** SMO subsystem (`WorldWarpHole`), and the seams are far better
+than the other "undecompiled actor" docs here. The availability gate is a **named
+predicate** — `GameDataHolder::checkIsOpenWorldWarpHoleInScenario(worldId, scenarioNo)` —
+so "always open" is the well-trodden *force-a-decision-true* trampoline (one hook covers
+all paintings); the transition commit `tryChangeNextStageWithWorldWarpHole` is **already
+hooked in this project** ([WorldMapSelectHook.cpp](../../switch-mod/src/hooks/WorldMapSelectHook.cpp),
+"visited-only, no gate"), confirming the funnel; and the **fixed source↔destination
+mapping is an enumerable data table** (`WorldWarpHoleInfo[]` +
+`calcWorldWarpHoleDestId`/`tryCalcWorldWarpHoleSrcId` in
+[GameDataHolder.h](../../switch-mod/lib/OdysseyHeaders/game/System/GameDataHolder.h)), so
+the logic edges can be built exactly without randomizing anything. The logic side
+re-gates each painting's destination-area moon on its **source** kingdom (regions.json /
+`KingdomMoons` requires, **not** `canReachRegion` per [[region-gating-egress-off-by-one]]) —
+a regenerate, but it only ever *loosens* reachability. Paintings are already **excluded
+from entrance shuffle** (the extractor's `DOOR_UNITS` doesn't include `WorldWarpHole`), so
+"not randomized" is free. It's *provably possible* — three paintings already behave this
+way in vanilla. Points off (→70%): the dominant unknown is whether the **seven non-early
+destinations load cleanly when their kingdom was never visited** (may narrow always-open
+to a curated subset); plus an unverified inlining risk on the predicate, and logic
+care-work for the **scenario-variant destinations** (Lake-first vs. Wooded-first), the
+normally-post-game Cascade→Bowser's painting opening early, and the existing warp hook's
+**visited-bit side effect** perturbing the kingdom-order gate
+([[kingdom-order-gate-premature-destinations]]). First step: a one-build force+log spike
+on a normally-late painting answers the two gating unknowns at once. Full write-up:
+[future-feasibility-warp-paintings-always-open.md](future-feasibility-warp-paintings-always-open.md).
+
+---
+
+## Show AP check name (+ owning player) in story-moon REVEAL cutscene
+
+**65% · Medium effort.** Story moons play a *reveal* cutscene (the camera pan showing
+where the newly-spawned moon is, with a name banner — e.g. "Atop the Highest Tower
+(Sand)"). Devon wants the **AP check identity** added to that banner: the item the
+check holds, plus the owning player when it routes to another world (same line, or a
+smaller second line under the underline). **Important: this is the REVEAL moment, not
+COLLECTION** — and that's the whole difficulty. The *at-collection* banner is **already
+AP-aware** (the shipped Channel-A [MoonLabelHook.cpp](../../switch-mod/src/hooks/MoonLabelHook.cpp)
+substitutes the `TxtScenario` pane via `al::setPaneStringFormat`, with the bridge
+composing "Got X!" / "Sent X to Y" incl. the recipient in
+[display.py](../../apworld/smo_archipelago/client/display.py)). So **every rendering
+primitive is proven** — pane substitution, label composition with the owning player,
+font sanitization. What the reveal path does *not* inherit is (1) the **trigger** — the
+reveal is a separate, **un-decompiled** scene state with no hook yet, needing a
+`main.nso` symbol/decomp pass to find (the get states are clean `exeDemo*` siblings, a
+good prior); and (2) **pre-collection text delivery** — the existing `MoonLabel` text is
+produced by the *collection* Check/`seq` round-trip and doesn't exist until you grab the
+moon, so the reveal must be fed from the **scout cache**, which today ships **color only**
+(`ShineScoutsMsg` = `{shine_uid, palette}`). That means extending the scout push with a
+per-uid label string + a Switch-side by-uid store (exact structural precedent: the
+recolor path in [ShineAppearanceHook.cpp](../../switch-mod/src/hooks/ShineAppearanceHook.cpp)
+already resolves `Shine → unique_id → per-uid fact`). Augment-not-replace (keep the
+vanilla name, add the AP caption on a second pane) + the 30-byte budget round out the
+work. Switch-mod + client + wire-struct change → apworld rebuild, no re-seed (cosmetic).
+First step: a logger-only spike to find/confirm the reveal scene state and dump its
+layout for a sub-pane. Full write-up:
+[future-feasibility-story-moon-check-name.md](future-feasibility-story-moon-check-name.md).
+
+---
+
 ## Shopsanity (golden / purple / full)
 
 **75% · High effort.** A `shopsanity` YAML option turning Crazy Cap shop slots into AP
@@ -157,6 +324,87 @@ self-contained, exercises the whole new tier), then golden (adds the unlock-timi
 logic), with a `ClothUtil::buyItem` hook + `shop_table` extractor spike up front to
 de-risk the identity mapping. Full write-up:
 [future-feasibility-shopsanity.md](future-feasibility-shopsanity.md).
+
+---
+
+## Odyssey always present + boardable in any visited overworld
+
+**85% · Low–Medium effort.** No matter which overworld kingdom Mario is in — as long
+as it's one he's already **visited/unlocked** — the **Odyssey must be parked and
+boardable** so he can always open the world map and fly back. First a **safety net**
+(Devon hit a seed where he landed in **Bowser's Kingdom overworld extremely early with
+no Odyssey present** — collecting a moon would have stranded the save; only a hard reset
+escaped), and second a **prerequisite for full entrance randomization**, where a shuffled
+door/pipe can drop you into an overworld at a scenario state the vanilla arrival flow
+never produces. The recon is unusually favorable because this is a **near-direct
+generalization of the already-shipped, in-game-validated `OdysseyRescue` module**
+([OdysseyRescue.cpp](../../switch-mod/src/game/OdysseyRescue.cpp)), which today force-repairs
+the Odyssey in *one* kingdom (Lost) from a throttled per-frame `drawMain` sweep
+([main.cpp:230-239](../../switch-mod/src/main.cpp#L230)) by calling SMO's own named state-machine
+functions. The Odyssey ("Home") is a **fully-exposed named state machine** —
+`isExistHome`/`isActivateHome`/`isLaunchHome`/`isCrashHome` + `activateHome`/`launchHome`/
+`repairHome` ([GameDataFunction.h:454-466](../../switch-mod/lib/OdysseyHeaders/game/System/GameDataFunction.h#L454)) —
+and both supporting signals the generalization needs already ship: a **sticky visited
+bitset** (`ApState::visited_kingdoms`, the M7 order-gate's signal) and an **overworld-stage
+classifier** (`kingdomShortFromHomeStage`). So the work is **switch-mod-only** (no apworld /
+logic / re-seed / wire change): widen the sweep to "force the Odyssey boardable in any
+visited overworld," add ~4 trivial same-shape symbols, and — the careful part — **gate it**
+so it never stomps the legitimate grounded states (Cap/Cascade pre-acquisition guarded by
+`getHomeLevel>0`, Lost via the existing repair branch, Ruined via the dragon's pinned
+Multi-Moon). The points off (→85%) are the one real in-game unknown: whether setting the
+save-state flags makes a not-yet-spawned Odyssey appear **this frame** vs. only on the next
+stage load (middle case still fixes the strand via a cheap self-reload like `MoonRockHook`'s;
+worst case needs a `main.nso` read of the home-ship actor's appear condition), plus
+confirming `activateHome`-vs-`launchHome` is what gates boardability and that no forced flag
+perturbs the kingdom-order/peace accounting. First step: a logger-only spike that dumps the
+`*Home` flags in the stranded Bowser overworld vs. a normal one — that single trace decides
+the fix shape. This is also the **landing-safety backstop** the full any-to-any entrance
+randomizer (below) lists as a top risk. Full write-up:
+[future-feasibility-odyssey-always-available.md](future-feasibility-odyssey-always-available.md).
+
+---
+
+## Relocate a save to Cap Kingdom in its peace state (Odyssey landed)
+
+**70% · High effort (Cascade-landing corollary ~80%).** Take a minimally-progressed
+real save (Cap prologue + opening miniboss done, flown to Cascade, **zero moons**) and
+transform it so Mario loads **standing back in Cap Kingdom with its story-complete/peace
+state set and the Odyssey parked alongside**. The real prize is the corollary: with the
+Odyssey in a post-peace (launched) state, **flying onward to Cascade finds it already at
+its landing pad** rather than grounded in the rocks (the pre-departure pose), which
+dissolves a genuine softlock — you can reach Cap from Cascade, but a grounded Cascade
+Odyssey strands you there. The investigation collides with a constraint the project
+**already proved**: in the `kCapPeaceFromStart` experiment
+([MoonRockHook.cpp:68-76](../../switch-mod/src/hooks/MoonRockHook.cpp#L68)) a kingdom's
+scenario number — and thus its peace state and the Odyssey's grounded-vs-landed pose — is
+a **derived value, recomputed from quest state at every stage load**. *But the Moon → Cap
+correction (Devon, 2026-06-22) turns that wall into a tailwind for the destination:* on a
+save where Cap's prologue is **genuinely complete**, Cap's quest source-of-truth already
+reads done, so the recompute lands Cap at its ≈peace revisit value **on its own** — and
+there's no scripted intro left to break (the exact failure that killed the *fresh-save*
+experiment). Cap is the lowest-coupling kingdom — no game-clear / AP-win entanglement
+(which is what would have made *Moon* the worst case). The half that still costs: the
+Odyssey isn't in Cap during the prologue (you first board it in Cascade), so "Odyssey
+alongside in Cap" requires **forcing the Odyssey launched** — i.e. forcing Cascade's
+departure/peace, the *same* lever the corollary needs and the fiddly recompute-bound part.
+The recommended path is **not** offline `.bin` editing (Approach A: version-locked, no
+committed format map, bypasses the AP deposit/outstanding accounting) but a **runtime
+"state surgery on load" hook** (Approach B) — exactly the "new-save state surgery via
+`initializeData` post-hook" the MoonRockHook header already scoped. That chokepoint is
+**already hooked** ([SaveLoadHook.cpp](../../switch-mod/src/hooks/SaveLoadHook.cpp)), and the
+writers (`setMainScenarioNo`/`unlockWorld`/`activateHome`/`launchHome`/`meetCap`/
+`findKoopa`/`startWorldTravelingPeach`) are all named SMO functions the project already
+calls — set the source-of-truth bits and the recompute *agrees* (the proven "write the
+bit, don't hook the reader" pattern). The **Cascade corollary is the higher-confidence
+sub-result (~80%)**: post-peace = landed-Odyssey is documented behavior. Points off
+(→70%): forcing Cascade launch quest-consistently is the recompute-bound part where the
+original experiment died; AP-consistency constrains the whole thing; and a couple of
+small Cap-revisit unknowns (spawn/checkpoint, the Cap Spark-Pylon exemption on revisit).
+**Recommendation: prove it on Cap directly** (it's the target *and* lowest-risk), then
+force the Odyssey launched and verify the landed-pad pose in Cap and a subsequent Cascade
+flight — and do *not* hand-edit `File1.bin` (Devon keeps `.bk` backups so experiments are
+reversible, but Approach B is the real answer). Full write-up:
+[future-feasibility-save-relocate-to-peace-kingdom.md](future-feasibility-save-relocate-to-peace-kingdom.md).
 
 ---
 
