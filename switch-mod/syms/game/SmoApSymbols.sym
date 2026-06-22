@@ -46,6 +46,10 @@ _ZN2al21getStageMessageStringEPKNS_17IUseMessageSystemEPKcS4_
 _ZN2rs28tryShowCapMessagePriorityLowEPKN2al18IUseSceneObjHolderEPKcii
 _ZN2rs18isActiveCapMessageEPKN2al18IUseSceneObjHolderE
 _ZN5Shine4initERKN2al13ActorInitInfoE
+// Shine::control() — per-frame update (this == Shine). Hooked ONLY for the
+// Cap-kingdom color-cycle TEST (ShineAppearanceHook kCapGradientTest). Remove
+// with the test if reverting.
+_ZN5Shine7controlEv
 _ZN2al23setMaterialProgrammableEPNS_9LiveActorE
 _ZN2al29setModelMaterialParameterRgbaEPKNS_9LiveActorEPKcS4_RKN4sead7Color4fE
 _ZN2al28setModelMaterialParameterF32EPKNS_9LiveActorEPKcS4_f

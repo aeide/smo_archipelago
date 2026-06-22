@@ -71,7 +71,7 @@ inline constexpr std::size_t kPaletteCount       = kKingdomPaletteBase + kKingdo
 
 constexpr Color4f kPaletteColors3D[kPaletteCount] = {
     {0.45f, 0.45f, 0.50f, 1.0f},  // 0  junk / filler  -> grey
-    {0.28f, 2.80f, 0.28f, 1.0f},  // 1  progression    -> green
+    {0.20f, 1.80f, 0.20f, 1.0f},  // 1  progression    -> green (darkened per Devon)
     {2.60f, 2.30f, 0.28f, 1.0f},  // 2  useful         -> yellow
     {2.80f, 0.28f, 0.28f, 1.0f},  // 3  trap           -> red
     {0.55f, 1.00f, 0.55f, 1.0f},  // 4  (legacy light-green, unused)
@@ -95,7 +95,7 @@ constexpr Color4f kPaletteColors3D[kPaletteCount] = {
 };
 constexpr Color4f kPaletteColorsDot[kPaletteCount] = {
     {0.50f, 0.50f, 0.55f, 1.0f},  // 0  junk / filler  -> grey
-    {0.36f, 2.60f, 0.36f, 1.0f},  // 1  progression    -> green
+    {0.24f, 1.68f, 0.24f, 1.0f},  // 1  progression    -> green (darkened per Devon)
     {2.40f, 2.10f, 0.32f, 1.0f},  // 2  useful         -> yellow
     {2.60f, 0.36f, 0.36f, 1.0f},  // 3  trap           -> red
     {0.60f, 1.00f, 0.60f, 1.0f},  // 4  (legacy light-green, unused)
@@ -122,6 +122,72 @@ inline const Color4f& shinePaletteColor(int shine_type, std::size_t pal_idx) {
     return shine_type == 1 ? kPaletteColorsDot[pal_idx] : kPaletteColors3D[pal_idx];
 }
 
+// --- Classification-color animated gradient (2026-06-22) ---------------------
+// Devon loved the Cap green<->blue cycle, so it's now the treatment for ALL FOUR
+// classification colors (the moon colors for foreign-game items): each cycles
+// between its primary (idx 0 grey / 1 green / 2 yellow / 3 red) and the SAME
+// #316b84 Archipelago-logo-blue secondary. Kingdom-specific moon colors (palette
+// idx 5+) are untouched — they keep their authentic vanilla frames/tints.
+//
+// The cycle is a per-frame re-tint driven by ApState::nowMs() (monotonic ms) so
+// every on-screen moon stays phase-synced and it's frame-rate independent. The
+// material params persist once set, hence the per-frame re-write (Shine::control
+// trampoline below). Primaries come from kPaletteColors[0..3] — the green (idx 1)
+// was darkened earlier per Devon and dwells a little longer (kCyclePrimaryHold).
+//
+// ⚠ REVERT: set kClassColorCycle = false. Classification moons fall back to their
+// static per-classification tints (writeBodyTint) and the per-frame Shine::control
+// hook is not installed (zero per-frame cost). Kingdom colors are unaffected.
+//
+// This supersedes the earlier Cap-cycle TEST and the frame-exact classification
+// pinning (progression->Sand frame etc.) — a gradient needs an RGB endpoint, so
+// the classification colors are RGB tints again, not vanilla frames.
+inline constexpr bool         kClassColorCycle      = true;
+inline constexpr std::size_t  kClassPaletteMax      = 3;     // idx 0..3 cycle
+inline constexpr std::int64_t kCyclePeriodMs        = 2600;  // primary->blue->primary
+// Fraction of each period dwelling fully on the primary before the blue excursion
+// (Devon wanted it to linger on the color; 0 = plain symmetric triangle).
+inline constexpr float        kCyclePrimaryHoldFrac = 0.40f;
+// Shared secondary endpoint: #316b84, scaled to a max channel of 2.6 to match the
+// hue brightness (multiplicative): (49,107,132)/255 * (2.6/0.518) = (0.97,2.11,2.60).
+constexpr Color4f kCycleSecondary3D  = {0.97f, 2.11f, 2.60f, 1.0f};  // #316b84
+constexpr Color4f kCycleSecondaryDot = {0.97f, 2.11f, 2.60f, 1.0f};  // #316b84
+
+// --- TEST (2026-06-22): preview classification PULSES on two real kingdoms ----
+// Devon wants to eyeball the trap and useful gradients quickly, so force:
+//   Cap kingdom (palette idx 5)     -> trap   pulse (red <-> #316b84)
+//   Lake kingdom (palette idx 5+3)  -> useful pulse (yellow <-> #316b84)
+// ⚠ REVERT: set kPulseKingdomTest = false — Cap/Lake return to their authentic
+// vanilla colors, no color loss. Independent of kClassColorCycle (but the cycle
+// must be on for the pulse to animate; it is).
+inline constexpr bool         kPulseKingdomTest = false;
+inline constexpr std::size_t  kPulseCapPalIdx   = kKingdomPaletteBase;      // 5  Cap
+inline constexpr std::size_t  kPulseLakePalIdx  = kKingdomPaletteBase + 3;  // 8  Lake
+
+// True if this resolved palette should run the animated cycle: the classification
+// colors (idx 0..3) always, plus the two test-forced kingdoms while the preview is on.
+inline bool isCyclePal(std::size_t pal_idx) {
+    if (pal_idx <= kClassPaletteMax) return true;
+    return kPulseKingdomTest &&
+           (pal_idx == kPulseCapPalIdx || pal_idx == kPulseLakePalIdx);
+}
+
+// The classification primary (0..3) a cycling palette pulses toward — identity for
+// real classification colors, the test remap for the two forced kingdoms.
+inline std::size_t cyclePalIdx(std::size_t pal_idx) {
+    if (kPulseKingdomTest) {
+        if (pal_idx == kPulseCapPalIdx)  return 3;  // Cap  -> trap   (red)
+        if (pal_idx == kPulseLakePalIdx) return 2;  // Lake -> useful (yellow)
+    }
+    return pal_idx;
+}
+
+// Linear interpolate two multiplicative tints (alpha pinned to 1).
+inline Color4f lerpColor(const Color4f& a, const Color4f& b, float t) {
+    return {a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t,
+            a.b + (b.b - a.b) * t, 1.0f};
+}
+
 // Authentic vanilla per-kingdom color frame (harvested in-game 2026-06-21 via
 // the [shine-colorframe] diagnostic). Index = kingdom_id == pal_idx -
 // kKingdomPaletteBase, SAME order as the palette tables / client
@@ -134,7 +200,7 @@ inline const Color4f& shinePaletteColor(int shine_type, std::size_t pal_idx) {
 // frame 0 (intentionally identical — their models get differentiated later).
 inline constexpr int kColorFrameTint = -1;
 constexpr int kKingdomColorFrame[kKingdomCount] = {
-    0,               // 0  Cap       frame 0
+    0,               // 0  Cap       frame 0 (natural authentic gold).
     kColorFrameTint, // 1  Cascade   tint #f99a0f
     5,               // 2  Sand      frame 5
     7,               // 3  Lake      frame 7
@@ -241,6 +307,33 @@ void writeBodyTint(void* actor, const char* mat_name, const Color4f& tint,
     }
 }
 
+// Write the current point of a classification color's primary<->#316b84 cycle as
+// a flat tint. Triangle wave on ApState::nowMs() so the color sweeps
+// primary->blue->primary over kCyclePeriodMs. Called every frame from the
+// Shine::control trampoline (the material params persist, so re-writing each frame
+// is what makes it animate) and once at init from tryWriteShineTint for a seamless
+// first frame. Caller must have already confirmed the model + material are present.
+void applyClassCycleColor(void* actor, const char* mat_name, bool is_dot,
+                          std::size_t pal_idx) {
+    const std::int64_t ms = smoap::ap::ApState::nowMs();
+    std::int64_t ph = ms % kCyclePeriodMs;
+    if (ph < 0) ph += kCyclePeriodMs;  // nowMs is monotonic >=0; defensive
+    const float p = static_cast<float>(ph) / static_cast<float>(kCyclePeriodMs);
+    // Hold fully on the primary (t=0) for the first kCyclePrimaryHoldFrac of the
+    // period, then a primary->blue->primary triangle over the remainder.
+    float t;
+    if (p < kCyclePrimaryHoldFrac) {
+        t = 0.0f;
+    } else {
+        const float q = (p - kCyclePrimaryHoldFrac) / (1.0f - kCyclePrimaryHoldFrac);
+        t = q < 0.5f ? q * 2.0f : (1.0f - q) * 2.0f;  // 0 -> 1 -> 0
+    }
+    // Primary = this classification's palette color; secondary = shared #316b84.
+    const Color4f& a = is_dot ? kPaletteColorsDot[pal_idx] : kPaletteColors3D[pal_idx];
+    const Color4f& b = is_dot ? kCycleSecondaryDot : kCycleSecondary3D;
+    writeBodyTint(actor, mat_name, lerpColor(a, b, t), is_dot);
+}
+
 // Resolve a Shine* to its AP palette index, or -1 if there is no override
 // (unknown shine, out-of-range unique_id, or kNoPaletteOverride). Shared by the
 // Shine::init trampoline AND the rs::setStageShineAnimFrame trampoline so the
@@ -269,9 +362,15 @@ inline int readShineType(const void* self) {
 // For a kingdom palette index, the authentic vanilla "Color" frame to drive, or
 // kColorFrameTint (-1) if this kingdom has no distinct vanilla frame (it shares
 // frame 0 with the gold default — fall back to a custom material tint instead).
-// Classification colors (idx 0..4) are never frame-driven -> always -1.
+// Classification colors (idx 0..4) are never frame-driven -> always -1: idx 0..3
+// get the animated material-tint cycle (applyClassCycleColor), idx 4 a static tint.
 inline int kingdomColorFrameForPal(std::size_t pal_idx) {
     if (pal_idx < kKingdomPaletteBase) return kColorFrameTint;
+    // TEST: the two pulse-forced kingdoms take the material-tint/cycle path
+    // instead of their vanilla frame (revert via kPulseKingdomTest = false).
+    if (kPulseKingdomTest &&
+        (pal_idx == kPulseCapPalIdx || pal_idx == kPulseLakePalIdx))
+        return kColorFrameTint;
     const std::size_t kingdom_id = pal_idx - kKingdomPaletteBase;
     return kingdom_id < kKingdomCount ? kKingdomColorFrame[kingdom_id]
                                       : kColorFrameTint;
@@ -287,8 +386,16 @@ bool tryWriteShineTint(void* self, int shine_type, std::size_t pal_idx) {
     const char* mat_name = shineMaterialNameForType(shine_type);
     if (s_isExistMaterial != nullptr && !s_isExistMaterial(self, mat_name))
         return false;
+    const bool is_dot = shine_type == 1;
+    // Classification colors (idx 0..3, plus the test-forced pulse kingdoms) get
+    // the animated primary<->#316b84 cycle. Seed the first frame here; the
+    // Shine::control trampoline keeps it animating. Gated on kClassColorCycle.
+    if (kClassColorCycle && isCyclePal(pal_idx)) {
+        applyClassCycleColor(self, mat_name, is_dot, cyclePalIdx(pal_idx));
+        return true;
+    }
     writeBodyTint(self, mat_name, shinePaletteColor(shine_type, pal_idx),
-                  /*is_dot=*/shine_type == 1);
+                  /*is_dot=*/is_dot);
     return true;
 }
 
@@ -411,6 +518,30 @@ HkTrampoline<void, void*, const char*, int, bool> setStageShineAnimFrameOverride
         tryWriteShineTint(actor, readShineType(actor), pal_idx);
     });
 
+// Classification color cycle: per-frame re-tint. Shine::control runs every frame
+// with `this` == the Shine, so this is where the animation advances —
+// applyClassCycleColor recomputes the primary<->#316b84 lerp from the wall clock
+// and re-writes the material (the params persist otherwise). Only classification
+// shines (palette idx 0..3) are touched; everything else returns right after the
+// cheap palette resolve. Installed ONLY when kClassColorCycle is true (see
+// installShineAppearanceHook), so reverting the flag removes the per-frame cost.
+HkTrampoline<void, void*> shineControlColorCycle =
+    hk::hook::trampoline([](void* self) -> void {
+        shineControlColorCycle.orig(self);
+        if (!self) return;
+        if (s_setMaterialProgrammable == nullptr ||
+            s_setModelMaterialParameterRgba == nullptr) return;
+        const int pal = resolveShinePalIdx(self);
+        if (pal < 0 || !isCyclePal(static_cast<std::size_t>(pal))) return;
+        if (s_isExistModel == nullptr || !s_isExistModel(self)) return;
+        const int shine_type = readShineType(self);
+        const char* mat_name = shineMaterialNameForType(shine_type);
+        if (s_isExistMaterial != nullptr && !s_isExistMaterial(self, mat_name))
+            return;
+        applyClassCycleColor(self, mat_name, /*is_dot=*/shine_type == 1,
+                             cyclePalIdx(static_cast<std::size_t>(pal)));
+    });
+
 template <typename FnPtr>
 inline void resolveSymbol(const char* mangled, FnPtr& out, const char* label) {
     const ptr addr = hk::ro::lookupSymbol(mangled);
@@ -470,6 +601,15 @@ void installShineAppearanceHook() {
         } else {
             SMOAP_LOG_WARN("rs::setStageShineAnimFrame unresolved — spawned-moon "
                            "recolor not active");
+        }
+
+        // Classification color cycle. Install the per-frame Shine::control
+        // trampoline only while enabled, so flipping kClassColorCycle = false
+        // leaves zero per-frame cost.
+        if (kClassColorCycle) {
+            SMOAP_LOG_INFO("installing ShineControlColorCycle -> Shine::control "
+                           "(classification color cycle)");
+            shineControlColorCycle.installAtSym<"_ZN5Shine7controlEv">();
         }
     }
 }

@@ -22,9 +22,7 @@ achievable with the effort noted," not "scheduled."
 |---|---|---|---|
 | Strip Cappy's inter-kingdom flight commentary | [future-feasibility-strip-cappy-commentary.md](future-feasibility-strip-cappy-commentary.md) | **70%** | Medium |
 | Free Lake/Wooded detour with a combined "both" gate | [future-feasibility-lake-wooded-free-detour.md](future-feasibility-lake-wooded-free-detour.md) | **80%** | Medium |
-| Hide "needed to exit" thresholds as "?" until kingdom reached | [future-feasibility-hide-kingdom-gates-until-arrival.md](future-feasibility-hide-kingdom-gates-until-arrival.md) | **90%** | Low–Med |
 | Moon recolor (by granted kingdom + AP class) + purple-coin model swap | [future-feasibility-moon-colors-and-coin-models.md](future-feasibility-moon-colors-and-coin-models.md) | recolor **95%** / coin models **~55%** | Small / High |
-| "Spin" ability gate (high spin jump + GP-out-of-spin) | [future-feasibility-spin-ability-gate.md](future-feasibility-spin-ability-gate.md) | **85%** | Low–Med |
 | Randomize all background music | [future-feasibility-bgm-randomizer.md](future-feasibility-bgm-randomizer.md) | **70%** | Medium |
 | Costume doors always unlocked (no outfit required) | [future-feasibility-costume-doors-always-open.md](future-feasibility-costume-doors-always-open.md) | **75%** | Medium |
 | Warp paintings always available (not randomized) + in logic | [future-feasibility-warp-paintings-always-open.md](future-feasibility-warp-paintings-always-open.md) | **70%** | Medium |
@@ -84,30 +82,6 @@ later. Full write-up:
 
 ---
 
-## Hide "needed to exit" thresholds as "?" until the kingdom is reached
-
-**90% · Low–Medium effort.** In the SMO Client's Odyssey tab, show each kingdom's
-"needed to exit" value as **"?"** until the player reaches that kingdom (preserving
-the `randomize_kingdom_gates` surprise), then reveal it. The investigation surfaced
-that the panel currently scrapes the **static vanilla** thresholds from regions.json
-([datapackage.py](../../apworld/smo_archipelago/client/datapackage.py)), so with
-randomized gates on it already shows the *wrong* numbers — this feature fixes that
-too. Everything needed is already on the client except one signal: the **rolled
-values** and the **randomize-on flag** both arrive via `slot_data["kingdom_gates"]`
-and are stashed on the SwitchServer (`_kingdom_gates`), and per-kingdom moon counts
-are tracked in state. The only gap is a clean **"reached the overworld of kingdom X"**
-event — the client tracks no current stage/scene (the `StatusMsg` carrying
-`stage_name` is received but discarded; the scene-change lines are free-text logs).
-Two paths: **Option A** (low, zero Switch work) reveals on the first moon collected in
-a kingdom — slightly later than literal arrival but guaranteed to work; **Option B**
-(low–med) captures a true arrival signal, cheap if `StatusMsg` already fires on
-overworld entry, otherwise a small Switch-side emit + rebuild. Recommended: plumb the
-rolled values/flag to the GUI (fixes the wrong-number bug), ship Option A, optionally
-upgrade to B. Full write-up:
-[future-feasibility-hide-kingdom-gates-until-arrival.md](future-feasibility-hide-kingdom-gates-until-arrival.md).
-
----
-
 ## Moon recolor (by granted kingdom + AP classification) + purple-coin model swap
 
 **Recolor ~95% (small) · Coin-model swap ~55% (high).** The updated form of the
@@ -134,43 +108,6 @@ candidate routes. Recommend shipping the recolor as P5 and treating the coin mod
 a separate later spike, gated on two scope questions (true per-kingdom coin *shapes* vs.
 a recolored generic coin; in-world-only vs. also the get-cutscene). Full write-up:
 [future-feasibility-moon-colors-and-coin-models.md](future-feasibility-moon-colors-and-coin-models.md).
-
----
-
-## "Spin" ability gate (high spin jump + GP-out-of-spin)
-
-**85% · Low–Medium effort.** Add a new **"Spin"** ability item that gates the **high
-spin jump** (rotate the stick to spin, then jump for big height), and ensure the
-**ground pound out of a spin** stays behind owning Ground Pound. A textbook fit for
-the shipped P4 ability-gate machinery, with two parts that both land easily.
-**Part 2 (GP-out) is already done:** the decomp shows the hip drop launched from a
-spin jump routes through the *generic* `PlayerJudgeStartHipDrop::judge` (`isTriggerHipDrop`,
-no spin branch), which is **already** trampolined and gated on `Progressive Ground
-Pound >= 1` — so it just needs an in-game confirm (plus a quick check of the
-spin-specific `getSpinJumpDownFall*` getters in case a separate spin-plunge bypasses
-the judge). **Part 1 (the spin jump)** has a clean primary seam and a proven fallback:
-*Approach A* suppresses `PlayerJudgeStartGroundSpin::judge` (decomp-confirmed
-`isSpinInput() && isOnGround` — same `IJudge` shape as the Crouch/Roll/HipDrop judges
-that already gate cleanly, and separate from the Spin Throw input), removing the spin
-(and thus the jump) when Spin is unowned; *Approach B* is the **exact shipped Side
-Flip mechanism** — neuter the dedicated `PlayerConst::getSpinJump{Power,Gravity,
-MoveSpeedMax}` virtuals to normal-jump values so the spin jump loses its height
-advantage while the animation stays. (There is no `PlayerStateSpinJump`/judge in the
-decomp — the jump lives in the undecompiled actor body, reached via those `getSpinJump*`
-getters, exactly the turn-jump getter pattern Side Flip already neuters.) The apworld
-side is a one-line copy of an existing `Ability` item (`{"name":"Spin","count":1,
-"progression":true}`), auto-plumbed to the mod via the existing `ability_state`
-snapshot — plus a small **logic-ladder** edit (Devon, 2026-06-22): the spin jump's
-490-unit apex matches the existing 496 "vault" tier, so Spin joins
-Backflip/Side Flip/Cap Bounce as a height satisfier in `compile_moon_logic.py`
-(`JUMP_FRAG` + the ≤496 `HEIGHT_SATISFIERS` lists + `_HIGH_JUMP`), making it a real
-progression item that opens height-gated moons. That edit only adds OR-terms (never
-strands a moon) but does require a `compile_moon_logic.py` re-run + regenerate. Points
-off are the usual in-game unknowns: confirming the spin-jump launch
-reads the getters out-of-line (vs. an inlined constant), that ground-spin suppression
-fully kills the jump (vs. a post-spin boost window), the `getSpinJumpDownFall*` edge,
-and minor neuter-scale tuning. Full write-up:
-[future-feasibility-spin-ability-gate.md](future-feasibility-spin-ability-gate.md).
 
 ---
 
