@@ -41,7 +41,9 @@
 #include "hk/ro/RoUtil.h"
 #include "hk/types.h"
 
+#include "../ap/ApFrameBridge.hpp"
 #include "../ap/ApState.hpp"
+#include "../game/KingdomUnlock.hpp"
 #include "../util/Log.hpp"
 #include "HookSymbols.hpp"
 
@@ -204,6 +206,16 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
            std::int32_t raceType) -> void {
             logChangeStageInfo("file", info);
             processEntranceRemap(info);
+            // Overworld-arrival signal for the PC tracker. processEntranceRemap
+            // has already rewritten mChangeStageName in place when shuffled, so
+            // the dest read here is the FINAL stage Mario is committing to. If
+            // it's a kingdom HomeStage, tell the bridge which kingdom — it
+            // reveals that kingdom's rolled exit gate (randomize_kingdom_gates).
+            if (info) {
+                const char* dest = readCstrAt(info, kOffChangeStageNameCstr);
+                const char* kingdom = smoap::game::kingdomShortFromHomeStage(dest);
+                if (kingdom) smoap::ap::reportArrival(dest, kingdom);
+            }
             fileChangeNextStageHook.orig(self, info, raceType);
         });
 
@@ -217,6 +229,32 @@ HkTrampoline<void, GameDataFile*> returnPrevStageHook =
     });
 
 }  // namespace
+
+// Per-frame overworld-arrival poll (driven by drawMain). The changeNextStage
+// commit emit alone is not enough for two cases: (1) the opening/first arrival
+// into a kingdom can predate the PC client connecting, and (2) the frame-thread
+// dedup `last_arrival_kingdom` survives a client disconnect while the client
+// RESETS its reached_kingdoms set on every (re)connect — so a reconnect while
+// standing in a kingdom would never re-reveal it. Polling the current stage each
+// frame and routing through reportArrival (which self-dedups) closes both:
+// reportArrival only enqueues on an actual kingdom change, and the resync flag
+// (set by the socket worker on hello_ack) clears the dedup once per connect so
+// the current kingdom re-emits without needing a stage change. Throttled — an
+// arrival is a once-per-area event, frame precision is unnecessary.
+void tickArrivalPoll() {
+    auto& st = smoap::ap::ApState::instance();
+    if (st.arrival_resync.exchange(false, std::memory_order_relaxed)) {
+        // Fresh client connection: forget the last emitted kingdom so the poll
+        // below re-emits whatever overworld Mario is currently standing in.
+        st.last_arrival_kingdom[0] = '\0';
+    }
+    static int s_tick = 0;
+    if (++s_tick < 30) return;  // ~0.5s @ 60fps
+    s_tick = 0;
+    const char* stage = currentStageName();
+    const char* kingdom = smoap::game::kingdomShortFromHomeStage(stage);
+    if (kingdom) smoap::ap::reportArrival(stage, kingdom);
+}
 
 void installEntranceShuffleHook() {
     const ptr addr =

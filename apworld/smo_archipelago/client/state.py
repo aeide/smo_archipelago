@@ -67,6 +67,14 @@ class BridgeState:
         self.abilities_received: dict[str, int] = {}
         self.moons_received_by_kingdom: dict[str, int] = {}
         self.moons_checked_by_kingdom: dict[str, int] = {}
+        # Kingdoms whose overworld Mario has actually entered this session.
+        # Populated from the Switch's StatusMsg (arrival emit on a HomeStage
+        # changeNextStage; AP-form kingdom names). Drives the Odyssey tab's
+        # "reveal the rolled exit threshold only once you've reached the
+        # kingdom" gate (randomize_kingdom_gates surprise). Session-scoped —
+        # not persisted; the GUI also treats any kingdom with collected moons
+        # as reached so a reconnect mid-game still reveals what's been seen.
+        self.reached_kingdoms: set[str] = set()
         # M6 phase D — per-kingdom PayShineNum from the Switch's save.
         # Authoritative source: SMO's save file, snapshotted on HELLO + on
         # every Odyssey toss via PaySnapshotMsg. Outstanding is DERIVED
@@ -195,6 +203,8 @@ class BridgeState:
             # re-attributed against the new slot's id space.
             self.checked_locations = []
             self._checked_keys = set()
+            # Arrival state is per-slot too (a new slot is a fresh run).
+            self.reached_kingdoms = set()
             # Shine palette is derived from the new slot's LocationInfo
             # scout reply (Connected handler kicks one off). Reset so
             # stale (uid -> palette) mappings from the prior slot don't
@@ -205,6 +215,20 @@ class BridgeState:
             # compute_outstanding defers OutstandingMsg until the next
             # PaySnapshotMsg from the (probably-different) save lands.
             self.pay_shine_num_by_kingdom = None
+
+    def mark_kingdom_reached(self, kingdom: str | None) -> bool:
+        """Record that Mario entered `kingdom`'s overworld (AP-form name).
+
+        Returns True if newly added (so the caller can log it once). No-op for
+        empty/None. See `reached_kingdoms` for what this drives.
+        """
+        if not kingdom:
+            return False
+        with self._lock:
+            if kingdom in self.reached_kingdoms:
+                return False
+            self.reached_kingdoms.add(kingdom)
+            return True
 
     def add_log(self, text: str) -> None:
         with self._lock:
@@ -439,6 +463,7 @@ class BridgeState:
                 "abilities_received": dict(self.abilities_received),
                 "moons_received_by_kingdom": dict(self.moons_received_by_kingdom),
                 "moons_checked_by_kingdom": dict(self.moons_checked_by_kingdom),
+                "reached_kingdoms": sorted(self.reached_kingdoms),
                 "pay_shine_num_by_kingdom": (
                     dict(self.pay_shine_num_by_kingdom)
                     if self.pay_shine_num_by_kingdom is not None

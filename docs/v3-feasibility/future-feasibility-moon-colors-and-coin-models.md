@@ -116,6 +116,49 @@ in-game color tuning. Part 2 NOT started.**
     log tell:** success = `isMclAnimExist resolved @ 0x…`; failure = `isMclAnimExist lookup FAILED`.
     Awaiting build + in-game re-test of the Pyramid/Sand stub-shine case. Handoff:
     [handoff-shine-recolor-mclanim-guard.md](../handoff-shine-recolor-mclanim-guard.md).
+- **SPAWNED-MOON RECOLOR FIX (2026-06-21, built + deployed, awaiting in-game confirm).**
+  Devon reported that moons present at stage load recolored perfectly, but moons that
+  **spawn at runtime** — opening a treasure chest, starting a kingdom timer challenge,
+  any popup/appear moon — reverted to their **vanilla per-kingdom color**. Root cause
+  read from the decomp: the recolor was only in the `Shine::init` trampoline, but a
+  spawning moon runs an appear/popup sequence *after* `init` that calls
+  `rs::setStageShineAnimFrame(shine, …, "Color", …)` to drive the vanilla color anim,
+  silently overwriting our init-time override. (`Shine.cpp` is undecompiled, but the
+  setter is in OdysseyDecomp `src/Util/ItemUtil.cpp`: it's the only thing that drives
+  the "Color" Mcl anim, and its actor arg is always the Shine — confirmed it tail-calls
+  `startShineAnimAndSetFrameAndStop(actor, "Color", frame, isMatAnim)`.)
+  - **Fix:** added a second trampoline on `rs::setStageShineAnimFrame` in
+    `ShineAppearanceHook.cpp` that re-asserts our palette decision whenever the game
+    re-drives a shine's color (init *or* runtime spawn). Frame-override kingdoms →
+    substitute our granted kingdom's frame into the vanilla call (single `.orig()` call,
+    no recursion); tint kingdoms + classification colors (idx 0..4) → let vanilla drive
+    its frame, then multiply our material tint back on top; no override → pass through.
+  - Shared resolution refactored into `resolveShinePalIdx` / `kingdomColorFrameForPal` /
+    `tryWriteShineTint` so the `Shine::init` hook and the new hook can't drift. Installed
+    by ptr at the already-resolved `s_setStageShineAnimFrame` address (the symbol is
+    intentionally kept out of the sail `.sym`, so install-by-ptr with graceful skip on a
+    lookup miss; boot tell = `installing SetStageShineAnimFrameOverride -> rs::setStageShineAnimFrame`).
+  - Note this also routes vanilla's *own* internal `setStageShineAnimFrame` call from
+    inside `Shine::init`'s body through the new hook — harmless (frame kingdoms re-derive
+    the same frame; tint path is `isExistModel`-guarded), and the `Shine::init` post-orig
+    hook still runs as a belt-and-suspenders second application.
+  - **Testing still needed (in-game, Ryujinx restart to load the new subsdk9):**
+    1. **Treasure-chest moon** — open a chest moon; confirm it shows the AP
+       classification/kingdom color, not vanilla. Watch the log for `[shine-frame]` /
+       `[shine-color]` lines firing on the spawn.
+    2. **Timer-challenge moon** — start a kingdom timer challenge; same check on the
+       spawned moon.
+    3. **Tint-kingdom spawned moons** (Cascade/Cloud/Lost/Ruined/Dark/Darker) — these
+       take the "tint after vanilla frame" branch (different timing than frame kingdoms);
+       verify the custom hue holds for a *spawned* one, not just load-time.
+    4. **Regression check** — load-time/placed moons still look correct (the original
+       behavior must be unchanged).
+    5. **Other spawn sources** — Hint Art, Hat-and-Seek, Koopa Freerunning, any
+       popup/appear-warp moon — spot-check that they recolor too (all should route
+       through the same setter).
+    6. **Stub-shine safety** — re-confirm no crash on the Pyramid/Sand stub linked-Shine
+       (the new hook only fires when vanilla itself calls the setter, so it should be
+       safe, but verify the `isMclAnimExist` guard path is still intact).
 - **Coin-model swap: ~55% feasible, HIGH effort** — a different class of problem
   (3D model/actor swap, undecompiled actor, romfs unknowns).
 

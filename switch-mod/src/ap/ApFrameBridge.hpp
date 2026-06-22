@@ -25,6 +25,13 @@ void reportCaptureChecked(const char* hack_name);
 // ScenarioFlagHook -> sends tracker-UI hint with the new scenario number.
 void reportStatus(const char* stage_name, int scenario_no);
 
+// Overworld-arrival signal. Called from the frame thread (EntranceShuffleHook)
+// when Mario commits a transition into a kingdom HomeStage. `kingdom_short` is
+// the apworld kingdom name (e.g. "Sand"); `stage_name` is the dest stage.
+// Deduped against ApState::last_arrival_kingdom — only a kingdom *change*
+// enqueues a StatusMsg for the PC client. No-op for null/empty kingdom.
+void reportArrival(const char* stage_name, const char* kingdom_short);
+
 // DeathHook -> sends death event; debounced via ApState::death_pending_send.
 void reportDeath();
 

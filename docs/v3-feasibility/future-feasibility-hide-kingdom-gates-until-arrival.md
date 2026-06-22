@@ -7,8 +7,62 @@ thresholds are rolled per-seed and are meant to be a surprise. Devon wants to
 preserve that surprise: show the "needed to exit" value as **"?"** until the player
 has actually reached that kingdom's overworld, then reveal the number.
 
-**Status: investigated, NOT started. Estimate ~90% feasible.** Low effort for a
-"good-enough" version (reveal on first moon in the kingdom, zero Switch work);
+**Status: SHIPPED + CONFIRMED IN-GAME (Option B, 2026-06-21).** Both the wrong-number
+fix and the faithful overworld-arrival reveal shipped, and Devon verified all three
+behaviors in-game after the second-pass fixes below: (a) the current kingdom reveals
+its rolled gate within ~0.5s of connecting (even before collecting a moon there),
+(b) received-item kingdoms no longer falsely reveal, (c) the reveal survives a client
+reconnect. Feature closed. Note the investigation's assumption that
+`StatusMsg` was "already received, just thrown away" was wrong — `reportStatus` was a
+no-op TODO stub, so the Switch never actually sent one. Option B therefore required a
+real Switch emit (the medium path), built on the already-hooked
+`EntranceShuffleHook::changeNextStage` commit:
+
+- **Switch:** `ApFrameBridge::reportArrival(stage, kingdom_short)` pushes an
+  `ApState::ArrivalEvent` (deduped per kingdom change via `last_arrival_kingdom`);
+  `ApClient::pumpOnce` drains it into a real `StatusMsg`. The emit fires from
+  `EntranceShuffleHook` after `processEntranceRemap` (so the dest read is the FINAL,
+  post-shuffle stage), gated on `kingdomShortFromHomeStage(dest)` returning non-null.
+- **Client:** the `t=="status"` branch now translates the kingdom (Switch→AP) and
+  calls `BridgeState.mark_kingdom_reached`; `reached_kingdoms` rides the snapshot.
+- **GUI:** `_format_odyssey` switches the threshold source to the rolled gates
+  (`ctx.switch.get_kingdom_gates()`) when randomize is on, showing `?` until a kingdom
+  is reached — where "reached" also backstops on any collected moon (Option A) so a
+  mid-game reconnect still reveals visited kingdoms before the next stage change.
+
+Requires a switch-mod rebuild + redeploy (the build_switchmod → Ryujinx loop). The
+client/apworld side is pure Python (no apworld rebuild / re-seed needed). Original
+investigation below.
+
+**Post-ship bug fixes (2026-06-21, second pass).** Devon reported the panel still
+showed the vanilla numbers, always. Three distinct causes were found and fixed:
+
+1. **Stale installed zip.** SMOClient runs from the installed
+   `vendor/Archipelago/custom_worlds/meatballs.apworld`, NOT the source tree — the
+   zip predated the feature edits, so the running client lacked it entirely. Fix:
+   `install_apworld.py` (the usual gotcha; the client tier needs the rebuild too).
+
+2. **Backstop keyed on the wrong dict (client).** `_format_odyssey`'s reveal
+   fallback OR-ed in `moons_received_by_kingdom`, which is keyed by the *received AP
+   item's* kingdom (its identity), so receiving a Lake/Bowser moon item while
+   standing in Cascade falsely revealed Lake/Bowser. Fixed to use only
+   `moons_checked_by_kingdom` (keyed by the *physical location* collected). See
+   [gui.py](../../apworld/smo_archipelago/client/gui.py) `reached` computation.
+
+3. **Arrival `StatusMsg` never re-fired after a client reconnect (Switch).** The
+   frame-thread dedup `last_arrival_kingdom` survives a client disconnect, but the
+   PC client RESETS `reached_kingdoms` on every (re)connect — so a reconnect (or a
+   client started after the in-game arrival) left the current kingdom hidden, since
+   the next `changeNextStage` was deduped. Confirmed in Devon's log: one
+   `[entrance:file]` (dest=Cascade) but zero `[pump] arrival status`. Fix: a
+   per-frame `tickArrivalPoll()` ([EntranceShuffleHook.cpp](../../switch-mod/src/hooks/EntranceShuffleHook.cpp),
+   driven by `drawMain`) re-derives the current kingdom and routes it through
+   `reportArrival` (self-deduping); a new `ApState::arrival_resync` atomic, set by
+   the socket worker on `hello_ack`, clears the dedup once per connect so the current
+   kingdom re-emits without needing a stage change. Built + deployed 2026-06-21.
+
+**Status (original): investigated, NOT started. Estimate ~90% feasible.** Low effort
+for a "good-enough" version (reveal on first moon in the kingdom, zero Switch work);
 low-to-medium for the faithful "reveal on overworld arrival" signal.
 
 ---

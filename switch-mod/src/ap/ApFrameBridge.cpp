@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <cstdio>
+#include <cstring>
 
 #include "ApProtocol.hpp"
 #include "ApState.hpp"
@@ -63,6 +64,20 @@ void reportStatus(const char* stage_name, int scenario_no) {
     (void)stage_name;
     (void)scenario_no;
     // TODO(M5): wire to a dedicated outbound_status_ring for the tracker.
+}
+
+void reportArrival(const char* stage_name, const char* kingdom_short) {
+    if (!kingdom_short || kingdom_short[0] == '\0') return;
+    auto& st = ApState::instance();
+    // Frame-thread-only dedup: only enqueue on an actual kingdom change so
+    // re-entering an overworld from a subarea doesn't spam StatusMsgs.
+    if (std::strcmp(st.last_arrival_kingdom, kingdom_short) == 0) return;
+    copyFixedField(st.last_arrival_kingdom, kingdom_short);
+
+    ApState::ArrivalEvent e{};
+    copyFixedField(e.kingdom, kingdom_short);
+    copyCheckField(e.stage_name, stage_name);
+    st.outbound_arrivals.push(e);
 }
 
 void reportDeath() {

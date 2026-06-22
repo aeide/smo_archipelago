@@ -45,6 +45,7 @@ from .protocol import (
     ShopLabelsMsg,
     TalkatooPoolMsg,
     kingdom_ap_to_switch,
+    kingdom_switch_to_ap,
 )
 from .state import BridgeState, CheckEvent, ItemEvent
 
@@ -731,6 +732,16 @@ class SwitchServer:
         self._kingdom_gates = {k: int(v) for k, v in (gates or {}).items()}
         self._kingdom_gates_configured = True
 
+    def get_kingdom_gates(self) -> dict[str, int]:
+        """Rolled per-kingdom leave-thresholds (AP-form kingdom names).
+
+        Empty when randomize_kingdom_gates is off (or before AP Connect). The
+        Odyssey tab uses a non-empty result to switch the exit-threshold column
+        from the static vanilla parse to these rolled values, and to gate each
+        kingdom's number behind an arrival reveal.
+        """
+        return dict(getattr(self, "_kingdom_gates", {}) or {})
+
     async def push_kingdom_gates(self) -> None:
         """Send the stashed rolled gates to the active Switch.
 
@@ -1306,6 +1317,14 @@ class SwitchServer:
                 await self._on_death(ts_ms)
         elif t == "status":
             log.debug("switch %r status: %s", conn.device_id, msg)
+            # Overworld-arrival signal: the Switch emits a StatusMsg with the
+            # kingdom (Switch short form) when Mario enters a kingdom's
+            # HomeStage. Mark it reached so the Odyssey tab reveals that
+            # kingdom's rolled exit threshold (randomize_kingdom_gates).
+            kingdom_ap = kingdom_switch_to_ap(msg.get("kingdom"))
+            if kingdom_ap and self._state.mark_kingdom_reached(kingdom_ap):
+                log.info("switch %r reached %s (stage=%s)", conn.device_id,
+                         kingdom_ap, msg.get("stage_name"))
         elif t == "state_begin":
             self._state.begin_snapshot(save_slot=msg.get("save_slot"))
             log.info("snapshot begin: mod_ver=%s save_slot=%s",

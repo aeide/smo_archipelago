@@ -751,6 +751,20 @@ void ApClient::pumpOnce() {
         st.outbound_status.popDiscard();
     }
 
+    // Drain overworld arrivals -> StatusMsg (kingdom + stage_name). The PC
+    // client maps the kingdom to "reached" and reveals its rolled exit gate.
+    ApState::ArrivalEvent av;
+    while (st.outbound_arrivals.peek(av)) {
+        Status s;
+        s.kingdom = av.kingdom;
+        s.stage_name = av.stage_name;
+        encodeStatus(line, s);
+        if (sockSend(socket_fd_, line.data(), line.size()).ret < 0) return;
+        SMOAP_LOG_INFO("[pump] arrival status kingdom=%s stage=%s",
+                       av.kingdom, av.stage_name[0] ? av.stage_name : "<none>");
+        st.outbound_arrivals.popDiscard();
+    }
+
     // Drain outbound_logs.
     if (const std::uint32_t drops = st.log_drops.exchange(0, std::memory_order_relaxed); drops > 0) {
         Log marker;
@@ -854,6 +868,10 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
         st.deathlink_enabled.store(m.hello_ack.deathlink_enabled, std::memory_order_relaxed);
         st.conn.store(ConnState::Ready, std::memory_order_release);
         st.bridge_connected.store(true, std::memory_order_release);
+        // Fresh connection: ask the frame thread to re-emit the current
+        // kingdom's arrival so the PC client (which just reset reached_kingdoms)
+        // re-reveals it without waiting for the next stage change.
+        st.arrival_resync.store(true, std::memory_order_relaxed);
         SMOAP_LOG_INFO("hello_ack: ok=%d seed=%s slot=%s deathlink_enabled=%d client_ver=%s mod_ver=%s",
                        m.hello_ack.ok ? 1 : 0,
                        m.hello_ack.seed,

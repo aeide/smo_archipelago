@@ -27,8 +27,15 @@ Single persistent TCP connection. Each message is one line of UTF-8 JSON termina
 {"t":"check","kind":"moon","kingdom":"Cascade","shine_id":"Our First Power Moon","seq":17}
 {"t":"check","kind":"capture","cap":"Goomba"}
 
-// Status hint for the tracker (no behavioral effect).
-{"t":"status","kingdom":"Metro","scenario":2,"moons_collected":47}
+// Status hint for the tracker (no behavioral effect on game state).
+// Emitted on overworld ARRIVAL: EntranceShuffleHook's changeNextStage commit
+// fires this whenever the (post-remap) destination is a kingdom HomeStage,
+// carrying the kingdom (Switch short form) + dest stage. The PC client marks
+// the kingdom "reached" so the Odyssey tab reveals its rolled exit threshold
+// (randomize_kingdom_gates surprise). Deduped Switch-side per kingdom change.
+// The scenario/moons_collected fields are reserved (ScenarioFlagHook is a
+// no-op for now); arrival messages omit them.
+{"t":"status","kingdom":"Sand","stage_name":"SandWorldHomeStage"}
 
 // Goal completed (Bowser defeated / credits triggered). Idempotent — Switch
 // only sends once per save.

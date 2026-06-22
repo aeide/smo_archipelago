@@ -241,6 +241,57 @@ void writeBodyTint(void* actor, const char* mat_name, const Color4f& tint,
     }
 }
 
+// Resolve a Shine* to its AP palette index, or -1 if there is no override
+// (unknown shine, out-of-range unique_id, or kNoPaletteOverride). Shared by the
+// Shine::init trampoline AND the rs::setStageShineAnimFrame trampoline so the
+// two color paths can never disagree on a moon's color. `self` is the Shine.
+inline int resolveShinePalIdx(const void* self) {
+    const auto* shine = reinterpret_cast<const std::uint8_t*>(self);
+    const int index = *reinterpret_cast<const int*>(
+        shine + kShineMShineIdxOffset);
+    const int unique_id = resolveShineIndexToUniqueId(index);
+    if (unique_id <= 0 ||
+        static_cast<std::size_t>(unique_id) >=
+            smoap::ap::ApState::kMaxShineUid) {
+        return -1;
+    }
+    const std::uint8_t pal =
+        smoap::ap::ApState::instance().getShinePalette(unique_id);
+    if (pal == smoap::ap::ApState::kNoPaletteOverride) return -1;
+    return static_cast<int>(pal < kPaletteCount ? pal : 0);
+}
+
+inline int readShineType(const void* self) {
+    return *reinterpret_cast<const int*>(
+        reinterpret_cast<const std::uint8_t*>(self) + kShineMTypeOffset);
+}
+
+// For a kingdom palette index, the authentic vanilla "Color" frame to drive, or
+// kColorFrameTint (-1) if this kingdom has no distinct vanilla frame (it shares
+// frame 0 with the gold default — fall back to a custom material tint instead).
+// Classification colors (idx 0..4) are never frame-driven -> always -1.
+inline int kingdomColorFrameForPal(std::size_t pal_idx) {
+    if (pal_idx < kKingdomPaletteBase) return kColorFrameTint;
+    const std::size_t kingdom_id = pal_idx - kKingdomPaletteBase;
+    return kingdom_id < kKingdomCount ? kKingdomColorFrame[kingdom_id]
+                                      : kColorFrameTint;
+}
+
+// Apply our material-tint override on top of whatever the model is currently
+// showing (classification idx 0..4 + the 6 frame-0 "tint" kingdoms). Returns
+// false if the model/material isn't present so the caller can warn once. The
+// isExistModel guard is required — some Shine paths complete without a model
+// keeper (stub linked-Shines), and the parameter setters deref it unchecked.
+bool tryWriteShineTint(void* self, int shine_type, std::size_t pal_idx) {
+    if (s_isExistModel == nullptr || !s_isExistModel(self)) return false;
+    const char* mat_name = shineMaterialNameForType(shine_type);
+    if (s_isExistMaterial != nullptr && !s_isExistMaterial(self, mat_name))
+        return false;
+    writeBodyTint(self, mat_name, shinePaletteColor(shine_type, pal_idx),
+                  /*is_dot=*/shine_type == 1);
+    return true;
+}
+
 HkTrampoline<void, void*, const void*> shineInitColorOverride =
     hk::hook::trampoline([](void* self, const void* init_info) -> void {
         shineInitColorOverride.orig(self, init_info);
@@ -248,23 +299,10 @@ HkTrampoline<void, void*, const void*> shineInitColorOverride =
         if (s_setMaterialProgrammable == nullptr ||
             s_setModelMaterialParameterRgba == nullptr) return;
 
-        const auto* shine = reinterpret_cast<const std::uint8_t*>(self);
-        const int shine_type = *reinterpret_cast<const int*>(
-            shine + kShineMTypeOffset);
-        const int index = *reinterpret_cast<const int*>(
-            shine + kShineMShineIdxOffset);
-        const int unique_id = resolveShineIndexToUniqueId(index);
-
-        if (unique_id <= 0 ||
-            static_cast<std::size_t>(unique_id) >=
-                smoap::ap::ApState::kMaxShineUid) {
-            return;
-        }
-
-        const std::uint8_t pal =
-            smoap::ap::ApState::instance().getShinePalette(unique_id);
-        if (pal == smoap::ap::ApState::kNoPaletteOverride) return;
-        const std::size_t pal_idx = pal < kPaletteCount ? pal : 0;
+        const int pal_idx_signed = resolveShinePalIdx(self);
+        if (pal_idx_signed < 0) return;
+        const std::size_t pal_idx = static_cast<std::size_t>(pal_idx_signed);
+        const int shine_type = readShineType(self);
 
         // Required model-presence guard. Some Shine::init paths complete
         // without allocating mModelKeeper — confirmed for the linked-Shine
@@ -282,10 +320,8 @@ HkTrampoline<void, void*, const void*> shineInitColorOverride =
         // never combine — writeBodyTint's setMaterialProgrammable would freeze
         // the anim we just set). The 6 frame-0 "tint" kingdoms (kColorFrameTint)
         // and the classification colors (idx 0..4) fall through to writeBodyTint.
-        if (pal_idx >= kKingdomPaletteBase) {
-            const std::size_t kingdom_id = pal_idx - kKingdomPaletteBase;
-            const int frame = kingdom_id < kKingdomCount
-                ? kKingdomColorFrame[kingdom_id] : kColorFrameTint;
+        const int frame = kingdomColorFrameForPal(pal_idx);
+        if (frame >= 0) {
             // Guard: stub linked-Shines (Pyramid's createLinksActorFromFactory
             // shine) pass isExistModel but carry no Mcl "Color" anim player, so
             // setStageShineAnimFrame -> startMclAnimAndSetFrameAndStop would
@@ -294,27 +330,23 @@ HkTrampoline<void, void*, const void*> shineInitColorOverride =
             // didn't resolve, the guard is permissive (proceed as before).
             const bool color_anim_ok =
                 s_isMclAnimExist == nullptr || s_isMclAnimExist(self, "Color");
-            if (frame >= 0 && s_setStageShineAnimFrame != nullptr &&
-                color_anim_ok) {
+            if (s_setStageShineAnimFrame != nullptr && color_anim_ok) {
                 s_setStageShineAnimFrame(self, /*stageName=*/nullptr, frame,
                                          kColorAnimIsMatAnim);
                 static int s_frame_logged = 0;
                 if (s_frame_logged < 8) {
-                    SMOAP_LOG_INFO("[shine-frame] override#%d type=%d unique_id=%d "
-                                   "kingdom_id=%zu frame=%d",
-                                   s_frame_logged + 1, shine_type, unique_id,
-                                   kingdom_id, frame);
+                    SMOAP_LOG_INFO("[shine-frame] override#%d type=%d frame=%d",
+                                   s_frame_logged + 1, shine_type, frame);
                     ++s_frame_logged;
                 }
                 return;
             }
-            // frame < 0 (tint kingdom) or symbol missing -> material fallback.
+            // symbol missing / no Color anim -> material fallback below.
         }
 
-        const char* mat_name = shineMaterialNameForType(shine_type);
-
-        if (s_isExistMaterial != nullptr && !s_isExistMaterial(self, mat_name)) {
+        if (!tryWriteShineTint(self, shine_type, pal_idx)) {
             static bool s_warned[3] = {false, false, false};
+            const char* mat_name = shineMaterialNameForType(shine_type);
             if (shine_type >= 0 && shine_type < 3 && !s_warned[shine_type]) {
                 s_warned[shine_type] = true;
                 SMOAP_LOG_WARN("[shine-color] type=%d has no material '%s' — "
@@ -324,17 +356,59 @@ HkTrampoline<void, void*, const void*> shineInitColorOverride =
             return;
         }
 
-        writeBodyTint(self, mat_name,
-                      shinePaletteColor(shine_type, pal_idx),
-                      /*is_dot=*/shine_type == 1);
-
         static int s_logged = 0;
         if (s_logged < 8) {
-            SMOAP_LOG_INFO("[shine-color] override#%d type=%d unique_id=%d palette=%u",
-                           s_logged + 1, shine_type, unique_id,
-                           static_cast<unsigned>(pal));
+            SMOAP_LOG_INFO("[shine-color] override#%d type=%d palette=%zu",
+                           s_logged + 1, shine_type, pal_idx);
             ++s_logged;
         }
+    });
+
+// Re-assert our color override whenever the game re-drives a shine's vanilla
+// "Color" anim. Vanilla calls rs::setStageShineAnimFrame from the appear/popup
+// sequence (AFTER Shine::init) for moons that SPAWN at runtime — opening a
+// treasure chest, starting a kingdom timer challenge, etc. Without this hook the
+// init-time override above is silently overwritten and the spawned moon reverts
+// to its vanilla per-kingdom color; moons already present at stage load never
+// hit this second call, which is why only spawned ones looked wrong. The actor
+// param is always the Shine (OdysseyDecomp src/Util/ItemUtil.cpp), so we resolve
+// its palette the same way as init. We only call .orig() (never the patched
+// entry), so there is no recursion.
+HkTrampoline<void, void*, const char*, int, bool> setStageShineAnimFrameOverride =
+    hk::hook::trampoline([](void* actor, const char* stage_name, int frame,
+                            bool is_mat_anim) -> void {
+        if (!actor) {
+            setStageShineAnimFrameOverride.orig(actor, stage_name, frame,
+                                                is_mat_anim);
+            return;
+        }
+        const int pal_idx_signed = resolveShinePalIdx(actor);
+        if (pal_idx_signed < 0) {
+            setStageShineAnimFrameOverride.orig(actor, stage_name, frame,
+                                                is_mat_anim);
+            return;
+        }
+        const std::size_t pal_idx = static_cast<std::size_t>(pal_idx_signed);
+
+        // Frame-override kingdom: substitute OUR granted kingdom's frame into
+        // the vanilla call. Vanilla itself is the caller here, so the "Color"
+        // anim is guaranteed present (it would crash its own call otherwise) —
+        // no isMclAnimExist guard needed for this path.
+        const int our_frame = kingdomColorFrameForPal(pal_idx);
+        if (our_frame >= 0) {
+            setStageShineAnimFrameOverride.orig(actor, stage_name, our_frame,
+                                                is_mat_anim);
+            return;
+        }
+
+        // Tint kingdom (frame 0 / kColorFrameTint) or classification color
+        // (idx 0..4): let vanilla drive its frame first, then multiply our
+        // material tint on top (programmable params win over the Mcl anim).
+        setStageShineAnimFrameOverride.orig(actor, stage_name, frame,
+                                            is_mat_anim);
+        if (s_setMaterialProgrammable == nullptr ||
+            s_setModelMaterialParameterRgba == nullptr) return;
+        tryWriteShineTint(actor, readShineType(actor), pal_idx);
     });
 
 template <typename FnPtr>
@@ -380,6 +454,23 @@ void installShineAppearanceHook() {
         // string here for now. Keep in sync with HookSymbols.hpp's kShineInit.
         shineInitColorOverride.installAtSym<
             "_ZN5Shine4initERKN2al13ActorInitInfoE">();
+
+        // Re-assert the override when the game re-drives a shine's "Color" anim
+        // during the appear/popup sequence (spawned moons: chests, timer
+        // challenges). Install at the address we already resolved for
+        // s_setStageShineAnimFrame (the symbol is intentionally NOT in the sail
+        // .sym, so we install by ptr, gracefully skipping on a lookup miss).
+        if (s_setStageShineAnimFrame != nullptr) {
+            SMOAP_LOG_INFO("installing SetStageShineAnimFrameOverride -> "
+                           "rs::setStageShineAnimFrame");
+            const auto rc = setStageShineAnimFrameOverride.installAtPtr(
+                reinterpret_cast<ptr>(s_setStageShineAnimFrame));
+            if (rc.failed())
+                SMOAP_LOG_ERROR("setStageShineAnimFrame trampoline install FAILED");
+        } else {
+            SMOAP_LOG_WARN("rs::setStageShineAnimFrame unresolved — spawned-moon "
+                           "recolor not active");
+        }
     }
 }
 

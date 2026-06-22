@@ -179,6 +179,25 @@ public:
     // frame -> socket
     SpscRing<Check, 256> outbound_checks;
     SpscRing<StatusEvent, 16> outbound_status;
+    // frame -> socket. Overworld-arrival signal: when Mario enters a kingdom's
+    // HomeStage (EntranceShuffleHook's changeNextStage commit), the frame
+    // thread pushes the kingdom short name + dest stage here; ApClient drains
+    // it into a StatusMsg the PC client uses to reveal that kingdom's rolled
+    // exit threshold (randomize_kingdom_gates surprise). Deduped on the frame
+    // thread by last_arrival_kingdom so re-entering an overworld from a subarea
+    // doesn't re-emit. 16 slots is ample — arrivals are seconds apart.
+    struct ArrivalEvent {
+        char kingdom[32] = {};                 // apworld short name ("Sand")
+        char stage_name[kCheckFieldCap] = {};  // dest HomeStage (informational)
+    };
+    SpscRing<ArrivalEvent, 16> outbound_arrivals;
+    // Set by the socket worker on each hello_ack so the frame thread re-emits
+    // the current kingdom's ArrivalEvent. The PC client resets reached_kingdoms
+    // on every (re)connect, but last_arrival_kingdom (frame-thread dedup) lives
+    // across the disconnect — without this resync a reconnect while standing in
+    // a kingdom would leave that kingdom's rolled gate hidden forever. Consumed
+    // (exchanged to false) by tickArrivalPoll on the frame thread.
+    std::atomic<bool> arrival_resync{false};
     // any-thread -> socket. Mirror of every smoap::util::log() call above
     // SMOAP_LOG_FORWARD_MIN_LEVEL — surfaced in the PC client's "Switch" tab
     // so we can diagnose retail-Switch behaviour without `lm` capture.
@@ -207,6 +226,10 @@ public:
     SpscRing<SystemBubble, 16> inbound_system_bubbles;
 
     // frame-thread-only state below
+
+    // Last kingdom we emitted an ArrivalEvent for. Frame-thread-only dedup so
+    // reportArrival only enqueues on an actual kingdom change. Empty = none yet.
+    char last_arrival_kingdom[32] = {};
 
     std::bitset<128> captures_unlocked;     // 43 used; index from capture_table.h
     FlatHashSet<4096> locations_checked;    // session dedupe (hash of message body)

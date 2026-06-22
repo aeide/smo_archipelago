@@ -53,7 +53,17 @@
       "PowerShell(python scripts\\\\_verify_build_subareas.py)",
       "PowerShell(python -m pytest apworld/smo_archipelago/tests/test_moon_requirements.py apworld/smo_archipelago/tests/test_entrance_shuffle.py -q 2>&1)",
       "PowerShell(python scripts\\\\_fix_underground_caverns.py)",
-      "PowerShell(python scripts\\\\_fix_underground_caverns_reqs.py)"
+      "PowerShell(python scripts\\\\_fix_underground_caverns_reqs.py)",
+      "PowerShell($dep = \"$env:APPDATA\\\\Ryujinx\\\\mods\\\\contents\\\\0100000000010000\\\\exefs\\\\subsdk9\"; if \\(Test-Path $dep\\) { \"deployed subsdk9:\"; Get-Item $dep | Select-Object LastWriteTime } else { \"NO deployed subsdk9 at $dep\" }; \"---- build output subsdk9 ----\"; $b = \"E:\\\\smo_archipelago\\\\switch-mod\\\\build\\\\sd\\\\atmosphere\\\\contents\\\\0100000000010000\\\\exefs\\\\subsdk9\"; if \\(Test-Path $b\\) { Get-Item $b | Select-Object LastWriteTime } else { \"no build artifact\" }; \"---- switch-mod sources ----\"; foreach \\($f in @\\(\"EntranceShuffleHook.cpp\"\\)\\) { Get-Item \"E:\\\\smo_archipelago\\\\switch-mod\\\\src\\\\hooks\\\\$f\" | Select-Object Name, LastWriteTime }; Get-Item \"E:\\\\smo_archipelago\\\\switch-mod\\\\src\\\\ap\\\\ApFrameBridge.cpp\" | Select-Object Name, LastWriteTime; Get-Item \"E:\\\\smo_archipelago\\\\switch-mod\\\\src\\\\ap\\\\ApClient.cpp\" | Select-Object Name, LastWriteTime)",
+      "PowerShell($log = \"E:\\\\smo_archipelago\\\\vendor\\\\Archipelago\\\\logs\\\\SMOClient_2026_06_21_22_33_17.txt\"; Select-String -Path $log -Pattern \"status|reached|StatusMsg|kingdom\" -SimpleMatch | Select-Object -Last 40 | ForEach-Object { $_.Line })",
+      "PowerShell($log = \"E:\\\\smo_archipelago\\\\vendor\\\\Archipelago\\\\logs\\\\SMOClient_2026_06_21_22_33_17.txt\"; \"lines: \" + \\(Get-Content $log | Measure-Object -Line\\).Lines; \"--- last 30 ---\"; Get-Content $log -Tail 30)",
+      "PowerShell($log = \"E:\\\\smo_archipelago\\\\vendor\\\\Archipelago\\\\logs\\\\SMOClient_2026_06_21_22_33_17.txt\"; \"=== entrance:file lines ===\"; Select-String -Path $log -Pattern \"entrance:file\" -SimpleMatch | ForEach-Object { $_.Line }; \"=== entrance:try lines ===\"; Select-String -Path $log -Pattern \"entrance:try\" -SimpleMatch | ForEach-Object { $_.Line }; \"=== reportArrival / Arrival / HELLO ===\"; Select-String -Path $log -Pattern \"Arrival\",\"HELLO\",\"hello\" | ForEach-Object { $_.Line })",
+      "PowerShell($RYU = \"$env:APPDATA\\\\Ryujinx\\\\mods\\\\contents\\\\0100000000010000\\\\\"; New-Item -ItemType Directory -Force \"$RYU\\\\exefs\" | Out-Null; Copy-Item -Force E:\\\\smo_archipelago\\\\switch-mod\\\\build\\\\sd\\\\atmosphere\\\\contents\\\\0100000000010000\\\\exefs\\\\subsdk9 \"$RYU\\\\exefs\\\\subsdk9\"; Copy-Item -Force E:\\\\smo_archipelago\\\\switch-mod\\\\build\\\\sd\\\\atmosphere\\\\contents\\\\0100000000010000\\\\exefs\\\\main.npdm \"$RYU\\\\exefs\\\\main.npdm\"; \"Deployed:\"; Get-Item \"$RYU\\\\exefs\\\\subsdk9\",\"$RYU\\\\exefs\\\\main.npdm\" | Select-Object Name, LastWriteTime)",
+      "Bash(curl -s \"https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/git/trees/master?recursive=1\" -o tree.json)",
+      "Bash(python3 -c ' *)",
+      "Bash(find e:/smo_archipelago/switch-mod/sys -name 'Trampoline.h')",
+      "Bash(grep -rn \"installAtSym\\\\|installAtPtr\\\\|installAtOffset\\\\|void install\" e:/smo_archipelago/switch-mod/sys/hk/include/hk/hook/Trampoline.h)",
+      "Bash(echo \"\\(exit $?\\)\")"
     ]
   }
 }

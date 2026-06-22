@@ -560,9 +560,41 @@ def _format_odyssey(ctx: "SMOContext") -> str:
     moons_recv = snap.get("moons_received_by_kingdom") or {}
     exit_thresholds = ctx.dp.kingdom_exit_thresholds()
 
+    # randomize_kingdom_gates: when the gates were rolled per-seed, the static
+    # regions.json thresholds are WRONG (they're the vanilla numbers). The
+    # rolled values live on the SwitchServer; a non-empty dict means randomize
+    # is on. In that mode we (a) show the rolled value, not the vanilla one,
+    # and (b) keep it a surprise — print "?" until the player has reached the
+    # kingdom's overworld, then reveal the real number.
+    rolled_gates: dict[str, int] = {}
+    if ctx.switch is not None:
+        rolled_gates = ctx.switch.get_kingdom_gates()
+    randomize_on = bool(rolled_gates)
+    # "Reached" = an explicit overworld-arrival signal from the Switch, OR any
+    # moon PHYSICALLY collected in the kingdom (so a reconnect mid-game still
+    # reveals what the player has already visited even before they next change
+    # stages). Use moons_checked_by_kingdom (keyed by the location's home
+    # kingdom — where Mario stood) NOT moons_received_by_kingdom (keyed by the
+    # received AP item's kingdom — its identity). Collecting a Bowser's-Kingdom
+    # moon item that landed in Cascade means you reached Cascade, not Bowser's.
+    moons_checked = snap.get("moons_checked_by_kingdom") or {}
+    reached = set(snap.get("reached_kingdoms") or [])
+    reached |= {k for k, n in moons_checked.items() if n}
+
+    def _need_for(k: str):
+        """Exit-threshold cell value: an int, the "?" surprise sentinel, or
+        None (ungated kingdom — denominator elided)."""
+        if randomize_on:
+            gate = rolled_gates.get(k)
+            if gate is None:
+                return None
+            return gate if k in reached else "?"
+        return exit_thresholds.get(k)
+
     parts: list[str] = []
     parts.append("[b]Moons by kingdom[/b]    [i]earned / needed to exit[/i]")
-    all_k = sorted(set(moons_recv) | set(exit_thresholds), key=_kingdom_sort_key)
+    gated_keys = set(rolled_gates) if randomize_on else set(exit_thresholds)
+    all_k = sorted(set(moons_recv) | gated_keys, key=_kingdom_sort_key)
     if ctx.is_festival_goal():
         all_k = [k for k in all_k if k not in _HIDDEN_KINGDOMS_FESTIVAL]
     if all_k:
@@ -571,17 +603,19 @@ def _format_odyssey(ctx: "SMOContext") -> str:
         # Kivy's proportional default font. Width is computed from the
         # observed values so adding a longer-named kingdom doesn't break
         # alignment.
+        needs = {k: _need_for(k) for k in all_k}
         name_w = max(len(k) for k in all_k)
         recv_w = max(len(str(moons_recv.get(k, 0))) for k in all_k)
+        # "?" counts as width 1; ints by their digit count. default=1 keeps
+        # the column non-empty when every shown kingdom is ungated.
         need_w = max(
-            (len(str(exit_thresholds[k])) for k in all_k
-             if exit_thresholds.get(k) is not None),
+            (len(str(v)) for v in needs.values() if v is not None),
             default=1,
         )
         rows: list[str] = []
         for k in all_k:
             recv = moons_recv.get(k, 0)
-            need = exit_thresholds.get(k)
+            need = needs[k]
             label = f"{k}:".ljust(name_w + 1)
             if need is not None:
                 rows.append(f"  {label} {recv:>{recv_w}} / {need:>{need_w}}")

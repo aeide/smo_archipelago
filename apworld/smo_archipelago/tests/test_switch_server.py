@@ -150,6 +150,46 @@ async def test_death_message_dispatches_to_handler():
 
 
 @pytest.mark.asyncio
+async def test_status_message_marks_kingdom_reached():
+    """A StatusMsg carrying a kingdom (overworld arrival) marks that kingdom
+    reached so the Odyssey tab can reveal its rolled exit gate. Switch short
+    form is translated to AP form (Bowser -> Bowser's)."""
+    state = BridgeState()
+
+    async def on_check(_): ...
+    async def on_goal(): ...
+
+    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal)
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        writer.write(protocol.encode(HelloMsg()))
+        await writer.drain()
+        await _drain_messages(reader, n=3, timeout=2.0)
+
+        writer.write(protocol.encode(
+            protocol.StatusMsg(kingdom="Sand", stage_name="SandWorldHomeStage")))
+        writer.write(protocol.encode(
+            protocol.StatusMsg(kingdom="Bowser", stage_name="SkyWorldHomeStage")))
+        await writer.drain()
+        await asyncio.sleep(0.1)
+
+        snap = state.snapshot()
+        assert "Sand" in snap["reached_kingdoms"]
+        assert "Bowser's" in snap["reached_kingdoms"]
+    finally:
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
 async def test_hello_ack_advertises_deathlink_enabled():
     """When bridge config has DeathLink on, hello_ack must tell the mod so it
     will act on inbound kill messages. (Outbound is bridge-gated separately,

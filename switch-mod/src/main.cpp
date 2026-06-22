@@ -83,6 +83,10 @@ void installGrowSeedInstantHook();
 // P7 entrance shuffle — Step 3 logger on tryChangeNextStage. See
 // hooks/EntranceShuffleHook.cpp.
 void installEntranceShuffleHook();
+// Per-frame overworld-arrival poll: re-emits the current kingdom's ArrivalEvent
+// (self-deduping) so randomize_kingdom_gates reveals survive reconnects and
+// pre-connect arrivals. See hooks/EntranceShuffleHook.cpp.
+void tickArrivalPoll();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
@@ -234,6 +238,7 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
             }
         }
         smoap::hooks::tickWorldTravelPeach();  // self-throttled (~1s)
+        smoap::hooks::tickArrivalPoll();        // self-throttled (~0.5s)
         smoap::ui::drawHudFrame();
         smoap::ui::drawDebugConsole();
 
