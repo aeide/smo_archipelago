@@ -22,12 +22,22 @@ def CascadePeace(world: World, multiworld: MultiWorld, state: CollectionState, p
     return canReachLocation(world, multiworld, state, player, "Cascade: Multi Moon Atop the Falls")
 
 def CascadeDeparture(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """Departure from Cascade Kingdom: reachable once Sand Kingdom (Cascade's only exit,
-    hence its revisit route) is reachable. Cascade has no boss-style world-peace cutscene
-    and clear_main_scenario is its LAST scenario, so its after-ending + moon-rock layers
-    (scenario >= after_ending_scenario) are only re-entered after LEAVING and returning.
-    Mirrors CapPeace/CloudPeace/LostPeace. See docs/scenario-logic-revisit-june-20.md §5a."""
-    return canReachRegion(world, multiworld, state, player, "Sand Kingdom")
+    """Departure from Cascade Kingdom: the player has collected enough Cascade moons to
+    LEAVE the kingdom (the in-game Odyssey leave-threshold). Cascade has no boss-style
+    world-peace cutscene and clear_main_scenario is its LAST scenario, so its after-ending
+    + moon-rock layers (scenario >= after_ending_scenario) are only re-entered after
+    LEAVING and returning.
+
+    NOTE: this must NOT be `canReachRegion("Sand Kingdom")`. The Manual region engine
+    (apworld/.../Rules.py set_rules) applies a region's `requires` to that region's
+    OUTGOING entrances, so a region's gate controls *leaving* it, not *entering* it.
+    Cascade is the free starting region, so reaching the Sand region is free from sphere 0
+    and the leave-gate `{KingdomMoons(Cascade,N)}` actually rides Sand's exits. Keying off
+    Sand reachability made this a no-op (always true) and stranded the bit>=2 Cascade moons
+    in sphere 0 -> unwinnable starting kingdom. Gate on the leave-moon count directly
+    instead; KingdomMoons reads world.rolled_kingdom_gates so it tracks the rolled gate.
+    See docs/scenario-logic-revisit-june-20.md §4a and the canReachRegion-egress diagnosis."""
+    return KingdomMoons(world, multiworld, state, player, "Cascade", 5)
 
 # ── Re-arrival ("leave and come back") peace for Cap/Cloud/Lost/Moon ──────────────
 # These four kingdoms have no boss-style "world peace" cutscene; instead their post-
@@ -40,21 +50,54 @@ def CascadeDeparture(world: World, multiworld: MultiWorld, state: CollectionStat
 # "leave Moon = win" coupling) but kept for uniformity + future goal changes.
 
 def CapPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """Re-arrival in Cap Kingdom: reachable once the Sand hub (Cap's revisit route) is."""
-    return canReachRegion(world, multiworld, state, player, "Sand Kingdom")
+    """Re-arrival in Cap Kingdom: reachable once the player has the Odyssey and can fly
+    back to Bonneton — i.e. has left Cascade (collected its leave-gate worth of moons).
+
+    NOTE: must NOT be `canReachRegion("Sand Kingdom")`. The Manual engine gates region
+    EGRESS, not ingress (see CascadeDeparture), and Sand sits right after the free starting
+    region, so Sand reachability is true from sphere 0 and this gate was a no-op. Key off
+    the Cascade leave-gate directly (rolled-gate aware via KingdomMoons)."""
+    return KingdomMoons(world, multiworld, state, player, "Cascade", 5)
 
 def CloudPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """Re-arrival in Cloud Kingdom: reachable once Night Metro (Cloud's revisit route) is."""
-    return canReachRegion(world, multiworld, state, player, "Night Metro")
+    """Re-arrival in Cloud Kingdom: reachable once the player has the Lost leave-gate
+    worth of moons (the Night Metro -> Cloud branch in regions.json is gated by
+    KingdomMoons(Lost,10), so reaching Cloud at all requires the Lost leave-gate).
+
+    NOTE: do NOT use `canReachRegion("Night Metro")` here. The Manual engine gates region
+    EGRESS not ingress (see CascadeDeparture / region-gating-egress-off-by-one), so
+    `canReachRegion("Night Metro")` flips True one kingdom early — at the Wooded leave-gate,
+    with ZERO Lost moons. It happened to be masked for Cloud locations because Cloud's parent
+    region (reached via the Night Metro->Cloud edge) is itself gated by KingdomMoons(Lost,10),
+    so the effective gate was already +Lost. Keying directly off KingdomMoons("Lost",10)
+    makes the predicate honest (matches the parent gate) instead of relying on that mask.
+    Audited 2026-06-22 (docs/handoff-region-gating-egress.md item 1)."""
+    return KingdomMoons(world, multiworld, state, player, "Lost", 10)
 
 def LostPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """Re-arrival in Lost Kingdom: reachable once the player has progressed past Lost
-    (Night Metro reachable == enough Lost moons to leave)."""
-    return canReachRegion(world, multiworld, state, player, "Night Metro")
+    """Re-arrival in Lost Kingdom: reachable once the player has collected the Lost
+    leave-gate worth of moons (the in-game Odyssey-power threshold to advance out of Lost,
+    == the authored Night Metro entry requirement KingdomMoons(Lost,10)).
+
+    NOTE: this was `canReachRegion("Night Metro")`, which the egress engine flips True one
+    kingdom EARLY — at the Wooded leave-gate, with ZERO Lost moons (empirically confirmed
+    2026-06-22: Night Metro region reachable at +Wooded). Unlike Cascade this was benign (no
+    circular self-gate: Lost re-arrival moons are gated by a *prior* kingdom's count, so a too-
+    loose gate only over-permits junk cluster moons, never deadlocks), but it was still wrong
+    by one kingdom. Gate on the Lost leave-count directly (rolled-gate aware via KingdomMoons).
+    Audited + fixed 2026-06-22 (docs/handoff-region-gating-egress.md item 1)."""
+    return KingdomMoons(world, multiworld, state, player, "Lost", 10)
 
 def MoonPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):
-    """Re-arrival in Moon Kingdom: reachable once the player has progressed past Moon
-    (Mushroom Kingdom reachable). Currently a no-op (Moon -> Mushroom is ungated)."""
+    """Re-arrival in Moon Kingdom: reachable once Mushroom Kingdom is.
+
+    LEFT on `canReachRegion("Mushroom Kingdom")` deliberately. Under egress this flips True at
+    the Bowser's leave-gate (KingdomMoons(Bowser's,8)) — and leaving Moon == reaching Mushroom
+    == winning the game, which ENDS the AP (the "leave Moon = win" coupling). So Moon's post-
+    peace moon-pipe re-arrival moons inherently sit at/after the goal boundary; there is no
+    faithful pre-win threshold to gate them on. This is the documented deferred item ("Later
+    goals beyond the Mushroom festival" in CLAUDE.md) — revisit only if a post-festival goal is
+    ever added. Audited 2026-06-22 and intentionally unchanged."""
     return canReachRegion(world, multiworld, state, player, "Mushroom Kingdom")
 
 def SandPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):

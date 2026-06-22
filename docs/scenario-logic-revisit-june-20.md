@@ -387,3 +387,101 @@ Deviations from the literal §5/§9 wording:
 and `test_moon_requirements.py::test_subarea_csv_names_in_requirements` ("Underground
 Caverns" csv_names vs requirements drift). Both predate this work; flagged for a separate
 data-hygiene pass.
+
+## 11. CORRECTION (2026-06-21) — `CascadeDeparture` was STILL a no-op; the §8 "8/8 clean" proof was false
+
+The §5a/§10 fix replaced `CascadePeace` (no-op #1) with
+`CascadeDeparture() = canReachRegion("Sand Kingdom")` — and that is **no-op #2**. Devon hit
+the *same* unwinnable Cascade deadlock on a fresh seed (`69832988328664538026`, Cascade gate
+9): the leave-gate wanted 9 Cascade moons but most were behind `{CascadeDeparture()}`,
+which evaluated **True from sphere 0**.
+
+**Root cause (verified empirically with a solo-multiworld `can_reach_region` probe):** the
+Manual region engine (`apworld/.../Rules.py::set_rules`, the region loop at ~L231-238)
+applies a region's `requires` to that region's **OUTGOING** entrances — it gates *leaving* a
+region, not *entering* it. Cascade is the free starting region, so the Cascade→Sand entrance
+inherits Cascade's empty requires and **reaching the Sand region is free from sphere 0**; the
+leave-gate `{KingdomMoons(Cascade,N)}` written on Sand actually rides Sand's *exits*
+(Sand→Cap/Lake). Probe at empty state: `can_reach_region("Sand Kingdom") = True`,
+`Cap/Lake/Wooded = False`. So `canReachRegion("Sand Kingdom")` is a constant-True predicate.
+
+Why §8's `accessibility: full` sweep "passed" anyway: a no-op gate never causes a FillError —
+it makes generation *easier*, not harder. `full` proves a valid sphere order EXISTS under the
+logic *as written*; if the logic says the moons are free at sphere 0, fill is trivially
+satisfiable and the "proof" is vacuous. This is the **exact §4a trap** ("a gate that is always
+true is not a floor") — the rewrite identified it for `CascadePeace` and then walked straight
+back into it for `CascadeDeparture`.
+
+**Why ONLY Cascade is catastrophic:** non-starting kingdoms' moons are also gated by their
+own region's `requires` string at the *location* level (`set_rules` L249-259 ANDs
+`locationRegion`'s requires onto each location) **and** by AP parent-region reachability — so a
+Sand/Lake/etc. location is still correctly gated. Cascade is the starting region with empty
+`requires`, so its moons have **no** region-level gate; their only gate is their own
+`{CascadeDeparture()}` predicate — which was the no-op.
+
+**The fix (shipped 2026-06-21):** gate the predicate on the leave-moon count directly instead
+of a free region's reachability:
+
+```python
+def CascadeDeparture(...): return KingdomMoons(world, multiworld, state, player, "Cascade", 5)
+```
+
+`KingdomMoons` reads `world.rolled_kingdom_gates`, so it tracks the rolled gate (N=5→rolled).
+`CapPeace` had the identical `canReachRegion("Sand Kingdom")` no-op and was repointed the same
+way (redundant in effect — Cap locations are already gated by parent-region reachability =
+`KM(Cascade,N)` — but corrected for clarity/robustness). `CloudPeace`/`LostPeace`
+(`Night Metro`) and `MoonPeace` (`Mushroom`) target genuinely-gated regions (False at sphere 0)
+and were left as-is.
+
+**Verification:** empirical probe — the three sampled `CascadeDeparture` moons are False at
+empty state, False at gate-1, and all True at exactly the rolled gate; `Multi Moon Atop the
+Falls` (`CascadePeace`, the starting story moon) stays True. Report seed re-generated:
+**0 Cascade departure moons in sphere 1** (was 6). 5-seed `accessibility: full` sweep clean
+(Cascade gates 3–9). New guard `tests/test_cascade_reachability.py` (SMOAP_LIVE_AP) builds a
+real multiworld and asserts the gate — closing the blind spot that let a syntactically-present
+but semantically-dead gate ship twice.
+
+**Latent, non-blocking (NOT fixed here):** the egress-vs-ingress region-gating is a *systemic*
+off-by-one — every kingdom's region is reachable "one kingdom early" at the **region** level.
+It is masked for kingdom progression by the location-level region-requires AND parent-region
+reachability checks, and now masked for the scenario predicates by keying them off
+`KingdomMoons` rather than `canReachRegion`. A proper engine fix (apply region `requires` to a
+region's *incoming* entrances) would remove the off-by-one globally but shifts every gate and
+needs a full re-tune + re-sweep of `KINGDOM_MOON_GATES` / the demotion logic — deferred; do NOT
+attempt without a full-sweep budget. Until then: **never use `canReachRegion(<kingdom>)` as a
+"player has left kingdom K" predicate** — use `KingdomMoons(K, ...)`.
+
+## 12. Item-1 audit (2026-06-22) — `CloudPeace`/`LostPeace`/`MoonPeace` off-by-one
+
+Deferred item 1 of [handoff-region-gating-egress.md](handoff-region-gating-egress.md). Audited
+the three re-arrival predicates still on `canReachRegion` with a solo-multiworld collection
+walk (the `setup_multiworld` + `can_reach_region` probe pattern from
+`tests/test_cascade_reachability.py`, randomize-gates OFF so gates == `KINGDOM_MOON_GATES`).
+Empirical result — region first reachable after collecting all of:
+
+| Region | Opens after | Authored ingress | Verdict |
+|---|---|---|---|
+| Night Metro | **+Wooded** (zero Lost moons) | after Lost (`KingdomMoons(Lost,10)`) | **one kingdom early** |
+| Cloud Kingdom | +Lost | parent edge `KingdomMoons(Lost,10)` | correct |
+| Mushroom Kingdom | **+Bowser's** | after Moon | **one kingdom early** |
+
+Cause is the egress engine (§11): Night Metro is reached via the `Lost→Night Metro` edge, which
+inherits **Lost's** requires `{KingdomMoons(Wooded,16)}`; Mushroom via `Moon→Mushroom` inheriting
+**Moon's** `{KingdomMoons(Bowser's,8)}`. Cloud is reached via `Night Metro→Cloud` inheriting Night
+Metro's `{KingdomMoons(Lost,10)}`, so its *region* is correctly gated at Lost(10) — `CloudPeace`'s
+old `canReachRegion("Night Metro")` was looser (Wooded) but masked by that parent edge.
+
+**Fixes (this session):** `LostPeace` and `CloudPeace` repointed to `KingdomMoons("Lost",10)`
+(rolled-gate aware). `MoonPeace` **deliberately left** on `canReachRegion("Mushroom Kingdom")`:
+leaving Moon == reaching Mushroom == winning (the "leave Moon = win" coupling), so its post-peace
+moon-pipe re-arrival moons inherently sit at/after the goal boundary — there is no faithful
+pre-win threshold (the documented "later goals" deferred item; revisit only if a post-festival
+goal is added).
+
+**Verification:** the 3 pure-predicate Lost/Cloud re-arrival moons are closed at empty, closed at
+the Lost gate−1 (boundary), and all open at exactly the Lost gate. New guard
+`tests/test_rearrival_reachability.py` (SMOAP_LIVE_AP) builds a real multiworld and asserts it;
+both it and `test_cascade_reachability.py` pass against the installed zip.
+(Note: Lost-region locations also inherit Lost's own region requires `{KingdomMoons(Wooded,16)}`
+ANDed at the location level — so the off-by-one over-permit was already masked for *progression*;
+the predicate fix tightens the *scenario layer* gate from Wooded to Lost, the faithful threshold.)
