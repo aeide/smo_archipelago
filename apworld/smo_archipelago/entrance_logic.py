@@ -143,6 +143,28 @@ SUBAREA_ENTRANCE_GATES: dict[str, str] = {
     "Spinning Athletics":               "|Lava Bubble|",
 }
 
+# Subarea name → EXIT-gate requires string: the item(s) needed to LEAVE the
+# interior, independent of which door you came in through. Most subareas exit
+# for free (a return pipe/door drops you back), so they're absent here. The
+# mini-rocket sky subareas are the exception Devon flagged: the ONLY way out is
+# to re-board the Mini Rocket inside, so reaching one of these interiors via a
+# DIFFERENT (shuffled) door still strands Mario without |Mini Rocket|.
+#
+# Only consulted on the entrance-shuffle ON path (make_door_access_rule ANDs it
+# onto the door→interior rule). Shuffle OFF needs no exit table: there the door
+# is the identity (interior == its own door), whose ENTRY gate already equals the
+# exit gate, so the baked moon `requires` (= entry gate) covers leaving for free.
+# Keys MUST stay a subset of SUBAREA_ENTRANCE_GATES (an exit-gated subarea is by
+# definition also entry-gated by the same capture); guarded by the test suite.
+SUBAREA_EXIT_GATES: dict[str, str] = {
+    "Swinging Along the High-Rises":    "|Mini Rocket|",
+    "A Sea of Clouds":                  "|Mini Rocket|",
+    "Strange Neighborhood":             "|Mini Rocket|",
+    "Shards in the Fog":                "|Mini Rocket|",
+    "Picture Match (Mario)":            "|Mini Rocket|",
+    "Roulette Tower":                   "|Mini Rocket|",
+}
+
 # Kingdom prefix → peace-function name (from hooks/Rules.py).
 # Cap, Cloud, Lost omitted — their peace = kingdom reachability; no extra gate.
 MOON_PIPE_PEACE_FUNCS: dict[str, str] = {
@@ -594,13 +616,25 @@ def make_door_access_rule(
     world: "World",
     multiworld: "MultiWorld",
     player: int,
+    interior_subarea: str | None = None,
 ) -> "Callable[[CollectionState], bool]":
     """Return a lambda(state) -> bool for a door's entrance access rule.
 
-    Combines kingdom gate + subarea entrance gate + (if moon-pipe) peace gate.
-    All checks are evaluated lazily at fill/play time; no AP state is read here.
+    Combines kingdom gate + subarea entrance gate + interior EXIT gate + (if
+    moon-pipe) peace gate. All checks are evaluated lazily at fill/play time; no
+    AP state is read here.
+
+    `interior_subarea` is the subarea this door actually leads to under the
+    entrance-shuffle bijection (may differ from `door_subarea`). When it has an
+    entry in SUBAREA_EXIT_GATES — i.e. a mini-rocket sky subarea you can only
+    leave by re-boarding the rocket — that exit requirement is ANDed in, so AP
+    never treats the interior's moons as reachable when Mario couldn't escape.
+    Defaults to `door_subarea` (the shuffle-OFF identity) when not supplied.
     """
     from .hooks import Rules as HookRules  # lazy to avoid circular at import
+
+    if interior_subarea is None:
+        interior_subarea = door_subarea
 
     checks: list[Callable] = []
 
@@ -611,10 +645,17 @@ def make_door_access_rule(
         checks.append(lambda state, r=kg, w=world, p=player:
                        evaluate_interior_requires(state, r, w, p))
 
-    # Subarea entrance gate
+    # Subarea entrance gate (the door you walk through)
     sg = SUBAREA_ENTRANCE_GATES.get(door_subarea, "")
     if sg:
         checks.append(lambda state, r=sg, w=world, p=player:
+                       evaluate_interior_requires(state, r, w, p))
+
+    # Interior exit gate (the subarea you land in). Independent of how you
+    # entered — covers mini-rocket interiors reached via a non-rocket door.
+    xg = SUBAREA_EXIT_GATES.get(interior_subarea, "")
+    if xg:
+        checks.append(lambda state, r=xg, w=world, p=player:
                        evaluate_interior_requires(state, r, w, p))
 
     # Peace gate (moon-pipe door)

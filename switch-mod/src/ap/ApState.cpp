@@ -423,6 +423,13 @@ void ApState::applyEntranceMap(const EntranceRemapEntry* entries,
     }
 
     entrance_remap_seq.store(seq0 + 2, std::memory_order_release);  // odd -> even
+
+    // A non-empty entrance map means entrance shuffle is on for this seed. The
+    // CostumeDoorHook reads this to gate the always-open costume doors. Monotone
+    // within a (possibly chunked) send: the table only grows, so once any row
+    // lands this latches true and never spuriously clears between chunks.
+    entrance_shuffle_active.store(entrance_remap_count > 0,
+                                  std::memory_order_relaxed);
 }
 
 bool ApState::lookupEntranceRemap(const char* dest_stage,
@@ -482,6 +489,7 @@ void ApState::clearEntranceMap() {
     entrance_remap_seq.store(seq0 + 1, std::memory_order_release);  // even -> odd
     entrance_remap_count = 0;
     entrance_remap_seq.store(seq0 + 2, std::memory_order_release);  // odd -> even
+    entrance_shuffle_active.store(false, std::memory_order_relaxed);
 }
 
 void ApState::maybeApplyInboundKill() {

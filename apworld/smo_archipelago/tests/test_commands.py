@@ -1133,3 +1133,75 @@ async def test_compose_moon_label_for_cross_game_recipient_resolves():
     from client.display import TRUNCATION_MARKER
     assert label.startswith("Sent "), label
     assert "Paint" in label or label.endswith(TRUNCATION_MARKER), label
+
+
+def _ctx_with_progressive_ability() -> "SMOContext":
+    """SMOContext owning slot 1, with a moon location holding our own
+    'Progressive Ground Pound'. Used to assert the moon-get cutscene names
+    the MOVE this collection unlocks, not the pool item name."""
+    ctx = SMOContext(
+        server_address=None, password=None,
+        state=BridgeState(),
+        datapackage=DataPackage(apworld_data_dir=_APWORLD_DATA),
+        shine_map=ShineMap(),
+        capture_map=CaptureMap(),
+    )
+    ctx.auth = "Me"
+    ctx.slot = 1
+    ctx.player_names = {1: "Me"}
+
+    LOC_ID = 81002          # an SMO moon location we own
+    ITEM_ID = 70999         # arbitrary id for the ability item
+    ctx.item_names.update_game(
+        "Spicy Meatball Overdrive",
+        {"Progressive Ground Pound": ITEM_ID},
+    )
+    ctx.location_names.update_game(
+        "Spicy Meatball Overdrive",
+        {"Cap: Shopping in Bonneton": LOC_ID},
+    )
+    ctx._populate_datapackage_from_self()
+    # Moon location LOC_ID holds our Progressive Ground Pound (recipient slot 1).
+    ctx.scout_cache.absorb(location=LOC_ID, item=ITEM_ID, recipient=1)
+    return ctx
+
+
+@pytest.mark.asyncio
+async def test_progressive_ability_label_names_the_unlocked_move():
+    """A 'Got Moon!' cutscene for a self-collected Progressive Ground Pound
+    must read 'Got Ground Pound!' on the first copy and 'Got Dive!' on the
+    second — not 'Got Progressive Ground Pound!' both times."""
+    LOC_ID = 81002
+    ctx = _ctx_with_progressive_ability()
+
+    # First copy: nothing received yet -> level 1 -> "Ground Pound".
+    assert ctx.compose_moon_label_for_location(LOC_ID) == "Got Ground Pound!"
+
+    # Simulate the AP receipt for the first copy landing.
+    ctx.state.abilities_received["Progressive Ground Pound"] = 1
+    assert ctx.compose_moon_label_for_location(LOC_ID) == "Got Dive!"
+
+    # Third copy is a clone past the end of the chain -> falls back to the
+    # pool item name rather than inventing a move.
+    ctx.state.abilities_received["Progressive Ground Pound"] = 2
+    assert (
+        ctx.compose_moon_label_for_location(LOC_ID)
+        == "Got Progressive Ground Pound!"
+    )
+
+
+@pytest.mark.asyncio
+async def test_progressive_ability_label_not_rewritten_for_other_player():
+    """We can't know another player's chain level, so an outgoing progressive
+    ability keeps the pool item name ('Sent Progressive... to <player>')."""
+    LOC_ID = 81002
+    ctx = _ctx_with_progressive_ability()
+    ctx.player_names = {1: "Me", 2: "Friend"}
+    # Re-point the scout: the ability now routes to slot 2 (not us).
+    ctx.scout_cache.absorb(location=LOC_ID, item=70999, recipient=2)
+
+    label = ctx.compose_moon_label_for_location(LOC_ID)
+    assert label is not None and label.startswith("Sent "), label
+    # The move-name rewrite must NOT have fired (it would have produced
+    # "Ground Pound"); the pool name (or its truncation) is what ships.
+    assert "Ground Pound" not in label or "Progressive" in label, label

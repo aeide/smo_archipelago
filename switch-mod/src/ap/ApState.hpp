@@ -534,6 +534,14 @@ public:
     // Worker-thread clear — empties the table (entrance_shuffle off / seed swap).
     void clearEntranceMap();
 
+    // True while entrance shuffle is active for this seed — set when a non-empty
+    // entrance_map is applied, cleared when the map is cleared. Mirrors the
+    // entrance_remap table's lifecycle (so it's correct wherever that table is:
+    // shuffle on/off, HELLO replay, seed swap) with no extra wire surface.
+    // Read lock-free by CostumeDoorHook to gate the always-open costume doors
+    // (Devon: costume doors unlock only when entrance shuffle is enabled).
+    std::atomic<bool> entrance_shuffle_active{false};
+
     // M7 Path A — sticky "Mario has actually traveled to this kingdom"
     // bitmask, indexed by kingdomBitForWorldId (0..16). Populated ONLY from
     // stage-transition hooks (TryChangeDemoWorldWarp + TryChangeWorldWarpHole

@@ -424,3 +424,59 @@ def test_compile_stage_remaps_full_pool_entries_resolve():
     n_exit = sum(1 for r in rows if r["kind"] == "exit")
     assert n_entry == len(pool)
     assert 0 < n_exit <= len(pool)
+
+
+# ---------------------------------------------------------------------------
+# SUBAREA_EXIT_GATES — mini-rocket interiors must require Mini Rocket to leave
+# even when reached via a shuffled (non-rocket) door.
+# ---------------------------------------------------------------------------
+
+_MINI_ROCKET_SUBAREAS = frozenset({
+    "Swinging Along the High-Rises",
+    "A Sea of Clouds",
+    "Strange Neighborhood",
+    "Shards in the Fog",
+    "Picture Match (Mario)",
+    "Roulette Tower",
+})
+
+
+def test_exit_gates_cover_every_mini_rocket_subarea():
+    """Every subarea whose ENTRY gate is Mini Rocket must also be EXIT-gated by
+    Mini Rocket — the only way out is to re-board the rocket inside."""
+    from entrance_logic import SUBAREA_ENTRANCE_GATES, SUBAREA_EXIT_GATES
+
+    entry_rocket = {
+        name for name, gate in SUBAREA_ENTRANCE_GATES.items()
+        if gate == "|Mini Rocket|"
+    }
+    assert entry_rocket == _MINI_ROCKET_SUBAREAS, (
+        "mini-rocket entry-gated set drifted; update the test + exit table")
+    for name in entry_rocket:
+        assert SUBAREA_EXIT_GATES.get(name) == "|Mini Rocket|", (
+            f"{name!r} is entered by Mini Rocket but has no Mini Rocket exit gate")
+
+
+def test_exit_gates_are_subset_of_entrance_gates():
+    """An exit-gated subarea is by definition also entry-gated by the same
+    capture (you needed it to get to the launch point in the first place)."""
+    from entrance_logic import SUBAREA_ENTRANCE_GATES, SUBAREA_EXIT_GATES
+
+    for name, exit_gate in SUBAREA_EXIT_GATES.items():
+        assert name in SUBAREA_ENTRANCE_GATES, (
+            f"{name!r} has an exit gate but no entrance gate")
+        assert SUBAREA_ENTRANCE_GATES[name] == exit_gate, (
+            f"{name!r} entry/exit gate mismatch — mini-rocket subareas use the "
+            f"same capture both ways")
+
+
+def test_exit_gated_subareas_are_in_the_shuffle_pool():
+    """The fix only matters if these interiors can actually be reached via a
+    foreign door. Confirm they're pool members (not excluded) — otherwise the
+    interior == its own door (identity) and the entry gate already covers exit."""
+    from entrance_logic import SUBAREA_EXIT_GATES, build_entrance_pool
+
+    pool = set(build_entrance_pool(_subareas(), _exclusions(), _entrance_stages()))
+    for name in SUBAREA_EXIT_GATES:
+        assert name in pool, (
+            f"{name!r} is exit-gated but absent from the entrance pool")

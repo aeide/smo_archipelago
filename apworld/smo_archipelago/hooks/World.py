@@ -274,7 +274,8 @@ def _wire_entrance_shuffle(world: World, multiworld: MultiWorld, player: int) ->
         is_moon_pipe = door_subarea in moonpipe  # door IS a moon-pipe opening
         rule = make_door_access_rule(
             door_subarea, subareas.get(door_subarea, {}).get("kingdom", ""),
-            is_moon_pipe, world, multiworld, player
+            is_moon_pipe, world, multiworld, player,
+            interior_subarea=interior_subarea,
         )
         set_rule(entrance, rule)
 
@@ -882,4 +883,53 @@ def after_fill_slot_data(slot_data: dict, world: World, multiworld: MultiWorld, 
 
 # This is called right at the end, in case you want to write stuff to the spoiler log
 def before_write_spoiler(world: World, multiworld: MultiWorld, spoiler_handle) -> None:
-    pass
+    """Log the entrance-shuffle bijection so the spoiler tells you which physical
+    door now leads to each interior subarea.
+
+    Keyed by INTERIOR (the subarea a moon lives in), because the usual question is
+    "I have a moon in interior X — which door do I take to get there?". Each block
+    also lists the moons inside that interior, so Ctrl-F on a moon name lands you on
+    the right block and you can read off the door above it.
+    """
+    bijection: dict[str, str] | None = getattr(world, "_entrance_map", None)
+    if not bijection:
+        return  # entrance_shuffle disabled (or nothing rolled) — nothing to log
+
+    subareas: dict = getattr(world, "_entrance_subareas", None) or {}
+
+    def _kingdom(sub: str) -> str:
+        return (subareas.get(sub, {}) or {}).get("kingdom", "?")
+
+    def _moons(sub: str) -> list[str]:
+        return (subareas.get(sub, {}) or {}).get("location_names", [])
+
+    try:
+        slot_name = multiworld.get_player_name(player=world.player)
+    except Exception:
+        slot_name = str(world.player)
+
+    # Reverse to interior -> door for the lookup the player actually does.
+    interior_to_door = {interior: door for door, interior in bijection.items()}
+
+    shuffled = sorted(
+        (interior for door, interior in bijection.items() if door != interior),
+        key=lambda i: (_kingdom(i), i),
+    )
+    unchanged = sorted(d for d, i in bijection.items() if d == i)
+
+    spoiler_handle.write(f"\n\nEntrance Shuffle ({slot_name}):\n")
+    if not shuffled:
+        spoiler_handle.write("  (all entrances rolled to their vanilla interiors)\n")
+    for interior in shuffled:
+        door = interior_to_door[interior]
+        spoiler_handle.write(
+            f"\n  To reach \"{interior}\" ({_kingdom(interior)}): "
+            f"use the door for \"{door}\" ({_kingdom(door)})\n"
+        )
+        for moon in _moons(interior):
+            spoiler_handle.write(f"      moon inside: {moon}\n")
+    if unchanged:
+        spoiler_handle.write(
+            "\n  Unchanged (door leads to its own vanilla interior): "
+            + ", ".join(unchanged) + "\n"
+        )

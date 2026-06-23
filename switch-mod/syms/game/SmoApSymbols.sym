@@ -46,9 +46,11 @@ _ZN2al21getStageMessageStringEPKNS_17IUseMessageSystemEPKcS4_
 _ZN2rs28tryShowCapMessagePriorityLowEPKN2al18IUseSceneObjHolderEPKcii
 _ZN2rs18isActiveCapMessageEPKN2al18IUseSceneObjHolderE
 _ZN5Shine4initERKN2al13ActorInitInfoE
-// Shine::control() — per-frame update (this == Shine). Hooked ONLY for the
-// Cap-kingdom color-cycle TEST (ShineAppearanceHook kCapGradientTest). Remove
-// with the test if reverting.
+// Shine::control() — per-frame update (this == Shine). The universal per-frame
+// color chokepoint in ShineAppearanceHook: drives the classification color cycle
+// (kClassColorCycle) AND the kingdom-color enforcement that keeps colors pinned
+// through the get cutscene + runtime spawn paths (kPerFrameColorEnforce). Needed
+// while either flag is on.
 _ZN5Shine7controlEv
 _ZN2al23setMaterialProgrammableEPNS_9LiveActorE
 _ZN2al29setModelMaterialParameterRgbaEPKNS_9LiveActorEPKcS4_RKN4sead7Color4fE
@@ -306,6 +308,20 @@ _ZN16GameDataFunction18tryChangeNextStageE20GameDataHolderWriterPK15ChangeStageI
 // `i` on changeNextStage is the s32 raceType; the no-`i` form is a substring only.
 _ZN12GameDataFile15changeNextStageEPK15ChangeStageInfoi
 _ZN12GameDataFile15returnPrevStageEv
+
+// Costume doors always-open (CostumeDoorHook) — see hooks/CostumeDoorHook.cpp.
+// al::isOnStageSwitch(const al::IUseStageSwitch* user, const char* linkName).
+// All 8 SMO costume doors (7 DoorWarpStageChange fitting rooms + the Lake
+// DoorWarp same-stage door) gate their open transition on an "OpenKeySwitch"
+// stage-switch link; the runtime-spawned DoorWarpLock padlock (a Push sensor =
+// the invisible barrier) and the warp are both governed by it. We trampoline
+// this query and force-return true for linkName=="OpenKeySwitch" while entrance
+// shuffle is active, so the vanilla door initializes straight into Open. An
+// all-stages romfs scan proved "OpenKeySwitch" is used by ONLY these costume
+// doors, so link-name scoping is complete + safe. VERIFIED HIT [rodata] in
+// main.nso (check_nso_symbols.py 2026-06-23). "isOnStageSwitch"=15,
+// "IUseStageSwitch"=15 (al-nested -> NS_), char* -> PKc.
+_ZN2al15isOnStageSwitchEPKNS_15IUseStageSwitchEPKc
 
 // Cap Bounce (cap vault) — bouncing off held Cappy is delivered by the cap's
 // touch-jump sensor message. v2 hooked rs::sendMsgPlayerCapTrample (the cap-TRAMPLE

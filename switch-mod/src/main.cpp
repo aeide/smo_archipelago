@@ -83,6 +83,10 @@ void installGrowSeedInstantHook();
 // P7 entrance shuffle — Step 3 logger on tryChangeNextStage. See
 // hooks/EntranceShuffleHook.cpp.
 void installEntranceShuffleHook();
+// Costume doors always-open (while entrance shuffle is active). Forces the
+// "OpenKeySwitch" stage-switch on so all 8 costume doors init open. See
+// hooks/CostumeDoorHook.cpp.
+void installCostumeDoorHook();
 // Per-frame overworld-arrival poll: re-emits the current kingdom's ArrivalEvent
 // (self-deduping) so randomize_kingdom_gates reveals survive reconnects and
 // pre-connect arrivals. See hooks/EntranceShuffleHook.cpp.
@@ -369,6 +373,8 @@ extern "C" void hkMain() {
 
     SMOAP_LOG_INFO("installing EntranceShuffleHook (P7 Step 3 logger -> tryChangeNextStage)");
     smoap::hooks::installEntranceShuffleHook();
+
+    smoap::hooks::installCostumeDoorHook();
 
 #ifdef SMOAP_HAS_DEBUG_RENDERER
     // Install the Nvn bootstrap trampoline so ImGuiBackendNvn auto-wires

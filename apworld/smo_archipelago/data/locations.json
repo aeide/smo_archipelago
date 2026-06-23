@@ -762,7 +762,7 @@
       "Precision Capture"
     ],
     "region": "Sand Kingdom",
-    "requires": "(|Long Jump| and |Progressive Crouch:1|)"
+    "requires": "({SandPeace()} || (|Bullet Bill| and |Progressive Ground Pound:2| and |Wall Slide|))"
   },
   {
     "name": "Sand: Jaxi Stunt Driving",
@@ -771,7 +771,7 @@
       "Precision Capture"
     ],
     "region": "Sand Kingdom",
-    "requires": ""
+    "requires": "({SandPeace()} || (|Bullet Bill| and |Progressive Ground Pound:2| and |Wall Slide|))"
   },
   {
     "name": "Sand: Strange Neighborhood",

@@ -468,6 +468,19 @@ inline constexpr const char* kAlIsExistModel =
 inline constexpr const char* kAlIsMclAnimExist =
     "_ZN2al14isMclAnimExistEPKNS_9LiveActorEPKc";
 
+// Shine::getCurrentModel() -> al::LiveActor*. Returns the Shine's currently
+// SHOWN model. Critical for the get-cutscene recolor: the "You got a Moon!"
+// demo swaps the visible moon to a SEPARATE demo model actor (addDemoModelActor
+// / addDemoActorWithModel — see OdysseyHeaders game/Item/Shine.h), so material
+// writes against the Shine actor itself land on the now-hidden world model while
+// the demo model shows vanilla gold. We recolor getCurrentModel() (returns the
+// demo model during the cutscene, the world model otherwise) in addition to the
+// Shine. CALLED via lookupSymbol + fn-ptr (graceful on miss → falls back to the
+// Shine actor, i.e. pre-fix behavior). Shine.cpp is undecompiled upstream, so an
+// in-game log confirms whether this resolves out-of-line vs is inlined away.
+inline constexpr const char* kShineGetCurrentModel =
+    "_ZN5Shine15getCurrentModelEv";
+
 // =============================================================================
 // M7 Path A — fork-cinematic kingdom-order gate (two-layer architecture).
 // =============================================================================
@@ -727,6 +740,10 @@ inline constexpr const char* kGameDataFileChangeNextStage =
 // HIT [rodata] in .romfs-cache/main (check_nso_symbols.py, 2026-06-18).
 inline constexpr const char* kGameDataFileReturnPrevStage =
     "_ZN12GameDataFile15returnPrevStageEv";
+
+// (al::isOnStageSwitch for CostumeDoorHook is installed via a raw installAtSym
+// literal — see hooks/CostumeDoorHook.cpp — so it needs no constant here; its
+// sail entry lives in syms/game/SmoApSymbols.sym.)
 
 // =============================================================================
 // Legacy / aliasing — kept so existing call sites don't break.

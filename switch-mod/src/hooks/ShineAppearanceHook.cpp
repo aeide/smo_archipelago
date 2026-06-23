@@ -153,6 +153,45 @@ inline constexpr float        kCyclePrimaryHoldFrac = 0.40f;
 constexpr Color4f kCycleSecondary3D  = {0.97f, 2.11f, 2.60f, 1.0f};  // #316b84
 constexpr Color4f kCycleSecondaryDot = {0.97f, 2.11f, 2.60f, 1.0f};  // #316b84
 
+// --- Per-frame color ENFORCEMENT (2026-06-22) -------------------------------
+// Problem: the recolor used to be applied only at discrete MOMENTS — Shine::init
+// plus a re-assert when vanilla calls rs::setStageShineAnimFrame (the appear/
+// popup path, which fires for treasure chests). Any moon coloured through a
+// DIFFERENT path slips through and shows its vanilla color:
+//   * kingdom timer-challenge moons spawn without hitting setStageShineAnimFrame
+//     -> stay default gold;
+//   * the "Got a Moon!" get cutscene re-shows/re-drives the moon AFTER init
+//     -> our one-shot override is clobbered -> the color visibly changes mid-
+//        cutscene ("jarring");
+//   * Toad-given moons — same class of miss.
+// Shine.cpp is undecompiled upstream (only Item/Shine.h exists), so we can't
+// hook those individual paths. Instead we enforce the color EVERY FRAME from
+// Shine::control — the one chokepoint that ticks for every live Shine no matter
+// how it spawned or which cutscene state it's in. The classification cycle
+// (idx 0..3) already rode this hook; this flag extends the per-frame re-assert
+// to the kingdom colors (frame-override + static-tint) too, so the color is
+// "kept through" the cutscene and every spawn path lands coloured.
+//
+// Cost: one palette resolve + (frame re-drive | tint write) per visible Shine
+// per frame — same order as the existing classification cycle. ⚠ REVERT: set
+// false to return to moment-based application (init + setStageShineAnimFrame).
+inline constexpr bool kPerFrameColorEnforce = true;
+
+// --- Recolor the VISIBLE model, not just the Shine (2026-06-23) --------------
+// The "You got a Moon!" get cutscene shows the moon as a SEPARATE demo model
+// actor (Shine::addDemoModelActor / addDemoActorWithModel — OdysseyHeaders
+// game/Item/Shine.h), NOT the Shine's own world model. So writing material
+// params against the Shine actor recolors the now-hidden world model while the
+// demo model the player actually sees stays vanilla GOLD — which reads as the
+// orange Cascade/default tint regardless of the granted kingdom (confirmed by a
+// "Got Wooded Power Moon!" screenshot where the held-up moon was gold, not
+// Wooded blue, 2026-06-23). Fix: per frame, recolor Shine::getCurrentModel()
+// (the demo model during the cutscene, the world model otherwise) IN ADDITION
+// to the Shine actor. Palette/type still resolve from the Shine; the color is
+// written to whichever model is visible. ⚠ REVERT: set false to recolor only
+// the Shine actor (the demo cutscene reverts to vanilla gold, no crash).
+inline constexpr bool kRecolorVisibleModel = true;
+
 // --- TEST (2026-06-22): preview classification PULSES on two real kingdoms ----
 // Devon wants to eyeball the trap and useful gradients quickly, so force:
 //   Cap kingdom (palette idx 5)     -> trap   pulse (red <-> #316b84)
@@ -288,6 +327,13 @@ SetStageShineAnimFrameFn        s_setStageShineAnimFrame        = nullptr;
 // have a model but no Mcl "Color" anim player (would null-deref in
 // startMclAnimAndSetFrameAndStop). See HookSymbols.hpp::kAlIsMclAnimExist.
 IsExistMaterialFn               s_isMclAnimExist                = nullptr;
+// Shine::getCurrentModel() -> al::LiveActor*. Returns the Shine's currently
+// SHOWN model — the demo model during the get cutscene, the world model
+// otherwise. Lets the per-frame recolor target the actually-visible model.
+// See HookSymbols.hpp::kShineGetCurrentModel. nullptr on miss → fall back to
+// the Shine actor (pre-fix behavior).
+using GetCurrentModelFn               = void* (*)(void* shine);
+GetCurrentModelFn               s_getCurrentModel               = nullptr;
 
 void writeBodyTint(void* actor, const char* mat_name, const Color4f& tint,
                    bool is_dot) {
@@ -518,13 +564,69 @@ HkTrampoline<void, void*, const char*, int, bool> setStageShineAnimFrameOverride
         tryWriteShineTint(actor, readShineType(actor), pal_idx);
     });
 
-// Classification color cycle: per-frame re-tint. Shine::control runs every frame
-// with `this` == the Shine, so this is where the animation advances —
-// applyClassCycleColor recomputes the primary<->#316b84 lerp from the wall clock
-// and re-writes the material (the params persist otherwise). Only classification
-// shines (palette idx 0..3) are touched; everything else returns right after the
-// cheap palette resolve. Installed ONLY when kClassColorCycle is true (see
-// installShineAppearanceHook), so reverting the flag removes the per-frame cost.
+// The Shine's currently-VISIBLE model: the demo model during the get cutscene,
+// the world model otherwise. Falls back to the Shine actor itself when the
+// getCurrentModel symbol didn't resolve or returns null (pre-fix behavior).
+inline void* shineVisibleModel(void* self) {
+    if (s_getCurrentModel != nullptr) {
+        void* m = s_getCurrentModel(self);
+        if (m != nullptr) return m;
+    }
+    return self;
+}
+
+// Apply the resolved color to ONE model actor. `shine_type` and `pal_idx` are
+// resolved from the Shine; `model_actor` is the actor whose material we write —
+// the Shine itself for world moons, or its demo model (getCurrentModel) for the
+// get cutscene. Mirrors the init/control color decision (cycle → frame-override
+// → static tint) and guards model + material presence per-actor, so a demo
+// model lacking a model keeper or the "BodyMT" material is skipped (no crash,
+// no recolor) rather than asserting it matches the Shine. Returns true if a
+// color was written.
+//
+// The frame-override path drives the "Color" anim via setStageShineAnimFrame-
+// Override.orig (NOT s_setStageShineAnimFrame, whose address is hooked): going
+// through the hook would re-resolve the palette off `model_actor`, and the demo
+// model is not a Shine — reading the mShineIdx offset off it yields garbage.
+// .orig drives our already-resolved frame straight onto whatever model.
+bool applyShineColorTo(void* model_actor, int shine_type, std::size_t pal_idx) {
+    if (model_actor == nullptr) return false;
+    if (s_isExistModel == nullptr || !s_isExistModel(model_actor)) return false;
+    const char* mat_name = shineMaterialNameForType(shine_type);
+    if (s_isExistMaterial != nullptr && !s_isExistMaterial(model_actor, mat_name))
+        return false;
+
+    if (kClassColorCycle && isCyclePal(pal_idx)) {
+        applyClassCycleColor(model_actor, mat_name, /*is_dot=*/shine_type == 1,
+                             cyclePalIdx(pal_idx));
+        return true;
+    }
+    const int frame = kingdomColorFrameForPal(pal_idx);
+    if (frame >= 0) {
+        const bool color_anim_ok =
+            s_isMclAnimExist == nullptr || s_isMclAnimExist(model_actor, "Color");
+        if (s_setStageShineAnimFrame != nullptr && color_anim_ok) {
+            setStageShineAnimFrameOverride.orig(model_actor, /*stageName=*/nullptr,
+                                                frame, kColorAnimIsMatAnim);
+            return true;
+        }
+        // symbol missing / no Color anim -> material-tint fallback below.
+    }
+    writeBodyTint(model_actor, mat_name, shinePaletteColor(shine_type, pal_idx),
+                  /*is_dot=*/shine_type == 1);
+    return true;
+}
+
+// Per-frame color hook. Shine::control runs every frame with `this` == the
+// Shine, so this is the universal chokepoint for keeping a moon's color correct
+// no matter how it spawned or which cutscene state it's in. Two jobs:
+//   * classification shines (idx 0..3): advance the animated primary<->#316b84
+//     cycle (applyClassCycleColor recomputes the lerp from the wall clock and
+//     re-writes the material; the params persist otherwise) — kClassColorCycle.
+//   * kingdom shines (idx 5+): re-assert the frame-override / static tint every
+//     frame so the color survives the get cutscene and runtime spawn/appear
+//     paths that the init + setStageShineAnimFrame hooks miss — kPerFrameColorEnforce.
+// Installed when EITHER flag is on; with both off there is zero per-frame cost.
 HkTrampoline<void, void*> shineControlColorCycle =
     hk::hook::trampoline([](void* self) -> void {
         shineControlColorCycle.orig(self);
@@ -532,14 +634,39 @@ HkTrampoline<void, void*> shineControlColorCycle =
         if (s_setMaterialProgrammable == nullptr ||
             s_setModelMaterialParameterRgba == nullptr) return;
         const int pal = resolveShinePalIdx(self);
-        if (pal < 0 || !isCyclePal(static_cast<std::size_t>(pal))) return;
-        if (s_isExistModel == nullptr || !s_isExistModel(self)) return;
+        if (pal < 0) return;
+        const std::size_t pal_idx = static_cast<std::size_t>(pal);
         const int shine_type = readShineType(self);
-        const char* mat_name = shineMaterialNameForType(shine_type);
-        if (s_isExistMaterial != nullptr && !s_isExistMaterial(self, mat_name))
-            return;
-        applyClassCycleColor(self, mat_name, /*is_dot=*/shine_type == 1,
-                             cyclePalIdx(static_cast<std::size_t>(pal)));
+
+        // Run the animated cycle whenever it applies (classification colors +
+        // the test-forced pulse kingdoms); otherwise only when per-frame kingdom
+        // enforcement is on. With both off there's nothing to re-assert.
+        const bool is_cycle = kClassColorCycle && isCyclePal(pal_idx);
+        if (!is_cycle && !kPerFrameColorEnforce) return;
+
+        // Re-assert the color on the Shine's own model AND on its currently-
+        // visible model. They differ during the "You got a Moon!" get cutscene,
+        // where the moon is shown as a separate demo model actor — recoloring
+        // only the Shine leaves that demo model vanilla gold (the bug Devon hit:
+        // a Wooded moon's get screen showed gold, not Wooded blue). applyShine-
+        // ColorTo guards model/material presence per-actor and internally picks
+        // cycle / frame-override / static tint, identical to the Shine::init
+        // path. This is what keeps the color pinned through the cutscene and
+        // every runtime spawn/appear path (timer challenges, Toad hand-offs, …).
+        applyShineColorTo(self, shine_type, pal_idx);
+        if (kRecolorVisibleModel) {
+            void* vis = shineVisibleModel(self);
+            if (vis != self) {
+                applyShineColorTo(vis, shine_type, pal_idx);
+                static int s_vis_logged = 0;
+                if (s_vis_logged < 4) {
+                    SMOAP_LOG_INFO("[shine-color] recolored visible demo model "
+                                   "(type=%d palette=%zu) — distinct from Shine",
+                                   shine_type, pal_idx);
+                    ++s_vis_logged;
+                }
+            }
+        }
     });
 
 template <typename FnPtr>
@@ -574,6 +701,12 @@ void installShineAppearanceHook() {
     // Guard for the frame path — stub linked-Shines lack the Mcl "Color" anim.
     resolveSymbol(smoap::sym::kAlIsMclAnimExist,
                   s_isMclAnimExist, "isMclAnimExist");
+    // Visible-model resolver for the get-cutscene recolor. Best-effort: a lookup
+    // miss (e.g. getCurrentModel inlined with no out-of-line copy) just disables
+    // the demo-model recolor and falls back to recoloring the Shine actor. The
+    // resolved-@/FAILED line in the log confirms which case this build hit.
+    resolveSymbol(smoap::sym::kShineGetCurrentModel,
+                  s_getCurrentModel, "Shine::getCurrentModel");
 
     if (s_setMaterialProgrammable != nullptr &&
         s_setModelMaterialParameterRgba != nullptr) {
@@ -603,12 +736,16 @@ void installShineAppearanceHook() {
                            "recolor not active");
         }
 
-        // Classification color cycle. Install the per-frame Shine::control
-        // trampoline only while enabled, so flipping kClassColorCycle = false
-        // leaves zero per-frame cost.
-        if (kClassColorCycle) {
+        // Per-frame Shine::control trampoline. Drives BOTH the classification
+        // color cycle (kClassColorCycle) AND the kingdom-color enforcement that
+        // keeps colors pinned through the get cutscene + runtime spawn paths
+        // (kPerFrameColorEnforce). Installed only when at least one is enabled,
+        // so flipping both flags false leaves zero per-frame cost.
+        if (kClassColorCycle || kPerFrameColorEnforce) {
             SMOAP_LOG_INFO("installing ShineControlColorCycle -> Shine::control "
-                           "(classification color cycle)");
+                           "(cycle=%d enforce=%d)",
+                           static_cast<int>(kClassColorCycle),
+                           static_cast<int>(kPerFrameColorEnforce));
             shineControlColorCycle.installAtSym<"_ZN5Shine7controlEv">();
         }
     }

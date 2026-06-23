@@ -13,6 +13,7 @@ from CommonClient import CommonContext, ClientCommandProcessor
 from NetUtils import ClientStatus
 from Utils import async_start
 
+from .abilities import newly_unlocked_move
 from .commands import parse_command
 from .config import ColorsConfig
 from .datapackage import DataPackage
@@ -1312,10 +1313,16 @@ class SMOContext(CommonContext):
             if uid is None:
                 unknown_shine += 1
                 continue
-            # If this check grants one of OUR OWN slot's moon items, color it
-            # by the granted moon's kingdom (not the check's physical kingdom,
-            # `cl.kingdom`). Everything else (foreign items, our own
-            # captures/abilities) falls back to the AP classification color.
+            # If this check grants one of OUR OWN slot's items, color it by the
+            # item's identity rather than the AP classification gradient:
+            #   - our moons    -> the GRANTED moon's kingdom (not `cl.kingdom`)
+            #   - our abilities -> Dark Side tan (#e4bb8f): treat ability
+            #                      unlocks as Dark Side power moons.
+            #   - our captures  -> Mushroom gold: treat captures as Mushroom
+            #                      Kingdom power moons.
+            # Only FOREIGN-game items fall through to the classification color
+            # (progression/useful/trap/filler), which is what the animated
+            # cycle in ShineAppearanceHook is meant for.
             pal = None
             item_player = ni.get("player") if isinstance(ni, dict) else getattr(ni, "player", None)
             item_id = ni.get("item") if isinstance(ni, dict) else getattr(ni, "item", None)
@@ -1325,6 +1332,10 @@ class SMOContext(CommonContext):
                     ci = self.dp.classify_item(item_name)
                     if ci.kind == ItemKind.MOON:
                         pal = self.colors.for_kingdom(ci.kingdom)
+                    elif ci.kind == ItemKind.ABILITY:
+                        pal = self.colors.for_kingdom("Dark")
+                    elif ci.kind == ItemKind.CAPTURE:
+                        pal = self.colors.for_kingdom("Mushroom")
             if pal is None:
                 classification = classification_from_flags(int(flags or 0))
                 pal = self.colors.for_classification(classification.value)
@@ -1528,6 +1539,20 @@ class SMOContext(CommonContext):
         if not item_name:
             return None
         ci = self.dp.classify_item(item_name)
+        # Progressive abilities: the moon-get cutscene should name the MOVE
+        # this collection unlocks ("Got Ground Pound!" then "Got Dive!"), not
+        # the pool item name ("Progressive Ground Pound" both times). The level
+        # is (copies already received) + 1 — and because this label is composed
+        # at moon-collect time, BEFORE the AP receipt for this copy round-trips
+        # back, abilities_received still reflects only the prior copies. Only
+        # rewrite for our own copies (we don't track other players' counts) and
+        # only when a new move is actually unlocked (a clone copy past the end
+        # of the chain falls back to the pool name).
+        if ci.kind == ItemKind.ABILITY and scout.recipient == self.slot:
+            prior = self.state.abilities_received.get(item_name, 0)
+            move = newly_unlocked_move(item_name, prior + 1)
+            if move:
+                ci.name = move
         recipient = self._sender_name(scout.recipient)
         try:
             return format_moon_label(ci, recipient, self.auth)

@@ -83,7 +83,18 @@
       "PowerShell($t = Invoke-RestMethod \"https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/git/trees/master?recursive=1\" -Headers @{ \"User-Agent\" = \"smo\" }; $t.tree.path | Where-Object { $_ -match \"GetShine|ShineGet|ShineName|ShineHint|StageSceneStateGetShine|ShineActor|Shine\\\\.cpp|ShineTower|DemoSync\" } | Select-Object -First 80)",
       "WebFetch(domain:www.mariowiki.com)",
       "WebFetch(domain:smo.wiki)",
-      "PowerShell($p = \"C:\\\\Users\\\\devon\\\\AppData\\\\Roaming\\\\Ryujinx\\\\bis\\\\user\\\\save\\\\0000000000000006\\\\0\"; if \\(Test-Path $p\\) { Get-ChildItem $p | Select-Object Name,Length,LastWriteTime | Format-Table -AutoSize } else { \"PATH NOT FOUND: $p\" })"
+      "PowerShell($p = \"C:\\\\Users\\\\devon\\\\AppData\\\\Roaming\\\\Ryujinx\\\\bis\\\\user\\\\save\\\\0000000000000006\\\\0\"; if \\(Test-Path $p\\) { Get-ChildItem $p | Select-Object Name,Length,LastWriteTime | Format-Table -AutoSize } else { \"PATH NOT FOUND: $p\" })",
+      "PowerShell($r = Invoke-RestMethod -Uri \"https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/git/trees/master?recursive=1\" -Headers @{ \"User-Agent\"=\"claude\" }; $r.tree.path | Where-Object { $_ -match \"\\(?i\\)lock|costume|cloth|fitting|dressup|door|shop|hatch\" })",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" \"E:\\\\smo_archipelago\\\\scripts\\\\_probe_doorwarplock.py\")",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" \"E:\\\\smo_archipelago\\\\scripts\\\\_probe_doorwarplock.py\" 2>&1)",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" \"E:\\\\smo_archipelago\\\\scripts\\\\_probe_openkeyswitch.py\")",
+      "PowerShell(Get-Process python -ErrorAction SilentlyContinue | Select-Object Id, @{N='CPU\\(s\\)';E={[math]::Round\\($_.CPU,1\\)}}, @{N='Mem\\(MB\\)';E={[math]::Round\\($_.WorkingSet/1MB\\)}}, StartTime)",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" \"E:\\\\smo_archipelago\\\\scripts\\\\_probe_oks_fast.py\")",
+      "Bash(c++filt)",
+      "PowerShell($nm = \"C:\\\\Program Files\\\\LLVM\\\\bin\\\\llvm-nm.exe\"; $nso = \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso\"; & $nm --dynamic $nso 2>$null | Select-String -Pattern \"isOnStageSwitch|listenStageSwitchOnStart|invalidateCollisionParts\" | Select-Object -First 20)",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" \"E:\\\\smo_archipelago\\\\scripts\\\\check_nso_symbols.py\" \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso\" \"_ZN2al15isOnStageSwitchEPKNS_15IUseStageSwitchEPKc\" \"_ZN2al23listenStageSwitchOnStartEPNS_15IUseStageSwitchERKNS_11FunctorBaseE\" \"DoorWarpStageChange\" \"_ZN2al24invalidateCollisionPartsEPNS_9LiveActorE\")",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" -m pip install lz4 --quiet 2>&1)",
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" \"E:\\\\smo_archipelago\\\\scripts\\\\check_nso_symbols.py\" \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso\" \"_ZN2al15isOnStageSwitchEPKNS_15IUseStageSwitchEPKc\" \"_ZN2al23listenStageSwitchOnStartEPNS_15IUseStageSwitchERKNS_11FunctorBaseE\" \"_ZN2al24invalidateCollisionPartsEPNS_9LiveActorE\")"
     ]
   }
 }
