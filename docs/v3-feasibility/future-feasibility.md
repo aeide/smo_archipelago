@@ -24,7 +24,6 @@ achievable with the effort noted," not "scheduled."
 | Free Lake/Wooded detour with a combined "both" gate | [future-feasibility-lake-wooded-free-detour.md](future-feasibility-lake-wooded-free-detour.md) | **80%** | Medium |
 | Moon recolor (by granted kingdom + AP class) + purple-coin model swap | [future-feasibility-moon-colors-and-coin-models.md](future-feasibility-moon-colors-and-coin-models.md) | recolor **95%** / coin models **~55%** | Small / High |
 | Randomize all background music | [future-feasibility-bgm-randomizer.md](future-feasibility-bgm-randomizer.md) | **70%** | Medium |
-| Costume doors always unlocked (no outfit required) | [future-feasibility-costume-doors-always-open.md](future-feasibility-costume-doors-always-open.md) | **75%** | Medium |
 | Warp paintings always available (not randomized) + in logic | [future-feasibility-warp-paintings-always-open.md](future-feasibility-warp-paintings-always-open.md) | **70%** | Medium |
 | Show AP check name (+ owning player) in story-moon REVEAL cutscene | [future-feasibility-story-moon-check-name.md](future-feasibility-story-moon-check-name.md) | **65%** | Medium |
 | Shopsanity (golden / purple / full) | [future-feasibility-shopsanity.md](future-feasibility-shopsanity.md) | **75%** | High |
@@ -137,7 +136,7 @@ confirms it plays/doesn't crash/isn't silent, and harvests the name list. Full w
 
 ---
 
-## Costume doors always unlocked (no outfit required)
+## Costume doors always unlocked (no outfit required) - COMPLETE
 
 **75% · Medium effort.** Make the seven fitting-room "costume doors" (the locked
 doors to each kingdom's `*WorldCostumeStage`, which vanilla only opens while Mario

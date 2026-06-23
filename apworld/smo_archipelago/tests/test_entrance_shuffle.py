@@ -218,6 +218,52 @@ def test_parse_scenario_fragment_empty_and_anded():
         ("CapPeace", []), ("SandPeace", [])]
 
 
+def test_door_scenario_gate_rule_ors_over_members(monkeypatch):
+    """A door's intrinsic scenario gate ORs over its member moons: an ungated
+    member collapses the rule to always-True (door gate-free); all-gated members
+    require the (weakest) member gate. Regression for the entrance-shuffle bug where
+    a moon behind a late door (e.g. Mysterious Clouds = {CascadeDeparture()}) was
+    reachable as early as its unrelated interior gate allowed."""
+    import entrance_logic as el
+
+    # Stub the per-fragment factory: '' -> always True; anything else -> reads a flag.
+    def fake_frag_rule(frag, world, mw, player):
+        if not frag:
+            return lambda state: True
+        return lambda state: bool(getattr(state, "ok", False))
+    monkeypatch.setattr(el, "make_scenario_gate_rule", fake_frag_rule)
+
+    class S:
+        ok = False
+    s = S()
+
+    # All members gated -> door blocked until the flag flips.
+    r = el.make_door_scenario_gate_rule(["NEED", "NEED"], None, None, 1)
+    assert r(s) is False
+    s.ok = True
+    assert r(s) is True
+
+    # One ungated member -> door reachable even with the flag down (OR collapses).
+    assert el.make_door_scenario_gate_rule(["", "NEED"], None, None, 1)(S()) is True
+
+    # No members -> no-op always-True.
+    assert el.make_door_scenario_gate_rule([], None, None, 1)(S()) is True
+
+
+def test_mysterious_clouds_door_gate_is_cascade_departure():
+    """Regression (door-side scenario gate): the Cascade 'Mysterious Clouds' door is
+    physically reachable only post-departure ({CascadeDeparture()}). Under entrance
+    shuffle that gate must ride the DOOR entrance, else moons mapped behind it (e.g.
+    the Nice Shots with Chain Chomps moons, interior gate {CascadePeace()} = sphere 1)
+    fill far too early. Guards the door-gate source data World.py reads."""
+    from entrance_logic import load_data_json
+    subareas = load_data_json("subareas.json")
+    gates = load_data_json("subarea_scenario_gates.json")
+    members = subareas["Mysterious Clouds"]["location_names"]
+    frags = [gates.get(m, "") for m in members]
+    assert frags and all(f == "{CascadeDeparture()}" for f in frags), frags
+
+
 def test_compile_interior_requires_jump_height():
     """Backflip-height moon requires cap_bounce OR backflip+crouch OR side_flip OR GPJ+GP OR triple."""
     from entrance_logic import compile_interior_requires

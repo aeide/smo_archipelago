@@ -609,6 +609,45 @@ def make_scenario_gate_rule(
     return rule
 
 
+def make_door_scenario_gate_rule(
+    member_fragments: list[str],
+    world: "World",
+    multiworld: "MultiWorld",
+    player: int,
+) -> "Callable[[CollectionState], bool]":
+    """Return lambda(state)->bool gating a DOOR by its own subarea's intrinsic
+    scenario reachability under entrance shuffle.
+
+    Under shuffle a moon's interior scenario gate rides the moon (it moves with the
+    interior region — see World._apply_subarea_scenario_gates). But the physical DOOR
+    that moon now sits behind has its OWN overworld reachability: in vanilla a door
+    only exists once that DOOR-subarea's quest state is met (e.g. Cascade's
+    "Mysterious Clouds" door appears only post-departure, {CascadeDeparture()}). That
+    door-side gate is NOT the interior's gate and was previously dropped under shuffle,
+    letting a moon behind a late door be reached as early as its (unrelated) interior
+    gate allowed — e.g. the Chain Chomp moons (interior {CascadePeace()}, satisfiable
+    sphere 1) landing in sphere 1 behind the {CascadeDeparture()} Mysterious Clouds
+    door (8 Cascade moons).
+
+    `member_fragments` is the door subarea's per-member scenario fragments (one per
+    door member moon; '' = that member is ungated). The door is reachable iff ANY
+    member was reachable in vanilla — i.e. OR over members — so an ungated member
+    collapses the whole rule to always-True (the door is gate-free). Each member
+    fragment is itself an AND of {Func()} calls (delegated to make_scenario_gate_rule).
+    An empty member list yields an always-True rule (no-op)."""
+    member_rules = [
+        make_scenario_gate_rule(f, world, multiworld, player)
+        for f in member_fragments
+    ]
+    if not member_rules:
+        return lambda state: True
+
+    def rule(state: "CollectionState", _rules=member_rules) -> bool:
+        return any(r(state) for r in _rules)
+
+    return rule
+
+
 def make_door_access_rule(
     door_subarea: str,
     door_kingdom_name: str,

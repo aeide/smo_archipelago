@@ -215,12 +215,23 @@ def _wire_entrance_shuffle(world: World, multiworld: MultiWorld, player: int) ->
     if bijection is None:
         return
 
-    from ..entrance_logic import make_door_access_rule
-    from worlds.generic.Rules import set_rule
+    from ..entrance_logic import (
+        load_data_json, make_door_access_rule, make_door_scenario_gate_rule,
+    )
+    from worlds.generic.Rules import set_rule, add_rule
 
     subareas: dict = world._entrance_subareas
     moonpipe: frozenset[str] = world._entrance_moonpipe
     shuffled_locs: set[str] = world._entrance_shuffled_locs
+
+    # Door-side scenario gates: a door subarea's own overworld reachability (e.g.
+    # Cascade "Mysterious Clouds" only appears post-departure). Distinct from the
+    # INTERIOR scenario gate that rides the moons (_apply_subarea_scenario_gates) —
+    # this gates the DOOR, AND-ed onto its entrance below. Keyed location->fragment.
+    try:
+        _scenario_gates: dict = load_data_json("subarea_scenario_gates.json")
+    except Exception:
+        _scenario_gates = {}
 
     # Step 1: Create an interior Region for each pooled subarea.
     # Gather location objects by subarea name first (they're currently in their
@@ -278,6 +289,18 @@ def _wire_entrance_shuffle(world: World, multiworld: MultiWorld, player: int) ->
             interior_subarea=interior_subarea,
         )
         set_rule(entrance, rule)
+
+        # AND the door subarea's own intrinsic scenario gate onto the entrance.
+        # This is the door's overworld reachability (e.g. {CascadeDeparture()} for
+        # the Mysterious Clouds door) — without it, a moon behind a late door is
+        # reachable as early as its unrelated interior gate allows. OR over the
+        # door's member moons (an ungated member ⇒ door gate-free); no-op when the
+        # door subarea has no gated members.
+        door_members = subareas.get(door_subarea, {}).get("location_names", [])
+        door_fragments = [_scenario_gates.get(ln, "") for ln in door_members]
+        if any(door_fragments):
+            add_rule(entrance, make_door_scenario_gate_rule(
+                door_fragments, world, multiworld, player))
 
 # Pure roll helpers for randomize_kingdom_gates live in kingdom_gates.py
 # (AP-free, directly importable by the test suite — same pattern as
