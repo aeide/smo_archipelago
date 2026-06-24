@@ -116,7 +116,13 @@ $LAN_IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {
 }).IPAddress
 $LAN_IP   # eyeball this — if multiple lines print, pick the /24 that matches your Switch
 # 3. Build (~30s). Pass the IP explicitly — CMake aborts without it.
-python scripts\build_switchmod.py -DBRIDGE_HOST=$LAN_IP
+#    ⚠ QUOTE the -D arg. PowerShell 5.1 splits an UNQUOTED dotted IP into two
+#    tokens ("-DBRIDGE_HOST=192" + ".168.4.100"), so CMake bakes a truncated
+#    "192" seed. $LAN_IP works ONLY when it's a single clean string — on a
+#    multi-NIC box it's an ARRAY and the literal "$LAN_IP" gets baked. Safest:
+#    pin + quote the address. Verify after: Select-String the CMakeCache for
+#    ^BRIDGE_HOST: and confirm the FULL dotted IP, not a lone octet.
+python scripts\build_switchmod.py "-DBRIDGE_HOST=$LAN_IP"   # or "-DBRIDGE_HOST=192.168.x.x"
 
 $RYU = "$env:APPDATA\Ryujinx\mods\contents\0100000000010000\"
 New-Item -ItemType Directory -Force "$RYU\exefs" | Out-Null

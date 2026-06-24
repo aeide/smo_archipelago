@@ -43,6 +43,8 @@ python scripts\build_switchmod.py -DBRIDGE_HOST=$LAN_IP
 
 If the user has multiple NICs (Wi-Fi + Ethernet, VPN adapter, Hyper-V virtual switch), confirm which interface the Switch reaches the PC on before picking an address — the snippet above can return multiple results. Standard rule of thumb: pick the one whose `/24` matches the Switch's IP.
 
+**⚠️ PowerShell argument-splitting trap (bites every manual build) — QUOTE the `-D` arg.** PowerShell 5.1 tokenizes an unquoted dotted IP: `python scripts\build_switchmod.py -DBRIDGE_HOST=192.168.4.100` is split into TWO argv tokens — `-DBRIDGE_HOST=192` and `.168.4.100` (a `.` after digits starts a new token) — so CMake only sees `BRIDGE_HOST=192`, baking a truncated, useless seed. Verify with `python -c "import sys;print(sys.argv[1:])" -DBRIDGE_HOST=192.168.4.100` → `['-DBRIDGE_HOST=192', '.168.4.100']`. **Fix: always quote the whole token** — `python scripts\build_switchmod.py "-DBRIDGE_HOST=192.168.4.100"`. The `$LAN_IP` variable form above only survives because a single clean string variable expands as one token — BUT if `Get-NetIPAddress` returns multiple adapters, `$LAN_IP` becomes an ARRAY and the literal text `$LAN_IP` (or just the first/garbled value) gets baked. So on a multi-NIC machine, pin the address explicitly and quoted: `"-DBRIDGE_HOST=<the.right.ip>"`. After building, always confirm: `Select-String switch-mod\build\CMakeCache.txt -Pattern '^BRIDGE_HOST:'` should show the FULL dotted IP, not a truncated octet.
+
 That single command:
 
 1. Runs `scripts/patch_hakkun.py` to apply the 10 Windows-port patches to the pinned LibHakkun submodule (idempotent; reports "already applied" on re-runs).

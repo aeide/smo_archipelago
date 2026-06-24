@@ -115,6 +115,28 @@ namespace nn::socket {
 
 namespace {
 
+// Boot-time gauge: report trampoline-pool occupancy vs the configured capacity.
+// Non-invasive — drains the pool's free slots via the public allocate() API
+// (counting them), then frees every probe allocation straight back, leaving the
+// pool exactly as it was. A silent overflow (allocate() -> nullptr ->
+// HK_ABORT_UNLESS) HANGS under Ryujinx instead of printing "TrampolinePool full!",
+// so this early "N/256 slots in use" readout lets us SEE how close we are to the
+// ceiling BEFORE a future hook trips it. Call once everything is installed.
+void logTrampolinePoolUsage() {
+    constexpr int kCap = HK_HOOK_TRAMPOLINE_POOL_SIZE;
+    hk::hook::detail::TrampolineBackup* probe[kCap];
+    int free_slots = 0;
+    for (; free_slots < kCap; ++free_slots) {
+        auto* p = hk::hook::detail::sTrampolinePool.allocate();
+        if (!p) break;
+        probe[free_slots] = p;
+    }
+    for (int i = 0; i < free_slots; ++i)
+        hk::hook::detail::sTrampolinePool.free(probe[i]);
+    SMOAP_LOG_INFO("[trampoline-pool] %d/%d slots in use (%d free)",
+                   kCap - free_slots, kCap, free_slots);
+}
+
 // 6 MB transfer pool + 128 KB allocator pool for nn::socket. Larger than
 // SMO's stock setup because:
 //   1. nn::socket::Initialize can only be called ONCE per process; the
@@ -203,6 +225,9 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
         if (s_first) {
             s_first = false;
             SMOAP_LOG_INFO(">>> drawMain hook FIRED (first frame)");
+            // Everything (incl. the pre-orig disableSocketInit trampoline armed
+            // during GameSystem::init) is installed by now — report live pool use.
+            logTrampolinePoolUsage();
         }
         smoap::util::drainPendingToFile();
         drawMainHook.orig(self);

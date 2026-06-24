@@ -108,7 +108,8 @@
       "Bash(python scripts/check_nso_symbols.py .romfs-cache/main.nso _ZN2al16tryOnStageSwitchEPNS_15IUseStageSwitchEPKc _ZN2al19listenStageSwitchOnEPNS_15IUseStageSwitchEPKcRKNS_11FunctorBaseE _ZN2al22listenStageSwitchOnOffEPNS_15IUseStageSwitchEPKcRKNS_11FunctorBaseES6_)",
       "Bash(python scripts/_dump_door_syms.py .romfs-cache/main.nso DoorWarp)",
       "Bash(python scripts/check_nso_symbols.py .romfs-cache/main.nso _ZN8DoorWarp18initAfterPlacementEv _ZN8DoorWarp4initERKN2al13ActorInitInfoE _ZN8DoorWarp6unlockEv _ZN2al18isValidStageSwitchEPKNS_15IUseStageSwitchEPKc _ZN2al16tryOnStageSwitchEPNS_15IUseStageSwitchEPKc _ZN8DoorWarp7exeLockEv)",
-      "PowerShell(python scripts\\\\_dump_door_syms.py .romfs-cache\\\\main.nso Door 2>&1)"
+      "PowerShell(python scripts\\\\_dump_door_syms.py .romfs-cache\\\\main.nso Door 2>&1)",
+      "Edit(/.claude/skills/smo-build/**)"
     ]
   }
 }
