@@ -83,10 +83,11 @@ void installGrowSeedInstantHook();
 // P7 entrance shuffle — Step 3 logger on tryChangeNextStage. See
 // hooks/EntranceShuffleHook.cpp.
 void installEntranceShuffleHook();
-// Costume doors always-open (while entrance shuffle is active). Forces the
-// "OpenKeySwitch" stage-switch on so all 8 costume doors init open. See
-// hooks/CostumeDoorHook.cpp.
+// Costume doors always-open (while entrance shuffle is active). The hook records
+// each DoorWarp at init; tickCostumeDoors (frame pump) forces the "OpenKeySwitch"
+// stage-switch on so all 8 costume doors open. See hooks/CostumeDoorHook.cpp.
 void installCostumeDoorHook();
+void tickCostumeDoors();
 // Per-frame overworld-arrival poll: re-emits the current kingdom's ArrivalEvent
 // (self-deduping) so randomize_kingdom_gates reveals survive reconnects and
 // pre-connect arrivals. See hooks/EntranceShuffleHook.cpp.
@@ -243,6 +244,7 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
         }
         smoap::hooks::tickWorldTravelPeach();  // self-throttled (~1s)
         smoap::hooks::tickArrivalPoll();        // self-throttled (~0.5s)
+        smoap::hooks::tickCostumeDoors();       // drains pending costume doors
         smoap::ui::drawHudFrame();
         smoap::ui::drawDebugConsole();
 

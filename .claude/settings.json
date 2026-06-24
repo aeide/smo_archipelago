@@ -94,7 +94,21 @@
       "PowerShell($nm = \"C:\\\\Program Files\\\\LLVM\\\\bin\\\\llvm-nm.exe\"; $nso = \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso\"; & $nm --dynamic $nso 2>$null | Select-String -Pattern \"isOnStageSwitch|listenStageSwitchOnStart|invalidateCollisionParts\" | Select-Object -First 20)",
       "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" \"E:\\\\smo_archipelago\\\\scripts\\\\check_nso_symbols.py\" \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso\" \"_ZN2al15isOnStageSwitchEPKNS_15IUseStageSwitchEPKc\" \"_ZN2al23listenStageSwitchOnStartEPNS_15IUseStageSwitchERKNS_11FunctorBaseE\" \"DoorWarpStageChange\" \"_ZN2al24invalidateCollisionPartsEPNS_9LiveActorE\")",
       "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" -m pip install lz4 --quiet 2>&1)",
-      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" \"E:\\\\smo_archipelago\\\\scripts\\\\check_nso_symbols.py\" \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso\" \"_ZN2al15isOnStageSwitchEPKNS_15IUseStageSwitchEPKc\" \"_ZN2al23listenStageSwitchOnStartEPNS_15IUseStageSwitchERKNS_11FunctorBaseE\" \"_ZN2al24invalidateCollisionPartsEPNS_9LiveActorE\")"
+      "PowerShell(& \"E:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" \"E:\\\\smo_archipelago\\\\scripts\\\\check_nso_symbols.py\" \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main.nso\" \"_ZN2al15isOnStageSwitchEPKNS_15IUseStageSwitchEPKc\" \"_ZN2al23listenStageSwitchOnStartEPNS_15IUseStageSwitchERKNS_11FunctorBaseE\" \"_ZN2al24invalidateCollisionPartsEPNS_9LiveActorE\")",
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main.nso DoorWarpStageChange DoorWarp DoorWarpLock listenStageSwitchOn listenStageSwitchOnOff listenStageSwitchOnStart onStageSwitch tryOnStageSwitch offStageSwitch isOnStageSwitch isValidStageSwitch getStageSwitchAccesser trySyncStageSwitchOnOff OpenKeySwitch)",
+      "Bash(ls \"C:/devkitPro/devkitA64/bin/\" 2>/dev/null | grep -iE 'g\\\\+\\\\+|nm' ; echo \"---\"; which aarch64-none-elf-g++ 2>/dev/null; ls /c/devkitPro/devkitA64/bin/aarch64-none-elf-g++.exe 2>/dev/null && echo \"FOUND\")",
+      "Read(//c/devkitPro/devkitA64/**)",
+      "Read(//c/devkitPro/devkitA64/bin/**)",
+      "Bash(ls /c/devkitPro/devkitA64/bin/ 2>/dev/null | head; echo \"=== llvm ===\"; ls \"/c/Program Files/LLVM/bin/\" 2>/dev/null | grep -iE 'clang|nm|c\\\\+\\\\+filt' | head; echo \"=== find devkit ===\"; ls /c/devkitPro 2>/dev/null)",
+      "Read(//c/Program Files/LLVM/bin//**)",
+      "Read(//c//**)",
+      "Bash(cat)",
+      "Bash(\"/c/Program Files/LLVM/bin/clang++.exe\" -std=c++20 --target=aarch64-none-elf -c mangle.cpp -o mangle.o)",
+      "Bash(\"/c/Program Files/LLVM/bin/llvm-nm.exe\" mangle.o)",
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main.nso _ZN2al16tryOnStageSwitchEPNS_15IUseStageSwitchEPKc _ZN2al19listenStageSwitchOnEPNS_15IUseStageSwitchEPKcRKNS_11FunctorBaseE _ZN2al22listenStageSwitchOnOffEPNS_15IUseStageSwitchEPKcRKNS_11FunctorBaseES6_)",
+      "Bash(python scripts/_dump_door_syms.py .romfs-cache/main.nso DoorWarp)",
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main.nso _ZN8DoorWarp18initAfterPlacementEv _ZN8DoorWarp4initERKN2al13ActorInitInfoE _ZN8DoorWarp6unlockEv _ZN2al18isValidStageSwitchEPKNS_15IUseStageSwitchEPKc _ZN2al16tryOnStageSwitchEPNS_15IUseStageSwitchEPKc _ZN8DoorWarp7exeLockEv)",
+      "PowerShell(python scripts\\\\_dump_door_syms.py .romfs-cache\\\\main.nso Door 2>&1)"
     ]
   }
 }

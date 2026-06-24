@@ -310,18 +310,29 @@ _ZN12GameDataFile15changeNextStageEPK15ChangeStageInfoi
 _ZN12GameDataFile15returnPrevStageEv
 
 // Costume doors always-open (CostumeDoorHook) — see hooks/CostumeDoorHook.cpp.
-// al::isOnStageSwitch(const al::IUseStageSwitch* user, const char* linkName).
-// All 8 SMO costume doors (7 DoorWarpStageChange fitting rooms + the Lake
-// DoorWarp same-stage door) gate their open transition on an "OpenKeySwitch"
-// stage-switch link; the runtime-spawned DoorWarpLock padlock (a Push sensor =
-// the invisible barrier) and the warp are both governed by it. We trampoline
-// this query and force-return true for linkName=="OpenKeySwitch" while entrance
-// shuffle is active, so the vanilla door initializes straight into Open. An
-// all-stages romfs scan proved "OpenKeySwitch" is used by ONLY these costume
-// doors, so link-name scoping is complete + safe. VERIFIED HIT [rodata] in
-// main.nso (check_nso_symbols.py 2026-06-23). "isOnStageSwitch"=15,
-// "IUseStageSwitch"=15 (al-nested -> NS_), char* -> PKc.
-_ZN2al15isOnStageSwitchEPKNS_15IUseStageSwitchEPKc
+// Hook each door class's initAfterPlacement to QUEUE the door, then CALL
+// al::tryOnStageSwitch(door, "OpenKeySwitch") from the safe drawMain frame pump
+// (tickCostumeDoors). There are TWO real door classes (both VERIFIED HIT in
+// main.nso, with full method sets + createActorFunction):
+//   * DoorWarpStageChange — the 7 loading-zone fitting-room doors (Sand, Wooded,
+//     Seaside, Snow, Luncheon, Bowser's, Mushroom). IUseStageSwitch at +24
+//     (_ZTC19DoorWarpStageChange24_N2al15IUseStageSwitchE).
+//   * DoorWarp — the Lake same-stage fitting-room door only. IUseStageSwitch
+//     also at +24.
+// Both gate on an "OpenKeySwitch" link (the DoorWarpLock padlock + Push barrier
+// share it); an all-stages romfs scan proved that link is used by ONLY these 8
+// doors. Only these two symbols are sail-resolved (installAtSym targets); the al
+// switch helpers al::isValidStageSwitch / al::tryOnStageSwitch are resolved at
+// runtime via hk::ro::lookupSymbol (raw literals, soft-fail), so are NOT listed.
+//
+// DO NOT re-add al::isOnStageSwitch (round 1: doors don't poll it, INERT). The
+// al::listenStageSwitchOn(Off) shims and DoorWarp::exeLock were once blamed for
+// boot hangs ("tiny-shim prologue overrun") — that diagnosis was WRONG; the real
+// cause was TRAMPOLINE POOL EXHAUSTION (we sat at exactly 0x40 trampolines; the
+// 65th overflowed and HK_ABORT_UNLESS hung in Ryujinx). Fixed by raising
+// TRAMPOLINE_POOL_SIZE to 0x80 in config/config.cmake. See CostumeDoorHook.cpp.
+_ZN19DoorWarpStageChange18initAfterPlacementEv
+_ZN8DoorWarp18initAfterPlacementEv
 
 // Cap Bounce (cap vault) — bouncing off held Cappy is delivered by the cap's
 // touch-jump sensor message. v2 hooked rs::sendMsgPlayerCapTrample (the cap-TRAMPLE

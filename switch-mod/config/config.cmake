@@ -27,7 +27,15 @@ set(MODULE_BINARY subsdk9)
 set(SDK_PAST_1900 FALSE)
 set(USE_SAIL TRUE)
 
-set(TRAMPOLINE_POOL_SIZE 0x40)
+# Trampoline backup pool — one slot per installed HkTrampoline. We were sitting
+# at EXACTLY 0x40 (64) installed trampolines, so the booting build filled the pool
+# to the last slot and ANY additional hook (e.g. the 2nd costume-door trampoline)
+# overflowed: allocate() returns nullptr -> HK_ABORT_UNLESS, whose diag/IPC-logger
+# path HANGS in Ryujinx instead of printing a clean "TrampolinePool full" line, so
+# the symptom was an unexplained boot hang right after GameSystem::init with the
+# offending hook never even firing. Bumped to 0x80 (128) for durable headroom —
+# the costume-door work added the 65th trampoline and triggered this. (2026-06-24)
+set(TRAMPOLINE_POOL_SIZE 0x80)
 set(BAKE_SYMBOLS FALSE)
 
 # HeapSourceDynamic is essential — routes operator new / malloc / free to
