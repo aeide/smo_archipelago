@@ -111,7 +111,9 @@ OTHER_FRAG: dict[str, str | None] = {
     "crouch":       "|Progressive Crouch:1|",
     "roll":         "|Progressive Crouch:2|",
     "roll_boost":   "|Progressive Crouch:3|",
-    "wall_slide":   "|Wall Slide|",
+    "wall_slide":   "|Wall Slide|",  # also covers ceiling swing pole (PoleGrabCeil) /
+                                      # ledge grab — Ledge Grab is auto-granted with Wall
+                                      # Slide, so pole moons require wall_slide in logic
     "climb":        "|Climb|",
     "cap_bounce":   "|Cap Bounce|",
     "bonk_roll":    "|Progressive Crouch:2|",  # FLAG: Bonk(Roll) assumed to need Roll

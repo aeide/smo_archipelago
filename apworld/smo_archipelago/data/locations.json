@@ -2037,7 +2037,7 @@
       "Metro Kingdom"
     ],
     "region": "Metro Kingdom",
-    "requires": "(|Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)} and |Mini Rocket|)"
+    "requires": "(|Wall Slide| and |Spark pylon| and {canReachLocation(Metro: New Donk City's Pest Problem)} and |Mini Rocket|)"
   },
   {
     "name": "Metro: Vaulting Up a High-Rise",
@@ -5971,7 +5971,7 @@
       "Extra"
     ],
     "region": "Wooded Kingdom",
-    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Spin| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Climb|) and {WoodedPeace()})"
+    "requires": "(((|Cap Bounce| or (|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Spin| or (|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Climb| and |Wall Slide|) and {WoodedPeace()})"
   },
   {
     "name": "Wooded: Jammin' in the Wooded Kingdom",

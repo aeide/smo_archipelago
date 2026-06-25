@@ -5715,7 +5715,8 @@
           "none"
         ],
         "other_required": [
-          "climb"
+          "climb",
+          "wall_slide"
         ]
       },
       "2": null,
@@ -9887,7 +9888,8 @@
           "none"
         ],
         "other_required": [
-          "capture"
+          "capture",
+          "wall_slide"
         ]
       },
       "2": null,

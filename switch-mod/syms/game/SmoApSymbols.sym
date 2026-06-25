@@ -214,6 +214,9 @@ _ZNK26PlayerJudgeStartGroundSpin5judgeEv
 // disproved). Decoupled from Wall Slide: it sits downstream of the wall judges, so
 // Ledge Grab is gated by its own item even with Wall Slide owned. "PlayerJudgeGrabCeil"=19.
 // HIT (2026-06-15).
+// Ledge Grab — PlayerJudgeGrabCeil::judge() const. NO LONGER HOOKED (the gate soft-locked
+// the PoleGrabCeil ceiling pole; Ledge Grab is now enforced in generation logic only).
+// Kept here harmlessly — unreferenced sym entries are dropped by --gc-sections.
 _ZNK19PlayerJudgeGrabCeil5judgeEv
 // Roll Boost (motion-control shake while rolling) — NOT a judge; this is the
 // PlayerInput predicate that reports the boost swing. Gated on Progressive

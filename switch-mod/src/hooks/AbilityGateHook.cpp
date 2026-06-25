@@ -23,7 +23,8 @@
 //   Spin Throw   PlayerInput::isThrowTypeSpiral (horizontal flick) <- Spin Throw item >= 1  [TESTED]
 //   Up Throw     PlayerInput::isThrowTypeRolling, v.y >= 0 <- Up Throw item >= 1  [confirm in-game]
 //   Down Throw   PlayerInput::isThrowTypeRolling, v.y <  0 <- Down Throw item >= 1  [confirm in-game]
-//   Ledge Grab   PlayerJudgeGrabCeil::judge          <- Ledge Grab item >= 1  [judge-hook FAILED; abandoned — Wall Slide enables ledge grab]
+//   Ledge Grab   (NOT gated in-game)                 <- LOGIC-ONLY  [the PlayerJudgeGrabCeil gate soft-locked the PoleGrabCeil ceiling pole;
+//                  enforced via |Wall Slide| on the 3 pole moons in generation logic (Ledge Grab is auto-granted with Wall Slide)]
 //   Dbl/Triple   PlayerContinuousJump::countUp (wrap mCount to 0 past cap) <- Progressive Jump 1/2  [TESTED]
 //   GP Jump      PlayerStateHipDrop::isEnableLandCancel <- Ground Pound Jump >= 1  [TESTED]
 //   Side Flip    neuter turn-jump physics (PlayerConst::getTurnJump{Power,VelH,Gravity}) <- Side Flip item >= 1  [confirm in-game]
@@ -121,7 +122,6 @@ class PlayerJudgeWallHitDown;
 class PlayerJudgeWallKeep;
 class PlayerJudgeWallCatchInputDir;
 class PlayerJudgePoleClimb;
-class PlayerJudgeGrabCeil;
 class PlayerJudgeStartGroundSpin;
 class PlayerStateHipDrop;
 class PlayerInput;
@@ -143,7 +143,8 @@ constexpr const char* kLongJump = "Long Jump";
 constexpr const char* kWallSlide = "Wall Slide";
 constexpr const char* kClimb     = "Climb";
 constexpr const char* kSpinThrow = "Spin Throw";
-constexpr const char* kLedgeGrab = "Ledge Grab";
+// Ledge Grab is no longer gated in-game (it soft-locked the PoleGrabCeil ceiling pole);
+// it is enforced in the generation logic only, so there is no kLedgeGrab constant.
 constexpr const char* kProgressiveJump = "Progressive Jump";
 constexpr const char* kGroundPoundJump = "Ground Pound Jump";
 constexpr const char* kSideFlip = "Side Flip";
@@ -272,36 +273,27 @@ HkTrampoline<bool, PlayerJudgeWallCatchInputDir*> wallCatchInputDirJudgeHook =
         return false;
     });
 
-// Ledge Grab — Ledge Grab item. The move is PlayerStateGrabCeil (grabbing a
-// wall-top/ceiling edge — isCollisionCodeGrabCeilWall). PlayerJudgeGrabCeil::
-// judge() is the entry detector: the decomp shows it returns mIsJudge, set each
-// frame by rs::findGrabCeilPos{WallHit,NoWallHit} (purely "is there a grabbable
-// edge in reach?"). Forcing it false suppresses ENTRY only — it has nothing to
-// do with jumping OFF a grab (the earlier soft-lock fear was unfounded; the jump
-// is a separate state transition). Structurally identical to PlayerJudgePoleClimb
-// (Climb), which gates cleanly here, so this judge is not inlined at its call site.
-//
-// IMPORTANT — decoupled from Wall Slide. Ledge grab is normally reached by
-// catching a wall and sliding to its top edge, so the Wall Slide family gate
-// (above) also blocks the *approach* when Wall Slide is unowned (Devon, 2026-06-15:
-// "ledge grab is removed, but collecting Ledge Grab doesn't restore it" — Wall
-// Slide was the actual block, not a ledge-grab gate). This judge sits DOWNSTREAM
-// of the wall judges: with Wall Slide owned the player can wall-slide up, and this
-// gate independently decides whether the grab itself is allowed. So Ledge Grab is
-// gated by its own item even when Wall Slide is present.
-HkTrampoline<bool, PlayerJudgeGrabCeil*> grabCeilJudgeHook =
-    hk::hook::trampoline([](PlayerJudgeGrabCeil* self) -> bool {
-        const bool want = grabCeilJudgeHook.orig(self);
-        if (!want) return false;
-        if (smoap::ap::ApState::instance().abilityAtLeast(kLedgeGrab, 1))
-            return true;
-        return false;
-    });
+// Ledge Grab — NOT gated in-game. The move is PlayerStateGrabCeil (grabbing a
+// wall-top/ceiling edge — isCollisionCodeGrabCeilWall). PlayerJudgeGrabCeil::judge
+// was hooked to suppress it, but that ALSO catches the horizontal CEILING POLE (the
+// `PoleGrabCeil` map object — `PoleGrabCeilExStage`; Mario hangs below it and swings
+// off): Mario latches via a sensor message that bypasses the judge, then his swing/
+// jump-off does NOT re-consult this judge (an exeGrabCeil-beacon "allow while grabbing"
+// fix was built + tested in-game 2026-06-25 and STILL soft-locked — the exit flows
+// through a different nerve), so suppressing the judge stranded him mid-jump on the bar
+// (soft-lock). There are only 3 pole moons, so per Devon we STOP gating this move
+// in-game (no soft-lock — vanilla pole behavior) and enforce it purely in the generation
+// LOGIC instead. Ledge Grab is auto-granted with Wall Slide, so those 3 moons require
+// |Wall Slide| in logic (NOT |Ledge Grab|): Metro "Hanging from a High-Rise", Metro
+// "Vaulting Up a High-Rise", Wooded "Swing Around Secret Flower Field".
 
 // Climb — Climb item. PlayerJudgePoleClimb::judge decides whether Mario grabs
 // onto a pole/net to start climbing. Suppressing it keeps Mario off poles/nets
 // until the item is owned. (If in-game shows a climb path leaks through — e.g.
 // nets via a separate trigger — add PlayerJudgeStatusPoleClimb::judge, also HIT.)
+// (TESTED-PASS; the entry-block is clean for vertical poles/nets — Mario simply
+// can't grab, no soft-lock — unlike the ceiling-pole GrabCeil move above, which is
+// why Climb stays gated here but Ledge Grab is logic-only.)
 HkTrampoline<bool, PlayerJudgePoleClimb*> poleClimbJudgeHook =
     hk::hook::trampoline([](PlayerJudgePoleClimb* self) -> bool {
         const bool want = poleClimbJudgeHook.orig(self);
@@ -665,9 +657,10 @@ void installAbilityGateHooks() {
     // Out-of-line IJudge override (decomp: isSpinInput() && isOnGround), same family
     // as the judges above, so it should hook without the Side Flip inlining trouble.
     groundSpinJudgeHook.installAtSym<"_ZNK26PlayerJudgeStartGroundSpin5judgeEv">();
-    // Ledge Grab — PlayerJudgeGrabCeil::judge (19). Decoupled from Wall Slide:
-    // sits downstream of the wall judges so it gates the grab on its own item.
-    grabCeilJudgeHook.installAtSym<"_ZNK19PlayerJudgeGrabCeil5judgeEv">();
+    // Ledge Grab — NOT hooked in-game. The PlayerJudgeGrabCeil::judge gate soft-locked
+    // the PoleGrabCeil ceiling pole (Mario stranded mid-jump); enforced via generation
+    // logic instead (|Wall Slide| on the 3 pole moons — Ledge Grab is auto-granted with
+    // Wall Slide). See grabCeil block above.
     // Roll Boost (motion-control) — input predicate, not a judge.
     rollRestartSwingHook.installAtSym<"_ZNK11PlayerInput28isTriggerRollingRestartSwingEv">();
     // Roll-out-of-Ground-Pound — input predicate; gate on PC>=2 (Roll). Has a bool arg.
