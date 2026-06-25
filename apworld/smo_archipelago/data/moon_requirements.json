@@ -3320,7 +3320,7 @@
     "locked_default_capture": false,
     "methods": {
       "1": {
-        "jump_height": "long_jump",
+        "jump_height": "none",
         "cap_throws": [
           "none"
         ],

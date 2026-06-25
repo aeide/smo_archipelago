@@ -165,6 +165,21 @@ SUBAREA_EXIT_GATES: dict[str, str] = {
     "Roulette Tower":                   "|Mini Rocket|",
 }
 
+# Subarea name → INTERIOR-INTRINSIC FULL entry gate. Unlike SUBAREA_ENTRANCE_GATES
+# (item-only) and the {Func()}-only interior scenario gates, this is a complete
+# requires string that may MIX {Func(args)} predicate calls with |item| tokens under
+# AND/OR — the only place such a gate can live. It's the subarea's own "what it takes
+# to enter/do this subarea" condition, intrinsic to the INTERIOR, so it's keyed on the
+# interior you land in (like SUBAREA_EXIT_GATES) and applies no matter which shuffled
+# door now leads in. The interior moons themselves stay free (no move-set). Mirrors
+# compile_moon_logic.SUBAREA_INTERIOR_FULL_GATES, which bakes the identical string into
+# each member moon's locations.json `requires` for the entrance-shuffle OFF path.
+SUBAREA_INTERIOR_FULL_GATES: dict[str, str] = {
+    # Jaxi Driving: Sand world peace OR the move-set to reach it the hard way.
+    "Jaxi Driving":
+        "({SandPeace()} or (|Bullet Bill| and |Progressive Ground Pound:2| and |Wall Slide|))",
+}
+
 # Kingdom prefix → peace-function name (from hooks/Rules.py).
 # Cap, Cloud, Lost omitted — their peace = kingdom reachability; no extra gate.
 MOON_PIPE_PEACE_FUNCS: dict[str, str] = {
@@ -552,6 +567,56 @@ def evaluate_interior_requires(
 
 
 # ---------------------------------------------------------------------------
+# Full requires evaluator ({Func()} + |item| + and/or)
+# ---------------------------------------------------------------------------
+# Used only for SUBAREA_INTERIOR_FULL_GATES, the one gate class that mixes
+# {Func(args)} predicate calls with |item| tokens (e.g. "Sand peace OR the
+# move-set"). evaluate_interior_requires is item-only and make_scenario_gate_rule
+# is {Func}-only; neither can express the OR-of-mixed-types, so this composes both.
+
+def evaluate_full_requires(
+    state: "CollectionState",
+    req_str: str,
+    world: "World",
+    multiworld: "MultiWorld",
+    player: int,
+) -> bool:
+    """Evaluate a requires string that may mix {Func(args)} calls, |item:count|
+    tokens, and AND/OR/parens. {Func()} calls resolve against hooks/Rules.py: a
+    bool/None result substitutes 1/0; a string result (a requires sub-expression,
+    e.g. KingdomMoons) is spliced in and re-parsed. Fail-open on any error."""
+    if not req_str:
+        return True
+    from .hooks import Rules as HookRules
+
+    expr = req_str
+    # Resolve {Func(args)} left-to-right, iteratively: a spliced string result may
+    # introduce further |item| tokens (handled below); our gates don't nest {Func()}.
+    for _ in range(16):
+        m = _FUNC_RE.search(expr)
+        if not m:
+            break
+        name = m.group(1)
+        arg = m.group(2).strip()
+        args = [a.strip() for a in arg.split(",")] if arg else []
+        fn = getattr(HookRules, name, None)
+        if callable(fn):
+            try:
+                res = fn(world, multiworld, state, player, *args)
+            except Exception:
+                res = True  # fail-open
+        else:
+            res = True
+        if isinstance(res, str):
+            sub = f"({res})" if res else "1"
+        else:
+            sub = "1" if res else "0"
+        expr = expr[:m.start()] + sub + expr[m.end():]
+    # Remaining string: |item| tokens + 1/0 literals + and/or/parens.
+    return evaluate_interior_requires(state, expr, world, player)
+
+
+# ---------------------------------------------------------------------------
 # Door access rule factory
 # ---------------------------------------------------------------------------
 
@@ -696,6 +761,15 @@ def make_door_access_rule(
     if xg:
         checks.append(lambda state, r=xg, w=world, p=player:
                        evaluate_interior_requires(state, r, w, p))
+
+    # Interior-intrinsic FULL entry gate (the subarea you land in). A complete
+    # {Func} OR |item| requires string — the subarea's own entry condition, keyed
+    # on the interior so it rides the interior under shuffle regardless of which
+    # door leads in. Member moons stay free; this is the only gate they get.
+    fg = SUBAREA_INTERIOR_FULL_GATES.get(interior_subarea, "")
+    if fg:
+        checks.append(lambda state, r=fg, w=world, mw=multiworld, p=player:
+                       evaluate_full_requires(state, r, w, mw, p))
 
     # Peace gate (moon-pipe door)
     if is_moon_pipe:

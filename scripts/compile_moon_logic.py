@@ -566,6 +566,19 @@ LOCATION_EXTRA_GATES: dict[str, str] = {
     "Sand: Employees Only": "|Progressive Crouch:1|",   # Crazy Cap back room
 }
 
+# Subarea name → INTERIOR-INTRINSIC FULL gate: a complete requires string that may
+# MIX {Func()} predicate calls with |item| tokens under AND/OR (which SUBAREA_GATES,
+# being a plain item fragment AND-joined onto the move-set, cannot express). For these
+# subareas the member moons are free INSIDE — the move-set is dropped — and the whole
+# requires becomes just this gate (the subarea's own entry condition). Mirrors
+# entrance_logic.SUBAREA_INTERIOR_FULL_GATES, which applies the identical string on the
+# DOOR entrance under entrance_shuffle ON. Keep the two in sync.
+SUBAREA_INTERIOR_FULL_GATES: dict[str, str] = {
+    # Jaxi Driving: Sand world peace OR the move-set to reach it the hard way.
+    "Jaxi Driving":
+        "({SandPeace()} or (|Bullet Bill| and |Progressive Ground Pound:2| and |Wall Slide|))",
+}
+
 # Captures required to physically REACH a kingdom's moon rock (and therefore every
 # moon-pipe moon behind it). Only two rocks in the game are capture-gated to reach:
 # Cap's (a Paragoomba glide up to the ledge) and Luncheon's (Lava Bubble to cross the
@@ -883,6 +896,20 @@ def main() -> None:
             free_moons.append(ln)
         if len(rec["capture_groups"]) > 1:
             or_capture_moons.append(csv_name)
+
+    # Interior-intrinsic FULL gates: REPLACE the compiled requires for every member
+    # of these subareas with the subarea's own {Func} OR |item| entry gate (the move-
+    # set is dropped — members are free inside). entrance_shuffle ON applies the same
+    # string on the door via entrance_logic.SUBAREA_INTERIOR_FULL_GATES; this keeps the
+    # OFF-path locations.json requires identical so the two never drift.
+    for sub_name, gate in SUBAREA_INTERIOR_FULL_GATES.items():
+        info = subareas.get(sub_name)
+        if not info:
+            continue
+        for ln in info.get("location_names", []):
+            if ln in junk_names:
+                continue
+            compiled[ln] = gate
 
     # Write requires back into locations.json for compiled moons.
     written = 0

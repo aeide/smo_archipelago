@@ -526,3 +526,76 @@ def test_exit_gated_subareas_are_in_the_shuffle_pool():
     for name in SUBAREA_EXIT_GATES:
         assert name in pool, (
             f"{name!r} is exit-gated but absent from the entrance pool")
+
+
+# ---------------------------------------------------------------------------
+# SUBAREA_INTERIOR_FULL_GATES — interior-intrinsic {Func} OR |item| entry gates
+# (e.g. Jaxi Driving). Regression coverage for the c42c933 char-split bug where a
+# malformed flat-string capture_group made the interior require nonexistent single-
+# character "items" and the moons became unreachable under entrance shuffle + full.
+# ---------------------------------------------------------------------------
+
+def _moon_requirements() -> dict:
+    return json.loads((DATA_DIR / "moon_requirements.json").read_text(encoding="utf-8"))
+
+
+def test_capture_groups_are_never_flat_strings():
+    """Every capture_group must be a LIST of capture names ([["Bullet Bill"]]), never
+    a bare string (["Bullet Bill"]) — the latter makes _capture_term iterate over the
+    string's CHARACTERS, producing |B| and |u| and ... (nonexistent items) and an
+    unsatisfiable interior rule. This guards the whole table, not just Jaxi."""
+    bad = []
+    for csv_name, rec in _moon_requirements().items():
+        for g in rec.get("capture_groups", []):
+            if not isinstance(g, list):
+                bad.append((rec.get("location_name", csv_name), rec["capture_groups"]))
+                break
+    assert not bad, f"malformed (flat-string) capture_groups: {bad}"
+
+
+def test_full_gated_subareas_are_pooled_and_free_inside():
+    """For each SUBAREA_INTERIOR_FULL_GATES subarea: it must be in the shuffle pool
+    (else the door gate never applies) and every member moon must compile to a FREE
+    interior (no move-set) — the full gate is the moon's only requirement."""
+    from entrance_logic import (
+        SUBAREA_INTERIOR_FULL_GATES, build_entrance_pool, compile_interior_requires,
+    )
+    subareas = _subareas()
+    pool = set(build_entrance_pool(subareas, _exclusions(), _entrance_stages()))
+    reqs = {r.get("location_name"): r for r in _moon_requirements().values()}
+    for sub in SUBAREA_INTERIOR_FULL_GATES:
+        assert sub in pool, f"{sub!r} has a full gate but is not pooled"
+        for ln in subareas.get(sub, {}).get("location_names", []):
+            rec = reqs.get(ln)
+            if rec is not None:
+                assert compile_interior_requires(rec) == "", (
+                    f"{ln!r} should be free inside (gate rides the door), got "
+                    f"{compile_interior_requires(rec)!r}")
+
+
+def test_full_gate_matches_baked_locations_requires():
+    """The shuffle-OFF baked requires (locations.json) for a full-gated subarea's
+    members must equal the SUBAREA_INTERIOR_FULL_GATES string, so OFF and ON agree."""
+    from entrance_logic import SUBAREA_INTERIOR_FULL_GATES
+    subareas = _subareas()
+    by_name = {l["name"]: l for l in _locations()}
+    for sub, gate in SUBAREA_INTERIOR_FULL_GATES.items():
+        for ln in subareas.get(sub, {}).get("location_names", []):
+            loc = by_name.get(ln)
+            if loc is not None and not loc.get("junk_only"):
+                assert loc.get("requires") == gate, (
+                    f"{ln!r} baked requires {loc.get('requires')!r} != full gate {gate!r}")
+
+
+def test_full_gate_mirror_compile_moon_logic():
+    """entrance_logic.SUBAREA_INTERIOR_FULL_GATES (shuffle ON) must mirror
+    compile_moon_logic.SUBAREA_INTERIOR_FULL_GATES (shuffle OFF bake) exactly."""
+    import importlib.util
+    from entrance_logic import SUBAREA_INTERIOR_FULL_GATES as ON
+    script = APWORLD_ROOT.parents[1] / "scripts" / "compile_moon_logic.py"
+    if not script.exists():
+        pytest.skip("compile_moon_logic.py not present")
+    spec = importlib.util.spec_from_file_location("_cml", script)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert ON == mod.SUBAREA_INTERIOR_FULL_GATES
