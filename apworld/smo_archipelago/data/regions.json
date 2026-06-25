@@ -14,17 +14,16 @@
         "requires": "{KingdomMoons(Cascade,5)}",
         "connects_to": [
             "Cap Kingdom",
-            "Lake Kingdom"
+            "Lake Kingdom",
+            "Wooded Kingdom"
         ]
     },
     "Lake Kingdom": {
         "requires": "{KingdomMoons(Sand,16)}",
-        "connects_to": [
-            "Wooded Kingdom"
-        ]
+        "connects_to": []
     },
     "Wooded Kingdom": {
-        "requires": "{KingdomMoons(Lake,8)}",
+        "requires": "{KingdomMoons(Sand,16)}",
         "connects_to": [
             "Lost Kingdom"
         ]
@@ -34,7 +33,7 @@
         "connects_to": []
     },
     "Lost Kingdom": {
-        "requires": "{KingdomMoons(Wooded,16)}",
+        "requires": "{KingdomMoons(Lake,8)} and {KingdomMoons(Wooded,16)}",
         "connects_to": [
             "Night Metro"
         ]
@@ -49,17 +48,16 @@
     "Metro Kingdom": {
         "requires": "{PostNightMetro()}",
         "connects_to": [
-            "Snow Kingdom"
+            "Snow Kingdom",
+            "Seaside Kingdom"
         ]
     },
     "Snow Kingdom": {
         "requires": "{KingdomMoons(Metro,20)}",
-        "connects_to": [
-            "Seaside Kingdom"
-        ]
+        "connects_to": []
     },
     "Seaside Kingdom": {
-        "requires": "{KingdomMoons(Snow,10)}",
+        "requires": "{KingdomMoons(Metro,20)}",
         "connects_to": [
             "Very Early Luncheon"
         ]
@@ -71,7 +69,7 @@
         ]
     },
     "Luncheon Kingdom": {
-        "requires": "{KingdomMoons(Seaside,10)}",
+        "requires": "{KingdomMoons(Snow,10)} and {KingdomMoons(Seaside,10)}",
         "connects_to": [
             "Ruined Kingdom"
         ]

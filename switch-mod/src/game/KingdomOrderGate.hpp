@@ -54,4 +54,45 @@ struct OrderGateDecision {
 // gated kingdoms whose prereq has been visited.
 OrderGateDecision evaluateOrderGateForKingdom(const char* kingdom_short);
 
+// --- Free-detour "both siblings before the exit" gate ------------------------
+//
+// SMO has two world-map detour pairs, both made FREE (the kRules order entries
+// are gone) — the player may fly the two siblings in either order:
+//   - Post-Sand:  Lake ↔ Wooded, exit into Cloud
+//                 (story-forced: select Metro on the map → Bowser cutscene →
+//                  Cloud pre-peace)
+//   - Post-Metro: Snow ↔ Seaside, exit into Luncheon (a normal onward flight —
+//                 no Bowser intercept; the exit stage resolves to Luncheon
+//                 directly)
+// Leaving a detour into its exit kingdom must require the minimum effective-moon
+// counts from BOTH siblings. The exit kingdom is the chokepoint, caught at the
+// universal GameDataFile::changeNextStage commit where the destination provably
+// resolves. See docs/v3-feasibility/future-feasibility-lake-wooded-free-detour.md.
+
+struct DetourExitGateDecision {
+    // True when the player has NOT yet met both siblings' leave-thresholds, i.e.
+    // the warp into the exit kingdom should be held back into the detour. When
+    // true, redirect_stage is the unmet sibling's HomeStage. When false the
+    // player may proceed (pass-through). exit_kingdom is non-null only when
+    // exit_kingdom_short names a known detour exit (doubles as the "is this a
+    // detour exit?" test); the *_short / have / need fields are populated for
+    // diagnostics/logging whenever exit_kingdom is set.
+    bool blocked = false;
+    const char* redirect_stage = nullptr;  // unmet sibling HomeStage
+    const char* exit_kingdom = nullptr;     // "Cloud" / "Luncheon" (null = N/A)
+    const char* a_short = nullptr;          // first sibling  ("Lake" / "Snow")
+    const char* b_short = nullptr;          // second sibling ("Wooded" / "Seaside")
+    int a_have = 0, a_need = 0;
+    int b_have = 0, b_need = 0;
+};
+
+// Evaluate the "both siblings' thresholds met" gate guarding the warp into a
+// detour exit kingdom (exit_kingdom_short = "Cloud" or "Luncheon"). Reads each
+// sibling's lifetime effective-moon credit (outstanding + deposited) against the
+// rolled-gate-aware leave-thresholds (ApState::kingdom_gate[bit], -1 ⇒ vanilla:
+// Lake=8/Wooded=16, Snow=10/Seaside=10). Returns exit_kingdom=nullptr (fail open)
+// when exit_kingdom_short is not a detour exit or the kingdom table can't resolve
+// the siblings.
+DetourExitGateDecision evaluateDetourExitGate(const char* exit_kingdom_short);
+
 }  // namespace smoap::game

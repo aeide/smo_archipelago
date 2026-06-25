@@ -43,6 +43,7 @@
 
 #include "../ap/ApFrameBridge.hpp"
 #include "../ap/ApState.hpp"
+#include "../game/KingdomOrderGate.hpp"
 #include "../game/KingdomUnlock.hpp"
 #include "../util/Log.hpp"
 #include "HookSymbols.hpp"
@@ -188,6 +189,73 @@ void processEntranceRemap(const ChangeStageInfo* info) {
                    dest, old_id, cur, to_stage, to_id);
 }
 
+// ── Free-detour: "both siblings before the exit" gate ───────────────────────
+//
+// Both detours are free to cross (sibling fuel forced to 0, see
+// UnlockShineNumHook), so the ONLY thing holding the player in a detour until
+// both leave-thresholds are met must live here. Two pairs (see kDetourPairs in
+// KingdomOrderGate.cpp):
+//   - Lake/Wooded -> Cloud: story-forced (select Metro on the map -> Bowser
+//     cutscene -> Cloud pre-peace). The demo-warp seam reads as Metro and
+//     redirecting it did NOT stop the reroute (iteration 2 leaked to Cloud).
+//   - Snow/Seaside -> Luncheon: a normal onward flight — no Bowser intercept,
+//     so the destination resolves to Luncheon directly.
+// In BOTH cases this `:file`/changeNextStage commit is where the destination
+// provably resolves to the exit kingdom's HomeStage (Cloud playtest 2026-06-25),
+// so it's the authoritative chokepoint. When the gate is unmet we rewrite the
+// commit target in place (same bounded mutation processEntranceRemap uses) to
+// the unmet sibling's HomeStage with an empty entrance id (the normal HomeStage
+// default-spawn arrival shape — the exit's :file id was empty too).
+//
+// Scoped to commits ORIGINATING from this pair's siblings so a legitimate
+// post-detour entry is never touched, and as a backstop for the known
+// "outstanding can drop after deposits" concern.
+void processDetourExitGate(const ChangeStageInfo* info) {
+    if (!info) return;
+    const char* dest = readCstrAt(info, kOffChangeStageNameCstr);
+    const char* dest_kingdom = dest ? smoap::game::kingdomShortFromHomeStage(dest)
+                                    : nullptr;
+    if (!dest_kingdom) return;
+
+    // exit_kingdom is non-null only when dest is a known detour exit
+    // (Cloud / Luncheon); otherwise this is a no-op (fail open).
+    const auto cg = smoap::game::evaluateDetourExitGate(dest_kingdom);
+    if (!cg.exit_kingdom) return;
+
+    // Only gate commits ORIGINATING from this pair's siblings, so a legitimate
+    // post-detour entry is never touched and the "outstanding can drop after
+    // deposits" concern is backstopped.
+    const char* cur_kingdom =
+        smoap::game::kingdomShortFromHomeStage(currentStageName());
+    if (!cur_kingdom || (std::strcmp(cur_kingdom, cg.a_short) != 0 &&
+                         std::strcmp(cur_kingdom, cg.b_short) != 0))
+        return;
+
+    if (!cg.blocked || !cg.redirect_stage) {
+        SMOAP_LOG_INFO("[entrance:detour-gate] pass to %s (cur=%s): "
+                       "%s %d/%d %s %d/%d", cg.exit_kingdom, cur_kingdom,
+                       cg.a_short, cg.a_have, cg.a_need,
+                       cg.b_short, cg.b_have, cg.b_need);
+        return;
+    }
+
+    auto* mut       = const_cast<ChangeStageInfo*>(info);
+    char* dst_stage = mutableCstrAt(mut, kOffChangeStageNameCstr);
+    char* dst_id    = mutableCstrAt(mut, kOffChangeStageIdCstr);
+    const std::size_t stage_len = std::strlen(cg.redirect_stage);
+    if (!dst_stage || !dst_id || stage_len + 1 > kFixedStringCap) {
+        SMOAP_LOG_WARN("[entrance:detour-gate] redirect buffer guard tripped "
+                       "(-> '%s') — left vanilla", cg.redirect_stage);
+        return;
+    }
+    std::memcpy(dst_stage, cg.redirect_stage, stage_len + 1);
+    dst_id[0] = '\0';
+    SMOAP_LOG_WARN("[entrance:detour-gate] HOLDING out of %s (cur=%s): "
+                   "%s %d/%d %s %d/%d -> '%s'", cg.exit_kingdom, cur_kingdom,
+                   cg.a_short, cg.a_have, cg.a_need,
+                   cg.b_short, cg.b_have, cg.b_need, cg.redirect_stage);
+}
+
 // [entrance:try] — GameDataFunction::tryChangeNextStage(writer, info). Free
 // function, writer passed by value. The GameDataFunction-path forward transitions.
 HkTrampoline<bool, GameDataHolderWriter, const ChangeStageInfo*>
@@ -206,6 +274,7 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
            std::int32_t raceType) -> void {
             logChangeStageInfo("file", info);
             processEntranceRemap(info);
+            processDetourExitGate(info);
             // Overworld-arrival signal for the PC tracker. processEntranceRemap
             // has already rewritten mChangeStageName in place when shuffled, so
             // the dest read here is the FINAL stage Mario is committing to. If

@@ -98,6 +98,12 @@ HkTrampoline<bool, GameDataHolderWriter, const char*> tryChangeDemoWarpHook =
                 final_stage = decision.required_stage;
             }
         }
+        // Approach B (the free-detour "both before leaving" gate) is NOT here.
+        // The detour-exit warp reads as Metro at this seam, and redirecting the
+        // demo-warp target did NOT stop the downstream Bowser->Cloud reroute
+        // (playtest 2026-06-25, iteration 2 leaked to Cloud). The gate now lives
+        // at the universal GameDataFile::changeNextStage commit, where Cloud
+        // provably resolves — see processDetourExitGate in EntranceShuffleHook.cpp.
         markVisitedFromStage("tryChange.Demo", final_stage);
         return tryChangeDemoWarpHook.orig(writer, final_stage);
     });

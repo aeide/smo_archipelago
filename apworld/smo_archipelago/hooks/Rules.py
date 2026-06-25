@@ -227,12 +227,14 @@ def KingdomMoons(world: World, multiworld: MultiWorld, state: CollectionState, p
          OR (|Sand Kingdom Multi-Moon| AND |Sand Kingdom Power Moon:13|)
          OR (|Sand Kingdom Multi-Moon:2| AND |Sand Kingdom Power Moon:10|))
 
-    Used in regions.json to gate kingdom-entry transitions for the linear
-    chain Sand -> Lake -> Wooded -> Lost and Metro -> Snow -> Seaside ->
-    Luncheon. Each kingdom's `requires` calls `KingdomMoons(<previous>, N)`
-    where N is the vanilla Odyssey-power threshold to leave the previous
-    kingdom for the next (per the pre-rebase regions.json's per-kingdom
-    moon clauses).
+    Used in regions.json to gate kingdom-entry transitions. The chain is
+    linear except at the two free detours, where the exit kingdom requires
+    BOTH siblings' thresholds: Sand -> {Lake, Wooded} -> Lost requires
+    `KingdomMoons(Lake,8) and KingdomMoons(Wooded,16)`, and Metro ->
+    {Snow, Seaside} -> Luncheon requires `KingdomMoons(Snow,10) and
+    KingdomMoons(Seaside,10)`. Elsewhere each kingdom's `requires` calls
+    `KingdomMoons(<previous>, N)` where N is the vanilla Odyssey-power
+    threshold to leave the previous kingdom for the next.
     """
     kingdom = kingdom.strip()
     try:

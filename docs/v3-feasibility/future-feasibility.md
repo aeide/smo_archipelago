@@ -75,13 +75,21 @@ per-kingdom counts (`ShineNumByWorldGetHook`/`ap_moons_kingdom`), existing rolle
 thresholds (`kingdom_gate[]`), and the existing `KingdomOrderGate` chokepoint. The
 points off are an unverified map-frontier assumption and needing to confirm which
 warp path actually enters Cloud (cutscene vs. map pick) before wiring the full gate.
-Scoped to Lake/Wooded only; the Snow/Seaside pair is structurally identical if wanted
-later. Full write-up:
+Both pairs (Lake/Wooded → Cloud and Snow/Seaside → Luncheon) are now built and in-game; the
+free crossing is delivered by zeroing the **current-world** `findUnlockShineNum` for the four
+detour kingdoms (the proven lever — an `isUnlockedNextWorld` force-true experiment was a dead
+end, see iteration 5). **Known cosmetic + deferred follow-up:** the in-kingdom takeoff gauge
+reads "0 / full" for free-launch kingdoms because that gauge and the leave-gate are the same
+`findUnlockShineNum` read (the "needs N more" number *is* the gate's deficit). The world-map
+globe label still shows the true rolled count. Showing the real count on the in-kingdom takeoff
+prompt too would require a dedicated message-string hook (à la `ShopItemMessageHook`) to
+decouple display from gate — low priority, written up in the detail doc's iteration-5 follow-up.
+Full write-up:
 [future-feasibility-lake-wooded-free-detour.md](future-feasibility-lake-wooded-free-detour.md).
 
 ---
 
-## Moon recolor (by granted kingdom + AP classification) + purple-coin model swap
+## Moon recolor (by granted kingdom + AP classification) (COMPLETE) + purple-coin model swap
 
 **Recolor ~95% (small) · Coin-model swap ~55% (high).** The updated form of the
 original plan's **P5**, with two very different halves. **Recolor** tints each AP-check

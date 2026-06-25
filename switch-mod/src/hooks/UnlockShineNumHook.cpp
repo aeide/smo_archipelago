@@ -51,6 +51,35 @@ int rolledGateForBit(std::uint8_t bit) {
         std::memory_order_relaxed);
 }
 
+// SMO's two world-map detour pairs are FREE DETOURS (see
+// docs/v3-feasibility/future-feasibility-lake-wooded-free-detour.md): after the
+// bifurcation the player may fly the siblings in either order, and the Odyssey
+// must be launchable at 0 moons so the onward flight opens the instant Mario
+// arrives — rather than after collecting that kingdom's leave-fuel.
+//   - Post-Sand:  Lake <-> Wooded  (exit into Cloud)
+//   - Post-Metro: Snow <-> Seaside (exit into Luncheon)
+//
+// The takeoff gate is getPayShineNum(cur) >= findUnlockShineNum(cur), reading
+// the CURRENT-WORLD findUnlockShineNum out-of-line — so forcing that to 0 for
+// these four kingdoms opens the crossing (proven in-game, iterations 2-4).
+// Trade-off accepted by Devon: the in-kingdom takeoff gauge reads the same
+// current-world value, so it shows 0/"full"; the world-map GLOBE per-kingdom
+// label reads the by-world variant (left at the rolled value) and still shows
+// the true threshold. The "finish the detour before the exit" enforcement lives
+// solely in the combined exit gate (evaluateDetourExitGate, gated on BOTH
+// siblings' moons). NOTE: a discarded experiment tried to keep the gauge at the
+// real count by leaving findUnlockShineNum alone and forcing
+// isUnlockedNextWorld true instead — that function is NOT the predicate
+// consulted at the takeoff seam (it never fired), so it's not used here.
+bool isFreeDetourBit(std::uint8_t bit) {
+    static const std::uint8_t s_lake    = smoap::game::kingdomBitFor("Lake");
+    static const std::uint8_t s_wooded  = smoap::game::kingdomBitFor("Wooded");
+    static const std::uint8_t s_snow    = smoap::game::kingdomBitFor("Snow");
+    static const std::uint8_t s_seaside = smoap::game::kingdomBitFor("Seaside");
+    return bit < 17 && (bit == s_lake || bit == s_wooded ||
+                        bit == s_snow || bit == s_seaside);
+}
+
 void logSubstitution(const char* which, std::uint8_t bit, int orig, int rolled) {
     // Rate-limit: only log on change — these reads fire per-frame while the
     // world map / launch UI is open.
@@ -71,6 +100,24 @@ HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
                             GameDataHolderAccessor accessor) -> int {
         const int orig = unlockShineNumHook.orig(is_game_clear, accessor);
         const std::uint8_t bit = resolveCurrentKingdomBit();
+        // Free-detour kingdoms: force the CURRENT-WORLD leave-threshold to 0 so
+        // the Odyssey takes off at 0 moons and the sibling crossing opens the
+        // instant Mario arrives. This is the PROVEN lever (iterations 2-4,
+        // confirmed in-game): the takeoff gate is getPayShineNum(cur) >=
+        // findUnlockShineNum(cur), reading THIS function out-of-line, so 0
+        // satisfies it. The isUnlockedNextWorld force-true experiment did NOT
+        // open the takeoff — that function is not the gate consulted at the
+        // takeoff seam (no [free-detour] line EVER fired in the 2026-06-25 log),
+        // so the real fix lives here, not there.
+        //
+        // Trade-off (accepted as cosmetic in iteration 4): the IN-KINGDOM takeoff
+        // gauge reads this same current-world value, so it shows 0/"full". The
+        // world-map GLOBE per-kingdom label reads the by-world variant below and
+        // still shows the true rolled threshold (e.g. Snow 10 / Seaside 10).
+        if (isFreeDetourBit(bit)) {
+            logSubstitution("findUnlockShineNum[free-detour]", bit, orig, 0);
+            return 0;
+        }
         const int rolled = rolledGateForBit(bit);
         if (rolled < 0) return orig;
         logSubstitution("findUnlockShineNum", bit, orig, rolled);
@@ -84,6 +131,13 @@ HkTrampoline<int, bool*, GameDataHolderAccessor, int> unlockShineNumByWorldIdHoo
         const int orig = unlockShineNumByWorldIdHook.orig(
             is_game_clear, accessor, world_id);
         const std::uint8_t bit = smoap::game::kingdomBitForWorldId(world_id);
+        // NOTE: do NOT free-detour-zero the by-world variant. Decomp:
+        // selectability is GameDataFile::isUnlockedWorld(world_id) (does not read
+        // this), and the launch check (isUnlockedNextWorld) uses only the
+        // current-world findUnlockShineNum. This variant feeds the world-map's
+        // per-kingdom required-count DISPLAY, so leaving it at the rolled value
+        // shows the real Lake/Wooded thresholds (e.g. 7/18) while the crossing
+        // stays free via the current-world zero above.
         const int rolled = rolledGateForBit(bit);
         if (rolled < 0) return orig;
         logSubstitution("findUnlockShineNumByWorldId", bit, orig, rolled);
