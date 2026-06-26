@@ -95,14 +95,71 @@ print(f"RESULT gate={gate} empty={len(reachable_empty)} "
 """
 
 
-def _run_probe() -> dict:
+# Second probe: entrance-shuffle DOOR-side {CascadeDeparture()} gate. Guards the
+# regression where (a) the Manual core set_rules overwrote every door entrance's rule
+# with its home region's regionCheck (clobbering the door's peace/scenario gate), and
+# (b) make_scenario_gate_rule treated CascadeDeparture's requires-STRING return as a
+# truthy bool, making the gate a no-op. Net effect: a non-Cascade interior behind a
+# post-departure Cascade door (e.g. Mysterious Clouds) — and the Cascade Power Moons
+# fill placed inside — were reachable from sphere 0, so the Cascade leave-gate could be
+# "satisfied" with moons that actually require leaving and returning.
+_PROBE_DOORS = r"""
+import sys, os, json
+AP = sys.argv[1]
+sys.path.insert(0, AP); os.chdir(AP)
+from BaseClasses import CollectionState
+from worlds.AutoWorld import AutoWorldRegister
+from test.general import setup_multiworld
+from worlds.meatballs.entrance_logic import load_data_json
+
+wt = next(w for w in AutoWorldRegister.world_types.values()
+          if w.game == "Spicy Meatball Overdrive")
+opts = {"accessibility": "full", "entrance_shuffle": True, "capturesanity": True,
+        "abilitysanity": True, "randomize_kingdom_gates": True, "multi_moon_shuffle": True}
+mw = setup_multiworld(wt, options=opts, seed=73191245701192838785)
+p = 1
+world = mw.worlds[p]
+gate = getattr(world, "rolled_kingdom_gates", {}).get("Cascade", 5)
+subs = world._entrance_subareas
+sg = load_data_json("subarea_scenario_gates.json")
+
+door_entrances = [e for e in mw.get_entrances()
+                  if e.player == p and e.name.endswith(" Interior") and " -> " in e.name]
+# (a) clobber guard: no door rule may be the core set_rules regionCheck.
+clobbered = sum(1 for e in door_entrances
+                if getattr(e.access_rule, "__qualname__", "") == "set_rules.<locals>.fullRegionCheck")
+
+# (b) departure-gate guard: doors whose door-subarea members are ALL {CascadeDeparture()}.
+empty = CollectionState(mw)
+full = CollectionState(mw)
+for _ in range(gate):
+    full.collect(world.create_item("Cascade Kingdom Power Moon"), prevent_sweep=True)
+
+dep_doors = blocked_empty = open_full = 0
+for e in door_entrances:
+    door_sub = e.name.split(" -> ")[0]
+    members = subs.get(door_sub, {}).get("location_names", [])
+    frags = [sg.get(m, "") for m in members]
+    if members and all(f == "{CascadeDeparture()}" for f in frags):
+        dep_doors += 1
+        if not e.access_rule(empty):
+            blocked_empty += 1
+        if e.access_rule(full):
+            open_full += 1
+
+print(f"RESULT2 clobbered={clobbered} dep_doors={dep_doors} "
+      f"blocked_empty={blocked_empty} open_full={open_full}")
+"""
+
+
+def _run_probe(probe: str = _PROBE, prefix: str = "RESULT") -> dict:
     res = subprocess.run(
-        [sys.executable, "-c", _PROBE, str(AP_ROOT)],
+        [sys.executable, "-c", probe, str(AP_ROOT)],
         capture_output=True, text=True, check=False, stdin=subprocess.DEVNULL,
     )
-    line = next((l for l in res.stdout.splitlines() if l.startswith("RESULT ")), None)
+    line = next((l for l in res.stdout.splitlines() if l.startswith(prefix + " ")), None)
     if line is None:
-        pytest.fail(f"probe produced no RESULT line\n--- stdout ---\n{res.stdout}\n"
+        pytest.fail(f"probe produced no {prefix} line\n--- stdout ---\n{res.stdout}\n"
                     f"--- stderr ---\n{res.stderr}")
     return dict(kv.split("=") for kv in line.split()[1:])
 
@@ -122,3 +179,25 @@ def test_cascade_departure_moons_gated_by_leave_threshold():
     assert int(r["full"]) == total, (
         f"departure moons NOT all reachable after {gate} Cascade Power Moons "
         f"({r['full']}/{total}).")
+
+
+def test_entrance_shuffle_departure_doors_gate_their_interiors():
+    """Under entrance shuffle, a post-departure Cascade door (all members
+    {CascadeDeparture()}) must actually gate the interior behind it: blocked with
+    empty state, open after the rolled Cascade leave-gate worth of Cascade Power
+    Moons. Also asserts no door entrance was left with the core set_rules regionCheck
+    (the clobber that dropped every door's peace/scenario gate)."""
+    r = _run_probe(_PROBE_DOORS, "RESULT2")
+    assert int(r["clobbered"]) == 0, (
+        f"{r['clobbered']} door entrance(s) still carry set_rules.fullRegionCheck — "
+        f"the door access rules were clobbered by the Manual core set_rules and not "
+        f"re-applied (peace + {{CascadeDeparture()}} gates lost).")
+    dep = int(r["dep_doors"])
+    assert dep > 0, "probe found no all-departure-gated Cascade doors to check"
+    assert int(r["blocked_empty"]) == dep, (
+        f"only {r['blocked_empty']}/{dep} departure-gated doors blocked with EMPTY "
+        f"state — {{CascadeDeparture()}} door gate is a no-op (string-return treated "
+        f"as truthy, or rule clobbered).")
+    assert int(r["open_full"]) == dep, (
+        f"only {r['open_full']}/{dep} departure-gated doors opened after the leave "
+        f"gate — the door gate over-blocks.")

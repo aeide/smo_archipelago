@@ -656,22 +656,23 @@ def make_scenario_gate_rule(
 ) -> "Callable[[CollectionState], bool]":
     """Return lambda(state) -> bool for a scenario gate fragment. Functions resolve
     against hooks/Rules.py and are ANDed (scenario gates only ever AND). An empty or
-    unresolvable fragment yields an always-True rule (fail-open)."""
-    from .hooks import Rules as HookRules
+    unresolvable fragment yields an always-True rule (fail-open).
 
-    calls: list[tuple[Callable, list[str]]] = []
-    for name, args in parse_scenario_fragment(fragment):
-        fn = getattr(HookRules, name, None)
-        if callable(fn):
-            calls.append((fn, args))
-    if not calls:
+    CRITICAL: a gate {Func()} may return EITHER a bool (peace gates, e.g.
+    CascadePeace -> canReachLocation) OR a requires-EXPRESSION STRING (the
+    KingdomMoons-based departure / re-arrival gates, e.g.
+    CascadeDeparture() -> "|Cascade Kingdom Power Moon:6|"). A naive
+    `all(fn(...))` treats that non-empty string as truthy, so a {CascadeDeparture()}
+    gate silently becomes a no-op — the entrance-shuffle leak that let moons behind a
+    post-departure door (and the Cascade Power Moons placed inside) be reached from
+    sphere 0, making a 6-moon Cascade leave-gate satisfiable with moons that actually
+    require leaving and returning. Route the whole fragment through
+    evaluate_full_requires, which splices a string result back into the expression and
+    evaluates its |item| tokens — so bool- and string-returning gates both work."""
+    if not (fragment or "").strip():
         return lambda state: True
-
-    def rule(state: "CollectionState", _calls=calls,
-             w=world, mw=multiworld, p=player) -> bool:
-        return all(fn(w, mw, state, p, *a) for fn, a in _calls)
-
-    return rule
+    return (lambda state, frag=fragment, w=world, mw=multiworld, p=player:
+            evaluate_full_requires(state, frag, w, mw, p))
 
 
 def make_door_scenario_gate_rule(

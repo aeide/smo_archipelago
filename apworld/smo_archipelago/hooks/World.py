@@ -215,23 +215,12 @@ def _wire_entrance_shuffle(world: World, multiworld: MultiWorld, player: int) ->
     if bijection is None:
         return
 
-    from ..entrance_logic import (
-        load_data_json, make_door_access_rule, make_door_scenario_gate_rule,
-    )
-    from worlds.generic.Rules import set_rule, add_rule
-
     subareas: dict = world._entrance_subareas
-    moonpipe: frozenset[str] = world._entrance_moonpipe
-    shuffled_locs: set[str] = world._entrance_shuffled_locs
 
-    # Door-side scenario gates: a door subarea's own overworld reachability (e.g.
-    # Cascade "Mysterious Clouds" only appears post-departure). Distinct from the
-    # INTERIOR scenario gate that rides the moons (_apply_subarea_scenario_gates) —
-    # this gates the DOOR, AND-ed onto its entrance below. Keyed location->fragment.
-    try:
-        _scenario_gates: dict = load_data_json("subarea_scenario_gates.json")
-    except Exception:
-        _scenario_gates = {}
+    # NOTE: the door access RULES (kingdom/subarea/peace gates + the door's own
+    # scenario gate, e.g. {CascadeDeparture()}) are NOT set here — they'd be clobbered
+    # by the Manual core set_rules (see Step 3). They're applied post-set_rules in
+    # _apply_entrance_shuffle_door_rules. This pass only builds structure.
 
     # Step 1: Create an interior Region for each pooled subarea.
     # Gather location objects by subarea name first (they're currently in their
@@ -265,6 +254,17 @@ def _wire_entrance_shuffle(world: World, multiworld: MultiWorld, player: int) ->
         multiworld.clear_location_cache()
 
     # Step 3: Create one Entrance per door subarea pointing to the shuffled interior.
+    # NOTE: only the STRUCTURE (Entrance object + region wiring) is built here. The
+    # access RULES are applied later, in after_set_rules via
+    # _apply_entrance_shuffle_door_rules — because the Manual core set_rules (which
+    # runs AFTER after_create_regions) iterates every original region's exits and
+    # set_rule-OVERWRITES each one with that region's own regionCheck. Our door
+    # entrances are exits of their home kingdom region, so any rule set here would be
+    # clobbered (to the home region's egress check — True for Cascade), silently
+    # dropping the door's peace / kingdom / {CascadeDeparture()} scenario gates. The
+    # interior LOCATION rules have the same problem and are likewise re-applied in
+    # after_set_rules (_apply_entrance_shuffle_location_rules). Confirmed clobber:
+    # the door's access_rule became set_rules.<locals>.fullRegionCheck.
     for door_subarea, interior_subarea in bijection.items():
         door_kingdom_region = _kingdom_region_for_subarea(door_subarea, subareas, multiworld, player)
         if door_kingdom_region is None:
@@ -281,7 +281,47 @@ def _wire_entrance_shuffle(world: World, multiworld: MultiWorld, player: int) ->
         entrance.connect(interior_reg)
         door_kingdom_region.exits.append(entrance)
 
-        # Set the door's access rule.
+
+def _apply_entrance_shuffle_door_rules(
+    world: World, multiworld: MultiWorld, player: int
+) -> None:
+    """Apply (and outlive set_rules) the door entrance access rules for entrance
+    shuffle.
+
+    Runs in after_set_rules, AFTER the Manual core set_rules has overwritten every
+    door entrance's rule with its home region's regionCheck (see the clobber note in
+    _wire_entrance_shuffle Step 3). Re-derives the same combined door gate the wiring
+    pass would have set — kingdom-item gate + subarea entry/exit/full gate + moon-pipe
+    peace gate (make_door_access_rule) AND the door subarea's own scenario gate
+    (make_door_scenario_gate_rule, e.g. {CascadeDeparture()} for the Mysterious Clouds
+    door) — and set_rule/add_rule it onto the EXISTING entrance objects so it wins.
+    Home-kingdom reachability is handled by AP region propagation (the door is an exit
+    of its home region); the door rule is purely the extra door-specific gate.
+    """
+    bijection: dict[str, str] | None = getattr(world, "_entrance_map", None)
+    if bijection is None:
+        return
+
+    from ..entrance_logic import (
+        load_data_json, make_door_access_rule, make_door_scenario_gate_rule,
+    )
+    from worlds.generic.Rules import set_rule, add_rule
+
+    subareas: dict = world._entrance_subareas
+    moonpipe: frozenset[str] = world._entrance_moonpipe
+    try:
+        _scenario_gates: dict = load_data_json("subarea_scenario_gates.json")
+    except Exception:
+        _scenario_gates = {}
+
+    applied = 0
+    for door_subarea, interior_subarea in bijection.items():
+        entrance_name = f"{door_subarea} -> {interior_subarea} Interior"
+        try:
+            entrance = multiworld.get_entrance(entrance_name, player)
+        except Exception:
+            continue
+
         is_moon_pipe = door_subarea in moonpipe  # door IS a moon-pipe opening
         rule = make_door_access_rule(
             door_subarea, subareas.get(door_subarea, {}).get("kingdom", ""),
@@ -301,6 +341,11 @@ def _wire_entrance_shuffle(world: World, multiworld: MultiWorld, player: int) ->
         if any(door_fragments):
             add_rule(entrance, make_door_scenario_gate_rule(
                 door_fragments, world, multiworld, player))
+        applied += 1
+
+    logging.info(
+        "entrance_shuffle: applied %d door access rules (post-set_rules, player %d)",
+        applied, player)
 
 # Pure roll helpers for randomize_kingdom_gates live in kingdom_gates.py
 # (AP-free, directly importable by the test suite — same pattern as
@@ -770,6 +815,11 @@ def after_set_rules(world: World, multiworld: MultiWorld, player: int):
         # _apply_entrance_shuffle_location_rules (which set_rule-REPLACES the rule);
         # add_rule here ANDs the scenario gate back on top.
         _apply_subarea_scenario_gates(world, multiworld, player)
+        # Re-apply the DOOR entrance access rules (kingdom/subarea/peace + the door's
+        # {CascadeDeparture()}-style scenario gate). The Manual core set_rules
+        # overwrote them with each door's home-region regionCheck (see
+        # _wire_entrance_shuffle Step 3 clobber note); this set_rule wins.
+        _apply_entrance_shuffle_door_rules(world, multiworld, player)
     # Must run last so it wins over the access rules set in set_rules.
     if is_option_enabled(multiworld, player, "no_logic"):
         _apply_no_logic(world, multiworld, player)
