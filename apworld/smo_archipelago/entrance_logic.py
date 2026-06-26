@@ -123,9 +123,15 @@ KINGDOM_ENTRANCE_GATES: dict[str, str] = {
     "Lake":     _LAKE_GATE,
 }
 
-# Subarea name → entry-gate requires string.
+# Subarea name → entry-gate requires string for the DOOR (keyed on door_subarea).
 # Mirrors compile_moon_logic.SUBAREA_GATES.  Sewers is included (it's excluded
 # from the pool via entrance_exclusions.json, but listed here for completeness).
+# Most values are item-only fragments (|Zipper|, |Manhole|, …). The one exception is
+# "Jaxi Driving", a MIXED {Func()} OR |item| gate (Sand peace OR the hard move-set);
+# make_door_access_rule evaluates these through evaluate_full_requires, so the
+# {SandPeace()} call resolves instead of being treated as an unparseable token (which
+# the old item-only evaluator fail-OPENED on — see the door-exterior note below and
+# compile_moon_logic.SUBAREA_INTERIOR_FULL_GATES, the shuffle-OFF source of the string).
 SUBAREA_ENTRANCE_GATES: dict[str, str] = {
     "Unzipping the Chasm":              "|Zipper|",
     "Sewers":                           "|Manhole|",
@@ -141,6 +147,7 @@ SUBAREA_ENTRANCE_GATES: dict[str, str] = {
     "Fork-Flickin to the Summit":       "|Lava Bubble|",
     "Shards in the Cheese Rocks":       "|Hammer Bro|",
     "Spinning Athletics":               "|Lava Bubble|",
+    "Jaxi Driving":                     "({SandPeace()} or (|Bullet Bill| and |Progressive Ground Pound:2| and |Wall Slide|))",
 }
 
 # Subarea name → EXIT-gate requires string: the item(s) needed to LEAVE the
@@ -165,20 +172,22 @@ SUBAREA_EXIT_GATES: dict[str, str] = {
     "Roulette Tower":                   "|Mini Rocket|",
 }
 
-# Subarea name → INTERIOR-INTRINSIC FULL entry gate. Unlike SUBAREA_ENTRANCE_GATES
-# (item-only) and the {Func()}-only interior scenario gates, this is a complete
-# requires string that may MIX {Func(args)} predicate calls with |item| tokens under
-# AND/OR — the only place such a gate can live. It's the subarea's own "what it takes
-# to enter/do this subarea" condition, intrinsic to the INTERIOR, so it's keyed on the
-# interior you land in (like SUBAREA_EXIT_GATES) and applies no matter which shuffled
-# door now leads in. The interior moons themselves stay free (no move-set). Mirrors
-# compile_moon_logic.SUBAREA_INTERIOR_FULL_GATES, which bakes the identical string into
-# each member moon's locations.json `requires` for the entrance-shuffle OFF path.
-SUBAREA_INTERIOR_FULL_GATES: dict[str, str] = {
-    # Jaxi Driving: Sand world peace OR the move-set to reach it the hard way.
-    "Jaxi Driving":
-        "({SandPeace()} or (|Bullet Bill| and |Progressive Ground Pound:2| and |Wall Slide|))",
-}
+# NOTE on mixed {Func} OR |item| gates (e.g. Jaxi Driving): these live in
+# SUBAREA_ENTRANCE_GATES above, NOT in a separate interior-keyed table. The gate
+# "Sand world peace OR the hard move-set" is what it takes to REACH the door in the
+# Sand overworld (Jaxi is a Sand capture you ride to the door) — a DOOR-EXTERIOR
+# requirement. So it's keyed on the DOOR subarea (door_subarea) and travels with the
+# door under shuffle, regardless of which interior the door now leads to. An earlier
+# design kept this as an interior-keyed SUBAREA_INTERIOR_FULL_GATES, which was WRONG:
+# under shuffle it gated whoever LANDS IN the Jaxi interior (reached via some foreign
+# door) while leaving the Jaxi exterior door — now leading to an arbitrary interior —
+# ungated, so a Cascade Power Moon fill-placed behind it counted toward the Cascade
+# leave-gate from sphere 0 (the Cascade-departure deadlock Devon hit). Because the gate
+# string MIXES {Func()} with |item|, make_door_access_rule evaluates the whole
+# SUBAREA_ENTRANCE_GATES value through evaluate_full_requires (not the item-only
+# evaluator). compile_moon_logic.SUBAREA_INTERIOR_FULL_GATES still bakes the identical
+# string into each member moon's locations.json `requires` for the shuffle-OFF path
+# (door == interior there, so keying is moot); keep the two strings in sync.
 
 # Kingdom prefix → peace-function name (from hooks/Rules.py).
 # Cap, Cloud, Lost omitted — their peace = kingdom reachability; no extra gate.
@@ -569,10 +578,13 @@ def evaluate_interior_requires(
 # ---------------------------------------------------------------------------
 # Full requires evaluator ({Func()} + |item| + and/or)
 # ---------------------------------------------------------------------------
-# Used only for SUBAREA_INTERIOR_FULL_GATES, the one gate class that mixes
-# {Func(args)} predicate calls with |item| tokens (e.g. "Sand peace OR the
-# move-set"). evaluate_interior_requires is item-only and make_scenario_gate_rule
-# is {Func}-only; neither can express the OR-of-mixed-types, so this composes both.
+# Used for gate strings that MIX {Func(args)} predicate calls with |item| tokens
+# (e.g. Jaxi Driving's "Sand peace OR the move-set"): the mixed door gates in
+# SUBAREA_ENTRANCE_GATES and the {CascadeDeparture()}-style scenario gates whose
+# {Func()} returns a requires-STRING. evaluate_interior_requires is item-only and
+# make_scenario_gate_rule's bare {Func} dispatch can't splice a string result; this
+# composes both — resolves {Func()} (bool/None → 1/0, string → spliced + re-parsed)
+# then evaluates the remaining |item| expression.
 
 def evaluate_full_requires(
     state: "CollectionState",
@@ -750,11 +762,16 @@ def make_door_access_rule(
         checks.append(lambda state, r=kg, w=world, p=player:
                        evaluate_interior_requires(state, r, w, p))
 
-    # Subarea entrance gate (the door you walk through)
+    # Subarea entrance gate (the DOOR you walk through, keyed on door_subarea).
+    # Evaluated with the FULL evaluator: most entries are item-only, but a few
+    # (Jaxi Driving) MIX {Func()} predicate calls with |item| tokens. The old
+    # item-only evaluator couldn't parse {SandPeace()} and fail-OPENED, leaving
+    # the door ungated — the Cascade-departure leak. evaluate_full_requires
+    # resolves the {Func()} calls and handles pure-item strings identically.
     sg = SUBAREA_ENTRANCE_GATES.get(door_subarea, "")
     if sg:
-        checks.append(lambda state, r=sg, w=world, p=player:
-                       evaluate_interior_requires(state, r, w, p))
+        checks.append(lambda state, r=sg, w=world, mw=multiworld, p=player:
+                       evaluate_full_requires(state, r, w, mw, p))
 
     # Interior exit gate (the subarea you land in). Independent of how you
     # entered — covers mini-rocket interiors reached via a non-rocket door.
@@ -762,15 +779,6 @@ def make_door_access_rule(
     if xg:
         checks.append(lambda state, r=xg, w=world, p=player:
                        evaluate_interior_requires(state, r, w, p))
-
-    # Interior-intrinsic FULL entry gate (the subarea you land in). A complete
-    # {Func} OR |item| requires string — the subarea's own entry condition, keyed
-    # on the interior so it rides the interior under shuffle regardless of which
-    # door leads in. Member moons stay free; this is the only gate they get.
-    fg = SUBAREA_INTERIOR_FULL_GATES.get(interior_subarea, "")
-    if fg:
-        checks.append(lambda state, r=fg, w=world, mw=multiworld, p=player:
-                       evaluate_full_requires(state, r, w, mw, p))
 
     # Peace gate (moon-pipe door)
     if is_moon_pipe:

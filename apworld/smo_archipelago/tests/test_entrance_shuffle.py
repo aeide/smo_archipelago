@@ -529,10 +529,13 @@ def test_exit_gated_subareas_are_in_the_shuffle_pool():
 
 
 # ---------------------------------------------------------------------------
-# SUBAREA_INTERIOR_FULL_GATES — interior-intrinsic {Func} OR |item| entry gates
-# (e.g. Jaxi Driving). Regression coverage for the c42c933 char-split bug where a
-# malformed flat-string capture_group made the interior require nonexistent single-
-# character "items" and the moons became unreachable under entrance shuffle + full.
+# MIXED door gates — {Func} OR |item| entries in SUBAREA_ENTRANCE_GATES (e.g. Jaxi
+# Driving). These are DOOR-keyed (the gate is what it takes to reach the door in the
+# overworld), so they ride the door under shuffle, not the interior. Regression
+# coverage for (a) the c42c933 char-split bug where a malformed flat-string
+# capture_group made the interior require nonexistent single-character "items", and
+# (b) the Cascade-departure leak where the Jaxi gate was interior-keyed (left the Jaxi
+# exterior door ungated) AND evaluated item-only (fail-OPEN on {SandPeace()}).
 # ---------------------------------------------------------------------------
 
 def _moon_requirements() -> dict:
@@ -553,18 +556,26 @@ def test_capture_groups_are_never_flat_strings():
     assert not bad, f"malformed (flat-string) capture_groups: {bad}"
 
 
+def _mixed_door_gates() -> dict:
+    """The DOOR-keyed {Func} OR |item| gates (Jaxi Driving) — the only entries in
+    SUBAREA_ENTRANCE_GATES whose value contains a {Func()} call."""
+    from entrance_logic import SUBAREA_ENTRANCE_GATES
+    return {n: g for n, g in SUBAREA_ENTRANCE_GATES.items() if "{" in g}
+
+
 def test_full_gated_subareas_are_pooled_and_free_inside():
-    """For each SUBAREA_INTERIOR_FULL_GATES subarea: it must be in the shuffle pool
-    (else the door gate never applies) and every member moon must compile to a FREE
-    interior (no move-set) — the full gate is the moon's only requirement."""
-    from entrance_logic import (
-        SUBAREA_INTERIOR_FULL_GATES, build_entrance_pool, compile_interior_requires,
-    )
+    """For each MIXED door gate ({Func} OR |item|, e.g. Jaxi Driving): the door
+    subarea must be in the shuffle pool (else the door gate never applies) and every
+    member moon must compile to a FREE interior (no move-set) — the door gate is the
+    moon's only requirement."""
+    from entrance_logic import build_entrance_pool, compile_interior_requires
     subareas = _subareas()
     pool = set(build_entrance_pool(subareas, _exclusions(), _entrance_stages()))
     reqs = {r.get("location_name"): r for r in _moon_requirements().values()}
-    for sub in SUBAREA_INTERIOR_FULL_GATES:
-        assert sub in pool, f"{sub!r} has a full gate but is not pooled"
+    mixed = _mixed_door_gates()
+    assert mixed, "expected at least one mixed {Func} OR |item| door gate (Jaxi Driving)"
+    for sub in mixed:
+        assert sub in pool, f"{sub!r} has a mixed door gate but is not pooled"
         for ln in subareas.get(sub, {}).get("location_names", []):
             rec = reqs.get(ln)
             if rec is not None:
@@ -574,28 +585,28 @@ def test_full_gated_subareas_are_pooled_and_free_inside():
 
 
 def test_full_gate_matches_baked_locations_requires():
-    """The shuffle-OFF baked requires (locations.json) for a full-gated subarea's
-    members must equal the SUBAREA_INTERIOR_FULL_GATES string, so OFF and ON agree."""
-    from entrance_logic import SUBAREA_INTERIOR_FULL_GATES
+    """The shuffle-OFF baked requires (locations.json) for a mixed-gated door
+    subarea's members must equal the SUBAREA_ENTRANCE_GATES string, so OFF and ON
+    agree."""
     subareas = _subareas()
     by_name = {l["name"]: l for l in _locations()}
-    for sub, gate in SUBAREA_INTERIOR_FULL_GATES.items():
+    for sub, gate in _mixed_door_gates().items():
         for ln in subareas.get(sub, {}).get("location_names", []):
             loc = by_name.get(ln)
             if loc is not None and not loc.get("junk_only"):
                 assert loc.get("requires") == gate, (
-                    f"{ln!r} baked requires {loc.get('requires')!r} != full gate {gate!r}")
+                    f"{ln!r} baked requires {loc.get('requires')!r} != door gate {gate!r}")
 
 
 def test_full_gate_mirror_compile_moon_logic():
-    """entrance_logic.SUBAREA_INTERIOR_FULL_GATES (shuffle ON) must mirror
-    compile_moon_logic.SUBAREA_INTERIOR_FULL_GATES (shuffle OFF bake) exactly."""
+    """The shuffle-ON mixed door gate (entrance_logic.SUBAREA_ENTRANCE_GATES) must
+    mirror the shuffle-OFF bake source (compile_moon_logic.SUBAREA_INTERIOR_FULL_GATES)
+    string-for-string — same Jaxi gate whether or not entrance shuffle is on."""
     import importlib.util
-    from entrance_logic import SUBAREA_INTERIOR_FULL_GATES as ON
     script = APWORLD_ROOT.parents[1] / "scripts" / "compile_moon_logic.py"
     if not script.exists():
         pytest.skip("compile_moon_logic.py not present")
     spec = importlib.util.spec_from_file_location("_cml", script)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    assert ON == mod.SUBAREA_INTERIOR_FULL_GATES
+    assert _mixed_door_gates() == mod.SUBAREA_INTERIOR_FULL_GATES

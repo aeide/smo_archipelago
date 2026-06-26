@@ -288,15 +288,25 @@ def _apply_entrance_shuffle_door_rules(
     """Apply (and outlive set_rules) the door entrance access rules for entrance
     shuffle.
 
-    Runs in after_set_rules, AFTER the Manual core set_rules has overwritten every
-    door entrance's rule with its home region's regionCheck (see the clobber note in
-    _wire_entrance_shuffle Step 3). Re-derives the same combined door gate the wiring
-    pass would have set — kingdom-item gate + subarea entry/exit/full gate + moon-pipe
-    peace gate (make_door_access_rule) AND the door subarea's own scenario gate
+    Runs in after_set_rules, AFTER the Manual core set_rules has set every door
+    entrance's rule to its home region's regionCheck (see the clobber note in
+    _wire_entrance_shuffle Step 3). Re-derives the combined door gate the wiring pass
+    would have set — kingdom-item gate + subarea entry/exit gate + moon-pipe peace gate
+    (make_door_access_rule) AND the door subarea's own scenario gate
     (make_door_scenario_gate_rule, e.g. {CascadeDeparture()} for the Mysterious Clouds
-    door) — and set_rule/add_rule it onto the EXISTING entrance objects so it wins.
-    Home-kingdom reachability is handled by AP region propagation (the door is an exit
-    of its home region); the door rule is purely the extra door-specific gate.
+    door) — and ADD-rules it onto the EXISTING entrance objects.
+
+    ⚠ We add_rule (AND), NOT set_rule (replace), so the home region's regionCheck that
+    set_rules applied SURVIVES. That regionCheck is the home kingdom's EGRESS gate =
+    its ARRIVAL gate under the Manual engine's egress off-by-one (a region's `requires`
+    rides its OUTGOING entrances; our door IS one of those exits). For Sand that's
+    {KingdomMoons(Cascade,5)} — i.e. "you've left Cascade." Dropping it (the previous
+    set_rule) let a Sand door's interior — reachable for FREE because Cascade→Sand is a
+    free egress edge — be entered from sphere 0, so a Cascade Power Moon fill-placed
+    behind an ungated Sand door (e.g. a shop with no intrinsic gate, like Crazy Cap
+    Store) counted toward the Cascade leave-gate without ever leaving Cascade → the
+    Cascade-departure deadlock. Region propagation only proves you can REACH the door's
+    region (sphere 0); the regionCheck is what proves you ARRIVED there in earnest.
     """
     bijection: dict[str, str] | None = getattr(world, "_entrance_map", None)
     if bijection is None:
@@ -305,7 +315,7 @@ def _apply_entrance_shuffle_door_rules(
     from ..entrance_logic import (
         load_data_json, make_door_access_rule, make_door_scenario_gate_rule,
     )
-    from worlds.generic.Rules import set_rule, add_rule
+    from worlds.generic.Rules import add_rule
 
     subareas: dict = world._entrance_subareas
     moonpipe: frozenset[str] = world._entrance_moonpipe
@@ -328,7 +338,10 @@ def _apply_entrance_shuffle_door_rules(
             is_moon_pipe, world, multiworld, player,
             interior_subarea=interior_subarea,
         )
-        set_rule(entrance, rule)
+        # add_rule (AND), NOT set_rule: keep the home-region egress/arrival gate
+        # set_rules already applied (e.g. {KingdomMoons(Cascade,5)} on Sand doors).
+        # See the docstring's ⚠ note — set_rule here was the Cascade-departure leak.
+        add_rule(entrance, rule)
 
         # AND the door subarea's own intrinsic scenario gate onto the entrance.
         # This is the door's overworld reachability (e.g. {CascadeDeparture()} for

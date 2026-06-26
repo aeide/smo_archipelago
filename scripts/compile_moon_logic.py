@@ -572,9 +572,12 @@ LOCATION_EXTRA_GATES: dict[str, str] = {
 # MIX {Func()} predicate calls with |item| tokens under AND/OR (which SUBAREA_GATES,
 # being a plain item fragment AND-joined onto the move-set, cannot express). For these
 # subareas the member moons are free INSIDE — the move-set is dropped — and the whole
-# requires becomes just this gate (the subarea's own entry condition). Mirrors
-# entrance_logic.SUBAREA_INTERIOR_FULL_GATES, which applies the identical string on the
-# DOOR entrance under entrance_shuffle ON. Keep the two in sync.
+# requires becomes just this gate (the subarea's own entry condition). This is the
+# shuffle-OFF bake (door == interior, so keying is moot). Under entrance_shuffle ON the
+# IDENTICAL string is applied DOOR-keyed via entrance_logic.SUBAREA_ENTRANCE_GATES (the
+# gate is a door-exterior requirement — what it takes to reach the door in the overworld
+# — so it must travel with the door, not the interior). Keep the two strings in sync;
+# guarded by tests/test_entrance_shuffle.py::test_full_gate_mirror_compile_moon_logic.
 SUBAREA_INTERIOR_FULL_GATES: dict[str, str] = {
     # Jaxi Driving: Sand world peace OR the move-set to reach it the hard way.
     "Jaxi Driving":
