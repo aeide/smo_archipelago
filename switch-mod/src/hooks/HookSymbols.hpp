@@ -657,6 +657,17 @@ inline constexpr const char* kGameDataFunctionGetWorldIndexClash =
     "_ZN16GameDataFunction18getWorldIndexClashEv";
 inline constexpr const char* kGameDataFunctionGetCurrentStageName =
     "_ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor";
+// GameDataFunction::getScenarioNoPlacement(GameDataHolderAccessor) — the
+// out-of-line free function the object-placement masker reads to decide which
+// scenario's actors to place (wraps GameDataFile::getScenarioNoPlacement(), the
+// trivial mScenarioNoPlacement getter, which is inlined everywhere). Trampolined
+// by CascadeBroodeRespawnHook to revert Cascade to its scenario-1 layout when the
+// player left pre-Broode. Resolved via hk::ro::lookupSymbol (soft-degrade) — NOT
+// in SmoApSymbols.sym, so a miss disables the hook instead of aborting the module
+// (same contract as MoonRockHook's isEnableOpenMoonRock). Mangling derived from
+// the getCurrentStageName pattern above ("getScenarioNoPlacement"=22).
+inline constexpr const char* kGameDataFunctionGetScenarioNoPlacement =
+    "_ZN16GameDataFunction22getScenarioNoPlacementE22GameDataHolderAccessor";
 
 // =============================================================================
 // Instant seed growth — bypass the wait on seed-flower moons.

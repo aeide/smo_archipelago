@@ -92,6 +92,12 @@ void tickCostumeDoors();
 // (self-deduping) so randomize_kingdom_gates reveals survive reconnects and
 // pre-connect arrivals. See hooks/EntranceShuffleHook.cpp.
 void tickArrivalPoll();
+// Cascade / Madame Broode multi-moon respawn: trampolines
+// GameDataFunction::getScenarioNoPlacement to revert Cascade to its scenario-1
+// layout (re-placing Broode + her Multi-Moon) when the player left pre-Broode
+// and the moon is still uncollected. Self-healing — stops once the moon is got.
+// See hooks/CascadeBroodeRespawnHook.cpp.
+void installCascadeBroodeRespawnHook();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
@@ -402,6 +408,9 @@ extern "C" void hkMain() {
     smoap::hooks::installEntranceShuffleHook();
 
     smoap::hooks::installCostumeDoorHook();
+
+    SMOAP_LOG_INFO("installing CascadeBroodeRespawnHook (getScenarioNoPlacement -> 1 in Cascade pre-Broode)");
+    smoap::hooks::installCascadeBroodeRespawnHook();
 
 #ifdef SMOAP_HAS_DEBUG_RENDERER
     // Install the Nvn bootstrap trampoline so ImGuiBackendNvn auto-wires
