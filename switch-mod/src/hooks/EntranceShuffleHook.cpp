@@ -53,6 +53,23 @@
 
 namespace smoap::hooks {
 
+// Defined in CascadeBroodeRespawnHook.cpp. On a forward commit INTO Cascade's
+// home stage with Madame Broode's Multi-Moon still uncollected, forces
+// GameDataFile::mScenarioNoPlacement back to 1 so she + her Multi-Moon are
+// placed by the upcoming stage load. No-op for any other destination. We route
+// it through this hook because changeNextStage is the one chokepoint that both
+// (a) runs before the next stage's placement and (b) hands us the GameDataFile*;
+// both getScenarioNoPlacement read seams are inlined (see that file's header).
+void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName,
+                                   const char* tag);
+
+// Defined in CascadeBroodeRespawnHook.cpp. Returns the scenario to force the
+// upcoming Cascade arrival to (so Madame Broode is placed) when committing into
+// Cascade's home stage with her Multi-Moon uncollected, else -1. We write it into
+// the ChangeStageInfo scenario field BEFORE orig — the engine's scenario-jump
+// load input, which actually drives the load (the GameDataFile field write did not).
+int cascadeArrivalScenarioOverride(void* gameDataFile, const char* destStageName);
+
 namespace {
 
 struct GameDataHolderWriter { void* mData; };
@@ -284,8 +301,32 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                 const char* dest = readCstrAt(info, kOffChangeStageNameCstr);
                 const char* kingdom = smoap::game::kingdomShortFromHomeStage(dest);
                 if (kingdom) smoap::ap::reportArrival(dest, kingdom);
+                // Cascade/Broode respawn (PRIMARY): force the arrival scenario in
+                // the ChangeStageInfo BEFORE orig consumes it, so the engine loads
+                // Cascade directly in Broode's scenario (the scenario-jump input
+                // moon rocks use). The post-orig GameDataFile field write below
+                // fired but did NOT take (the load recomputes it), so this drives
+                // the load instead. dest is the FINAL (post-remap) target.
+                const int sc = cascadeArrivalScenarioOverride(self, dest);
+                if (sc >= 0) {
+                    auto* mut = const_cast<ChangeStageInfo*>(info);
+                    auto* scp = reinterpret_cast<std::int32_t*>(
+                        reinterpret_cast<std::uint8_t*>(mut) + kOffScenarioNo);
+                    const std::int32_t before = *scp;
+                    *scp = sc;
+                    SMOAP_LOG_INFO("[broode-respawn] changeNextStage force Cascade "
+                                   "arrival ChangeStageInfo.scenario %d -> %d (dest=%s)",
+                                   before, sc, dest);
+                }
             }
             fileChangeNextStageHook.orig(self, info, raceType);
+            // Belt-and-braces: also re-assert the GameDataFile placement field
+            // post-orig. It did NOT take alone (kept so the logs show both paths;
+            // if the ChangeStageInfo write above succeeds this is redundant).
+            if (info)
+                forceCascadePlacementScenario(
+                    self, readCstrAt(info, kOffChangeStageNameCstr),
+                    "changeNextStage");
         });
 
 // [entrance:return] — GameDataFile::returnPrevStage(). Member function, no args.

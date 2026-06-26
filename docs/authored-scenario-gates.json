@@ -1,0 +1,2862 @@
+{
+ "Cap: Frog-Jumping Above the Fog": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Frog-Jumping from the Top Deck": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Cap Kingdom Timer Challenge 1": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Good Evening, Captain Toad!": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Shopping in Bonneton": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Skimming the Poison Tide": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Slipping Through the Poison Tide": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Push-Block Peril": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Hidden Among the Push-Blocks": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Searching the Frog Pond": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: Secrets of the Frog Pond": {
+  "kind": "odyssey_cascade",
+  "note": "post-Topper Cap; de-facto capture-gated"
+ },
+ "Cap: The Forgotten Treasure": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cap: Taxi Flying Through Bonneton": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cap: Bonneter Blockade": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cap: Cap Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cap: Peach in the Cap Kingdom": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cap: Found with Cap Kingdom Art": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cap: Next to Glasses Bridge": {
+  "kind": "peace"
+ },
+ "Cap: Danger Sign": {
+  "kind": "peace"
+ },
+ "Cap: Under the Big One's Brim": {
+  "kind": "peace"
+ },
+ "Cap: Fly to the Edge of the Fog": {
+  "kind": "peace"
+ },
+ "Cap: Spin the Hat, Get a Prize": {
+  "kind": "peace"
+ },
+ "Cap: Hidden in a Sunken Hat": {
+  "kind": "peace"
+ },
+ "Cap: Fog-Shrouded Platform": {
+  "kind": "peace"
+ },
+ "Cap: Bird Traveling in the Fog": {
+  "kind": "peace"
+ },
+ "Cap: Caught Hopping Near the Ship!": {
+  "kind": "peace"
+ },
+ "Cap: Taking Notes: In the Fog": {
+  "kind": "peace"
+ },
+ "Cap: Cap Kingdom Timer Challenge 2": {
+  "kind": "peace"
+ },
+ "Cap: Cap Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Cap: Roll On and On": {
+  "kind": "peace"
+ },
+ "Cap: Precision Rolling": {
+  "kind": "peace"
+ },
+ "Cascade: Our First Power Moon": {
+  "kind": "start"
+ },
+ "Cascade: Multi Moon Atop the Falls": {
+  "kind": "story",
+  "anchor": "Our First Power Moon",
+  "band": 1
+ },
+ "Cascade: Chomp Through the Rocks": {
+  "kind": "story",
+  "anchor": "Our First Power Moon",
+  "band": 1
+ },
+ "Cascade: Behind the Waterfall": {
+  "kind": "story",
+  "anchor": "Our First Power Moon",
+  "band": 1
+ },
+ "Cascade: On Top of the Rubble": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Treasure of the Waterfall Basin": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Above a High Cliff": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Across the Floating Isles": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Cascade Kingdom Timer Challenge 1": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Cascade Kingdom Timer Challenge 2": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Good Morning, Captain Toad!": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Dinosaur Nest: Big Cleanup!": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Dinosaur Nest: Running Wild!": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Nice Shot with the Chain Chomp!": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Very Nice Shot with the Chain Chomp!": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Past the Chasm Lifts": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Hidden Chasm Passage": {
+  "kind": "story",
+  "anchor": "Multi Moon Atop the Falls",
+  "band": 2
+ },
+ "Cascade: Secret Path to Fossil Falls!": {
+  "kind": "fork_secret_path",
+  "gate": "({SnowPeace()} or {SeasidePeace()})",
+  "note": "Available after collecting the \"The Bound Bowl Grand Prix\" Power Moon (visit Snow Kingdom first) or Available after collecting the \"The Glass is Half Full!\" Power Moon (visit Seaside Kingdom first)."
+ },
+ "Cascade: A Tourist in the Cascade Kingdom": {
+  "kind": "cross_story",
+  "anchor": "A Tourist in the Metro Kingdom!"
+ },
+ "Cascade: Rolling Rock by the Falls": {
+  "kind": "complex",
+  "note": "Available after leaving the Cascade Kingdom and then returning."
+ },
+ "Cascade: Peach in the Cascade Kingdom": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cascade: Cascade Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cascade: Caveman Cave-Fan": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cascade: Shopping in Fossil Falls": {
+  "kind": "complex",
+  "note": "Available after leaving the Cascade Kingdom and then returning."
+ },
+ "Cascade: Sphynx Traveling to the Waterfall": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Cascade: Bottom of the Waterfall Basin": {
+  "kind": "peace"
+ },
+ "Cascade: Just a Hat, Skip, and a Jump": {
+  "kind": "peace"
+ },
+ "Cascade: Treasure Under the Cliff": {
+  "kind": "peace"
+ },
+ "Cascade: Next to the Stone Arch": {
+  "kind": "peace"
+ },
+ "Cascade: Guarded by a Colossal Fossil": {
+  "kind": "peace"
+ },
+ "Cascade: Under the Old Electrical Pole": {
+  "kind": "peace"
+ },
+ "Cascade: Under the Ground": {
+  "kind": "peace"
+ },
+ "Cascade: Inside the Busted Fossil": {
+  "kind": "peace"
+ },
+ "Cascade: Caught Hopping at the Waterfall!": {
+  "kind": "peace"
+ },
+ "Cascade: Taking Notes: Hurry Upward": {
+  "kind": "peace"
+ },
+ "Cascade: Cascade Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Cascade: Across the Mysterious Clouds": {
+  "kind": "peace"
+ },
+ "Cascade: Atop a Wall Among the Clouds": {
+  "kind": "peace"
+ },
+ "Cascade: Across the Gusty Bridges": {
+  "kind": "peace"
+ },
+ "Cascade: Flying Far Away from Gusty Bridges": {
+  "kind": "peace"
+ },
+ "Sand: Atop the Highest Tower": {
+  "kind": "start"
+ },
+ "Sand: Moon Shards in the Sand": {
+  "kind": "story",
+  "anchor": "Atop the Highest Tower",
+  "band": 1
+ },
+ "Sand: Showdown on the Inverted Pyramid": {
+  "kind": "story",
+  "anchor": "Moon Shards in the Sand",
+  "band": 2
+ },
+ "Sand: The Hole in the Desert": {
+  "kind": "story",
+  "anchor": "Showdown on the Inverted Pyramid",
+  "band": 3
+ },
+ "Sand: Overlooking the Desert Town": {
+  "kind": "story",
+  "anchor": "Moon Shards In The Sand"
+ },
+ "Sand: Alcove in the Ruins": {
+  "kind": "start"
+ },
+ "Sand: On the Leaning Pillar": {
+  "kind": "start"
+ },
+ "Sand: Hidden Room in the Flowing Sands": {
+  "kind": "start"
+ },
+ "Sand: Secret of the Mural": {
+  "kind": "start"
+ },
+ "Sand: Secret of the Inverted Mural": {
+  "kind": "story",
+  "anchor": "Moon Shards in the Sand",
+  "band": 2
+ },
+ "Sand: On Top of the Stone Archway": {
+  "kind": "story",
+  "anchor": "Showdown on the Inverted Pyramid",
+  "band": 3
+ },
+ "Sand: From a Crate in the Ruins": {
+  "kind": "story",
+  "anchor": "Moon Shards in the Sand",
+  "band": 2
+ },
+ "Sand: On the Lone Pillar": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: On the Statue's Tail": {
+  "kind": "story",
+  "anchor": "Moon Shards in the Sand",
+  "band": 2
+ },
+ "Sand: Hang Your Hat on the Fountain": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Where the Birds Gather": {
+  "kind": "start"
+ },
+ "Sand: Top of a Dune": {
+  "kind": "start"
+ },
+ "Sand: Lost in the Luggage": {
+  "kind": "start"
+ },
+ "Sand: Bullet Bill Breakthrough": {
+  "kind": "story",
+  "anchor": "Showdown on the Inverted Pyramid",
+  "band": 3
+ },
+ "Sand: Inside a Block Is a Hard Place": {
+  "kind": "start"
+ },
+ "Sand: Bird Traveling the Desert": {
+  "kind": "start"
+ },
+ "Sand: Bird Traveling the Wastes": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: The Lurker Under the Stone": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: The Treasure of Jaxi Ruins": {
+  "kind": "start"
+ },
+ "Sand: Desert Gardening: Plaza Seed": {
+  "kind": "start"
+ },
+ "Sand: Desert Gardening: Ruins Seed": {
+  "kind": "start"
+ },
+ "Sand: Desert Gardening: Seed on the Cliff": {
+  "kind": "start"
+ },
+ "Sand: Sand Kingdom Timer Challenge 1": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Sand Kingdom Timer Challenge 2": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Sand Kingdom Timer Challenge 3": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Found in the Sand! Good Dog!": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Taking Notes: Jump on the Palm": {
+  "kind": "start"
+ },
+ "Sand: Herding Sheep in the Dunes": {
+  "kind": "story",
+  "anchor": "Showdown at the Inverted Pyramid"
+ },
+ "Sand: Fishing in the Oasis": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Love in the Heart of the Desert": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Among the Five Cactuses": {
+  "kind": "start"
+ },
+ "Sand: You're Quite a Catch, Captain Toad!": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Jaxi Reunion!": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Welcome Back, Jaxi!": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Wandering Cactus": {
+  "kind": "start"
+ },
+ "Sand: Sand Quiz: Wonderful!": {
+  "kind": "start"
+ },
+ "Sand: Shopping in Tostarena": {
+  "kind": "start"
+ },
+ "Sand: Employees Only": {
+  "kind": "start"
+ },
+ "Sand: Sand Kingdom Slots": {
+  "kind": "start"
+ },
+ "Sand: Walking the Desert!": {
+  "kind": "story",
+  "anchor": "Showdown at the Inverted Pyramid"
+ },
+ "Sand: Hidden Room in the Inverted Pyramid": {
+  "kind": "story",
+  "anchor": "Moon Shards in the Sand",
+  "band": 2
+ },
+ "Sand: Underground Treasure Chest": {
+  "kind": "story",
+  "anchor": "Showdown on the Inverted Pyramid",
+  "band": 3
+ },
+ "Sand: Goomba Tower Assembly": {
+  "kind": "story",
+  "anchor": "Showdown on the Inverted Pyramid",
+  "band": 3
+ },
+ "Sand: Under the Mummy's Curse": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Ice Cave Treasure": {
+  "kind": "start"
+ },
+ "Sand: Sphynx's Treasure Vault": {
+  "kind": "start"
+ },
+ "Sand: A Rumble from the Sandy Floor": {
+  "kind": "start"
+ },
+ "Sand: Dancing with New Friends": {
+  "kind": "start"
+ },
+ "Sand: The Invisible Maze": {
+  "kind": "start"
+ },
+ "Sand: Skull Sign in the Transparent Maze": {
+  "kind": "start"
+ },
+ "Sand: The Bullet Bill Maze: Break Through!": {
+  "kind": "start"
+ },
+ "Sand: The Bullet Bill Maze: Side Path": {
+  "kind": "start"
+ },
+ "Sand: Jaxi Driver": {
+  "kind": "start"
+ },
+ "Sand: Jaxi Stunt Driving": {
+  "kind": "start"
+ },
+ "Sand: Strange Neighborhood": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Above a Strange Neighborhood": {
+  "kind": "story",
+  "anchor": "The Hole in the Desert",
+  "band": 4
+ },
+ "Sand: Secret Path to Tostarena!": {
+  "kind": "fork_secret_path",
+  "gate": "{canReachLocation(Wooded: Flower Thieves of Sky Garden)}",
+  "note": "Available from the start of Lake Kingdom (if Lake Kingdom is selected first) or after collecting the \"Flower Thieves of Sky Garden\" Power Moon (if Wooded Kingdom selected first)."
+ },
+ "Sand: Found with Sand Kingdom Art": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Sand: Jammin' in the Sand Kingdom": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Sand: Hat-and-Seek: In the Sand": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Sand: Sand Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Sand: Binding Band Returned": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Sand: Round-the-World Tourist": {
+  "kind": "cross_story",
+  "anchor": "A Tourist in the Mushroom Kingdom"
+ },
+ "Sand: Peach in the Sand Kingdom": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Sand: Mighty Leap from the Palm Tree!": {
+  "kind": "peace"
+ },
+ "Sand: On the North Pillar": {
+  "kind": "peace"
+ },
+ "Sand: Into the Flowing Sands": {
+  "kind": "peace"
+ },
+ "Sand: In the Skies Above the Canyon": {
+  "kind": "peace"
+ },
+ "Sand: Island in the Poison Swamp": {
+  "kind": "peace"
+ },
+ "Sand: An Invisible Gleam": {
+  "kind": "peace"
+ },
+ "Sand: On the Eastern Pillar": {
+  "kind": "peace"
+ },
+ "Sand: Caught Hopping in the Desert!": {
+  "kind": "peace"
+ },
+ "Sand: Poster Cleanup": {
+  "kind": "peace"
+ },
+ "Sand: Taking Notes: Running Down": {
+  "kind": "peace"
+ },
+ "Sand: Taking Notes: In the Wall Painting": {
+  "kind": "peace"
+ },
+ "Sand: Love at the Edge of the Desert": {
+  "kind": "peace"
+ },
+ "Sand: More Walking in the Desert!": {
+  "kind": "peace"
+ },
+ "Sand: Sand Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Sand: Where the Transparent Platforms End": {
+  "kind": "peace"
+ },
+ "Sand: Jump Onto the Transparent Lift": {
+  "kind": "peace"
+ },
+ "Sand: Colossal Ruins: Dash! Jump!": {
+  "kind": "peace"
+ },
+ "Sand: Sinking Colossal Ruins: Hurry!": {
+  "kind": "peace"
+ },
+ "Sand: Through the Freezing Waterway": {
+  "kind": "peace"
+ },
+ "Sand: Freezing Waterway: Hidden Room": {
+  "kind": "peace"
+ },
+ "Lake: Broodals Over the Lake": {
+  "kind": "start"
+ },
+ "Lake: Dorrie-Back Rider": {
+  "kind": "start"
+ },
+ "Lake: Cheep Cheep Crossing": {
+  "kind": "start"
+ },
+ "Lake: End of the Hidden Passage": {
+  "kind": "start"
+ },
+ "Lake: What's in the Box?": {
+  "kind": "start"
+ },
+ "Lake: On the Lakeshore": {
+  "kind": "start"
+ },
+ "Lake: From the Broken Pillar": {
+  "kind": "start"
+ },
+ "Lake: Treasure in the Spiky Waterway": {
+  "kind": "start"
+ },
+ "Lake: Lake Gardening: Spiky Passage Seed": {
+  "kind": "story",
+  "anchor": "Broodals Over the Lake",
+  "band": 1
+ },
+ "Lake: Lake Kingdom Timer Challenge 1": {
+  "kind": "story",
+  "anchor": "Broodals Over the Lake",
+  "band": 1
+ },
+ "Lake: Lake Kingdom Timer Challenge 2": {
+  "kind": "story",
+  "anchor": "Broodals Over the Lake",
+  "band": 1
+ },
+ "Lake: Moon Shards in the Lake": {
+  "kind": "start"
+ },
+ "Lake: Taking Notes: Dive and Swim": {
+  "kind": "start"
+ },
+ "Lake: Taking Notes: In the Cliffside": {
+  "kind": "start"
+ },
+ "Lake: Lake Fishing": {
+  "kind": "story",
+  "anchor": "Broodals Over the Lake",
+  "band": 1
+ },
+ "Lake: I Met a Lake Cheep Cheep!": {
+  "kind": "story",
+  "anchor": "Broodals Over the Lake",
+  "band": 1
+ },
+ "Lake: Our Secret Little Room": {
+  "kind": "start"
+ },
+ "Lake: Let's Go Swimming, Captain Toad!": {
+  "kind": "start"
+ },
+ "Lake: Shopping in Lake Lamode": {
+  "kind": "start"
+ },
+ "Lake: A Successful Repair Job": {
+  "kind": "story",
+  "anchor": "Broodals Over the Lake",
+  "band": 1
+ },
+ "Lake: I Feel Underdressed": {
+  "kind": "start"
+ },
+ "Lake: Unzip the Chasm": {
+  "kind": "start"
+ },
+ "Lake: Super-Secret Zipper": {
+  "kind": "start"
+ },
+ "Lake: Jump, Grab, Cling, and Climb": {
+  "kind": "start"
+ },
+ "Lake: Jump, Grab, and Climb Some More": {
+  "kind": "start"
+ },
+ "Lake: Secret Path to Lake Lamode!": {
+  "kind": "fork_secret_path",
+  "gate": "({SnowPeace()} or {SeasidePeace()})",
+  "note": "Available after collecting the \"The Bound Bowl Grand Prix\" Power Moon (if player went to Lake first and Snow Kingdom first), or after collecting the \"The Glass Is Half Full!\" Power Moon (if player went to Lake first and Seaside Kingdom first), or after collecting the \"New Donk City's Pest Problem\" Power Moon (if the player went to Wooded Kingdom first)."
+ },
+ "Lake: Found with Lake Kingdom Art": {
+  "kind": "story",
+  "anchor": "Broodals Over the Lake",
+  "band": 1
+ },
+ "Lake: Taxi Flying Through Lake Lamode": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Lake: That Trendy \"Pirate\" Look": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Lake: Space Is \"In\" Right Now": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Lake: That \"Old West\" Style": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Lake: Lake Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Lake: Peach in the Lake Kingdom": {
+  "kind": "peach",
+  "note": "auto at peace (World-Traveling Peach)"
+ },
+ "Lake: Behind the Floodgate": {
+  "kind": "peace"
+ },
+ "Lake: High-Flying Leap": {
+  "kind": "peace"
+ },
+ "Lake: Deep, Deep Down": {
+  "kind": "peace"
+ },
+ "Lake: Rooftop of the Water Plaza": {
+  "kind": "peace"
+ },
+ "Lake: Bird Traveling Over the Lake": {
+  "kind": "peace"
+ },
+ "Lake: Love by the Lake": {
+  "kind": "peace"
+ },
+ "Lake: Lake Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Lake: Waves of Poison: Hoppin' Over": {
+  "kind": "peace"
+ },
+ "Lake: Waves of Poison: Hop to It!": {
+  "kind": "peace"
+ },
+ "Wooded: Road to Sky Garden": {
+  "kind": "start"
+ },
+ "Wooded: Flower Thieves of Sky Garden": {
+  "kind": "story",
+  "anchor": "Road to Sky Garden",
+  "band": 1
+ },
+ "Wooded: Path to the Secret Flower Field": {
+  "kind": "story",
+  "anchor": "Flower Thieves of Sky Garden",
+  "band": 2
+ },
+ "Wooded: Defend the Secret Flower Field!": {
+  "kind": "story",
+  "anchor": "Path to the Secret Flower Field",
+  "band": 3
+ },
+ "Wooded: Behind the Rock Wall": {
+  "kind": "story",
+  "anchor": "Flower Thieves of Sky Garden",
+  "band": 2
+ },
+ "Wooded: Back Way Up the Mountain": {
+  "kind": "start_skilled"
+ },
+ "Wooded: Rolling Rock in the Woods": {
+  "kind": "start"
+ },
+ "Wooded: Caught Hopping in the Forest!": {
+  "kind": "start"
+ },
+ "Wooded: Thanks for the Charge!": {
+  "kind": "story",
+  "anchor": "Flower Thieves of Sky Garden",
+  "band": 2
+ },
+ "Wooded: Atop the Tall Tree": {
+  "kind": "start"
+ },
+ "Wooded: Tucked Away Inside the Tunnel": {
+  "kind": "start"
+ },
+ "Wooded: Over the Cliff's Edge": {
+  "kind": "start_skilled"
+ },
+ "Wooded: The Nut 'Round the Corner": {
+  "kind": "start"
+ },
+ "Wooded: Climb the Cliff to Get the Nut": {
+  "kind": "start"
+ },
+ "Wooded: The Nut in the Red Maze": {
+  "kind": "start"
+ },
+ "Wooded: The Nut at the Dead End": {
+  "kind": "start"
+ },
+ "Wooded: Cracked Nut on a Crumbling Tower": {
+  "kind": "start_skilled"
+ },
+ "Wooded: The Nut that Grew on the Tall Fence": {
+  "kind": "start_skilled"
+ },
+ "Wooded: Fire in the Cave": {
+  "kind": "start"
+ },
+ "Wooded: Hey Out There, Captain Toad!": {
+  "kind": "story",
+  "anchor": "Defend the Secret Flower Field!",
+  "band": 4
+ },
+ "Wooded: Love in the Forest Ruins": {
+  "kind": "story",
+  "anchor": "Flower Thieves of Sky Garden",
+  "band": 2
+ },
+ "Wooded: Inside a Rock in the Forest": {
+  "kind": "story",
+  "anchor": "Defend the Secret Flower Field!",
+  "band": 4
+ },
+ "Wooded: Shopping in Steam Gardens": {
+  "kind": "start"
+ },
+ "Wooded: Nut Planted in the Tower": {
+  "kind": "start_skilled"
+ },
+ "Wooded: Stretching Your Legs": {
+  "kind": "start_skilled"
+ },
+ "Wooded: Spinning-Platforms Treasure": {
+  "kind": "story",
+  "anchor": "Flower Thieves of Sky Garden",
+  "band": 2
+ },
+ "Wooded: Make the Secret Flower Field Bloom": {
+  "kind": "story",
+  "anchor": "Defend the Secret Flower Field!",
+  "band": 4
+ },
+ "Wooded: Rolling Rock in the Deep Woods": {
+  "kind": "start"
+ },
+ "Wooded: Glowing in the Deep Woods": {
+  "kind": "start"
+ },
+ "Wooded: Past the Peculiar Pipes": {
+  "kind": "start"
+ },
+ "Wooded: By the Babbling Brook in Deep Woods": {
+  "kind": "start"
+ },
+ "Wooded: The Hard Rock in Deep Woods": {
+  "kind": "start"
+ },
+ "Wooded: A Treasure Made from Coins": {
+  "kind": "start"
+ },
+ "Wooded: Beneath the Roots of the Moving Tree": {
+  "kind": "start"
+ },
+ "Wooded: Deep Woods Treasure Trap": {
+  "kind": "start"
+ },
+ "Wooded: Exploring for Treasure": {
+  "kind": "start"
+ },
+ "Wooded: Wooded Kingdom Timer Challenge 1": {
+  "kind": "story",
+  "anchor": "Defend the Secret Flower Field!",
+  "band": 4
+ },
+ "Wooded: Wooded Kingdom Timer Challenge 2": {
+  "kind": "story",
+  "anchor": "Defend the Secret Flower Field!",
+  "band": 4
+ },
+ "Wooded: Flooding Pipeway": {
+  "kind": "start"
+ },
+ "Wooded: Flooding Pipeway Ceiling Secret": {
+  "kind": "start"
+ },
+ "Wooded: Wandering in the Fog": {
+  "kind": "story",
+  "anchor": "Flower Thieves of Sky Garden",
+  "band": 2
+ },
+ "Wooded: Nut Hidden in the Fog": {
+  "kind": "story",
+  "anchor": "Flower Thieves of Sky Garden",
+  "band": 2
+ },
+ "Wooded: Flower Road Run": {
+  "kind": "start_skilled"
+ },
+ "Wooded: Flower Road Reach": {
+  "kind": "start_skilled"
+ },
+ "Wooded: Elevator Escalation": {
+  "kind": "story",
+  "anchor": "Flower Thieves of Sky Garden",
+  "band": 2
+ },
+ "Wooded: Elevator Blind Spot": {
+  "kind": "story",
+  "anchor": "Flower Thieves of Sky Garden",
+  "band": 2
+ },
+ "Wooded: Walking on Clouds": {
+  "kind": "story",
+  "anchor": "Defend the Secret Flower Field!",
+  "band": 4
+ },
+ "Wooded: Above the Clouds": {
+  "kind": "story",
+  "anchor": "Defend the Secret Flower Field!",
+  "band": 4
+ },
+ "Wooded: Secret Path to the Steam Gardens!": {
+  "kind": "fork_secret_path",
+  "gate": "({SnowPeace()} or {SeasidePeace()})",
+  "note": "Available after collecting the \"The Bound Bowl Grand Prix\" Power Moon (if player went to Wooded first and Snow Kingdom first), or after collecting the \"The Glass Is Half Full!\" Power Moon (if player went to Wooded first and Seaside Kingdom first), or after collecting the \"New Donk City's Pest Problem\" Power Moon (if the player went to Lake Kingdom first)."
+ },
+ "Wooded: Found with Wooded Kingdom Art": {
+  "kind": "start"
+ },
+ "Wooded: Swing Around Secret Flower Field": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Wooded: Jammin' in the Wooded Kingdom": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Wooded: Wooded Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Wooded: Peach in the Wooded Kingdom": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Wooded: High Up in the Cave": {
+  "kind": "peace"
+ },
+ "Wooded: Lost in the Tall Trees": {
+  "kind": "peace"
+ },
+ "Wooded: Looking Down on the Goombas": {
+  "kind": "peace"
+ },
+ "Wooded: High Up on a Rock Wall": {
+  "kind": "peace"
+ },
+ "Wooded: The Nut in the Robot Storeroom": {
+  "kind": "peace"
+ },
+ "Wooded: Above the Iron Mountain Path": {
+  "kind": "peace"
+ },
+ "Wooded: The Nut Under the Observation Deck": {
+  "kind": "peace"
+ },
+ "Wooded: Bird Traveling the Forest": {
+  "kind": "peace"
+ },
+ "Wooded: Invader in the Sky Garden": {
+  "kind": "peace"
+ },
+ "Wooded: Hot, Hot, Hot from the Campfire": {
+  "kind": "peace"
+ },
+ "Wooded: Wooded Kingdom Timer Challenge 3": {
+  "kind": "peace"
+ },
+ "Wooded: Moon Shards in the Forest": {
+  "kind": "peace"
+ },
+ "Wooded: Taking Notes: On Top of the Wall": {
+  "kind": "peace"
+ },
+ "Wooded: Taking Notes: Stretching": {
+  "kind": "peace"
+ },
+ "Wooded: Wooded Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Wooded: I Met an Uproot!": {
+  "kind": "peace"
+ },
+ "Wooded: Invisible Road: Danger!": {
+  "kind": "peace"
+ },
+ "Wooded: Invisible Road: Hidden Room": {
+  "kind": "peace"
+ },
+ "Wooded: Herding Sheep Above the Forest Fog": {
+  "kind": "peace"
+ },
+ "Wooded: Herding Sheep on the Iron Bridge": {
+  "kind": "peace"
+ },
+ "Wooded: Down and Back Breakdown Road": {
+  "kind": "peace"
+ },
+ "Wooded: Below Breakdown Road": {
+  "kind": "peace"
+ },
+ "Cloud: Picture Match: Basically a Goomba": {
+  "kind": "story",
+  "anchor": null
+ },
+ "Cloud: Peach in the Cloud Kingdom": {
+  "kind": "peach",
+  "note": "auto at peace (World-Traveling Peach)"
+ },
+ "Cloud: Digging in the...Cloud?": {
+  "kind": "peace"
+ },
+ "Cloud: High, High Above the Clouds": {
+  "kind": "peace"
+ },
+ "Cloud: Crossing the Cloud Sea": {
+  "kind": "peace"
+ },
+ "Cloud: Taking Notes: Up and Down": {
+  "kind": "peace"
+ },
+ "Cloud: Picture Match: A Stellar Goomba!": {
+  "kind": "peace"
+ },
+ "Cloud: King of the Cube!": {
+  "kind": "peace"
+ },
+ "Cloud: The Sixth Face": {
+  "kind": "peace"
+ },
+ "Lost: Atop a Propeller Pillar": {
+  "kind": "start"
+ },
+ "Lost: Below the Cliff's Edge": {
+  "kind": "start"
+ },
+ "Lost: Inside the Stone Cage": {
+  "kind": "start"
+ },
+ "Lost: On a Tree in the Swamp": {
+  "kind": "start"
+ },
+ "Lost: Over the Fuzzies, Above the Swamp": {
+  "kind": "start"
+ },
+ "Lost: Avoiding Fuzzies Inside the Wall": {
+  "kind": "start"
+ },
+ "Lost: Inside the Rising Stone Pillar": {
+  "kind": "start"
+ },
+ "Lost: Enjoying the View of Forgotten Isle": {
+  "kind": "start"
+ },
+ "Lost: On the Mountain Road": {
+  "kind": "start"
+ },
+ "Lost: A Propeller Pillar's Secret": {
+  "kind": "start"
+ },
+ "Lost: Wrecked Rock Block": {
+  "kind": "start"
+ },
+ "Lost: A Butterfly's Treasure": {
+  "kind": "start"
+ },
+ "Lost: Caught Hopping in the Jungle!": {
+  "kind": "complex",
+  "note": "Available after leaving the Lost Kingdom and then returning."
+ },
+ "Lost: Cave Gardening": {
+  "kind": "start"
+ },
+ "Lost: Moon Shards in the Jungle": {
+  "kind": "start"
+ },
+ "Lost: Peeking Out from Under the Bridge": {
+  "kind": "start"
+ },
+ "Lost: Twist 'n' Turn-Up Treasure": {
+  "kind": "start"
+ },
+ "Lost: Soaring Over Forgotten Isle!": {
+  "kind": "start"
+ },
+ "Lost: The Caged Gold": {
+  "kind": "start"
+ },
+ "Lost: Get Some Rest, Captain Toad": {
+  "kind": "start"
+ },
+ "Lost: Shopping on Forgotten Isle": {
+  "kind": "start"
+ },
+ "Lost: Taxi Flying Through Forgotten Isle": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Lost: I Met a Tropical Wiggler!": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Lost: Lost Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Lost: Peach in the Lost Kingdom": {
+  "kind": "peach",
+  "note": "auto at peace (World-Traveling Peach)"
+ },
+ "Lost: The Shining Fruit": {
+  "kind": "peace"
+ },
+ "Lost: Jump Down to the Top of a Tree": {
+  "kind": "peace"
+ },
+ "Lost: Line It Up, Blow It Up": {
+  "kind": "peace"
+ },
+ "Lost: Taking Notes: Stretch and Shrink": {
+  "kind": "peace"
+ },
+ "Lost: Lost Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Lost: Lost Kingdom Timer Challenge": {
+  "kind": "peace"
+ },
+ "Lost: Stretch and Traverse the Jungle": {
+  "kind": "peace"
+ },
+ "Lost: Aglow in the Jungle": {
+  "kind": "peace"
+ },
+ "Lost: Chasing Klepto": {
+  "kind": "peace"
+ },
+ "Lost: Extremely Hot Bath": {
+  "kind": "peace"
+ },
+ "Metro: New Donk City's Pest Problem": {
+  "kind": "start"
+ },
+ "Metro: Drummer on Board!": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Guitarist on Board!": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Bassist on Board!": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Trumpeter on Board!": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Powering Up the Station": {
+  "kind": "story",
+  "anchor": null
+ },
+ "Metro: A Traditional Festival!": {
+  "kind": "story",
+  "anchor": "Powering Up the Station",
+  "band": 5
+ },
+ "Metro: Inside an Iron Girder": {
+  "kind": "start"
+ },
+ "Metro: Swaying in the Breeze": {
+  "kind": "start"
+ },
+ "Metro: Girder Sandwich": {
+  "kind": "start"
+ },
+ "Metro: Glittering Above the Pool": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Dizzying Heights": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Secret Girder Tunnel!": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Who Piled Garbage on This?": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Hidden in the Scrap": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Left at the Café?": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Caught Hopping on a Building!": {
+  "kind": "story",
+  "anchor": "A Traditional Festival!",
+  "band": 8
+ },
+ "Metro: How Do They Take Out the Trash?": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Metro Kingdom Timer Challenge 1": {
+  "kind": "story",
+  "anchor": "A Traditional Festival!",
+  "band": 8
+ },
+ "Metro: Metro Kingdom Timer Challenge 2": {
+  "kind": "story",
+  "anchor": "A Traditional Festival!",
+  "band": 8
+ },
+ "Metro: City Gardening: Building Planter": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: City Gardening: Plaza Planter": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: City Gardening: Rooftop Planter": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: How You Doin', Captain Toad?": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Free Parking: Rooftop Hop": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Bench Friends": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Shopping in New Donk City": {
+  "kind": "start"
+ },
+ "Metro: Metro Kingdom Slots": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Jump-Rope Hero": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Jump-Rope Genius": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Remotely Captured Car": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: RC Car Pro!": {
+  "kind": "story",
+  "anchor": "Remotely Captured Car"
+ },
+ "Metro: Taking Notes: In the Private Room": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: City Hall Lost & Found": {
+  "kind": "start"
+ },
+ "Metro: Sewer Treasure": {
+  "kind": "story",
+  "anchor": null
+ },
+ "Metro: Celebrating in the Streets!": {
+  "kind": "story",
+  "anchor": "Powering Up the Station",
+  "band": 5
+ },
+ "Metro: Pushing Through the Crowd": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: High Over the Crowd": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Rewiring the Neighborhood": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Off the Beaten Wire": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Moon Shards Under Siege": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Sharpshooting Under Siege": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Inside the Rotating Maze": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Outside the Rotating Maze": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Hanging from a High-Rise": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Vaulting up a High-Rise": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Bullet Billding": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: One Man's Trash...": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Motor Scooter: Escape!": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Big Jump: Escape!": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Secret Path to New Donk City!": {
+  "kind": "cross_secret_path",
+  "gate": "{canReachLocation(Sand: Showdown on the Inverted Pyramid)}",
+  "note": "Available after collecting the \"Showdown on the Inverted Pyramid\" Multi Moon (Sand Kingdom)."
+ },
+ "Metro: A Tourist in the Metro Kingdom!": {
+  "kind": "cross_story",
+  "anchor": "The Hole in the Desert"
+ },
+ "Metro: Found with Metro Kingdom Art": {
+  "kind": "story",
+  "anchor": "New Donk City's Pest Problem",
+  "band": 2
+ },
+ "Metro: Bird Traveling in the City": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Mario Signs His Name": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Surprise Clown!": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: A Request from the Mayor": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Jammin' in the Metro Kingdom": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Sphynx in the City": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Free Parking: Leap of Faith": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Metro Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Hat-and-Seek: In the City": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Powering Up the Power Plant": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Up on the Big Screen": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Down Inside the Big Screen": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Metro: Peach in the Metro Kingdom": {
+  "kind": "peach",
+  "note": "auto at peace (World-Traveling Peach)"
+ },
+ "Metro: Hanging Between Buildings": {
+  "kind": "peace"
+ },
+ "Metro: Crossing Lines": {
+  "kind": "peace"
+ },
+ "Metro: Out of a Crate in the City": {
+  "kind": "peace"
+ },
+ "Metro: Bird Traveling in the Park": {
+  "kind": "peace"
+ },
+ "Metro: Metro Kingdom Timer Challenge 3": {
+  "kind": "peace"
+ },
+ "Metro: Found in the Park! Good Dog!": {
+  "kind": "peace"
+ },
+ "Metro: RC Car Champ!": {
+  "kind": "peace"
+ },
+ "Metro: Metro Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Metro: Hat-and-Seek: In the Crowd": {
+  "kind": "peace"
+ },
+ "Metro: Scaling Pitchblack Mountain": {
+  "kind": "peace"
+ },
+ "Metro: Reaching Pitchblack Island": {
+  "kind": "peace"
+ },
+ "Metro: Swinging Scaffolding: Jump!": {
+  "kind": "peace"
+ },
+ "Metro: Swinging Scaffolding: Break!": {
+  "kind": "peace"
+ },
+ "Metro: Motor Scooter Daredevil!": {
+  "kind": "peace"
+ },
+ "Metro: Full-Throttle Scooting!": {
+  "kind": "peace"
+ },
+ "Snow: The Icicle Barrier": {
+  "kind": "start"
+ },
+ "Snow: The Ice Wall Barrier": {
+  "kind": "start"
+ },
+ "Snow: The Gusty Barrier": {
+  "kind": "start"
+ },
+ "Snow: The Snowy Mountain Barrier": {
+  "kind": "start"
+ },
+ "Snow: The Bound Bowl Grand Prix": {
+  "kind": "story",
+  "anchor": null
+ },
+ "Snow: Entrance to Shiveria": {
+  "kind": "start"
+ },
+ "Snow: Behind Snowy Mountain": {
+  "kind": "start"
+ },
+ "Snow: Shining in the Snow in Town": {
+  "kind": "start"
+ },
+ "Snow: Atop a Blustery Arch": {
+  "kind": "start"
+ },
+ "Snow: Caught Hopping in the Snow!": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: The Shiverian Treasure Chest": {
+  "kind": "start"
+ },
+ "Snow: Treasure in the Ice Wall": {
+  "kind": "start"
+ },
+ "Snow: Snow Kingdom Timer Challenge 1": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Snow Kingdom Timer Challenge 2": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Moon Shards in the Snow": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Taking Notes: Snow Path Dash": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Fishing in the Glacier!": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Ice-Dodging Goomba Stack": {
+  "kind": "start"
+ },
+ "Snow: Captain Toad is Chilly!": {
+  "kind": "start"
+ },
+ "Snow: I'm Not Cold!": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Shopping in Shiveria": {
+  "kind": "start"
+ },
+ "Snow: Walking on Ice!": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Snowline Circuit Class S": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Dashing Over Cold Water!": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Dashing Above and Beyond!": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Jump 'n' Swim in the Freezing Water": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Freezing Water Near the Ceiling": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Blowing and Sliding": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Moon Shards in the Cold Room": {
+  "kind": "start"
+ },
+ "Snow: Slip Behind the Ice": {
+  "kind": "start"
+ },
+ "Snow: Spinning Above the Clouds": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: High-Altitude Spinning": {
+  "kind": "story",
+  "anchor": "The Bound Bowl Grand Prix",
+  "band": 2
+ },
+ "Snow: Secret Path to Shiveria!": {
+  "kind": "fork_secret_path",
+  "gate": "{MoonPeace()}",
+  "note": "Available from the start of Mushroom Kingdom (if player chooses Snow first) or after defeating Bowser in the Moon Kingdom (if player chooses Seaside first)"
+ },
+ "Snow: Found with Snow Kingdom Art": {
+  "kind": "start"
+ },
+ "Snow: Snow Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Snow: Hat-and-Seek in the Snow": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Snow: Peach in the Snow Kingdom": {
+  "kind": "peach",
+  "note": "auto at peace (World-Traveling Peach)"
+ },
+ "Snow: Shining on High": {
+  "kind": "peace"
+ },
+ "Snow: Above the Freezing Fishing Pond": {
+  "kind": "peace"
+ },
+ "Snow: Ice Floe Swimming": {
+  "kind": "peace"
+ },
+ "Snow: Icy Jump Challenge": {
+  "kind": "peace"
+ },
+ "Snow: Forgotten in the Holding Room": {
+  "kind": "peace"
+ },
+ "Snow: It Popped Out of the Ice": {
+  "kind": "peace"
+ },
+ "Snow: Deep in the Cold, Cold Water": {
+  "kind": "peace"
+ },
+ "Snow: Water Pooling in the Crevasse": {
+  "kind": "peace"
+ },
+ "Snow: Squirming Under Ice": {
+  "kind": "peace"
+ },
+ "Snow: Snow Kingdom Timer Challenge 3": {
+  "kind": "peace"
+ },
+ "Snow: Stacked-Up Ice Climb": {
+  "kind": "peace"
+ },
+ "Snow: I Met a Snow Cheep Cheep!": {
+  "kind": "peace"
+ },
+ "Snow: Even More Walking on Ice!": {
+  "kind": "peace"
+ },
+ "Snow: Snow Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Snow: Iceburn Circuit Class A": {
+  "kind": "peace"
+ },
+ "Snow: Iceburn Circuit Class S": {
+  "kind": "peace"
+ },
+ "Snow: Running the Flower Road": {
+  "kind": "peace"
+ },
+ "Snow: Looking Back on the Flower Road": {
+  "kind": "peace"
+ },
+ "Seaside: The Stone Pillar Seal": {
+  "kind": "start"
+ },
+ "Seaside: The Lighthouse Seal": {
+  "kind": "start"
+ },
+ "Seaside: The Hot Spring Seal": {
+  "kind": "start"
+ },
+ "Seaside: The Seal Above the Canyon": {
+  "kind": "start"
+ },
+ "Seaside: The Glass Is Half Full!": {
+  "kind": "story",
+  "anchor": null
+ },
+ "Seaside: On the Cliff Overlooking the Beach": {
+  "kind": "start"
+ },
+ "Seaside: Ride the Jetstream": {
+  "kind": "start"
+ },
+ "Seaside: Ocean-Bottom Maze: Treasure": {
+  "kind": "start"
+ },
+ "Seaside: Ocean-Bottom Maze: Hidden Room": {
+  "kind": "start"
+ },
+ "Seaside: Underwater Highway Tunnel": {
+  "kind": "start"
+ },
+ "Seaside: Shh! It's a Shortcut!": {
+  "kind": "start"
+ },
+ "Seaside: Gap in the Ocean Trench": {
+  "kind": "start"
+ },
+ "Seaside: Slip Through the Nesting Spot": {
+  "kind": "start"
+ },
+ "Seaside: Merci, Dorrie!": {
+  "kind": "start"
+ },
+ "Seaside: Bonjour, Dorrie!": {
+  "kind": "story",
+  "anchor": "The Glass Is Half Full!",
+  "band": 2
+ },
+ "Seaside: Under a Dangerous Ceiling": {
+  "kind": "start"
+ },
+ "Seaside: What the Waves Left Behind": {
+  "kind": "start"
+ },
+ "Seaside: The Back Canyon: Excavate!": {
+  "kind": "start"
+ },
+ "Seaside: Bubblaine Northern Reaches": {
+  "kind": "start"
+ },
+ "Seaside: Wriggling on the Sandy Bottom": {
+  "kind": "start"
+ },
+ "Seaside: Glass Palace Treasure Chest": {
+  "kind": "start"
+ },
+ "Seaside: Treasure Trap Hidden in the Inlet": {
+  "kind": "start"
+ },
+ "Seaside: Sea Gardening: Inlet Seed": {
+  "kind": "start"
+ },
+ "Seaside: Sea Gardening: Canyon Seed": {
+  "kind": "start"
+ },
+ "Seaside: Sea Gardening: Hot-Spring Seed": {
+  "kind": "start"
+ },
+ "Seaside: Sea Gardening: Ocean Trench Seed": {
+  "kind": "start"
+ },
+ "Seaside: Seaside Kingdom Timer Challenge 1": {
+  "kind": "start"
+ },
+ "Seaside: Seaside Kingdom Timer Challenge 2": {
+  "kind": "story",
+  "anchor": "The Glass Is Half Full!",
+  "band": 2
+ },
+ "Seaside: Found on the Beach! Good Dog!": {
+  "kind": "story",
+  "anchor": "The Glass Is Half Full!",
+  "band": 2
+ },
+ "Seaside: Moon Shards in the Sea": {
+  "kind": "start"
+ },
+ "Seaside: Taking Notes: Ocean Surface Dash": {
+  "kind": "start"
+ },
+ "Seaside: Love by the Seaside": {
+  "kind": "start"
+ },
+ "Seaside: Lighthouse Leaper": {
+  "kind": "story",
+  "anchor": "The Glass Is Half Full!",
+  "band": 2
+ },
+ "Seaside: Good Job, Captain Toad!": {
+  "kind": "start"
+ },
+ "Seaside: Ocean Quiz: Good!": {
+  "kind": "start"
+ },
+ "Seaside: Shopping in Bubblaine": {
+  "kind": "start"
+ },
+ "Seaside: Beach Volleyball: Champ": {
+  "kind": "story",
+  "anchor": "The Glass Is Half Full!",
+  "band": 2
+ },
+ "Seaside: Beach Volleyball: Hero of the Beach!": {
+  "kind": "story",
+  "anchor": "The Glass Is Half Full!",
+  "band": 2
+ },
+ "Seaside: Looking Back in the Dark Waterway": {
+  "kind": "start"
+ },
+ "Seaside: The Sphynx's Underwater Vault": {
+  "kind": "start"
+ },
+ "Seaside: A Rumble on the Seaside Floor": {
+  "kind": "start"
+ },
+ "Seaside: A Relaxing Dance": {
+  "kind": "start"
+ },
+ "Seaside: Wading in the Cloud Sea": {
+  "kind": "start"
+ },
+ "Seaside: Sunken Treasure in the Cloud Sea": {
+  "kind": "start"
+ },
+ "Seaside: Fly Through the Narrow Valley": {
+  "kind": "start"
+ },
+ "Seaside: Treasure Chest in the Narrow Valley": {
+  "kind": "start"
+ },
+ "Seaside: Hurry and Stretch": {
+  "kind": "start"
+ },
+ "Seaside: Stretch on the Side Path": {
+  "kind": "start"
+ },
+ "Seaside: Secret Path to Bubblaine!": {
+  "kind": "fork_secret_path",
+  "gate": "{MoonPeace()}",
+  "note": "Available from the start of Mushroom Kingdom (if player chooses Seaside first) or after defeating Bowser in the Moon Kingdom (if player chooses Snow first)."
+ },
+ "Seaside: Found with Seaside Kingdom Art": {
+  "kind": "start"
+ },
+ "Seaside: Seaside Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Seaside: Peach in the Seaside Kingdom": {
+  "kind": "peach",
+  "note": "auto at peace (World-Traveling Peach)"
+ },
+ "Seaside: Above the Parasol: Catch!": {
+  "kind": "peace"
+ },
+ "Seaside: What Shines Inside the Glass": {
+  "kind": "peace"
+ },
+ "Seaside: A Fine Detail on the Glass": {
+  "kind": "peace"
+ },
+ "Seaside: Underwater Highway West: Explore!": {
+  "kind": "peace"
+ },
+ "Seaside: Underwater Highway East: Explore!": {
+  "kind": "peace"
+ },
+ "Seaside: Rapid Ascent on Hot Spring Island": {
+  "kind": "peace"
+ },
+ "Seaside: A Light Next to the Lighthouse": {
+  "kind": "peace"
+ },
+ "Seaside: The Tall Rock Shelf in the Deep Ocean": {
+  "kind": "peace"
+ },
+ "Seaside: At the Base of the Lighthouse": {
+  "kind": "peace"
+ },
+ "Seaside: Bird Traveling Over the Ocean": {
+  "kind": "peace"
+ },
+ "Seaside: Caught Hopping at Glass Palace!": {
+  "kind": "peace"
+ },
+ "Seaside: Seaside Kingdom Timer Challenge 3": {
+  "kind": "peace"
+ },
+ "Seaside: Taking Notes: Ocean-Bottom Maze": {
+  "kind": "peace"
+ },
+ "Seaside: Taking Notes in the Sea": {
+  "kind": "peace"
+ },
+ "Seaside: Seaside Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Seaside: Aim! Poke!": {
+  "kind": "peace"
+ },
+ "Seaside: Poke! Roll!": {
+  "kind": "peace"
+ },
+ "Seaside: The Spinning Maze: Search!": {
+  "kind": "peace"
+ },
+ "Seaside: The Spinning Maze: Open!": {
+  "kind": "peace"
+ },
+ "Luncheon: The Broodals Are After Some Cookin'": {
+  "kind": "start"
+ },
+ "Luncheon: Under the Cheese Rocks": {
+  "kind": "story",
+  "anchor": "The Broodals Are After Some Cookin'",
+  "band": 1
+ },
+ "Luncheon: Big Pot on the Volcano: Dive In!": {
+  "kind": "story",
+  "anchor": "Under the Cheese Rocks",
+  "band": 2
+ },
+ "Luncheon: Climb Up the Cascading Magma": {
+  "kind": "story",
+  "anchor": "Big Pot on the Volcano: Dive In!",
+  "band": 3
+ },
+ "Luncheon: Cookatiel Showdown!": {
+  "kind": "story",
+  "anchor": "Climb Up the Cascading Magma",
+  "band": 4
+ },
+ "Luncheon: Piled on the Salt": {
+  "kind": "start"
+ },
+ "Luncheon: Lurking in the Pillar's Shadow": {
+  "kind": "start"
+ },
+ "Luncheon: Atop the Jutting Crag": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Is This an Ingredient Too?!": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Atop a Column in a Row": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Surrounded by Tall Mountains": {
+  "kind": "story",
+  "anchor": "Under the Cheese Rocks",
+  "band": 2
+ },
+ "Luncheon: Island of Salt Floating in the Lava": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Overlooking a Bunch of Ingredients": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Light the Lantern on the Small Island": {
+  "kind": "story",
+  "anchor": "Under The Cheese Rocks"
+ },
+ "Luncheon: Golden Turnip Recipe 1": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Golden Turnip Recipe 2": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Golden Turnip Recipe 3": {
+  "kind": "story",
+  "anchor": "Under the Cheese Rocks",
+  "band": 2
+ },
+ "Luncheon: Luncheon Kingdom Timer Challenge 1": {
+  "kind": "start"
+ },
+ "Luncheon: Luncheon Kingdom Timer Challenge 2": {
+  "kind": "story",
+  "anchor": "Big Pot on the Volcano: Dive In!",
+  "band": 3
+ },
+ "Luncheon: Luncheon Kingdom Timer Challenge 3": {
+  "kind": "story",
+  "anchor": "Cookatiel Showdown!",
+  "band": 5
+ },
+ "Luncheon: Beneath the Rolling Vegetables": {
+  "kind": "story",
+  "anchor": "Under The Cheese Rocks"
+ },
+ "Luncheon: All the Cracks Are Fixed": {
+  "kind": "story",
+  "anchor": "Under The Cheese Rocks"
+ },
+ "Luncheon: Taking Notes: Swimming in Magma": {
+  "kind": "story",
+  "anchor": "Under The Cheese Rocks"
+ },
+ "Luncheon: Love Above the Lava": {
+  "kind": "start"
+ },
+ "Luncheon: Shopping in Mount Volbono": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Luncheon Kingdom Slots": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: A Strong Simmer": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: An Extreme Simmer": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Alcove Behind the Pillars of Magma": {
+  "kind": "story",
+  "anchor": "Big Pot on the Volcano: Dive In!",
+  "band": 3
+ },
+ "Luncheon: Treasure Beneath the Cheese Rocks": {
+  "kind": "story",
+  "anchor": "Big Pot on the Volcano: Dive In!",
+  "band": 3
+ },
+ "Luncheon: Light the Two Flames": {
+  "kind": "story",
+  "anchor": "Big Pot on the Volcano: Dive In!",
+  "band": 3
+ },
+ "Luncheon: Light the Far-Off Lanterns": {
+  "kind": "story",
+  "anchor": "Climb Up the Cascading Magma",
+  "band": 4
+ },
+ "Luncheon: Bon Appétit, Captain Toad!": {
+  "kind": "story",
+  "anchor": "Climb Up the Cascading Magma",
+  "band": 4
+ },
+ "Luncheon: The Treasure Chest in the Veggies": {
+  "kind": "story",
+  "anchor": "Big Pot on the Volcano: Dive In!",
+  "band": 3
+ },
+ "Luncheon: Caught Hopping at the Volcano!": {
+  "kind": "story",
+  "anchor": "Cookatiel Showdown!",
+  "band": 5
+ },
+ "Luncheon: Taking Notes: Big Pot Swim": {
+  "kind": "story",
+  "anchor": "Cookatiel Showdown!",
+  "band": 5
+ },
+ "Luncheon: Magma Swamp: Floating and Sinking": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Corner of the Magma Swamp": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Magma Narrow Path": {
+  "kind": "story",
+  "anchor": "Under the Cheese Rocks",
+  "band": 2
+ },
+ "Luncheon: Crossing to the Magma": {
+  "kind": "story",
+  "anchor": "Under the Cheese Rocks",
+  "band": 2
+ },
+ "Luncheon: Fork Flickin' to the Summit": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Fork Flickin' Detour": {
+  "kind": "start_skilled"
+ },
+ "Luncheon: Excavate 'n' Search the Cheese Rocks": {
+  "kind": "story",
+  "anchor": "The Broodals Are After Some Cookin'",
+  "band": 1
+ },
+ "Luncheon: Climb the Cheese Rocks": {
+  "kind": "story",
+  "anchor": "The Broodals Are After Some Cookin'",
+  "band": 1
+ },
+ "Luncheon: Spinning Athletics End Goal": {
+  "kind": "story",
+  "anchor": "Under the Cheese Rocks",
+  "band": 2
+ },
+ "Luncheon: Taking Notes: Spinning Athletics": {
+  "kind": "story",
+  "anchor": "Under the Cheese Rocks",
+  "band": 2
+ },
+ "Luncheon: Secret Path to Mount Volbono!": {
+  "kind": "fork_secret_path",
+  "gate": "{canReachLocation(Wooded: Flower Thieves of Sky Garden)}",
+  "note": "Available after collecting the \"Flower Thieves of Sky Garden\" Power Moon (if the player went to Lake kingdom first), or Available from the start of Lake Kingdom if the player went to Wooded kingdom first"
+ },
+ "Luncheon: A Tourist in the Luncheon Kingdom!": {
+  "kind": "cross_story",
+  "anchor": "A Tourist in the Cascade Kingdom!"
+ },
+ "Luncheon: Found with Luncheon Kingdom Art": {
+  "kind": "story",
+  "anchor": "Big Pot on the Volcano: Dive In!",
+  "band": 3
+ },
+ "Luncheon: The Rooftop Lantern": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Luncheon: Jammin' in the Luncheon Kingdom": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Luncheon: Mechanic: Repairs Complete!": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Luncheon: Diving from the Big Pot!": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Luncheon: Hat-and-Seek: Among the Food": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Luncheon: Luncheon Kingdom: Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Luncheon: Peach in the Luncheon Kingdom": {
+  "kind": "peach",
+  "note": "auto at peace (World-Traveling Peach)"
+ },
+ "Luncheon: From Inside a Bright Stone": {
+  "kind": "peace"
+ },
+ "Luncheon: Under the Meat Plateau": {
+  "kind": "peace"
+ },
+ "Luncheon: On Top of a Tall, Tall Roof": {
+  "kind": "peace"
+ },
+ "Luncheon: From a Crack in the Hard Ground": {
+  "kind": "peace"
+ },
+ "Luncheon: By the Cannon Pointed at the Big Pot": {
+  "kind": "peace"
+ },
+ "Luncheon: Luncheon Kingdom: Master Cup": {
+  "kind": "peace"
+ },
+ "Luncheon: Stepping Over the Gears": {
+  "kind": "peace"
+ },
+ "Luncheon: Lanterns on the Gear Steps": {
+  "kind": "peace"
+ },
+ "Luncheon: Volcano Cave Cruisin'": {
+  "kind": "peace"
+ },
+ "Luncheon: Volcano Cave and Mysterious Clouds": {
+  "kind": "peace"
+ },
+ "Luncheon: Treasure of the Lava Islands": {
+  "kind": "peace"
+ },
+ "Luncheon: Flying Over the Lava Islands": {
+  "kind": "peace"
+ },
+ "Ruined: Battle with the Lord of Lightning!": {
+  "kind": "start"
+ },
+ "Ruined: In the Ancient Treasure Chest": {
+  "kind": "start"
+ },
+ "Ruined: Roulette Tower: Climbed": {
+  "kind": "peace"
+ },
+ "Ruined: Roulette Tower: Stopped": {
+  "kind": "peace"
+ },
+ "Ruined: Peach in the Ruined Kingdom": {
+  "kind": "peach",
+  "note": "auto at peace (World-Traveling Peach)"
+ },
+ "Ruined: Caught on a Big Horn": {
+  "kind": "peace"
+ },
+ "Ruined: Upon the Broken Arch": {
+  "kind": "peace"
+ },
+ "Ruined: Rolling Rock on the Battlefield": {
+  "kind": "peace"
+ },
+ "Ruined: Charging Through an Army": {
+  "kind": "peace"
+ },
+ "Ruined: The Mummy Army's Curse": {
+  "kind": "peace"
+ },
+ "Bowser's: Infiltrate Bowser's Castle!": {
+  "kind": "start"
+ },
+ "Bowser's: Smart Bombing": {
+  "kind": "story",
+  "anchor": "Infiltrate Bowser's Castle!",
+  "band": 1
+ },
+ "Bowser's: Big Broodal Battle": {
+  "kind": "story",
+  "anchor": "Smart Bombing",
+  "band": 2
+ },
+ "Bowser's: Showdown at Bowser's Castle": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Behind the Big Wall": {
+  "kind": "start"
+ },
+ "Bowser's: Treasure Inside the Turret": {
+  "kind": "story",
+  "anchor": "Infiltrate Bowser's Castle!",
+  "band": 1
+ },
+ "Bowser's: From the Side Above the Castle Gate": {
+  "kind": "story",
+  "anchor": "Smart Bombing",
+  "band": 2
+ },
+ "Bowser's: Sunken Treasure in the Moat": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Past the Moving Wall": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Above the Poison Swamp": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Knocking Down the Nice Frame": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Caught on the Iron Fence": {
+  "kind": "start"
+ },
+ "Bowser's: On the Giant Bowser Statue's Nose": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Inside a Block in the Castle": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Caught Hopping at Bowser's Castle!": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Exterminate the Ogres!": {
+  "kind": "story",
+  "anchor": "Smart Bombing",
+  "band": 2
+ },
+ "Bowser's: Bowser's Kingdom Timer Challenge 1": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Taking Notes: Between Spinies": {
+  "kind": "start"
+ },
+ "Bowser's: Stack Up Above the Wall": {
+  "kind": "start"
+ },
+ "Bowser's: Hidden Corridor Under the Floor": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Poking Your Nose in the Plaster Wall": {
+  "kind": "story",
+  "anchor": "Infiltrate Bowser's Castle!",
+  "band": 1
+ },
+ "Bowser's: Poking the Turret Wall": {
+  "kind": "story",
+  "anchor": "Infiltrate Bowser's Castle!",
+  "band": 1
+ },
+ "Bowser's: Poking Your Nose by the Great Gate": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Jizo All in a Row": {
+  "kind": "story",
+  "anchor": "Smart Bombing",
+  "band": 2
+ },
+ "Bowser's: Underground Jizo": {
+  "kind": "story",
+  "anchor": "Smart Bombing",
+  "band": 2
+ },
+ "Bowser's: Found Behind Bars!": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Fishing(?) in Bowser's Castle": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Good to See You, Captain Toad!": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Shopping at Bowser's Castle": {
+  "kind": "story",
+  "anchor": "Smart Bombing",
+  "band": 2
+ },
+ "Bowser's: Bowser's Castle Treasure Vault": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Scene of Crossing the Poison Swamp": {
+  "kind": "story",
+  "anchor": "Smart Bombing",
+  "band": 2
+ },
+ "Bowser's: Taking Notes: In the Folding Screen": {
+  "kind": "story",
+  "anchor": "Smart Bombing",
+  "band": 2
+ },
+ "Bowser's: On Top of the Spinning Tower": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Down and Up the Spinning Tower": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Jizo's Big Adventure": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Jizo and the Hidden Room": {
+  "kind": "story",
+  "anchor": "Showdown at Bowser's Castle",
+  "band": 4
+ },
+ "Bowser's: Dashing Above the Clouds": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Dashing Through the Clouds": {
+  "kind": "story",
+  "anchor": "Big Broodal Battle",
+  "band": 3
+ },
+ "Bowser's: Sphynx Over Bowser's Castle": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Bowser's: I Met a Pokio!": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Bowser's: Bowser's Kingdom Regular Cup": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Bowser's: A Rumble Under the Arena Floor": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Bowser's: Secret Path to Bowser's Castle!": {
+  "kind": "cross_secret_path",
+  "gate": "{MoonPeace()}",
+  "note": "Available after defeating Bowser in the Moon Kingdom."
+ },
+ "Bowser's: Peach in Bowser's Kingdom": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Bowser's: Found with Bowser's Kingdom Art": {
+  "kind": "moonclear",
+  "note": "auto via moon-rock per Devon"
+ },
+ "Bowser's: Behind the Tall Wall: Poke, Poke!": {
+  "kind": "peace"
+ },
+ "Bowser's: From Crates in the Moat": {
+  "kind": "peace"
+ },
+ "Bowser's: Caught on the Giant Horn": {
+  "kind": "peace"
+ },
+ "Bowser's: Inside a Block at the Gate": {
+  "kind": "peace"
+ },
+ "Bowser's: Small Bird in Bowser's Castle": {
+  "kind": "peace"
+ },
+ "Bowser's: Invader in Bowser's Castle": {
+  "kind": "peace"
+ },
+ "Bowser's: Jumping from Flag to Flag": {
+  "kind": "peace"
+ },
+ "Bowser's: Bowser's Kingdom Timer Challenge 2": {
+  "kind": "peace"
+ },
+ "Bowser's: Taking Notes: On the Wall": {
+  "kind": "peace"
+ },
+ "Bowser's: Taking Notes with a Spinning Throw": {
+  "kind": "peace"
+ },
+ "Bowser's: Third Courtyard Outskirts": {
+  "kind": "peace"
+ },
+ "Bowser's: Stone Wall Circuit": {
+  "kind": "peace"
+ },
+ "Bowser's: Bowser's Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Bowser's: Searching Hexagon Tower": {
+  "kind": "peace"
+ },
+ "Bowser's: Center of Hexagon Tower": {
+  "kind": "peace"
+ },
+ "Bowser's: Climb the Wooden Tower": {
+  "kind": "peace"
+ },
+ "Bowser's: Poke the Wooden Tower": {
+  "kind": "peace"
+ },
+ "Moon: Shining Above the Moon": {
+  "kind": "start"
+ },
+ "Moon: Along the Cliff Face": {
+  "kind": "start"
+ },
+ "Moon: The Tip of a White Spire": {
+  "kind": "start"
+ },
+ "Moon: Rolling Rock on the Moon": {
+  "kind": "start"
+ },
+ "Moon: Caught Hopping on the Moon!": {
+  "kind": "start"
+ },
+ "Moon: Cliffside Treasure Chest": {
+  "kind": "start"
+ },
+ "Moon: Moon Kingdom Timer Challenge 1": {
+  "kind": "start"
+ },
+ "Moon: Taking Notes: On the Moon's Surface": {
+  "kind": "start"
+ },
+ "Moon: Under the Bowser Statue": {
+  "kind": "start"
+ },
+ "Moon: In a Hole in the Magma": {
+  "kind": "start"
+ },
+ "Moon: Around the Barrier Wall": {
+  "kind": "start"
+ },
+ "Moon: On Top of the Cannon": {
+  "kind": "start"
+ },
+ "Moon: Fly to the Treasure Chest and Back": {
+  "kind": "start"
+ },
+ "Moon: Up in the Rafters": {
+  "kind": "start"
+ },
+ "Moon: Sneaking Around in the Crater": {
+  "kind": "this_bowser"
+ },
+ "Moon: Found on the Moon, Good Dog!": {
+  "kind": "this_bowser"
+ },
+ "Moon: Moon Shards on the Moon": {
+  "kind": "this_bowser"
+ },
+ "Moon: Moon Quiz: Amazing!": {
+  "kind": "this_bowser"
+ },
+ "Moon: Thanks, Captain Toad!": {
+  "kind": "this_bowser"
+ },
+ "Moon: Shopping in Honeylune Ridge": {
+  "kind": "this_bowser"
+ },
+ "Moon: Walking on the Moon!": {
+  "kind": "this_bowser"
+ },
+ "Moon: Moon Kingdom Regular Cup": {
+  "kind": "this_bowser"
+ },
+ "Moon: Doctor in the House": {
+  "kind": "this_bowser"
+ },
+ "Moon: Sphynx's Hidden Vault": {
+  "kind": "this_bowser"
+ },
+ "Moon: A Tourist in the Moon Kingdom!": {
+  "kind": "this_bowser"
+ },
+ "Moon: Peach in the Moon Kingdom": {
+  "kind": "this_bowser"
+ },
+ "Moon: Found with Moon Kingdom Art": {
+  "kind": "this_bowser"
+ },
+ "Moon: Mysterious Flying Object": {
+  "kind": "peace"
+ },
+ "Moon: Hidden on the Side of the Cliff": {
+  "kind": "peace"
+ },
+ "Moon: Jumping High as a Frog": {
+  "kind": "peace"
+ },
+ "Moon: Moon Kingdom Timer Challenge 2": {
+  "kind": "peace"
+ },
+ "Moon: Walking on the Moon: Again!": {
+  "kind": "peace"
+ },
+ "Moon: Moon Kingdom Master Cup": {
+  "kind": "peace"
+ },
+ "Moon: Taking Notes: In Low Gravity": {
+  "kind": "peace"
+ },
+ "Moon: Center of the Galaxy": {
+  "kind": "peace"
+ },
+ "Moon: Edge of the Galaxy": {
+  "kind": "peace"
+ },
+ "Moon: Navigating Giant Swings": {
+  "kind": "peace"
+ },
+ "Moon: A Swing on Top of a Swing": {
+  "kind": "peace"
+ },
+ "Mushroom: Perched on the Castle Roof": {
+  "kind": "start"
+ },
+ "Mushroom: Pops Out of the Tail": {
+  "kind": "start"
+ },
+ "Mushroom: Caught Hopping at Peach's Castle!": {
+  "kind": "start"
+ },
+ "Mushroom: Gardening for Toad: Garden Seed": {
+  "kind": "start"
+ },
+ "Mushroom: Gardening for Toad: Field Seed": {
+  "kind": "start"
+ },
+ "Mushroom: Gardening for Toad: Pasture Seed": {
+  "kind": "start"
+ },
+ "Mushroom: Gardening for Toad: Lake Seed": {
+  "kind": "start"
+ },
+ "Mushroom: Grow a Flower Garden": {
+  "kind": "start"
+ },
+ "Mushroom: Mushroom Kingdom Timer Challenge": {
+  "kind": "start"
+ },
+ "Mushroom: Found at Peach's Castle! Good Dog!": {
+  "kind": "start"
+ },
+ "Mushroom: Taking Notes: Around the Well": {
+  "kind": "start"
+ },
+ "Mushroom: Herding Sheep at Peach's Castle": {
+  "kind": "start"
+ },
+ "Mushroom: Gobbling Fruit with Yoshi": {
+  "kind": "start"
+ },
+ "Mushroom: Yoshi's Second Helping!": {
+  "kind": "story",
+  "anchor": "Gobbling Fruit with Yoshi"
+ },
+ "Mushroom: Yoshi's All Filled Up!": {
+  "kind": "story",
+  "anchor": "Yoshi's Second Helping!"
+ },
+ "Mushroom: Love at Peach's Castle": {
+  "kind": "start"
+ },
+ "Mushroom: Toad Defender": {
+  "kind": "start"
+ },
+ "Mushroom: Forever Onward, Captain Toad!": {
+  "kind": "start"
+ },
+ "Mushroom: Jammin' in the Mushroom Kingdom": {
+  "kind": "start"
+ },
+ "Mushroom: Shopping Near Peach's Castle": {
+  "kind": "start"
+ },
+ "Mushroom: Mushroom Kingdom Regular Cup": {
+  "kind": "start"
+ },
+ "Mushroom: Mushroom Kingdom Master Cup": {
+  "kind": "story",
+  "anchor": "Mushroom Kingdom Regular Cup"
+ },
+ "Mushroom: Picture Match: Basically Mario": {
+  "kind": "start"
+ },
+ "Mushroom: Picture Match: A Stellar Mario!": {
+  "kind": "story",
+  "anchor": "Picture Match: Basically Mario"
+ },
+ "Mushroom: Light from the Ceiling": {
+  "kind": "start"
+ },
+ "Mushroom: Loose-Tile Trackdown": {
+  "kind": "start"
+ },
+ "Mushroom: Totally Classic!": {
+  "kind": "start"
+ },
+ "Mushroom: Courtyard Chest Trap": {
+  "kind": "start"
+ },
+ "Mushroom: Yoshi's Feast in the Sea of Clouds": {
+  "kind": "start"
+ },
+ "Mushroom: Sunken Star in the Sea of Clouds": {
+  "kind": "start"
+ },
+ "Mushroom: Secret 2D Treasure": {
+  "kind": "start"
+ },
+ "Mushroom: 2D Boost from Bullet Bill": {
+  "kind": "start"
+ },
+ "Mushroom: Tussle in Tostarena: Rematch": {
+  "kind": "start"
+ },
+ "Mushroom: Struggle in Steam Gardens: Rematch": {
+  "kind": "start"
+ },
+ "Mushroom: Dust-Up in New Donk City: Rematch": {
+  "kind": "start"
+ },
+ "Mushroom: Battle in Bubblaine: Rematch": {
+  "kind": "start"
+ },
+ "Mushroom: Blowup at Mount Volbono: Rematch": {
+  "kind": "start"
+ },
+ "Mushroom: Rumble in Crumbleden: Rematch": {
+  "kind": "start"
+ },
+ "Mushroom: Secret Path to Peach's Castle!": {
+  "kind": "cross_secret_path",
+  "gate": "{canReachLocation(Luncheon: Under the Cheese Rocks)}",
+  "note": "*Available after collecting the \"Under The Cheese Rocks\" Power Moon (Luncheon Kingdom)."
+ },
+ "Mushroom: A Tourist in the Mushroom Kingdom!": {
+  "kind": "cross_story",
+  "anchor": "A Tourist in the Moon Kingdom!"
+ },
+ "Mushroom: Found with Mushroom Kingdom Art": {
+  "kind": "start"
+ },
+ "Mushroom: Hat-and-Seek: Mushroom Kingdom": {
+  "kind": "cross_story",
+  "anchor": "Peach in the Moon Kingdom"
+ },
+ "Mushroom: Princess Peach, Home Again!": {
+  "kind": "cross_story",
+  "anchor": "Peach in the Moon Kingdom"
+ },
+ "Dark Side: Arrival at Rabbit Ridge!": {
+  "kind": "start"
+ },
+ "Dark Side: Captain Toad on the Dark Side!": {
+  "kind": "start"
+ },
+ "Dark Side: Breakdown Road: Hurry!": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Breakdown Road: Final Challenge!": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Invisible Road: Rush!": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Invisible Road: Secret!": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Vanishing Road Rush": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Vanishing Road Challenge": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Yoshi Under Siege": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Fruit Feast Under Siege": {
+  "kind": "story",
+  "anchor": "Yoshi Under Siege"
+ },
+ "Dark Side: Yoshi on the Sinking Island": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Fruit Feast on the Sinking Island": {
+  "kind": "story",
+  "anchor": "Yoshi on the Sinking Island"
+ },
+ "Dark Side: Yoshi's Magma Swamp": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Fruit Feast in the Magma Swamp!": {
+  "kind": "story",
+  "anchor": "Yoshi's Magma Swamp"
+ },
+ "Dark Side: Found with Dark Side Art 1": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Found with Dark Side Art 2": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Found with Dark Side Art 3": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Found with Dark Side Art 4": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Found with Dark Side Art 5": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Found with Dark Side Art 6": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Found with Dark Side Art 7": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Found with Dark Side Art 8": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Found with Dark Side Art 9": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ },
+ "Dark Side: Found with Dark Side Art 10": {
+  "kind": "story",
+  "anchor": "Arrival at Rabbit Ridge!",
+  "band": 1
+ }
+}

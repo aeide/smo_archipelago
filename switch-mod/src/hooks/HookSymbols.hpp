@@ -658,16 +658,21 @@ inline constexpr const char* kGameDataFunctionGetWorldIndexClash =
 inline constexpr const char* kGameDataFunctionGetCurrentStageName =
     "_ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor";
 // GameDataFunction::getScenarioNoPlacement(GameDataHolderAccessor) — the
-// out-of-line free function the object-placement masker reads to decide which
-// scenario's actors to place (wraps GameDataFile::getScenarioNoPlacement(), the
-// trivial mScenarioNoPlacement getter, which is inlined everywhere). Trampolined
-// by CascadeBroodeRespawnHook to revert Cascade to its scenario-1 layout when the
-// player left pre-Broode. Resolved via hk::ro::lookupSymbol (soft-degrade) — NOT
-// in SmoApSymbols.sym, so a miss disables the hook instead of aborting the module
-// (same contract as MoonRockHook's isEnableOpenMoonRock). Mangling derived from
-// the getCurrentStageName pattern above ("getScenarioNoPlacement"=22).
+// out-of-line free-function WRAPPER. The 2026-06-26 in-game test proved the
+// object-placement masker does NOT call this wrapper (zero diagnostics fired):
+// placement holds the GameDataFile and calls the MEMBER below directly. Kept for
+// reference only; CascadeBroodeRespawnHook now hooks the member.
 inline constexpr const char* kGameDataFunctionGetScenarioNoPlacement =
     "_ZN16GameDataFunction22getScenarioNoPlacementE22GameDataHolderAccessor";
+// GameDataFile::getScenarioNoPlacement() const — the MEMBER the placement masker
+// actually reads (this == GameDataFile*). CascadeBroodeRespawnHook trampolines
+// this to revert Cascade to its scenario-1 layout when the player left pre-Broode.
+// Reads mScenarioNoPlacement/mScenarioNoOverride (per GameDataFile.h decomp), so
+// it is NOT a trivial getter and is kept out-of-line. Resolved via
+// hk::ro::lookupSymbol (soft-degrade) — NOT in SmoApSymbols.sym. Mangling: const
+// member, no params ("getScenarioNoPlacement"=22) -> _ZNK..Ev.
+inline constexpr const char* kGameDataFileGetScenarioNoPlacement =
+    "_ZNK12GameDataFile22getScenarioNoPlacementEv";
 
 // =============================================================================
 // Instant seed growth — bypass the wait on seed-flower moons.

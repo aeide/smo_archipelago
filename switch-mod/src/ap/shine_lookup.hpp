@@ -72,6 +72,22 @@ inline int shineUidByDisplayName(const char* display_name) {
     return -1;
 }
 
+// Returns the full table row for a display name (e.g. "Multi Moon Atop the
+// Falls"), or nullptr if not in the table. Callers that need the moon's
+// (stage_name, object_id) — the canonical collection-probe key — use this
+// instead of shineUidByDisplayName when they want more than the uid. The
+// returned pointer aliases the static constexpr kShineTable, so it is valid for
+// the program lifetime.
+inline const ShineTableRow* shineRowByDisplayName(const char* display_name) {
+    if (display_name == nullptr) return nullptr;
+    const std::string_view sv{display_name};
+    if (sv.empty()) return nullptr;
+    for (const auto& row : kShineTable) {
+        if (row.shine_id == sv) return &row;
+    }
+    return nullptr;
+}
+
 // True if the moon identified by (stage_name, obj_id) is flagged
 // `progression: true` in locations.json (a Multi Moon / boss-fight clear /
 // scenario-advancing equivalent). Phase 4's Talkatoo% block calls this to

@@ -44,6 +44,20 @@ using ShineEnumerationCallback = void(*)(void* ctx,
                                           int shine_uid);
 void enumerateOwnedShines(ShineEnumerationCallback cb, void* ctx);
 
+// Tri-state "is this shine collected?" probe, matched by (stage_name,
+// object_id). Walks GameDataFile::mShineHintList and reads HintInfo::isGet —
+// the SAME proven mechanism enumerateOwnedShines uses (HELLO snapshot). This is
+// the reliable collection source: GameDataFile::isGotShine(int) wants a shine
+// INDEX, not the apworld shine_uid, so feeding it shine_uid mis-reports.
+//
+// Returns:
+//    1  collected   (HintInfo entry found, isGet set)
+//    0  uncollected  (HintInfo entry found, isGet clear)
+//   -1  unknown      (game data not ready, or no matching hint entry)
+// Callers that gate a "force" on uncollected MUST treat -1 as "don't force"
+// (fail safe) — same direction as the old isGotShine==null guard.
+int probeShineGot(const char* stage_name, const char* object_id);
+
 // Resolve the GameDataFile::isGotShine(int) symbol once at module init.
 // Wired from main.cpp next to the other M6-phase resolver calls. If lookup
 // fails enumerateOwnedShines logs and emits nothing — the snapshot stays a

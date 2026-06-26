@@ -409,7 +409,7 @@ extern "C" void hkMain() {
 
     smoap::hooks::installCostumeDoorHook();
 
-    SMOAP_LOG_INFO("installing CascadeBroodeRespawnHook (getScenarioNoPlacement -> 1 in Cascade pre-Broode)");
+    SMOAP_LOG_INFO("installing CascadeBroodeRespawnHook (write mScenarioNoPlacement -> 1 on commit into Cascade pre-Broode)");
     smoap::hooks::installCascadeBroodeRespawnHook();
 
 #ifdef SMOAP_HAS_DEBUG_RENDERER

@@ -175,7 +175,18 @@
       "Bash(rm -f vendor/Archipelago/output/AP_*.zip)",
       "PowerShell(cd E:\\\\smo_archipelago; $env:SMOAP_LIVE_AP=\"1\"; .venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests\\\\ -q -p no:cacheprovider --no-header -rN 2>&1 | Select-String -Pattern \"^FAILED|passed|failed|error\" | Select-Object -First 25)",
       "PowerShell(cd E:\\\\smo_archipelago; $env:SMOAP_LIVE_AP=$null; .venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests\\\\ -q -p no:cacheprovider --no-header 2>&1 | Select-Object -Last 6)",
-      "PowerShell(cd E:\\\\smo_archipelago; $env:SMOAP_LIVE_AP=$null; .venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_wizard_persisted_paths.py -q -p no:cacheprovider --no-header 2>&1 | Select-String -Pattern \"Error|import|Module|cannot|No module\" | Select-Object -First 5)"
+      "PowerShell(cd E:\\\\smo_archipelago; $env:SMOAP_LIVE_AP=$null; .venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_wizard_persisted_paths.py -q -p no:cacheprovider --no-header 2>&1 | Select-String -Pattern \"Error|import|Module|cannot|No module\" | Select-Object -First 5)",
+      "Bash(python -m py_compile apworld/smo_archipelago/entrance_logic.py apworld/smo_archipelago/hooks/World.py apworld/smo_archipelago/tests/test_entrance_shuffle.py scripts/compile_moon_logic.py)",
+      "Bash(grep -iA3 \"^  entrance_shuffle:\\\\|^  randomize_kingdom_gates:\\\\|^  multi_moon_shuffle:\" vendor/Archipelago/Players/Aeide.yaml)",
+      "Bash(break)",
+      "Bash(env)",
+      "Bash(curl -s -m 20 \"https://api.github.com/search/code?q=getScenarioNoPlacement+repo:MonsterDruide1/OdysseyDecomp\")",
+      "PowerShell($RYU = \"$env:APPDATA\\\\Ryujinx\\\\mods\\\\contents\\\\0100000000010000\\\\\"; New-Item -ItemType Directory -Force \"$RYU\\\\exefs\" | Out-Null; Copy-Item -Force E:\\\\smo_archipelago\\\\switch-mod\\\\build\\\\sd\\\\atmosphere\\\\contents\\\\0100000000010000\\\\exefs\\\\subsdk9 \"$RYU\\\\exefs\\\\subsdk9\"; Copy-Item -Force E:\\\\smo_archipelago\\\\switch-mod\\\\build\\\\sd\\\\atmosphere\\\\contents\\\\0100000000010000\\\\exefs\\\\main.npdm \"$RYU\\\\exefs\\\\main.npdm\"; Get-ChildItem \"$RYU\\\\exefs\" | Select-Object Name,Length,LastWriteTime)",
+      "PowerShell($u='https://raw.githubusercontent.com/MonsterDruide1/OdysseyDecomp/master/src/System/GameDataFile.cpp'; $o=\"$env:TEMP\\\\GameDataFile.cpp\"; Invoke-WebRequest -Uri $u -OutFile $o -UseBasicParsing; \\(Get-Item $o\\).Length; \\(Get-Content $o | Measure-Object -Line\\).Lines)",
+      "PowerShell($r = Invoke-RestMethod -Uri 'https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/contents/src/System' -UseBasicParsing -Headers @{ 'User-Agent'='ps' }; $r | Where-Object { $_.name -match 'GameData|Scenario' } | Select-Object name, size)",
+      "Bash(xargs grep -ln \"HintInfo\\\\|isGotShine\\\\|ShineInfo\")",
+      "Bash(python)",
+      "Bash(PYTHONIOENCODING=utf-8 python)"
     ],
     "additionalDirectories": [
       "\\tmp\\dbg",

@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 #include "../ap/ApState.hpp"
 #include "../util/Log.hpp"
@@ -30,6 +31,22 @@ inline const char* readFixedSafeStringBuffer(const std::uint8_t* fss_addr) {
         fss_addr + kSeadFixedSafeString_mBufferOffset);
 }
 
+// Resolve GameDataFile::mShineHintList base (the HintInfo array) from the cached
+// GameDataHolder, or nullptr if game data isn't ready yet. Shared by the
+// snapshot enumeration and the per-shine collection probe.
+const std::uint8_t* shineHintListBase() {
+    void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
+        std::memory_order_relaxed);
+    if (!gdh) return nullptr;
+    const auto* gdh_bytes = reinterpret_cast<const std::uint8_t*>(gdh);
+    void* gdf = *reinterpret_cast<void* const*>(
+        gdh_bytes + kGameDataHolder_mGameDataFileOffset);
+    if (!gdf) return nullptr;
+    const auto* gdf_bytes = reinterpret_cast<const std::uint8_t*>(gdf);
+    return *reinterpret_cast<const std::uint8_t* const*>(
+        gdf_bytes + kGameDataFile_mShineHintListOffset);
+}
+
 }  // namespace
 
 void grantShine(const std::string& kingdom, const std::string& shine_id) {
@@ -43,24 +60,10 @@ bool extractShineCoords(std::string& out_kingdom, std::string& out_shine_id) {
 }
 
 void enumerateOwnedShines(ShineEnumerationCallback cb, void* ctx) {
-    void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
-        std::memory_order_relaxed);
-    if (!gdh) {
-        SMOAP_LOG_WARN("[snapshot] enumerateOwnedShines skipped: gdh=%p", gdh);
-        return;
-    }
-    const auto* gdh_bytes = reinterpret_cast<const std::uint8_t*>(gdh);
-    void* gdf = *reinterpret_cast<void* const*>(
-        gdh_bytes + kGameDataHolder_mGameDataFileOffset);
-    if (!gdf) {
-        SMOAP_LOG_WARN("[snapshot] enumerateOwnedShines: GameDataFile* is null");
-        return;
-    }
-    const auto* gdf_bytes = reinterpret_cast<const std::uint8_t*>(gdf);
-    const auto* hint_base = *reinterpret_cast<const std::uint8_t* const*>(
-        gdf_bytes + kGameDataFile_mShineHintListOffset);
+    const auto* hint_base = shineHintListBase();
     if (!hint_base) {
-        SMOAP_LOG_WARN("[snapshot] enumerateOwnedShines: mShineHintList is null");
+        SMOAP_LOG_WARN("[snapshot] enumerateOwnedShines skipped: "
+                       "game data not ready (mShineHintList unavailable)");
         return;
     }
 
@@ -81,6 +84,27 @@ void enumerateOwnedShines(ShineEnumerationCallback cb, void* ctx) {
     }
     SMOAP_LOG_INFO("[snapshot] enumerateOwnedShines scanned=%d emitted=%d",
                    scanned, emitted);
+}
+
+int probeShineGot(const char* stage_name, const char* object_id) {
+    if (stage_name == nullptr || object_id == nullptr) return -1;
+    if (stage_name[0] == '\0' || object_id[0] == '\0') return -1;
+    const auto* hint_base = shineHintListBase();
+    if (!hint_base) return -1;  // game data not ready
+
+    for (int i = 0; i < kShineHintListScanCount; ++i) {
+        const std::uint8_t* h = hint_base + (i * kHintInfo_Size);
+        const int uid = *reinterpret_cast<const int*>(h + kHintInfo_UniqueID);
+        if (uid == 0) continue;
+        const char* stage = readFixedSafeStringBuffer(h + kHintInfo_StageName);
+        const char* obj   = readFixedSafeStringBuffer(h + kHintInfo_ObjId);
+        if (!stage || !obj || !stage[0] || !obj[0]) continue;
+        if (std::strcmp(stage, stage_name) == 0 &&
+            std::strcmp(obj, object_id) == 0) {
+            return (*(h + kHintInfo_IsGet) != 0) ? 1 : 0;
+        }
+    }
+    return -1;  // no matching hint entry
 }
 
 void installSnapshotSymbols() {
