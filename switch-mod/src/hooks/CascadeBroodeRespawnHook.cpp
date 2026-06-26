@@ -80,6 +80,10 @@ inline constexpr const char* kCascadeHomeStage = "WaterfallWorldHomeStage";
 // legit first-visit / intro flow, scenario 0/1, is never disturbed).
 inline constexpr int kBroodeScenario = 1;
 
+// Cascade's SMO world id (KingdomUnlock kKingdoms[] index 1). Used only for the
+// diagnostic getScenarioNo(world) read.
+inline constexpr int kCascadeWorldId = 1;
+
 // The AP-display name of Cascade's Multi-Moon, used to resolve its shine_uid
 // from shine_table.h at install. If this logs uid=-1 in-game, the shine_id in
 // shine_table.h differs — grep shine_table.h and update this string.
@@ -97,9 +101,11 @@ struct GameDataHolderAccessor {
 
 using GetCurrentStageNameFn = const char* (*)(GameDataHolderAccessor);
 using IsGotShineFn          = bool (*)(const void* gdf, int uid);
+using GetScenarioNoFn       = int (*)(const void* gdf, int world);
 
 GetCurrentStageNameFn s_getCurrentStageName = nullptr;
 IsGotShineFn          s_isGotShine          = nullptr;
+GetScenarioNoFn       s_getScenarioNo       = nullptr;  // diagnostic only
 int                   s_multiMoonUid        = -1;
 
 inline void* gameDataFileFromAccessor(GameDataHolderAccessor acc) {
@@ -113,11 +119,45 @@ HkTrampoline<int, GameDataHolderAccessor> scenarioPlacementHook =
     hk::hook::trampoline([](GameDataHolderAccessor acc) -> int {
         const int orig = scenarioPlacementHook.orig(acc);
 
-        // Cheap stage scope first — bail unless we're in Cascade home.
-        if (s_getCurrentStageName == nullptr) return orig;
-        const char* stage = s_getCurrentStageName(acc);
-        if (stage == nullptr || std::strcmp(stage, kCascadeHomeStage) != 0)
-            return orig;
+        const char* stage =
+            s_getCurrentStageName ? s_getCurrentStageName(acc) : nullptr;
+        const bool inCascade =
+            stage != nullptr && std::strcmp(stage, kCascadeHomeStage) == 0;
+
+        static int s_diagCascade = 0;
+        static int s_diagOther = 0;
+
+        // === DIAGNOSTIC ===================================================
+        // The 2026-06-26 in-game test showed zero override lines on Cascade
+        // re-entry, but the old hook only logged inside the override branch —
+        // so "no log" couldn't distinguish (A) this free fn is never called on
+        // the placement path from (B) it's called but isGotShine returned true.
+        // Two SEPARATE caps so early-boot calls can't starve the Cascade ones:
+        //   * always log calls made WHILE IN CASCADE (cap 16) — the case we care
+        //     about; if this stays silent on Cascade load, the masker doesn't go
+        //     through this free fn (case A → pivot).
+        //   * log the first few non-Cascade calls (cap 6) just to confirm the fn
+        //     is invoked at all.
+        const bool doLog = inCascade ? (s_diagCascade < 16)
+                                     : (s_diagOther < 6);
+        if (doLog) {
+            if (inCascade) ++s_diagCascade; else ++s_diagOther;
+            void* gdf = gameDataFileFromAccessor(acc);
+            int got = -1;
+            if (inCascade && s_isGotShine && s_multiMoonUid >= 0 && gdf)
+                got = s_isGotShine(gdf, s_multiMoonUid) ? 1 : 0;
+            int storedScen = -1;
+            if (s_getScenarioNo && gdf)
+                storedScen = s_getScenarioNo(gdf, kCascadeWorldId);
+            SMOAP_LOG_INFO("[broode-respawn] getScenarioNoPlacement "
+                           "stage=%s orig=%d cascade=%d storedScen(Cascade)=%d "
+                           "gotMulti=%d uid=%d",
+                           stage ? stage : "(null)", orig,
+                           inCascade ? 1 : 0, storedScen, got, s_multiMoonUid);
+        }
+
+        // === OVERRIDE =====================================================
+        if (!inCascade) return orig;
 
         // Still on / before the Broode scenario: boss is naturally placed
         // (or this is the arrival/intro). Don't touch.
@@ -139,8 +179,8 @@ HkTrampoline<int, GameDataHolderAccessor> scenarioPlacementHook =
         static int s_logged = 0;
         if (s_logged < 8) {
             ++s_logged;
-            SMOAP_LOG_INFO("[broode-respawn] Cascade placement scenario %d -> %d "
-                           "(Multi-Moon uid=%d uncollected) apply=%d #%d",
+            SMOAP_LOG_INFO("[broode-respawn] OVERRIDE Cascade placement scenario "
+                           "%d -> %d (Multi-Moon uid=%d uncollected) apply=%d #%d",
                            orig, kBroodeScenario, s_multiMoonUid,
                            kCascadeRespawnApply ? 1 : 0, s_logged);
         }
@@ -183,6 +223,11 @@ void installCascadeBroodeRespawnHook() {
                         "installed (cannot verify Multi-Moon collection)");
         return;
     }
+
+    // getScenarioNo(world) — diagnostic only (logs Cascade's stored scenario
+    // alongside the placement scenario). Soft-degrade; not required for the gate.
+    s_getScenarioNo = reinterpret_cast<GetScenarioNoFn>(
+        hk::ro::lookupSymbol(smoap::sym::kGameDataFileGetScenarioNo));
 
     // Trampoline getScenarioNoPlacement via runtime lookup + installAtPtr (NOT
     // installAtSym — a miss must soft-degrade, not HK_ABORT the module). Same

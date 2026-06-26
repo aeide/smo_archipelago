@@ -193,6 +193,40 @@ the actual return override so it can ship log-only.
    `uid=-1`, the `shine_id` in `shine_table.h` differs from `"Multi Moon Atop the Falls"` — grep
    `shine_table.h` for the real string and update `kMultiMoonDisplayName`.
 
+### First in-game test — 2026-06-26 (Devon): moon did NOT respawn
+
+Devon left Cascade pre-Broode (collected 6 random Cascade moons via `!getitem` to satisfy the
+rolled leave-gate of 6), went to Sand, returned to Cascade. Broode's Multi-Moon was absent.
+
+From the Ryujinx log:
+- **Check 2 PASSED:** `[broode-respawn] Multi-Moon Multi Moon Atop the Falls -> shine_uid 218` and
+  `installing ... getScenarioNoPlacement @ 0x8a2c284 (apply=1)`. String + install fine.
+- **Check 1 INCONCLUSIVE (the bug):** ZERO `[broode-respawn]` runtime lines on Cascade re-entry.
+  The moon-rock hook DID fire there — `[moon-rock] enable forced (world=1 peace done, scenario=7
+  mr=4)` — so Cascade's stored `getScenarioNo(1)=7` and `isClearWorldMainScenario(Cascade)=true`
+  (advanced way past Broode's scenario 1: exactly the bug). But the v1 hook only logged inside the
+  override branch, so "no line" can't distinguish:
+  - **(A)** `GameDataFunction::getScenarioNoPlacement` (free fn) is NOT on the placement path — the
+    object masker reads the inlined `GameDataFile::getScenarioNoPlacement()` member or a different
+    scenario source → our trampoline never fires for placement. **Strongly favored** (Devon didn't
+    beat Broode, so `isGotShine(218)` should be false → an override WOULD have logged if the fn
+    were called; the silence implies it isn't called in Cascade).
+  - **(B)** it IS called but `isGotShine(218)` returned true (would require uid 218 ≠ Broode's moon;
+    unlikely given the exact name match).
+
+**v2 (this commit): diagnostic upgrade.** The hook now logs EVERY `getScenarioNoPlacement` call
+(separate caps: 16 in-Cascade, 6 elsewhere — so early-boot calls can't starve the Cascade ones),
+printing stage, `orig`, `cascade`, stored `getScenarioNo(Cascade)`, and `gotMulti` (isGotShine).
+Override path unchanged (still apply=1). Next test resolves A vs B:
+- **In-Cascade `[broode-respawn] getScenarioNoPlacement` lines appear with `gotMulti=0`** but no
+  `OVERRIDE` line → impossible (override would fire); if they appear WITH `OVERRIDE` and the moon
+  still doesn't spawn → the placement masker uses a *different* scenario than this getter returns.
+- **No in-Cascade lines at all (only non-Cascade)** → case (A) confirmed: pivot to hooking the
+  actual masker / the `mScenarioNoPlacement` setter (need the decomp body of
+  `GameDataFile::changeNextStage` / `startStage` — couldn't retrieve it remotely; ask Devon to
+  paste `src/System/GameDataFile.cpp`'s scenario-write lines, or fall back to Approach B
+  force-spawn).
+
 ### Build + test loop (Devon)
 
 `sync_shine_table.py` (so `shine_table.h` has the Multi-Moon row) → `build_switchmod.py` → copy
