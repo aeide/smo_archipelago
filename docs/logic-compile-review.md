@@ -8,40 +8,43 @@ Backflip/Long Jump need Crouch, GPJ needs Ground Pound).
 ## Summary
 
 - Moon locations compiled: **702**
-- Free (no requirement): **68**
+- Free (no requirement): **62**
 - Kingdom-gated (Metro/Bowser=Spark pylon, Lake=Zipper/jump): **185**
 - Subarea-gated moons: **29**
 
-## Scenario reachability (coarse post_peace gating)
+## Scenario gating (spreadsheet-authoritative)
 
-Each `post_peace` moon (rock, OR earliest scenario >= the kingdom's peace scenario) ANDs in `{<Kingdom>Peace()}`. Cap/Cloud/Lost/Moon get NO peace gate (no predicate). Cascade non-rock moons are gated by the dedicated Cascade pass below (its clear scenario is its last, so the coarse peace-bit rule doesn't apply).
+Per-kingdom scenario gating now comes from the authored `Odyssey Scenario_Gating Logic.xlsx` (compiled by `parse_scenario_spreadsheet.py` into `data/scenario_gates.json`). The romfs `progress_bit_flag` is NO LONGER the per-kingdom scenario source — it measures object presence, not collectability, so bit-0 story moons leaked to FREE. Carve-outs that remain bit-driven: **Cascade** ({CascadeDeparture()}/{CascadePeace()} leave-deadlock pass) and **Moon** (postwin filler restriction). Each gate is ANDed onto the moon's move-set/capture base.
 
-- Total peace-gated moons (rock + scenario): **325**
-  - Bowser's: 33
+- Scenario gates in table: **504**; applied to compiled moons: **473**
+- Peace-gated (compiled): **269**
+  - Bowser's: 24
   - Cap: 20
-  - Cascade: 13
-  - Cloud: 7
-  - Lake: 22
+  - Cascade: 14
+  - Cloud: 8
+  - Lake: 16
   - Lost: 15
-  - Luncheon: 23
-  - Metro: 32
+  - Luncheon: 19
+  - Metro: 28
   - Moon: 18
   - Ruined: 8
-  - Sand: 42
-  - Seaside: 27
-  - Snow: 32
-  - Wooded: 33
-
-## Scenario reachability (mid_story anchor gating)
-
-Each `mid_story` moon (first-visit < earliest scenario < peace) ANDs in `{canReachLocation(<advancer moon>)}` — the grand story moon (at bit min_scenario-1) whose collection advances the kingdom into that scenario. When no grand sits at that exact bit (e.g. Metro lacks a bit-1 grand) the moon over-gates to the kingdom `{<Kingdom>Peace()}` fragment instead; the peace-anchor moon itself is skipped so it never self-references. Cascade is handled by a DEDICATED pass (build_cascade_anchors): its clear scenario is its last, so it has no peace-bit band — instead every non-first-visit moon is split at ae_bit (after_ending_scenario-1): min_scenario in [1, ae_bit-1] ANDs in `{CascadePeace()}` (pre-leave, vacuous-but-correct since Broode's Chain Chomp is a fixed starter), and min_scenario >= ae_bit ANDs in `{CascadeDeparture()}` (== canReachRegion(Sand Kingdom), the after-ending + moon-rock layers that are only re-entered after leaving). Rocks are classified by bit like any other moon (D2 — no is_moon_rock read).
-
-- Total mid_story-gated moons: **95**
-  - Cascade: 34 (via CascadePeace (pre-leave) + CascadeDeparture (post-leave) dedicated pass)
-  - Luncheon: 10 (via canReachLocation advancer)
-  - Metro: 40 (via canReachLocation advancer; the few without an exact-bit grand over-gate to peace)
-  - Sand: 4 (via canReachLocation advancer)
-  - Wooded: 7 (via canReachLocation advancer)
+  - Sand: 28
+  - Seaside: 22
+  - Snow: 22
+  - Wooded: 27
+- canReachLocation-gated (compiled): **200**
+  - Bowser's: 34
+  - Cap: 1
+  - Cloud: 1
+  - Lake: 8
+  - Lost: 1
+  - Luncheon: 30
+  - Metro: 49
+  - Mushroom: 1
+  - Sand: 28
+  - Seaside: 8
+  - Snow: 20
+  - Wooded: 19
 
 ## Assumptions to verify ("assume MORE")
 

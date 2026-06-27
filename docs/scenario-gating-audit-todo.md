@@ -1,5 +1,48 @@
 # Scenario-gating audit & TODO — vs "Odyssey Scenario_Gating Logic.xlsx"
 
+## ✅ IMPLEMENTED 2026-06-26 — spreadsheet is now the gating source of truth
+
+The fix shipped is **NOT** §7's "anchor every story band by `main_scenario_no`". That
+approach was proven impossible: the §2 leak moons all have `progress_bit_flag` **bit-0
+set** (object present in the arrival layout), so the romfs bit classifies them FREE no
+matter how the bands are anchored — the bit measures *object presence, not
+collectability*. The spreadsheet is the only source that knows the difference.
+
+So per-kingdom scenario gating is now **driven by the authored spreadsheet**:
+
+- **`scripts/parse_scenario_spreadsheet.py`** compiles `Odyssey Scenario_Gating
+  Logic.xlsx` → **`apworld/smo_archipelago/data/scenario_gates.json`** (committed,
+  IP-safe: only `{<K>Peace()}` / `{canReachLocation(<committed name>)}` predicates, never
+  the availability text). 774 rows → 447 gates, 0 warnings.
+- **`scripts/compile_moon_logic.py`** now reads `scenario_gates.json` as the authority
+  for every kingdom, ANDed onto each moon's move-set/capture base. The romfs bit-driven
+  `build_post_peace_names` / `build_mid_story_anchors` / `scenario_fragments_for` are
+  **deprecated** (kept for tests only — do not re-wire).
+- **Carve-outs (still bit-driven, load-bearing):** **Cascade** keeps its
+  `{CascadeDeparture()}`/`{CascadePeace()}` pass (leave-deadlock fix — the flat sheet text
+  can't express "leave and return"); **Moon** keeps its postwin filler restriction. The
+  one Cascade row the sheet contributes is the Fossil Falls fork painting.
+
+Result: **all 70 pre-goal free-leaks closed** (Bowser's, Luncheon, Sand, Snow, Wooded,
+Metro, Cloud, Seaside — incl. the boss/story-advancer moons and 4-prerequisite bosses).
+The 26 remaining "leaks" are `junk_only` post-goal Dark Side + goal-kingdom Mushroom
+filler — the compiler correctly skips `junk_only` (no progression can strand there under
+the festival goal); their gates sit in `scenario_gates.json` ready for any future
+post-festival goal. **0 cycles** (verified incl. `{Peace()}`→`canReachLocation` expansion),
+**no self-references**. §3 Jaxi: NOT a scenario bug — the `{SandPeace()}` is an
+entrance-door reachability heuristic (an OR with a move-set route), and the scenario layer
+correctly leaves the Jaxi moons scenario-free. §11 forks: gated order-independently, hold
+progression (not `junk_only`), don't strand. §4 casing nits: absorbed by the parser's
+punctuation-tolerant resolver (stray leading `'`, trailing `!`, Luncheon's extra colon).
+
+**Regen loop (romfs machine):** `parse_scenario_spreadsheet.py` (needs the xlsx) →
+`compile_moon_logic.py` (needs shine_map+world_scenarios for the Cascade/Moon carve-outs)
+→ `sync_shine_table.py` (names unchanged this pass) → `install_apworld.py` → `Generate.py`.
+Tests: `tests/test_scenario_gating.py::TestSpreadsheetScenarioGates`.
+
+---
+
+
 Working doc produced 2026-06-26 by diffing Devon's authored ground-truth spreadsheet
 (`Odyssey Scenario_Gating Logic.xlsx`, 774 moons — every moon except Darker Side's lone
 multi-moon) against our **compiled** scenario gating in

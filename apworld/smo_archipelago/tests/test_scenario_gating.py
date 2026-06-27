@@ -1,9 +1,15 @@
-"""Unit tests for the coarse scenario-reachability gating in
-scripts/compile_moon_logic.py (post_peace classification).
+"""Unit tests for scenario-reachability gating in scripts/compile_moon_logic.py.
 
-Covers the pure helpers only — no romfs / shine_map dependency — so these run in
-CI without the gitignored Nintendo-IP tables. See
-docs/scenario-reachability-design.md §2-3 for the model these encode.
+Per-kingdom scenario gating is now SPREADSHEET-AUTHORITATIVE (data/scenario_gates.json,
+compiled by parse_scenario_spreadsheet.py) because the romfs progress_bit_flag measures
+object presence, not collectability — bit-0 story moons leaked to FREE. The bit-driven
+helpers (build_post_peace_names / build_mid_story_anchors / scenario_fragments_for) are
+DEPRECATED and no longer wired into gating; their tests remain as historical coverage.
+The live carve-outs that stay bit-driven are Cascade (build_cascade_anchors departure
+pass) and Moon (build_rearrival_names + build_moon_postwin_names).
+
+Pure-helper tests run with no romfs / shine_map dependency; the file-integrity tests
+read the committed (IP-safe) scenario_gates.json + locations.json.
 """
 
 from __future__ import annotations
@@ -329,23 +335,24 @@ class TestBuildRearrivalNames:
         assert "Sand: Mid" not in out          # non-re-arrival kingdom
 
 
-class TestRearrivalGatesFor:
-    def test_gates_for_appends_rearrival_predicate(self):
-        loc = "Lost: Late"
-        gates = cml.gates_for(loc, {}, set(), {}, set(), {loc})
-        assert "{LostPeace()}" in gates
-        # A re-arrival kingdom location NOT in the rearrival set gets no gate.
-        free = cml.gates_for("Lost: Early", {}, set(), {}, set(), set())
-        assert "{LostPeace()}" not in free
-        # Each re-arrival kingdom maps to its own predicate.
-        assert "{CapPeace()}" in cml.gates_for(
-            "Cap: Revisit", {}, set(), {}, set(), {"Cap: Revisit"})
-        assert "{MoonPeace()}" in cml.gates_for(
-            "Moon: Pipe", {}, set(), {}, set(), {"Moon: Pipe"})
+class TestScenarioGateGatesFor:
+    """gates_for appends the per-location scenario fragment from the merged
+    scenario_gate_by_name dict (spreadsheet gates + Cascade/Moon carve-out gates)."""
 
-    def test_default_rearrival_arg_is_noop(self):
-        # Back-compat: gates_for without the rearrival arg behaves as before.
-        assert cml.gates_for("Lost: Late", {}, set(), {}, set()) == []
+    def test_gates_for_appends_scenario_gate(self):
+        sg = {
+            "Lost: Late": "{LostPeace()}",
+            "Sand: Mid": "{canReachLocation(Sand: The Hole in the Desert)}",
+            "Cascade: X": "{CascadeDeparture()}",
+        }
+        assert "{LostPeace()}" in cml.gates_for("Lost: Late", {}, sg, set())
+        assert ("{canReachLocation(Sand: The Hole in the Desert)}"
+                in cml.gates_for("Sand: Mid", {}, sg, set()))
+        assert "{CascadeDeparture()}" in cml.gates_for("Cascade: X", {}, sg, set())
+
+    def test_location_absent_from_table_gets_no_scenario_gate(self):
+        assert cml.gates_for("Lost: Early", {}, {"Lost: Late": "{LostPeace()}"},
+                             set()) == []
 
 
 class TestMoonRockReachCapture:
@@ -355,10 +362,10 @@ class TestMoonRockReachCapture:
 
     def test_gates_for_appends_capture_to_rock_only(self):
         rock = "Cap: Roll On and On"
-        gates = cml.gates_for(rock, {}, set(), {}, {rock})
+        gates = cml.gates_for(rock, {}, {}, {rock})
         assert "|Paragoomba|" in gates
         # A non-rock Cap location (not in moon_rock_names) gets no reach capture.
-        non_rock = cml.gates_for("Cap: Some Overworld Moon", {}, set(), {}, set())
+        non_rock = cml.gates_for("Cap: Some Overworld Moon", {}, {}, set())
         assert "|Paragoomba|" not in non_rock
 
 
@@ -382,15 +389,15 @@ class TestMoonCaveTraversal:
 
     def test_gates_for_appends_traversal_to_cave_moon(self):
         loc = "Moon: In a Hole in the Magma"
-        gates = cml.gates_for(loc, {}, set(), {}, set(), frozenset(), {loc})
+        gates = cml.gates_for(loc, {}, {}, set(), {loc})
         assert cml.MOON_CAVE_TRAVERSAL in gates
         # A Moon location NOT in the cave set gets no traversal gate.
-        free = cml.gates_for("Moon: Some Overworld Moon", {}, set(), {}, set())
+        free = cml.gates_for("Moon: Some Overworld Moon", {}, {}, set())
         assert cml.MOON_CAVE_TRAVERSAL not in free
 
     def test_default_cave_arg_is_noop(self):
         # Back-compat: gates_for without the moon_cave arg behaves as before.
-        assert cml.gates_for("Moon: In a Hole in the Magma", {}, set(), {}, set()) == []
+        assert cml.gates_for("Moon: In a Hole in the Magma", {}, {}, set()) == []
 
 
 class TestBuildMoonPostwinNames:
@@ -488,13 +495,17 @@ class TestBuildSubareaScenarioGates:
     EXCLUDED = {"Sewers"}
     LOC_NAMES = {"Sand: Late", "Sand: Mid", "Sand: Early", "Metro: Festival",
                  "Sand: Overworld"}
-    POST_PEACE = {"Sand: Late", "Metro: Festival"}
-    ANCHORS = {"Sand: Mid": "{canReachLocation(Sand: The Hole in the Desert)}"}
+    # Merged scenario gate table (spreadsheet + carve-out gates) — the single source
+    # build_subarea_scenario_gates now reads. "Sand: Early" deliberately absent (free).
+    SCEN = {
+        "Sand: Late": "{SandPeace()}",
+        "Metro: Festival": "{MetroPeace()}",
+        "Sand: Mid": "{canReachLocation(Sand: The Hole in the Desert)}",
+    }
 
     def _build(self, junk=frozenset()):
         return cml.build_subarea_scenario_gates(
-            self.SUBAREAS, self.EXCLUDED, junk, self.LOC_NAMES,
-            self.POST_PEACE, self.ANCHORS, set())
+            self.SUBAREAS, self.EXCLUDED, junk, self.LOC_NAMES, self.SCEN)
 
     def test_pooled_members_exported_with_their_own_fragment(self):
         gates = self._build()
@@ -545,6 +556,121 @@ class TestSubareaScenarioGatesFileIntegrity:
                 assert call in baked[loc], (
                     f"{loc}: exported {call} missing from baked requires "
                     f"{baked[loc]!r} — stale regen?")
+
+
+class TestSpreadsheetScenarioGates:
+    """The committed scenario_gates.json (authored ground truth, compiled by
+    parse_scenario_spreadsheet.py) and its application into locations.json. These
+    run without shine_map — both files are committed and IP-safe."""
+
+    _DATA = Path(__file__).resolve().parents[1] / "data"
+
+    def _json(self, name):
+        import json
+        return json.loads((self._DATA / name).read_text(encoding="utf-8"))
+
+    def _gates(self):
+        p = self._DATA / "scenario_gates.json"
+        if not p.exists():
+            pytest.skip("scenario_gates.json not generated")
+        return self._json("scenario_gates.json")
+
+    def test_all_canreach_targets_exist(self):
+        import re
+        gates = self._gates()
+        loc_names = {l["name"] for l in self._json("locations.json")}
+        for name, frag in gates.items():
+            for tgt in re.findall(r"canReachLocation\(([^)]+)\)", frag):
+                assert tgt in loc_names, f"{name}: canReachLocation({tgt}) is not a location"
+
+    def test_no_self_reference(self):
+        gates = self._gates()
+        for name, frag in gates.items():
+            assert f"canReachLocation({name})" not in frag, f"{name} gates on itself"
+
+    def test_no_cycles_including_peace_expansion(self):
+        # Each {<K>Peace()} predicate expands to canReachLocation(<clear moon>); a cycle
+        # across that boundary would make a kingdom permanently incompletable.
+        import re
+        gates = self._gates()
+        peace_loc = {
+            "CascadePeace": "Cascade: Multi Moon Atop the Falls",
+            "SandPeace": "Sand: The Hole in the Desert",
+            "LakePeace": "Lake: Broodals Over the Lake",
+            "WoodedPeace": "Wooded: Defend the Secret Flower Field!",
+            "MetroPeace": "Metro: A Traditional Festival!",
+            "SnowPeace": "Snow: The Bound Bowl Grand Prix",
+            "SeasidePeace": "Seaside: The Glass Is Half Full!",
+            "LuncheonPeace": "Luncheon: Cookatiel Showdown!",
+            "RuinedPeace": "Ruined: Battle with the Lord of Lightning!",
+            "BowserPeace": "Bowser's: Showdown at Bowser's Castle",
+        }
+
+        def edges(name):
+            frag = gates.get(name, "")
+            e = set(re.findall(r"canReachLocation\(([^)]+)\)", frag))
+            for fn in re.findall(r"\{(\w+)\(\)\}", frag):
+                if fn in peace_loc:
+                    e.add(peace_loc[fn])
+            return {x for x in e if x in gates}
+
+        color = {}
+        bad = []
+
+        def dfs(u, stack):
+            color[u] = 1
+            stack.append(u)
+            for v in edges(u):
+                if color.get(v, 0) == 1:
+                    bad.append(stack[stack.index(v):] + [v])
+                elif color.get(v, 0) == 0:
+                    dfs(v, stack)
+            color[u] = 2
+            stack.pop()
+
+        for n in gates:
+            if color.get(n, 0) == 0:
+                dfs(n, [])
+        assert not bad, f"cycle(s) in scenario gating: {bad[:3]}"
+
+    def test_carveouts_only_emit_fork_painting(self):
+        # Cascade/Moon are owned by the dedicated departure / postwin passes; the only
+        # carve-out-kingdom entry the spreadsheet contributes is the fork painting.
+        gates = self._gates()
+        cascade = [k for k in gates if k.startswith("Cascade: ")]
+        moon = [k for k in gates if k.startswith("Moon: ")]
+        assert cascade == ["Cascade: Secret Path to Fossil Falls!"]
+        assert moon == []
+
+    def test_known_leaks_now_gated_in_locations(self):
+        # Regression guard for the §2 bit-0 free-leaks: each must now carry its
+        # spreadsheet scenario predicate in the baked locations.json requires.
+        baked = {l["name"]: l.get("requires", "") for l in self._json("locations.json")}
+        expect = {
+            "Luncheon: Surrounded by Tall Mountains":
+                "canReachLocation(Luncheon: Under the Cheese Rocks)",
+            "Snow: Dashing Over Cold Water!":
+                "canReachLocation(Snow: The Bound Bowl Grand Prix)",
+            "Wooded: Behind the Rock Wall":
+                "canReachLocation(Wooded: Flower Thieves of Sky Garden)",
+            "Metro: Pushing Through the Crowd":
+                "canReachLocation(Metro: New Donk City's Pest Problem)",
+            "Bowser's: Smart Bombing":
+                "canReachLocation(Bowser's: Infiltrate Bowser's Castle!)",
+        }
+        for name, needle in expect.items():
+            if name in baked:
+                assert needle in baked[name], (
+                    f"{name} should be gated on {needle} but requires={baked[name]!r} "
+                    f"— stale compile? re-run compile_moon_logic.py")
+
+    def test_fork_moons_carry_order_independent_gate(self):
+        gates = self._gates()
+        assert gates.get("Cascade: Secret Path to Fossil Falls!") == \
+            "({SnowPeace()} or {SeasidePeace()})"
+        assert gates.get("Sand: Secret Path to Tostarena!") == \
+            "{canReachLocation(Wooded: Flower Thieves of Sky Garden)}"
+        assert gates.get("Snow: Secret Path to Shiveria!") == "{MoonPeace()}"
 
 
 if __name__ == "__main__":

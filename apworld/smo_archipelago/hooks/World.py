@@ -634,7 +634,49 @@ def after_create_items(item_pool: list, world: World, multiworld: MultiWorld, pl
         item_pool, gates,
         prefer_demoting_multimoons=is_option_enabled(
             multiworld, player, "multi_moon_shuffle"))
+    _demote_mobility_only_abilities(item_pool)
     return item_pool
+
+
+def _demote_mobility_only_abilities(item_pool: list) -> None:
+    """Demote a small, hand-audited set of progression-classified ability items
+    that are NOT strictly required to reach anything, from progression to useful.
+
+    This relieves the progression fill: these items are marked ``advancement``
+    (so they avoid junk_only slots) yet are referenced by NO location's
+    ``requires`` — fill_restrictive must still thread them through the narrow
+    early frontier even though they open nothing, which is what FillErrors a
+    tight ``minimal`` seed by 1-2 items. Demoting to ``useful`` drops them into
+    the lenient non-progression fill instead. They are still placed, still
+    received, still enforced in-game (the Switch P4 gate is independent of AP
+    item classification) — only the fill PLACEMENT constraint is relaxed.
+
+    The set is deliberately narrow and Devon-audited (do not widen without
+    confirming the item gates nothing in-logic AND nothing in-game-critical):
+      * Progressive Crouch beyond level 1 — the Crouch->Roll->Roll Boost chain
+        is pure mobility; only basic Crouch (level 1) gates a moon, so the 1st
+        copy stays progression and the 2nd/3rd demote.
+      * Spin Throw — never strictly required for any check.
+      * Ledge Grab — no longer a real ability (folded into Wall Slide); pending
+        full removal as a check, demote so it never constrains the fill.
+
+    NOT touched (gate progression in-game and/or via entrance-shuffled moons):
+    Progressive Ground Pound (Dive), Progressive Jump (height routes), Yoshi
+    (shuffled Mushroom moons), Bowser / Spark pylon (region-gating captures).
+    """
+    DEMOTE_ALL = {"Spin Throw", "Ledge Grab"}
+    KEEP_FIRST = {"Progressive Crouch": 1}  # name -> # of progression copies kept
+    kept: dict[str, int] = {}
+    for it in item_pool:
+        if not it.advancement:
+            continue
+        name = it.name
+        if name in DEMOTE_ALL:
+            it.classification = ItemClassification.useful
+        elif name in KEEP_FIRST:
+            kept[name] = kept.get(name, 0) + 1
+            if kept[name] > KEEP_FIRST[name]:
+                it.classification = ItemClassification.useful
 
 # Called before rules for accessing regions and locations are created.
 def before_set_rules(world: World, multiworld: MultiWorld, player: int):
@@ -809,8 +851,38 @@ def _apply_no_logic(world: World, multiworld: MultiWorld, player: int) -> None:
                  "accessibility relaxed to minimal")
 
 
+def _relax_full_accessibility(world: World, multiworld: MultiWorld, player: int) -> None:
+    """Relax this slot's accessibility from ``full`` to ``minimal``.
+
+    This world is NOT satisfiable under ``full`` accessibility: the entrance
+    shuffle x randomize_kingdom_gates region graph leaves a sphere-0 of ~3
+    locations, and the greedy filler cannot open all ~776 locations through it
+    (FillError, ~200 unplaced). The design has always targeted ``minimal`` — the
+    loopback seed says so verbatim — but the AP yaml TEMPLATE defaults
+    ``accessibility: full``, so a player using the template default hits the
+    wall. Rather than fail generation, relax full -> minimal here (the same
+    mechanism _apply_no_logic uses), with a log so it's never silent.
+
+    Only ``full`` is relaxed: a player who deliberately picked ``minimal`` or
+    ``items`` keeps their choice.
+    """
+    acc = getattr(world.options, "accessibility", None)
+    if acc is None:
+        return
+    full = getattr(acc, "option_full", None)
+    minimal = getattr(acc, "option_minimal", None)
+    if full is None or minimal is None or acc.value != full:
+        return
+    acc.value = minimal
+    logging.info(
+        "accessibility relaxed full -> minimal for player %d: this world's "
+        "entrance-shuffle/kingdom-gate logic is not satisfiable under full "
+        "accessibility (see _relax_full_accessibility).", player)
+
+
 # Called after rules for accessing regions and locations are created, in case you want to see or modify that information.
 def after_set_rules(world: World, multiworld: MultiWorld, player: int):
+    _relax_full_accessibility(world, multiworld, player)
     _apply_filler_only_rules(world, multiworld, player)
     _apply_junk_only_rules(world, multiworld, player)
     _apply_moon_postwin_rules(world, multiworld, player)
