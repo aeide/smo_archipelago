@@ -21,7 +21,6 @@ achievable with the effort noted," not "scheduled."
 | Idea | Detail doc | Feasibility | Effort |
 |---|---|---|---|
 | Strip Cappy's inter-kingdom flight commentary | [future-feasibility-strip-cappy-commentary.md](future-feasibility-strip-cappy-commentary.md) | **70%** | Medium |
-| Free Lake/Wooded detour with a combined "both" gate | [future-feasibility-lake-wooded-free-detour.md](future-feasibility-lake-wooded-free-detour.md) | **80%** | Medium |
 | Moon recolor (by granted kingdom + AP class) + purple-coin model swap | [future-feasibility-moon-colors-and-coin-models.md](future-feasibility-moon-colors-and-coin-models.md) | recolor **95%** / coin models **~55%** | Small / High |
 | Randomize all background music | [future-feasibility-bgm-randomizer.md](future-feasibility-bgm-randomizer.md) | **70%** | Medium |
 | Warp paintings always available (not randomized) + in logic | [future-feasibility-warp-paintings-always-open.md](future-feasibility-warp-paintings-always-open.md) | **70%** | Medium |

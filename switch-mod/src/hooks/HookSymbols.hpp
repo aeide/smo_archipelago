@@ -657,6 +657,32 @@ inline constexpr const char* kGameDataFunctionGetWorldIndexClash =
     "_ZN16GameDataFunction18getWorldIndexClashEv";
 inline constexpr const char* kGameDataFunctionGetCurrentStageName =
     "_ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor";
+
+// Odyssey "always available in any visited overworld" — diagnostic getters
+// (logger-only spike; see game/OdysseyRescue.hpp). Read-only home-ship flags
+// used to characterize the Odyssey save-state per visited overworld before
+// committing to a force-fix shape. NO mutators here — the spike never writes
+// save state. The mutators (activateHome/launchHome) are added with the
+// force-fix tier once the trace decides which flag(s) gate boardability.
+inline constexpr const char* kGameDataFunctionIsExistHome =
+    "_ZN16GameDataFunction11isExistHomeE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionIsActivateHome =
+    "_ZN16GameDataFunction14isActivateHomeE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionIsLaunchHome =
+    "_ZN16GameDataFunction12isLaunchHomeE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionGetHomeLevel =
+    "_ZN16GameDataFunction12getHomeLevelE22GameDataHolderAccessor";
+
+// Odyssey force-acquire mutators — see game/OdysseyRescue.hpp
+// (forceAcquireOdyssey). Write the same save-state the Broode-completion path
+// sets so the Odyssey is present + boardable on first Cascade arrival. Driven
+// from the broode-respawn changeNextStage commit, pre-stage-load.
+inline constexpr const char* kGameDataFunctionActivateHome =
+    "_ZN16GameDataFunction12activateHomeE20GameDataHolderWriter";
+inline constexpr const char* kGameDataFunctionUpHomeLevel =
+    "_ZN16GameDataFunction11upHomeLevelE20GameDataHolderWriter";
+inline constexpr const char* kGameDataFunctionLaunchHome =
+    "_ZN16GameDataFunction10launchHomeE20GameDataHolderWriter";
 // GameDataFunction::getScenarioNoPlacement(GameDataHolderAccessor) — the
 // out-of-line free-function WRAPPER. The 2026-06-26 in-game test proved the
 // object-placement masker does NOT call this wrapper (zero diagnostics fired):

@@ -45,6 +45,7 @@
 #include "../ap/ApState.hpp"
 #include "../game/KingdomOrderGate.hpp"
 #include "../game/KingdomUnlock.hpp"
+#include "../game/OdysseyRescue.hpp"
 #include "../util/Log.hpp"
 #include "HookSymbols.hpp"
 
@@ -317,6 +318,18 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                     SMOAP_LOG_INFO("[broode-respawn] changeNextStage force Cascade "
                                    "arrival ChangeStageInfo.scenario %d -> %d (dest=%s)",
                                    before, sc, dest);
+
+                    // First-arrival Odyssey fix: sc>=0 means we're committing
+                    // into Cascade pre-Broode (the scenario-1 force above keeps
+                    // Broode present). Force-acquire the Odyssey here, BEFORE the
+                    // stage loads, so Cascade inits with the parked + boardable
+                    // ship instead of the buried wreck. Measured: every
+                    // Odyssey-flight arrival lands parked (exist/act/launch=1);
+                    // the story-drop arrives buried with the flags at 0. This
+                    // tests whether setting the flags pre-load is sufficient
+                    // (H1) or the entrance-id itself gates the wreck (H2 — then
+                    // we reroute the arrival to the flight entrance instead).
+                    smoap::game::forceAcquireOdyssey("changeNextStage->Cascade");
                 }
             }
             fileChangeNextStageHook.orig(self, info, raceType);

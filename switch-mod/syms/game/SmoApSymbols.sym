@@ -151,6 +151,27 @@ _ZN16GameDataFunction11unlockWorldE20GameDataHolderWriteri
 _ZN16GameDataFunction18getWorldIndexClashEv
 _ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor
 
+// Odyssey "always available in any visited overworld" — diagnostic getters
+// (logger-only spike; see game/OdysseyRescue.hpp). Read-only home-ship flags
+// used to characterize the Odyssey save-state per visited overworld before
+// committing to a force-fix shape. No mutators yet — these never write save
+// state, so the spike cannot corrupt a save.
+_ZN16GameDataFunction11isExistHomeE22GameDataHolderAccessor
+_ZN16GameDataFunction14isActivateHomeE22GameDataHolderAccessor
+_ZN16GameDataFunction12isLaunchHomeE22GameDataHolderAccessor
+_ZN16GameDataFunction12getHomeLevelE22GameDataHolderAccessor
+
+// Odyssey force-acquire mutators — make the Odyssey present + boardable in
+// Cascade on FIRST arrival (and any visited overworld) by writing the same
+// save-state the Broode-completion path sets. Driven from the broode-respawn
+// changeNextStage commit, BEFORE the Cascade stage loads (write-the-bit-before-
+// the-reader). activateHome -> isExistHome/isActivateHome; upHomeLevel -> level
+// 0->1; launchHome -> isLaunchHome. Measured target state = exist/act/launch=1
+// level>=1 (the parked+boardable pose every Odyssey-flight arrival shows).
+_ZN16GameDataFunction12activateHomeE20GameDataHolderWriter
+_ZN16GameDataFunction11upHomeLevelE20GameDataHolderWriter
+_ZN16GameDataFunction10launchHomeE20GameDataHolderWriter
+
 // GrowSeedInstantHook: rs::getGrowFlowerTime(const al::LiveActor*,
 // const al::PlacementId*). The public rs:: wrapper around
 // GameDataFile::getGrowFlowerTime — the direct GameDataFile method is

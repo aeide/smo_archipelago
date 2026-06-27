@@ -51,4 +51,19 @@ void installOdysseyRescueSymbols();
 // Kgamer77's proven cadence.
 void runOdysseySoftlockSweep();
 
+// Force the Odyssey into its present + boardable save-state (the parked pose
+// every Odyssey-flight arrival shows): activateHome + upHomeLevel(0->1) +
+// launchHome on the cached GameDataHolder. No-op once the Odyssey is already
+// owned (post-Broode / normal revisit). Call from a changeNextStage commit
+// BEFORE the destination stage loads, so the stage init reads the acquired
+// state — the "write the bit before the reader runs" pattern. `tag` is a
+// caller label for the one-shot diagnostic log. Resolves its mutators
+// independently; a missing symbol self-disables only this path.
+//
+// Primary use: the Cap->Cascade first-arrival fix (driven from
+// CascadeBroodeRespawnHook via EntranceShuffleHook's changeNextStage seam) so
+// the Odyssey is parked + boardable in Cascade before Madame Broode — Broode
+// herself is kept present by the broode-respawn scenario force.
+void forceAcquireOdyssey(const char* tag);
+
 }  // namespace smoap::game
