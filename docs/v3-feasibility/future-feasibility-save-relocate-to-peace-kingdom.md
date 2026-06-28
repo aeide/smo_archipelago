@@ -1,5 +1,32 @@
 # Relocate a save to Cap Kingdom in its peace state, Odyssey alongside (Devon, 2026-06-22)
 
+> ## ✅ COMPLETE (2026-06-28) — achieved by manual in-game bootstrap, not Approach B
+> The deliverable exists: **a real save standing in post-peace Cap Kingdom with the
+> Odyssey landed and 0 moons collected** — exactly the start this doc set out to
+> produce. It was reached **without** offline `.bin` editing (Approach A) *or* the
+> recommended runtime `initializeData` surgery (Approach B). Instead Devon **played
+> the game into that state** behind three temporary, single-flag switch-mod levers
+> ("the bootstrap"), then saved normally — so the save is fully legitimate and
+> AP-consistent (it was produced by real flight, not by forcing derived state).
+>
+> **The bootstrap (all reverted 2026-06-28, see "How it was actually done" below):**
+> 1. `kBootstrapFreeCascadeTakeoff` lever (`findUnlockShineNum[Cascade] → 0`) — Odyssey
+>    takeoff allowed at 0 moons.
+> 2. Forced Cascade's placement scenario to **7 (world-peace)** on uncollected-Broode
+>    arrivals instead of 1 — so the buried pre-Broode Odyssey loaded **parked + globe-
+>    usable**, Multi-Moon still uncollected (the moon's got-flag is independent of the
+>    scenario).
+> 3. `GlobeBarrierHook` — tore down the `WaterfallWorldHomeBarrier` force field
+>    (ultimately a red herring; the scenario-7 force is what unlocked the globe).
+>
+> Devon glitched OOB to the buried Cascade Odyssey, flew Cascade → Sand → … → **Cap**,
+> and saved. **All three levers have been removed** and Cascade's pre-Broode force is
+> back to scenario 1 (Broode present + Multi-Moon collectable) — see the revert note.
+>
+> **What this unlocks next:** a `start_kingdom`/`start_at_peace`-style **YAML option to
+> put Cap-Kingdom peace in sphere-0 logic**, now that games can start from this save.
+> Handoff: [handoff-cap-peace-sphere-0.md](../handoff-cap-peace-sphere-0.md).
+
 **Goal.** Take a **minimally-progressed real save** (Devon's example: finished the
 Cap prologue, beat the opening miniboss, flew to Cascade, saved — **zero moons
 collected**) and transform it so that on load Mario is **standing back in Cap
@@ -210,7 +237,61 @@ delivers the corollary Devon actually wants.
 
 ---
 
-## Recommendation / first step (when pursued)
+## How it was actually done (2026-06-27/28) — the third path
+
+Neither Approach A nor B was used. A **third path emerged in conversation and won**:
+rather than *forcing* the destination state onto a save (and fighting the recompute),
+**reach the state by ordinary play**, with temporary mod levers only removing the two
+artificial blockers, then let a normal save capture it. Because the save is the
+product of a real Odyssey flight, the recompute, peace accounting, and AP deposit
+state are all self-consistent *for free* — the exact consistency hazard that downgraded
+Approach A never arises.
+
+The blockers and their temporary levers (all reverted — see below):
+
+1. **Cascade leave-gate** → `kBootstrapFreeCascadeTakeoff` forced
+   `findUnlockShineNum[Cascade]` to 0 (UnlockShineNumHook), so the Odyssey could take
+   off at 0 moons.
+2. **Pre-Broode globe lock** → the real gate. With the Multi-Moon uncollected, our own
+   [CascadeBroodeRespawnHook](../../switch-mod/src/hooks/CascadeBroodeRespawnHook.cpp)
+   forces Cascade's placement scenario to **1** (Broode present) — and scenario 1 is
+   *also* the state where the globe/world-map is walled off. The fix was to flip that
+   same "she hasn't been killed" force to target **scenario 7** (Cascade's world-peace
+   layout) while the lever was on: the ship loads **parked + globe-usable**, Broode is
+   absent, and the Multi-Moon stays uncollected (got-flag ⟂ scenario). This confirmed
+   the corollary's core premise in-game: **post-peace scenario ⇒ landed/launchable
+   Odyssey.**
+3. **A visible "force field"** ringing the buried Odyssey → `GlobeBarrierHook` tore down
+   the `WaterfallWorldHomeBarrier` (a `BarrierField` actor) via the frame pump. This
+   turned out to be a **red herring** — removing the barrier alone did *not* unlock the
+   globe; the scenario-7 force (blocker 2) is what actually did. Kept only because it
+   was harmless and already built.
+
+Devon then glitched Mario OOB to the buried pre-Broode Cascade Odyssey, flew
+Cascade → Sand → … → **Cap**, and **saved in Cap**. Result: a save loading into
+post-peace Cap, Odyssey landed, 0 moons — *precisely* the target.
+
+**Revert (2026-06-28).** All bootstrap scaffolding was removed once the save existed:
+deleted `GlobeBarrierHook.cpp` + `BootstrapLevers.hpp`, removed their wiring from
+`main.cpp` and the two `BarrierField` symbols from `SmoApSymbols.sym`, dropped the
+free-Cascade-takeoff block from `UnlockShineNumHook.cpp`, and restored
+`CascadeBroodeRespawnHook.cpp` to force scenario **1** unconditionally on
+uncollected-Broode Cascade arrivals (Broode present + Multi-Moon collectable — the
+permanent, intended behavior). The next switch-mod build ships the clean tree.
+
+**Why this beats A and B for *this* deliverable:** A/B both try to *synthesize* a
+derived state and must out-argue the per-load recompute (and, for A, also reconcile AP
+accounting by hand). Playing into the state sidesteps both: the quest state that peace
+is derived from is set *by the game itself* during the flight, so the recompute agrees
+permanently and AP stays consistent. Approaches A/B remain the right model only if a
+state is ever needed that *cannot* be reached by play (none was here). Note this
+produces **one save artifact**, not a reusable feature — making Cap-peace a *startable*
+configuration for any player is the follow-up YAML work (handoff below), which is a
+logic-tier change, not another save bootstrap.
+
+---
+
+## Recommendation / first step (when pursued — HISTORICAL, superseded by the above)
 
 1. **Do not hand-edit `File1.bin`.** It's the weak path (Approach A) and bypasses
    AP. If a throwaway experiment is ever wanted, back it up first (Devon already

@@ -66,4 +66,25 @@ void runOdysseySoftlockSweep();
 // herself is kept present by the broode-respawn scenario force.
 void forceAcquireOdyssey(const char* tag);
 
+// Logger spike (2026-06-27): dump the first-visit / world-warp-demo flag set
+// (isAlreadyGoWorld / isFirstTimeNextWorld / isForwardWorldWarpDemo /
+// isPlayDemoWorldWarp / isEnterStageFirst) for the current world, NOW, with the
+// given tag. READ-ONLY. Unlike the throttled sweep variant this fires
+// unconditionally on every call — use it at the changeNextStage commit (before
+// orig) to capture the first-arrival demo decision while it's still pending,
+// since the transient demo flags may be cleared by the time the per-frame sweep
+// reads them post-arrival. Self-disables if its getters didn't resolve.
+void logWorldWarpDemoDiagNow(const char* tag);
+
+// First-arrival parked-pose FIX (2026-06-27). Mark Cascade "already visited"
+// (GameProgressData::setAlreadyGoWorld for the Waterfall world index) so the
+// engine runs the normal PARKED Odyssey flight landing instead of the buried
+// first-visit demo. The warpdemo spike proved isAlreadyGoWorld(Cascade) is the
+// buried-vs-parked discriminator (0 = buried first arrival, 1 = parked return
+// flight; identical forced scenario + entrance id otherwise). Call from the
+// Cascade pre-Broode changeNextStage commit BEFORE orig, passing the
+// GameDataFile* the hook receives (we read mGameProgressData @ +0x6a8 off it).
+// Idempotent and self-disabling if its symbols didn't resolve.
+void forceCascadeAlreadyVisited(void* gameDataFile, const char* tag);
+
 }  // namespace smoap::game

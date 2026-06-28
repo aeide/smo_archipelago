@@ -27,7 +27,7 @@ achievable with the effort noted," not "scheduled."
 | Show AP check name (+ owning player) in story-moon REVEAL cutscene | [future-feasibility-story-moon-check-name.md](future-feasibility-story-moon-check-name.md) | **65%** | Medium |
 | Shopsanity (golden / purple / full) | [future-feasibility-shopsanity.md](future-feasibility-shopsanity.md) | **75%** | High |
 | Odyssey always present + boardable in any visited overworld | [future-feasibility-odyssey-always-available.md](future-feasibility-odyssey-always-available.md) | **85%** | Low–Med |
-| Relocate a save to Cap Kingdom in its peace state (Odyssey landed) | [future-feasibility-save-relocate-to-peace-kingdom.md](future-feasibility-save-relocate-to-peace-kingdom.md) | **70%** (Cascade-landing corollary ~80%) | High |
+| Relocate a save to Cap Kingdom in its peace state (Odyssey landed) | [future-feasibility-save-relocate-to-peace-kingdom.md](future-feasibility-save-relocate-to-peace-kingdom.md) | ✅ **COMPLETE** (2026-06-28) | — |
 | Decoupled / chained entrance randomizer (full any-to-any) | [future-feasibility-decoupled-entrance-randomizer.md](future-feasibility-decoupled-entrance-randomizer.md) | **65%** | Very High |
 
 ---
@@ -307,7 +307,30 @@ randomizer (below) lists as a top risk. Full write-up:
 
 ---
 
-## Relocate a save to Cap Kingdom in its peace state (Odyssey landed)
+## Relocate a save to Cap Kingdom in its peace state (Odyssey landed) — ✅ COMPLETE (2026-06-28)
+
+**DONE — via a third path, not the Approach B this recon recommended.** The
+deliverable exists: a real save loading into **post-peace Cap with the Odyssey landed
+and 0 moons collected**. It was reached **by ordinary play behind temporary mod
+levers**, not by editing the save (A) or runtime `initializeData` surgery (B): a
+single-flag bootstrap (free Cascade takeoff at 0 moons + forcing Cascade's pre-Broode
+placement scenario to **7/world-peace** so the buried Odyssey loaded parked + globe-
+usable, Multi-Moon untouched) let Devon glitch OOB to the buried Cascade Odyssey, fly
+Cascade → … → Cap, and **save in Cap**. Because the save is the product of a genuine
+flight, the per-load scenario recompute, peace accounting, and AP deposit state are all
+self-consistent for free — the exact consistency hazard that downgraded the editing
+approach never arises, and the Cascade "post-peace ⇒ landed Odyssey" corollary was
+confirmed in-game. All bootstrap scaffolding has been **reverted** (Cascade's pre-Broode
+force is back to scenario 1 = Broode present + Multi-Moon collectable). **This produced
+one save artifact, not a startable feature** — the natural follow-up is a YAML option to
+make Cap-peace a sphere-0 start for any player (handoff:
+[handoff-cap-peace-sphere-0.md](../handoff-cap-peace-sphere-0.md)). Full write-up
+(method + revert):
+[future-feasibility-save-relocate-to-peace-kingdom.md](future-feasibility-save-relocate-to-peace-kingdom.md).
+
+---
+
+## Relocate a save to Cap Kingdom in its peace state (Odyssey landed) — original recon (HISTORICAL)
 
 **70% · High effort (Cascade-landing corollary ~80%).** Take a minimally-progressed
 real save (Cap prologue + opening miniboss done, flown to Cascade, **zero moons**) and

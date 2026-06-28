@@ -183,17 +183,18 @@ void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName
         return;
     }
 
-    // Uncollected: force the placement scenario to Broode's layout. Log every
-    // time `before` is NOT already 1 — that directly reveals whether a recompute
-    // clobbers our value between commits (repeated "N->1" = clobbered each
-    // session; a single "N->1" then silence = our write held).
+    // Uncollected: force the placement scenario back to Broode's scenario 1. Log
+    // every time `before` is NOT already 1 — that directly reveals whether a
+    // recompute clobbers our value between commits (repeated "N->1" = clobbered
+    // each session; a single "N->1" then silence = our write held).
     static int s_log = 0;
     if (before != kBroodeScenario && s_log < 40) {
         ++s_log;
         SMOAP_LOG_INFO("[broode-respawn] %s FORCE Cascade mScenarioNoPlacement "
                        "%d -> %d (mScenarioNoOverride=%d Multi-Moon uid=%d "
                        "uncollected) apply=%d #%d",
-                       tag, before, kBroodeScenario, override, s_multiMoonUid,
+                       tag, before, kBroodeScenario, override,
+                       s_multiMoonUid,
                        kCascadeRespawnApply ? 1 : 0, s_log);
     }
     if (kCascadeRespawnApply && before != kBroodeScenario)
@@ -252,11 +253,12 @@ void installCascadeBroodeRespawnHook() {
     // (which indexes by shine INDEX, not shine_uid, and mis-reported forever).
     SMOAP_LOG_INFO("[broode-respawn] armed (force ChangeStageInfo.scenario -> %d "
                    "on commit into %s while Multi-Moon (stage=%s obj=%s) "
-                   "uncollected; + belt-and-braces mScenarioNoPlacement@0x%zx; "
-                   "apply=%d) — invoked from changeNextStage",
+                   "uncollected; + belt-and-braces "
+                   "mScenarioNoPlacement@0x%zx; apply=%d) — invoked from "
+                   "changeNextStage",
                    kBroodeScenario, kCascadeHomeStage, s_multiMoonStage,
-                   s_multiMoonObj, kOffScenarioNoPlacement,
-                   kCascadeRespawnApply ? 1 : 0);
+                   s_multiMoonObj,
+                   kOffScenarioNoPlacement, kCascadeRespawnApply ? 1 : 0);
 }
 
 }  // namespace smoap::hooks

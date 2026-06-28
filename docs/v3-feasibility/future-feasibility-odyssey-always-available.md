@@ -214,6 +214,185 @@ intentional grounding.
 
 ---
 
+---
+
+## Session log — Cascade first-arrival pose + leave-gate (ACTIVE WORK)
+
+Running handoff log so any session can pick this up. Newest entries on top of each
+subsection. The narrow goal that's actually being built right now: **on FIRST
+arrival in Cascade (pre-Madame-Broode), the Odyssey is parked + boardable at its
+"return" landing pad, and the player can fly back to Cap at any time** — a concrete
+slice of the general feature above, and the entrance-randomizer landing-safety case.
+
+### State of play (2026-06-27)
+
+- **H2 (entrance-id hijack) — TESTED IN-GAME, CONCLUSIVELY DEAD.** Fresh-file first
+  Cascade arrival, log `Ryujinx_1.3.3_2026-06-27_17-36-35.log`: **every lever fired
+  correctly** and the ship still buried + wire cutscene still played. Trace:
+  `[entrance:file] id='start' scenario=-1 cur=CapWorldHomeStage` → Broode scenario
+  `-1→1` → `forceAcquireOdyssey` exist/act/launch `0→1` → **H2** id `'start'→''` →
+  `mScenarioNoPlacement 0→1`; post-load Cascade exist/act/launch=1, freeship level
+  `0→1` held (1408 shows level=1). So **none of {entrance id, ChangeStageInfo
+  scenario, Home activate/launch flags, home level}** controls the first-arrival
+  pose or the Cap→Cascade wire. Stop poking those four.
+- **The lever is the first-visit / world-warp DEMO, not save-state.** Decisive
+  datapoint (Devon, 2026-06-27): a **RETURN flight to Cascade forced to scenario 1
+  lands PARKED with Broode present**, while the **FIRST arrival at the same scenario
+  1 buries it** — identical scenario, opposite pose ⇒ the difference is a
+  first-visit/demo flag, NOT the scenario. So Broode-present and parked-ship ARE
+  decouplable (already proven by the early-leave-then-return case); the remaining
+  job is reproducing that decoupling on the *first* arrival. Candidate flags
+  (`GameDataFunction.h`): `isAlreadyGoWorld(worldId)`, `isFirstTimeNextWorld`,
+  `isForwardWorldWarpDemo`, `isPlayDemoWorldWarp`, `isEnterStageFirst`, with setter
+  `noPlayDemoWorldWarp`.
+- **DISCRIMINATOR FOUND (log `...18-04-40.log`): `isAlreadyGoWorld(Cascade)`.**
+  The alreadyGoWorld bitmap at the commit settles it:
+  - **First arrival (BURIED)**: `alreadyGoWorld[0..16]=10000000000000000` → Cascade
+    bit (idx1) = **0**.
+  - **Return flight from Sand (PARKED)**: `alreadyGoWorld[0..16]=11100000000000000`
+    → Cascade bit (idx1) = **1**.
+  Both force ChangeStageInfo.scenario→1 and both carry entrance id `''`, so the
+  ONLY differing input is the already-visited bit. (Devon's repro: can't leave
+  Cascade to Cap pre-Broode, but CAN leave to Sand, then fly back — the engine
+  only opens free backward travel once Sand is landed.) So the parked state ≡
+  **scenario forced to 1 + alreadyGoWorld(Cascade)=1**; the first arrival already
+  gets the scenario force and was only missing the visited bit.
+- **FIX IMPLEMENTED THIS SESSION (awaiting build+in-game): `forceCascadeAlreadyVisited`.**
+  Calls `GameProgressData::setAlreadyGoWorld(getWorldIndexWaterfall())` BEFORE the
+  first-arrival commit. The setter is a GameProgressData member, reached via the
+  `GameDataFile* self` the changeNextStage hook holds (`mGameProgressData` @ +0x6a8,
+  OdysseyHeaders GameDataFile.h). In
+  [OdysseyRescue.cpp](../../switch-mod/src/game/OdysseyRescue.cpp), called from the
+  Cascade pre-Broode block of
+  [EntranceShuffleHook.cpp](../../switch-mod/src/hooks/EntranceShuffleHook.cpp),
+  logs `[odyssey-arrival] ... setAlreadyGoWorld(Cascade widx=..)`. **Hypothesis:**
+  first arrival now lands the Odyssey PARKED with Broode present (≡ the return-flight
+  state). **NEXT:** Devon builds + fresh run; watch the first Cascade arrival — ship
+  parked? Broode + her Multi-Moon present? If parked, the H1 freeship level top-up
+  and H2 entrance-id rewrite become redundant and can be removed. If still buried,
+  it's the demo PATH after all → pivot to the Cap-peace route.
+  - **Build 1 (`...18-16-24.log`): setter mangling had a wrong name-length prefix
+    (`16setAlreadyGoWorld` — the name is 17 chars), so `setAlreadyGoWorld lookup
+    FAILED` and the fix early-returned (ship still buried). Corrected to
+    `_ZN16GameProgressData17setAlreadyGoWorldEi`. `getWorldIndexWaterfall` resolved
+    fine @0x8a30b88. Re-test pending. If the corrected name STILL fails to resolve,
+    the GameProgressData member isn't exported and we set the visited bit another
+    way (direct field write or a free-fn that wraps it).**
+- **Demo-flag logger spike — RAN (log `...17-57-45.log`), INCONCLUSIVE BY BEING
+  CONSTANT.** All 6 symbols resolved (manglings correct; reusable). But every flag
+  is the SAME on the whole buried path — Cap, the commit→Cascade, and Cascade
+  post-arrival all read `alreadyGo=1 firstNext=0 fwdWarpDemo=1 playWarpDemo=0
+  enterFirst=0`. So no single flag we sampled gates buried-vs-parked. Cross-referenced
+  with Devon's datapoint (return flight @ forced scenario 1 = parked; first arrival @
+  forced scenario 1 with entrance id `''` = buried), this rules out {entrance id,
+  ChangeStageInfo scenario, Home flags, level, these 5 demo flags} — same scenario +
+  same entrance id, opposite pose ⇒ the discriminator is the **prologue scripted
+  demo-warp PATH**, not a save flag (= Devon's Cap-peace theory).
+  - **One read the spike missed:** at the commit `getCurrentWorldId` returns Cap(0),
+    so `alreadyGo=1` was *Cap's* flag — Cascade's "already gone" bit was never probed
+    pre-arrival. Spike now extended (this session, awaiting build) to dump
+    `isAlreadyGoWorld[0..16]` at the commit (`warpdemo-now[...]: alreadyGoWorld[0..16]=`).
+  - **NEXT decisive read:** compare Cascade's bit (idx 1) at the **first-arrival**
+    commit vs. a **return-flight** commit. Differs (0 vs 1) ⇒ "already-gone-to-Cascade"
+    is the lever (try setting it pre-commit). Identical ⇒ it's the demo-warp path
+    (pursue the Cap-peace / depart-via-world-map route in the save-relocate doc).
+- **Demo-flag logger spike — IMPLEMENTED THIS SESSION, AWAITING BUILD+IN-GAME.**
+  Read-only. Adds 6 getter manglings to
+  [HookSymbols.hpp](../../switch-mod/src/hooks/HookSymbols.hpp) (getCurrentWorldId +
+  the 5 first-visit/demo getters), resolved in
+  [OdysseyRescue.cpp](../../switch-mod/src/game/OdysseyRescue.cpp) under
+  `g_warpdemo_ready`. Two log sites: (a) `logWorldWarpDemoDiag` in the throttled
+  sweep (post-arrival, dedup'd) → `OdysseyRescue/warpdemo:`; (b)
+  `logWorldWarpDemoDiagNow("commit->Cascade")` called from the `changeNextStage`
+  commit in [EntranceShuffleHook.cpp](../../switch-mod/src/hooks/EntranceShuffleHook.cpp)
+  BEFORE our writes → `OdysseyRescue/warpdemo-now[...]:` — captures the pending-warp
+  flags while the demo decision is still live (cur is still Cap there, so
+  `isFirstTimeNextWorld`/`isForwardWorldWarpDemo`/`isPlayDemoWorldWarp` describe the
+  upcoming Cascade warp; the sweep's `isAlreadyGoWorld` reads the destination once
+  Mario is standing in Cascade).
+  - **NEXT STEP:** Devon builds + deploys, fresh run, watch first Cascade arrival.
+  - **First check the resolve lines:** `OdysseyRescue: world-warp-demo getters
+    COMPLETE` (a `lookup FAILED` line names any mis-mangled symbol to fix — the
+    manglings are derived, not yet llvm-nm-verified).
+  - **Then read:** the `warpdemo-now[commit->Cascade]` line on the buried first
+    arrival vs. the `warpdemo:` line after a parked revisit. The flag that flips is
+    the lever to set/suppress next.
+
+- **Force-acquire the Odyssey pre-Broode — DONE + committed + validated in-game.**
+  `forceAcquireOdyssey()` ([OdysseyRescue.cpp](../../switch-mod/src/game/OdysseyRescue.cpp#L120))
+  sets `activate`/`launch`/`level≥1` and is called from the `changeNextStage`
+  commit into Cascade ([EntranceShuffleHook.cpp](../../switch-mod/src/hooks/EntranceShuffleHook.cpp)).
+  Result Devon accepted as "a VERY acceptable outcome": the ship is **activated**
+  (no longer rock-coloured) but still sits in the buried spot, and "Our First Power
+  Moon" stays grabbable.
+
+- **Pose H1 (per-frame level top-up) — TRIED, INSUFFICIENT.** A per-frame re-assert
+  of `getHomeLevel 0→1` in `runOdysseySoftlockSweep`
+  ([OdysseyRescue.cpp:250-267](../../switch-mod/src/game/OdysseyRescue.cpp#L250))
+  holds level=1 cleanly in data (single fire, no flicker) **but does NOT relocate
+  the ship** — Devon: "it's still in its exact same spot as when it's buried, it's
+  just red instead of looking rock-coloured." Root cause: the buried **pose is baked
+  at the home-ship actor's init**, off the **story-drop entrance**, so a post-init
+  data top-up can't move an already-placed actor. (Block left in place; harmless,
+  guarded no-op.) Proof the pose is arrival-driven, not flag-driven: a legitimate
+  Odyssey FLIGHT arrival into Cascade is the SAME save-state (scenario 1, Broode
+  present) yet lands PARKED — because the flight arrival uses a different entrance.
+
+- **Pose H2 (hijack the arrival entrance id) — IMPLEMENTED THIS SESSION, AWAITING
+  BUILD+IN-GAME TEST.** Devon's idea: "force the transition animation when first
+  arriving in Cascade from arriving via wire cutscene to arriving via the Odyssey."
+  Implemented in [EntranceShuffleHook.cpp](../../switch-mod/src/hooks/EntranceShuffleHook.cpp)
+  in the `if (sc >= 0)` Cascade-pre-Broode block of the `changeNextStage` hook:
+  when the inbound `ChangeStageInfo` entrance id is `'start'` (the story drop),
+  rewrite it in place to the **flight (empty) id** — the same "HomeStage
+  default-spawn" shape the detour gate writes — so the engine runs the Odyssey
+  landing arrival and (hypothesis) places the ship parked at its return pad with
+  Mario stepping off it. Constants `kCascadeStoryArrivalId="start"` /
+  `kCascadeFlightArrivalId=""` are at the top of the anon namespace so the target id
+  is a one-line flip if empty proves wrong. Logs `[odyssey-arrival] Cascade
+  story-drop id='start' -> flight id=''`.
+  - **NEXT STEP:** Devon builds (`build_switchmod.py "-DBRIDGE_HOST=<LAN_IP>"`) +
+    deploys, starts a fresh run, watches the **first** Cascade arrival.
+  - **What to look for in the log:** the `[odyssey-arrival]` line firing once on
+    the first Cascade commit, and whether the ship is parked at the return pad.
+  - **Fallback if empty id is wrong / Mario spawns badly:** read the entrance id off
+    an `[entrance:file] stage='WaterfallWorldHomeStage' id='…'` line from a
+    legitimate later fly-in, and set `kCascadeFlightArrivalId` to that named id.
+  - **Risk to watch:** the very first Cascade arrival is a scripted Cap→Cascade
+    sequence; hijacking its entrance could skip/garble the intro or spawn Mario at
+    an invalid point pre-Broode. If so, narrow the trigger or fall back to a
+    self-reload of WaterfallWorldHomeStage at level=1.
+
+### Open / NOT yet addressed
+
+- **Leave-gate (functionally important, SEPARATE from the pose).** Even after
+  reaching the red/parked Odyssey, the player **cannot depart Cascade / return to
+  Cap without enough moons** — Devon wants free return-to-Cap any time once the
+  Odyssey is reached. This is the **kingdom moon-cost-to-leave**, enforced via the
+  **UnlockShineNum** path (`UnlockShineNumHook` →
+  `GameDataFunction::findUnlockShineNum` / `findUnlockShineNumByWorldId`; log shows
+  `[kingdom-gates] findUnlockShineNumByWorldId: kingdom=Cascade(bit=1) vanilla=5 ->
+  rolled=1`), independent of arrival method. **The H2 entrance-id rewrite does NOT
+  touch this** — arriving "via the Odyssey" changes the pose, not the takeoff cost.
+  To give free Cascade→Cap departure, force Cascade's unlock-shine count to 0 in
+  that hook (scoped to Cascade, pre-Broode, mirroring the detour `sibling fuel
+  forced to 0` pattern). Not yet implemented — confirm scope with Devon before
+  building (could let the player skip Cascade's gate entirely, which may be
+  intended here since the goal is a guaranteed escape hatch).
+
+### Key invariants (don't relearn the hard way)
+
+- Pose = **home LEVEL at actor init**, set by the **arrival entrance id**, NOT a
+  per-frame flag. Flight id ⇒ parked; story id `'start'` ⇒ buried + level reset 0.
+- The `changeNextStage` commit into Cascade is the seam that runs **before** the
+  stage's placement and hands us both the `GameDataFile*` and the mutable
+  `ChangeStageInfo` (scenario @0x1CC, entrance-id cstr @ +0x08, stage-name cstr
+  @ +0xA0). Both the Broode scenario force and the entrance-id rewrite ride it.
+- All of this is **switch-mod-only** — no apworld/logic/re-seed/wire change. Build =
+  `build_switchmod.py` + copy subsdk9/main.npdm to Ryujinx exefs (Devon runs it).
+
+---
+
 Sources consulted (disk-truth reads + headers this session):
 [switch-mod/src/game/OdysseyRescue.cpp](../../switch-mod/src/game/OdysseyRescue.cpp) /
 [OdysseyRescue.hpp](../../switch-mod/src/game/OdysseyRescue.hpp) (the shipped Lost

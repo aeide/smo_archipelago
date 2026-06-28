@@ -683,6 +683,48 @@ inline constexpr const char* kGameDataFunctionUpHomeLevel =
     "_ZN16GameDataFunction11upHomeLevelE20GameDataHolderWriter";
 inline constexpr const char* kGameDataFunctionLaunchHome =
     "_ZN16GameDataFunction10launchHomeE20GameDataHolderWriter";
+
+// First-visit / world-warp-demo getters — logger spike (2026-06-27) to decide
+// what gates the BURIED Cascade arrival pose + the Cap->Cascade wire cutscene.
+// The 2026-06-27 in-game trace proved it is NOT entrance id / ChangeStageInfo
+// scenario / Home activate-launch flags / home level (all four forced, ship
+// stayed buried). Devon's datapoint: a RETURN flight to Cascade forced to
+// scenario 1 lands PARKED with Broode present, while the FIRST arrival at the
+// same scenario 1 buries it — so the difference is a first-visit/demo flag, not
+// the scenario. These read-only getters characterize that flag. All take
+// GameDataHolderAccessor by value (single pointer, x0); isAlreadyGoWorld also
+// takes an s32 worldId. Resolved via hk::ro::lookupSymbol (soft-degrade) — a
+// wrong mangling logs "lookup FAILED" rather than aborting. Manglings derived
+// from OdysseyDecomp GameDataFunction.h:92-97,155,360 — VERIFY against the
+// in-game "lookup FAILED" lines on the next build and fix any that miss.
+inline constexpr const char* kGameDataFunctionGetCurrentWorldId =
+    "_ZN16GameDataFunction17getCurrentWorldIdE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionIsAlreadyGoWorld =
+    "_ZN16GameDataFunction16isAlreadyGoWorldE22GameDataHolderAccessori";
+inline constexpr const char* kGameDataFunctionIsFirstTimeNextWorld =
+    "_ZN16GameDataFunction20isFirstTimeNextWorldE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionIsForwardWorldWarpDemo =
+    "_ZN16GameDataFunction22isForwardWorldWarpDemoE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionIsPlayDemoWorldWarp =
+    "_ZN16GameDataFunction19isPlayDemoWorldWarpE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionIsEnterStageFirst =
+    "_ZN16GameDataFunction17isEnterStageFirstE22GameDataHolderAccessor";
+
+// First-arrival parked-pose FIX (2026-06-27). The warpdemo spike proved
+// isAlreadyGoWorld(Cascade) is the buried-vs-parked discriminator: 0 on the
+// buried first arrival, 1 on the parked return flight (same forced scenario 1,
+// same entrance id). So mark Cascade already-visited before the first-arrival
+// commit. The setter is a GameProgressData MEMBER (not a GameDataFunction free
+// fn); we reach the GameProgressData* from GameDataFile+0x6a8 (OdysseyHeaders
+// GameDataFile.h) using the GameDataFile* the changeNextStage hook already holds.
+// getWorldIndexWaterfall() returns Cascade's world index (1 on 1.0.0) so we
+// don't hardcode it. Both resolved via hk::ro::lookupSymbol (soft-degrade).
+//   void GameProgressData::setAlreadyGoWorld(s32)
+inline constexpr const char* kGameProgressDataSetAlreadyGoWorld =
+    "_ZN16GameProgressData17setAlreadyGoWorldEi";
+//   s32 GameDataFunction::getWorldIndexWaterfall()
+inline constexpr const char* kGameDataFunctionGetWorldIndexWaterfall =
+    "_ZN16GameDataFunction22getWorldIndexWaterfallEv";
 // GameDataFunction::getScenarioNoPlacement(GameDataHolderAccessor) — the
 // out-of-line free-function WRAPPER. The 2026-06-26 in-game test proved the
 // object-placement masker does NOT call this wrapper (zero diagnostics fired):

@@ -218,7 +218,14 @@
       "PowerShell(& .venv\\\\Scripts\\\\python.exe scripts\\\\_diag_unused.py 2>$null)",
       "PowerShell(& .venv\\\\Scripts\\\\python.exe scripts\\\\_diag_unused.py 2>&1)",
       "PowerShell(cd E:\\\\smo_archipelago; $env:TMP=\"E:\\\\smo_archipelago\\\\.pytmp\"; $env:TEMP=\"E:\\\\smo_archipelago\\\\.pytmp\"; New-Item -ItemType Directory -Force E:\\\\smo_archipelago\\\\.pytmp | Out-Null; .\\\\.venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_randomize_kingdom_gates.py -q -p no:cacheprovider 2>&1 | Select-Object -Last 15)",
-      "PowerShell(cd E:\\\\smo_archipelago; $env:TMP=\"E:\\\\smo_archipelago\\\\.pytmp\"; $env:TEMP=\"E:\\\\smo_archipelago\\\\.pytmp\"; .\\\\.venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_randomize_kingdom_gates.py -q -p no:cacheprovider 2>&1 | Select-Object -Last 5; .\\\\.venv\\\\Scripts\\\\python.exe scripts\\\\install_apworld.py 2>&1 | Select-Object -Last 1)"
+      "PowerShell(cd E:\\\\smo_archipelago; $env:TMP=\"E:\\\\smo_archipelago\\\\.pytmp\"; $env:TEMP=\"E:\\\\smo_archipelago\\\\.pytmp\"; .\\\\.venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_randomize_kingdom_gates.py -q -p no:cacheprovider 2>&1 | Select-Object -Last 5; .\\\\.venv\\\\Scripts\\\\python.exe scripts\\\\install_apworld.py 2>&1 | Select-Object -Last 1)",
+      "Bash(ls -lat /e/Ryubin/Logs 2>/dev/null | head -20; echo \"---scratchpad---\"; ls -lat \"/c/Users/devon/AppData/Local/Temp/claude/e--smo-archipelago/23be58bb-7081-4787-8d10-b46630977293/scratchpad\" 2>/dev/null | head)",
+      "Read(//e/Ryubin/Logs/**)",
+      "Read(//c/Users/devon/AppData/Local/Temp/claude/e--smo-archipelago/23be58bb-7081-4787-8d10-b46630977293/scratchpad/**)",
+      "Bash(grep -nE \"odyssey|broode|entrance:file|odyssey-arrival|odyssey-acquire|odyssey-freeship|Cascade|WaterfallWorld\" \"/e/Ryubin/Logs/Ryujinx_1.3.3_2026-06-27_17-36-35.log\" | head -120)",
+      "Bash(grep -anE \"odyssey|broode|entrance:file|Cascade|WaterfallWorld|CapWorld|scenario\" \"/e/Ryubin/Logs/Ryujinx_1.3.3_2026-06-27_17-36-35.log\" | grep -aiE \"odyssey|broode|cascade|waterfall|entrance:file|cap\" | head -150)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "additionalDirectories": [
       "\\tmp\\dbg",

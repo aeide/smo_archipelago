@@ -30,6 +30,12 @@ using GetCurrentStageNameFn       = const char* (*)(GameDataHolderAccessor);
 using HomeFlagFn                  = bool        (*)(GameDataHolderAccessor);
 using GetHomeLevelFn              = int         (*)(GameDataHolderAccessor);
 using HomeWriteFn                 = void        (*)(GameDataHolderWriter);
+// First-visit / world-warp-demo getters (logger spike, 2026-06-27).
+using GetCurrentWorldIdFn         = int         (*)(GameDataHolderAccessor);
+using IsAlreadyGoWorldFn          = bool        (*)(GameDataHolderAccessor, int);
+// First-arrival parked-pose fix: GameProgressData::setAlreadyGoWorld(s32) is a
+// MEMBER (implicit this = GameProgressData*); the Itanium ABI passes this in x0.
+using SetAlreadyGoWorldFn         = void        (*)(void* /*GameProgressData*/, int);
 
 struct ResolvedFns {
     IsCrashHomeFn               isCrashHome               = nullptr;
@@ -46,12 +52,23 @@ struct ResolvedFns {
     HomeWriteFn                 activateHome              = nullptr;
     HomeWriteFn                 upHomeLevel               = nullptr;
     HomeWriteFn                 launchHome                = nullptr;
+    // First-visit / world-warp-demo getters (logger spike) — read-only.
+    GetCurrentWorldIdFn         getCurrentWorldId         = nullptr;
+    IsAlreadyGoWorldFn          isAlreadyGoWorld          = nullptr;
+    HomeFlagFn                  isFirstTimeNextWorld      = nullptr;
+    HomeFlagFn                  isForwardWorldWarpDemo    = nullptr;
+    HomeFlagFn                  isPlayDemoWorldWarp       = nullptr;
+    HomeFlagFn                  isEnterStageFirst         = nullptr;
+    // First-arrival parked-pose fix (forceCascadeAlreadyVisited) — WRITE.
+    SetAlreadyGoWorldFn         setAlreadyGoWorld         = nullptr;
+    GetWorldIndexFn             getWorldIndexWaterfall    = nullptr;
 };
 
 ResolvedFns g_fns;
 bool        g_ready = false;        // repair path (the 5 Lost-softlock fns)
 bool        g_diag_ready = false;   // diagnostic getters (4 *Home flag reads)
 bool        g_acquire_ready = false;  // force-acquire mutators (3 *Home writes)
+bool        g_warpdemo_ready = false; // first-visit / world-warp-demo getters
 
 template <typename Fn>
 bool resolveOne(Fn& slot, const char* mangled, const char* tag) {
@@ -115,6 +132,40 @@ void installOdysseyRescueSymbols() {
     g_acquire_ready = acq;
     SMOAP_LOG_INFO("OdysseyRescue: force-acquire mutators %s",
                    g_acquire_ready ? "COMPLETE" : "PARTIAL (acquire disabled)");
+
+    // First-visit / world-warp-demo getters (logger spike, 2026-06-27).
+    // Independent readiness — these only feed logWorldWarpDemoDiag and never
+    // mutate. A wrong mangling shows as "lookup FAILED" here; fix that one and
+    // rebuild. getCurrentStageName is shared with the diag path above.
+    // Per-function (tolerant): some of these demo getters may be inlined / not
+    // exported in main.nso's dynsym. We don't &&-fold readiness — each resolves
+    // independently and the diag prints -1 for any that didn't, so one miss never
+    // disables the whole trace. The spike runs as long as the two essentials
+    // (getCurrentStageName + getCurrentWorldId) are present.
+    resolveOne(g_fns.getCurrentWorldId,
+        smoap::sym::kGameDataFunctionGetCurrentWorldId, "getCurrentWorldId");
+    resolveOne(g_fns.isAlreadyGoWorld,
+        smoap::sym::kGameDataFunctionIsAlreadyGoWorld, "isAlreadyGoWorld");
+    resolveOne(g_fns.isFirstTimeNextWorld,
+        smoap::sym::kGameDataFunctionIsFirstTimeNextWorld, "isFirstTimeNextWorld");
+    resolveOne(g_fns.isForwardWorldWarpDemo,
+        smoap::sym::kGameDataFunctionIsForwardWorldWarpDemo, "isForwardWorldWarpDemo");
+    resolveOne(g_fns.isPlayDemoWorldWarp,
+        smoap::sym::kGameDataFunctionIsPlayDemoWorldWarp, "isPlayDemoWorldWarp");
+    resolveOne(g_fns.isEnterStageFirst,
+        smoap::sym::kGameDataFunctionIsEnterStageFirst, "isEnterStageFirst");
+    g_warpdemo_ready = (g_fns.getCurrentStageName != nullptr) &&
+                       (g_fns.getCurrentWorldId != nullptr);
+    SMOAP_LOG_INFO("OdysseyRescue: world-warp-demo getters %s",
+                   g_warpdemo_ready ? "READY (per-flag; -1 = unresolved)"
+                                    : "DISABLED (no stage/world getter)");
+
+    // First-arrival parked-pose fix (forceCascadeAlreadyVisited). Independent
+    // readiness; a missing one self-disables only this fix.
+    resolveOne(g_fns.setAlreadyGoWorld,
+        smoap::sym::kGameProgressDataSetAlreadyGoWorld, "setAlreadyGoWorld");
+    resolveOne(g_fns.getWorldIndexWaterfall,
+        smoap::sym::kGameDataFunctionGetWorldIndexWaterfall, "getWorldIndexWaterfall");
 }
 
 void forceAcquireOdyssey(const char* tag) {
@@ -212,6 +263,59 @@ void logOdysseyHomeStateDiag(GameDataHolderAccessor acc) {
         heartbeat ? " (heartbeat)" : "");
 }
 
+// First-visit / world-warp-demo logger spike (2026-06-27). READ-ONLY — decides
+// what gates the BURIED Cascade arrival pose. The 2026-06-27 trace ruled out
+// entrance id / ChangeStageInfo scenario / Home activate-launch flags / level
+// (all forced, ship stayed buried). Devon's datapoint: a RETURN flight to
+// Cascade forced to scenario 1 lands PARKED with Broode present, while the FIRST
+// arrival at scenario 1 buries it — so the lever is a first-visit/demo flag.
+// This logs that flag set for the current overworld so we can read it on the
+// buried first arrival and (ideally) compare to a parked revisit.
+//
+// What to look for: on the BURIED first Cascade arrival vs. a PARKED revisit,
+// which of {alreadyGo, firstNext, fwdWarpDemo, playWarpDemo, enterFirst} differs.
+// The one that flips between buried and parked is the lever to set/suppress
+// (e.g. mark isAlreadyGoWorld true / noPlayDemoWorldWarp before the commit).
+void logWorldWarpDemoDiag(GameDataHolderAccessor acc) {
+    if (!g_warpdemo_ready) return;
+
+    const char* stage = g_fns.getCurrentStageName(acc);
+    if (!stage) return;
+    const char* kingdom = kingdomShortFromHomeStage(stage);
+    if (!kingdom) return;  // overworld home stages only
+
+    const int worldId    = g_fns.getCurrentWorldId(acc);
+    // -1 = the getter didn't resolve (inlined / not exported); 0/1 otherwise.
+    const int alreadyGo   = g_fns.isAlreadyGoWorld ? g_fns.isAlreadyGoWorld(acc, worldId) : -1;
+    const int firstNext   = g_fns.isFirstTimeNextWorld ? g_fns.isFirstTimeNextWorld(acc) : -1;
+    const int fwdWarpDemo = g_fns.isForwardWorldWarpDemo ? g_fns.isForwardWorldWarpDemo(acc) : -1;
+    const int playWarpDemo= g_fns.isPlayDemoWorldWarp ? g_fns.isPlayDemoWorldWarp(acc) : -1;
+    const int enterFirst  = g_fns.isEnterStageFirst ? g_fns.isEnterStageFirst(acc) : -1;
+
+    const unsigned bits =
+        (static_cast<unsigned>(alreadyGo & 3) << 0) |
+        (static_cast<unsigned>(firstNext & 3) << 2) |
+        (static_cast<unsigned>(fwdWarpDemo & 3) << 4) |
+        (static_cast<unsigned>(playWarpDemo & 3) << 6) |
+        (static_cast<unsigned>(enterFirst & 3) << 8) |
+        (static_cast<unsigned>(worldId & 0xff) << 10);
+
+    static const char* s_last_kingdom = nullptr;
+    static unsigned     s_last_bits    = 0xffffffffu;
+    static int          s_heartbeat    = 0;
+    const bool changed = (kingdom != s_last_kingdom) || (bits != s_last_bits);
+    const bool heartbeat = (++s_heartbeat % 1800) == 0;
+    if (!changed && !heartbeat) return;
+    s_last_kingdom = kingdom;
+    s_last_bits    = bits;
+
+    SMOAP_LOG_INFO(
+        "OdysseyRescue/warpdemo: stage=%s kingdom=%s worldId=%d alreadyGo=%d "
+        "firstNext=%d fwdWarpDemo=%d playWarpDemo=%d enterFirst=%d%s",
+        stage, kingdom, worldId, alreadyGo, firstNext, fwdWarpDemo,
+        playWarpDemo, enterFirst, heartbeat ? " (heartbeat)" : "");
+}
+
 }  // namespace
 
 void runOdysseySoftlockSweep() {
@@ -226,6 +330,47 @@ void runOdysseySoftlockSweep() {
     // overworld (read-only; see logOdysseyHomeStateDiag). Runs on the same
     // ~1s throttle as the repair sweep below.
     logOdysseyHomeStateDiag(acc);
+    // First-visit / world-warp-demo spike (read-only; see logWorldWarpDemoDiag).
+    logWorldWarpDemoDiag(acc);
+
+    // --- Cascade first-arrival: lift the Odyssey out of the rocks ---
+    // On the story-drop into Cascade (entrance id='start') the arrival init
+    // resets the home LEVEL to 0 AFTER forceAcquireOdyssey's pre-load write, so
+    // the ship is PLACED in its buried/level-0 pose even though activate/launch
+    // stuck (measured 2026-06-27: post-arrival exist/activate/launch=1, level=0).
+    // The parked-vs-buried pose tracks getHomeLevel — proven by the flight
+    // arrival into Cascade, which is the SAME state (scenario 1, Broode present)
+    // but lands parked precisely because its level survives at 1. So re-assert
+    // level 1 here, AFTER the arrival init has run, to lift the ship into the
+    // parked pose while leaving the scenario-1 Broode force untouched.
+    //
+    // getHomeLevel is a plain stored field (OdysseyDecomp GameProgressData), so
+    // upHomeLevel(0->1) is a bounded one-step bump; the level==0 guard makes it
+    // a true no-op once it has taken (and post-first-moon / post-Broode, where
+    // level is already >=1). isActivateHome gates it to a Cascade where the
+    // Odyssey is ours (our force ran, or normal play) so we never poke a kingdom
+    // mid-cinematic before the ship belongs to the player.
+    //
+    // Needs the diag getters (isActivateHome/getHomeLevel) + the acquire mutator
+    // (upHomeLevel); both resolve independently of the Lost repair path.
+    if (g_diag_ready && g_acquire_ready) {
+        const char* stage = g_fns.getCurrentStageName(acc);
+        if (stage && std::strcmp(stage, "WaterfallWorldHomeStage") == 0 &&
+            g_fns.isActivateHome(acc) && g_fns.getHomeLevel(acc) == 0) {
+            g_fns.upHomeLevel(wr);
+            static int s_free_log = 0;
+            if (s_free_log < 20) {
+                ++s_free_log;
+                // A SINGLE line then silence = the arrival init clobbered level
+                // once and our re-assert held. REPEATED lines = the level is
+                // re-clamped every frame (the ship would flicker) — escalate to
+                // a self-reload instead of a per-frame top-up.
+                SMOAP_LOG_INFO("[odyssey-freeship] Cascade home level 0 -> 1 "
+                               "(re-assert post-arrival; lift ship from rocks) #%d",
+                               s_free_log);
+            }
+        }
+    }
 
     // Log throttle — the branch below is a no-op on virtually every call once
     // the player leaves Lost; only state transitions are worth logging.
@@ -263,6 +408,69 @@ void runOdysseySoftlockSweep() {
             // so the player isn't stranded.
             g_fns.repairHome(wr);
         }
+    }
+}
+
+void logWorldWarpDemoDiagNow(const char* tag) {
+    if (!g_warpdemo_ready) return;
+    void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
+        std::memory_order_relaxed);
+    if (!gdh) return;
+    GameDataHolderAccessor acc{gdh};
+
+    const char* stage   = g_fns.getCurrentStageName(acc);
+    const int   worldId = g_fns.getCurrentWorldId(acc);
+    // -1 = the getter didn't resolve (inlined / not exported); 0/1 otherwise.
+    SMOAP_LOG_INFO(
+        "OdysseyRescue/warpdemo-now[%s]: cur=%s worldId=%d alreadyGo=%d "
+        "firstNext=%d fwdWarpDemo=%d playWarpDemo=%d enterFirst=%d",
+        tag ? tag : "?", stage ? stage : "(null)", worldId,
+        g_fns.isAlreadyGoWorld ? g_fns.isAlreadyGoWorld(acc, worldId) : -1,
+        g_fns.isFirstTimeNextWorld ? g_fns.isFirstTimeNextWorld(acc) : -1,
+        g_fns.isForwardWorldWarpDemo ? g_fns.isForwardWorldWarpDemo(acc) : -1,
+        g_fns.isPlayDemoWorldWarp ? g_fns.isPlayDemoWorldWarp(acc) : -1,
+        g_fns.isEnterStageFirst ? g_fns.isEnterStageFirst(acc) : -1);
+
+    // isAlreadyGoWorld bitmap across ALL worlds (index = worldId; Cap=0,
+    // Cascade=1, Sand=2, ...). At the Cap->Cascade commit getCurrentWorldId is
+    // still Cap, so the single read above is Cap's flag — useless for Cascade.
+    // THIS is the decisive read: Cascade's bit (index 1) BEFORE the first
+    // arrival vs. before a return flight. If it reads 0 on first arrival and 1
+    // on a return flight, "already gone to Cascade" is the buried-vs-parked
+    // lever and we try setting it before the commit. If it's identical, the
+    // pose is driven by the prologue demo-warp PATH, not this flag (→ pursue the
+    // Cap-peace / depart-via-world-map route).
+    if (g_fns.isAlreadyGoWorld) {
+        char bits[24];
+        int n = 0;
+        for (int w = 0; w <= 16 && n < static_cast<int>(sizeof(bits)) - 1; ++w)
+            bits[n++] = g_fns.isAlreadyGoWorld(acc, w) ? '1' : '0';
+        bits[n] = '\0';
+        SMOAP_LOG_INFO(
+            "OdysseyRescue/warpdemo-now[%s]: alreadyGoWorld[0..16]=%s "
+            "(idx1=Cascade)", tag ? tag : "?", bits);
+    }
+}
+
+void forceCascadeAlreadyVisited(void* gameDataFile, const char* tag) {
+    if (!gameDataFile || !g_fns.setAlreadyGoWorld || !g_fns.getWorldIndexWaterfall)
+        return;
+    // GameDataFile::mGameProgressData @ 0x6a8 (OdysseyHeaders GameDataFile.h).
+    void* progress = *reinterpret_cast<void**>(
+        reinterpret_cast<std::uint8_t*>(gameDataFile) + 0x6a8);
+    if (!progress) return;
+    const int widx = g_fns.getWorldIndexWaterfall();  // Cascade's world index.
+    // setAlreadyGoWorld just inserts into the visited set (idempotent — the
+    // return-flight path has it set already and re-arrives fine), so calling it
+    // unconditionally before the first-arrival commit makes the engine run the
+    // normal PARKED flight landing instead of the buried first-visit demo.
+    g_fns.setAlreadyGoWorld(progress, widx);
+    static int s_log = 0;
+    if (s_log < 20) {
+        ++s_log;
+        SMOAP_LOG_INFO("[odyssey-arrival] %s setAlreadyGoWorld(Cascade widx=%d) "
+                       "-> run parked flight arrival, not buried demo #%d",
+                       tag ? tag : "?", widx, s_log);
     }
 }
 

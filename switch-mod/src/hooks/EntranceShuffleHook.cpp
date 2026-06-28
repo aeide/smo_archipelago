@@ -85,6 +85,21 @@ constexpr std::size_t kOffChangeStageNameCstr = 0xA0;
 constexpr std::size_t kOffIsReturn            = 0x1C8;
 constexpr std::size_t kOffScenarioNo          = 0x1CC;
 
+// ── First-arrival Odyssey pose: hijack the story drop into the flight arrival ─
+// Devon's approach (2026-06-27). The story-drop into Cascade carries entrance
+// id='start'; that arrival init places the Odyssey BURIED (resets home level to
+// 0) and spawns Mario at the intro point. The Odyssey FLIGHT arrival instead
+// carries an EMPTY entrance id and places the ship PARKED at its return landing
+// pad. So on the pre-Broode commit into Cascade we rewrite a 'start' entrance id
+// to the flight (empty) shape — the same "HomeStage default-spawn" id the detour
+// gate writes — so the ship arrives parked at its return location instead of in
+// the rocks, and Mario steps off it. Paired with forceAcquireOdyssey (which sets
+// launch/level so the ship is flightworthy for the landing). If the empty-id
+// assumption proves wrong in-game, flip kCascadeFlightArrivalId to the named
+// landing id (read it off an [entrance:file] line from a legitimate fly-in).
+inline constexpr const char* kCascadeStoryArrivalId  = "start";
+inline constexpr const char* kCascadeFlightArrivalId = "";  // empty = home default spawn
+
 using GetCurrentStageNameFn = const char* (*)(GameDataHolderAccessor);
 GetCurrentStageNameFn s_getCurrentStageName = nullptr;
 
@@ -319,17 +334,59 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                                    "arrival ChangeStageInfo.scenario %d -> %d (dest=%s)",
                                    before, sc, dest);
 
+                    // Logger spike (2026-06-27): capture the pending-warp
+                    // first-visit flags NOW, before any of our writes. At this
+                    // commit cur is still Cap, so isFirstTimeNextWorld /
+                    // isForwardWorldWarpDemo / isPlayDemoWorldWarp describe the
+                    // upcoming Cascade warp — the suspected lever for the buried
+                    // arrival pose (entrance id / scenario / Home flags / level
+                    // were all ruled out 2026-06-27).
+                    smoap::game::logWorldWarpDemoDiagNow("commit->Cascade");
+
                     // First-arrival Odyssey fix: sc>=0 means we're committing
                     // into Cascade pre-Broode (the scenario-1 force above keeps
                     // Broode present). Force-acquire the Odyssey here, BEFORE the
                     // stage loads, so Cascade inits with the parked + boardable
                     // ship instead of the buried wreck. Measured: every
                     // Odyssey-flight arrival lands parked (exist/act/launch=1);
-                    // the story-drop arrives buried with the flags at 0. This
-                    // tests whether setting the flags pre-load is sufficient
-                    // (H1) or the entrance-id itself gates the wreck (H2 — then
-                    // we reroute the arrival to the flight entrance instead).
+                    // the story-drop arrives buried with the flags at 0.
                     smoap::game::forceAcquireOdyssey("changeNextStage->Cascade");
+
+                    // First-arrival parked-pose FIX (2026-06-27): mark Cascade
+                    // already-visited so the engine runs the normal PARKED
+                    // flight landing, not the buried first-visit demo. The
+                    // warpdemo spike proved isAlreadyGoWorld(Cascade) is the
+                    // buried-vs-parked discriminator (0 buried first arrival vs
+                    // 1 parked return flight, same forced scenario 1 + entrance
+                    // id). self is the GameDataFile* (mGameProgressData @+0x6a8).
+                    smoap::game::forceCascadeAlreadyVisited(
+                        self, "changeNextStage->Cascade");
+
+                    // H2 (Devon's entrance-id approach, 2026-06-27): the flags
+                    // alone (H1) de-rocked the ship but did NOT move it — the
+                    // buried POSE is baked at the ship actor's init off the
+                    // story-drop entrance. So also REROUTE the arrival: rewrite a
+                    // 'start' entrance id to the flight (empty) id so the engine
+                    // runs the Odyssey landing arrival and places the ship parked
+                    // at its return pad. Only the story drop is hijacked — a real
+                    // pre-Broode fly-in already carries the empty id (no-op).
+                    char* idbuf = mutableCstrAt(mut, kOffChangeStageIdCstr);
+                    const char* cur_id = readCstrAt(info, kOffChangeStageIdCstr);
+                    if (idbuf && cur_id &&
+                        std::strcmp(cur_id, kCascadeStoryArrivalId) == 0) {
+                        const std::size_t fid_len =
+                            std::strlen(kCascadeFlightArrivalId);
+                        if (fid_len + 1 <= kFixedStringCap) {
+                            std::memcpy(idbuf, kCascadeFlightArrivalId,
+                                        fid_len + 1);
+                            SMOAP_LOG_INFO(
+                                "[odyssey-arrival] Cascade story-drop id='%s' -> "
+                                "flight id='%s' (land parked at return pad, "
+                                "dest=%s)",
+                                kCascadeStoryArrivalId, kCascadeFlightArrivalId,
+                                dest);
+                        }
+                    }
                 }
             }
             fileChangeNextStageHook.orig(self, info, raceType);
