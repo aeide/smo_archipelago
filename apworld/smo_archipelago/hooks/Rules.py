@@ -57,6 +57,12 @@ def CapPeace(world: World, multiworld: MultiWorld, state: CollectionState, playe
     EGRESS, not ingress (see CascadeDeparture), and Sand sits right after the free starting
     region, so Sand reachability is true from sphere 0 and this gate was a no-op. Key off
     the Cascade leave-gate directly (rolled-gate aware via KingdomMoons)."""
+    # Start-at-Cap-peace save: Cap is at peace + Odyssey launched from frame zero,
+    # so Cap peace/re-arrival moons are reachable in sphere 0. Strictly loosens the
+    # gate; opt-in via the start_at_cap_peace option (default OFF). See
+    # docs/handoff-cap-peace-sphere-0.md.
+    if is_option_enabled(multiworld, player, "start_at_cap_peace"):
+        return True
     return KingdomMoons(world, multiworld, state, player, "Cascade", 5)
 
 def CloudPeace(world: World, multiworld: MultiWorld, state: CollectionState, player: int):

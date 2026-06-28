@@ -905,9 +905,38 @@ def after_set_rules(world: World, multiworld: MultiWorld, player: int):
         # overwrote them with each door's home-region regionCheck (see
         # _wire_entrance_shuffle Step 3 clobber note); this set_rule wins.
         _apply_entrance_shuffle_door_rules(world, multiworld, player)
+    if is_option_enabled(multiworld, player, "start_at_cap_peace"):
+        _apply_start_at_cap_peace_rules(world, multiworld, player)
     # Must run last so it wins over the access rules set in set_rules.
     if is_option_enabled(multiworld, player, "no_logic"):
         _apply_no_logic(world, multiworld, player)
+
+
+def _apply_start_at_cap_peace_rules(
+    world: World, multiworld: MultiWorld, player: int
+) -> None:
+    """Open the Cap Kingdom REGION from sphere 0 for the start-at-Cap-peace save.
+
+    Flipping CapPeace() to True (hooks/Rules.py) makes Cap's peace/re-arrival moons
+    pass their own {CapPeace()} location gate, but the Cap *region* is reached only via
+    the Cascade -> Sand -> Cap region path, and the Sand->Cap entrance inherits Sand's
+    egress requires {KingdomMoons(Cascade,5)} (the Manual engine gates a region's
+    OUTGOING entrances — see hooks/Rules.py::CascadeDeparture). So without this, Cap is
+    not region-reachable until the Cascade leave-gate regardless of CapPeace.
+
+    On the Cap-peace save the player physically boots inside a peaceful Cap with the
+    Odyssey landed, so Cap is reachable from frame zero. Sand is already sphere-0
+    reachable (Cascade is the free start and the Cascade->Sand edge is ungated), so
+    freeing Cap's incoming entrance makes the whole Cap region sphere-0 reachable.
+    Per-location gates inside Cap (captures, abilities, CapPeace itself) are untouched,
+    so this strictly loosens reachability. See docs/handoff-cap-peace-sphere-0.md."""
+    from worlds.generic.Rules import set_rule
+    cap = multiworld.get_region("Cap Kingdom", player)
+    for entrance in cap.entrances:
+        set_rule(entrance, lambda state: True)
+    logging.info(
+        "start_at_cap_peace: freed %d Cap Kingdom region entrance(s) (player %d)",
+        len(cap.entrances), player)
 
 
 def _apply_subarea_scenario_gates(

@@ -142,6 +142,32 @@ Pattern off the existing `CapPeace` references in that file
 
 ---
 
+## ⚠️ Addendum (2026-06-28, implemented): flipping `CapPeace()` was NOT the whole job
+
+The plan above is correct that `{CapPeace()}` is the single *location-level* gate for Cap
+peace content — but it **missed the region-graph entry into Cap**. The region path is
+**Cascade → Sand → Cap**, and the `Sand KingdomToCap Kingdom` entrance inherits Sand's
+egress requires `{KingdomMoons(Cascade,5)}` (the Manual engine gates a region's OUTGOING
+entrances — the same egress quirk documented in `CascadeDeparture`). So even with
+`CapPeace()` forced True, the **Cap region was not reachable** from sphere 0 — confirmed
+empirically: with the option ON and an empty `CollectionState`, reachable regions were only
+`{Cascade, Sand, Menu, SMO}`; `Cap Kingdom.can_reach() == False`. The Cap-peace locations
+stayed unreachable (0/2).
+
+**Fix shipped:** in addition to the `CapPeace()` short-circuit, `after_set_rules` now calls
+`_apply_start_at_cap_peace_rules` ([hooks/World.py](../apworld/smo_archipelago/hooks/World.py)),
+which frees Cap Kingdom's incoming region entrance(s) (`set_rule(entrance, lambda s: True)`)
+when the option is on. Sand is already sphere-0 reachable (Cascade is the free start and the
+Cascade→Sand edge is ungated), so freeing Cap's entrance opens the whole Cap region from
+frame zero. Per-location Cap gates (captures, abilities, `CapPeace` itself) are untouched, so
+it still strictly loosens. After this, the ON case reaches 2/2 with an empty state and OFF is
+byte-identical to vanilla (verified by `tests/test_cap_peace_sphere0.py`, a `SMOAP_LIVE_AP`
+sibling of `test_rearrival_reachability.py`).
+
+So the real change set is: (1) `start_at_cap_peace` Toggle in Options.py, (2) `CapPeace()`
+short-circuit in Rules.py, (3) `_apply_start_at_cap_peace_rules` region-entrance ungate in
+World.py, (4) `tests/test_cap_peace_sphere0.py`.
+
 ## Why this is the whole job (and what it is NOT)
 
 - **IS:** one option + one early-return in `CapPeace()` + a test + a regen. Pure

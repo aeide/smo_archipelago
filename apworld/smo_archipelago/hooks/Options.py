@@ -187,6 +187,21 @@ class AbilitySanity(DefaultOnToggle):
     ability_state(enforce) wire field -> ApState::ability_gate_disabled."""
     display_name = "Abilitysanity"
 
+class StartAtCapPeace(Toggle):
+    """Generate logic assuming the run STARTS at Cap-Kingdom peace with the Odyssey
+    landed (the special save produced by the save-relocate bootstrap). When ON, Cap
+    Kingdom's peace / re-arrival moons are reachable from sphere 0 instead of requiring
+    the Cascade leave-gate first.
+
+    Leave OFF (default) for a normal playthrough that starts with the Cap prologue and
+    flies to Cascade — there, Cap peace is genuinely not reachable until you've left
+    Cascade, so a sphere-0 placement would be unwinnable.
+
+    Requires the matching Cap-peace save to actually play; this only changes seed logic.
+    No effect unless `include_cap_peace_moons` is also on (that option decides whether the
+    Cap-peace moons are in the pool at all)."""
+    display_name = "Start at Cap Kingdom Peace"
+
 class Goal(Choice):
     """Choose your victory condition.
 
@@ -398,6 +413,7 @@ def before_options_defined(options: dict) -> dict:
     options["capturesanity"] = Capturesanity
     options["abilitysanity"] = AbilitySanity
     options["talkatoo_mode"] = TalkatooMode
+    options["start_at_cap_peace"] = StartAtCapPeace
     options["randomize_kingdom_gates"] = RandomizeKingdomGates
     options["multi_moon_shuffle"] = MultiMoonShuffle
     # Per-kingdom Peace toggles
