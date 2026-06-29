@@ -14,8 +14,12 @@ clearly-separable halves with very different difficulty, so they're rated separa
    bright yellow, Cascade = orange, …; Ruined uses the game's unused purple-coin
    model since it has none of its own).
 
-**Status: Part 1 IMPLEMENTED in source (2026-06-20), awaiting switch-mod rebuild +
-in-game color tuning. Part 2 NOT started.**
+**Status: Part 1 (recolor) IMPLEMENTED + in-game (per-kingdom recolored moons ship and
+look good). Part 2 (coin-model swap) — SHELVED 2026-06-28 after 4 in-game build cycles
++ an NSO-disasm research spike proved every viable mechanism has a hard blocker. The
+shipped build has `kCoinModelSwap = false` (crash-free). See "Part 2 — FINAL STATUS
+(2026-06-28): SHELVED" immediately below; the v1/v2/v3 sections after it are the
+historical iteration record that section supersedes.**
 - **Recolor: ~95% feasible, SMALL** — this is essentially the already-scoped P5; the
   whole pipeline exists and only needs extending. **DONE in source:** Switch palette
   table widened to 22 entries (idx 0 recolored grey=junk, idx 2 recolored yellow=useful,
@@ -229,7 +233,183 @@ task the plan always called it.
 
 ---
 
-## Part 2 — Coin-model swap (the caveat): ~55%, high effort
+## Part 2 — FINAL STATUS (2026-06-28): SHELVED — Route A is a dead end
+
+This is the authoritative summary. The "v2 CRASH FIX", "IMPLEMENTED v1", and original
+~55% analysis sections below are the historical iteration record and are superseded by
+this section. **Shipped state: `kCoinModelSwap = false` (crash-free recolored moons).**
+
+### Iteration history (4 in-game build/test cycles)
+
+| Build | Change | In-game result |
+|---|---|---|
+| v1 | placed `initActorWithArchiveName` | "rainbow outline of a moon"; **crash** re-entering Cap from a subarea (`StageSceneStateWorldMap::tryCreate`, corrupt-vtable). The placed init registered the coin in scene actor groups → world-map state enumerated our bare LiveActor. |
+| v2 | `initChildActorWithArchiveNameNoPlacementInfo` (no scene registration) | crash gone, but moon "clear/colorless, still moon-shaped" — **no coin visible**. |
+| v3 | `+ al::copyPose(child, shine)` (position) | Logs: `childModel=1`, `coinPos == moonPos` exactly. Positioning + model load **work**. Still no coin on screen. **Crash** on Odyssey round-trip. |
+| v4 | crash-fix (drop per-frame stale-ptr deref) + diagnostic: moon left visible, coin 8× + bright magenta | **No magenta anywhere.** Decisive: a hand-built coin actor, fully init'd + positioned + scaled + tinted, does **not render**. Also crashed loading Sand (DigPoint stub link-shine → our `Shine::init` hook read `0x3F800000` = float 1.0 as a pointer). |
+
+### Research spike — NSO disassembly (capstone on `.romfs-cache/main.nso`, 2026-06-28)
+
+`Shine.cpp` is undecompiled, so the relevant functions were read as machine code.
+Three findings, each killing a candidate approach:
+
+1. **In-world the moon IS the Shine's own model — there is no separate model actor to
+   target.** `Shine::getCurrentModel` @0x1ce7b0 returns the demo-model-actor at
+   `this+0x2e0`/`+0x2e8` (selected by flag `+0x11c`) **only if present**, else returns
+   `this`. Those demo actors exist only during the get/appear cutscenes. So an
+   uncollected in-world moon draws through the Shine actor's own ModelKeeper (this is
+   why the Part-1 `BodyMT` recolor works in-world).
+
+2. **The native coin path self-destructs the shine — unusable.** `Shine::tryChangeCoin`
+   @0x1d09c8 (gate `0x5324d8` → sets the Coin nerve `0x1cbe5c8`) and `Shine::exeCoin`
+   @0x1d31b0: drives a model actor, increments a counter at `this+0x2f8`, and at
+   `counter >= 5` does `ldr x8,[this]; ldr x8,[x8,#0x28]; blr x8` — a virtual call to
+   kill/`makeActorDead`. This is SMO's "duplicate moon → spit out coins → vanish"
+   animation. Forcing a real collectable shine into it would **destroy the moon**,
+   violating the one hard invariant (collection must stay intact). Dead end.
+
+3. **Route A's draw failure is an al-internals subtlety, not a missing call.**
+   `initChildActorWithArchiveNameNoPlacementInfo` actually uses **`initViewIdHost`** (the
+   child DOES get a view id — my earlier "no view id" guess was wrong) and routes through
+   `initActorImpl`, which calls `initActorExecutor` → `initExecutorDraw`. So the child got
+   model + view-id + executor/draw init + pose + alive and **still didn't render**. The
+   missing piece is the **scene-level LiveActorKit/ExecuteDirector registration** that
+   placement actors receive via `createPlacementActorFromFactory` / the scene init flow —
+   `initActorImpl` does not do it for a hand-built actor.
+
+### Verdict & the only two real paths (if ever resumed)
+
+NO-GO for a cheap win. Achievable only as a dedicated multi-session RE task:
+
+- **(A) Swap the Shine's own ModelKeeper model resource** to the regional-coin model.
+  Draws for free (Shine already draws) and leaves collection untouched — but al exposes
+  no clean "replace model" API, so this means reverse-engineering ModelKeeper internals.
+- **(B) Properly register a runtime child with the scene's executor/draw system**
+  (replicate what `createPlacementActorFromFactory` does, getting the scene/kit from the
+  init info). Plus a **mandatory DigPoint stub-link-shine guard** in our `Shine::init`
+  hook (those reach the hook during stage load and crashed v3/v4).
+
+What already works and should be kept for any future attempt: cross-kingdom
+`CoinCollect<letter>` archive load, `initChildActorWithArchiveNameNoPlacementInfo` (no
+crash), `al::copyPose(child, shine)` for positioning. Verified manglings (dumped from
+dynstr, NOT g++-guessed — Itanium substitutions bit the first attempt):
+`al::copyPose` = `_ZN2al8copyPoseEPNS_9LiveActorEPKS0_`,
+`al::getTrans` = `_ZN2al8getTransEPKNS_9LiveActorE`.
+
+**Recommendation: leave shelved.** The recolored moons look good and never crash; the
+coin swap is a large RE investment for a purely cosmetic result.
+
+---
+
+## Part 2 — v2 CRASH FIX (2026-06-28) — placed init → child/no-placement init
+
+**v1 result (in-game, 2026-06-28):** moons rendered "a rainbow outline of a moon,
+not a coin," and the game **crashed** re-entering Cap Kingdom from a subarea —
+undefined-instruction at `0xa2729b0` (opcode `0x08e11dcc`) inside
+`StageSceneStateWorldMap::tryCreate` (a corrupted-vtable virtual call).
+
+**Root cause:** v1 loaded the coin child with `al::initActorWithArchiveName`, which
+== `initChildActorWithArchiveNameWithPlacementInfo` (lib/al `ActorInitUtil.cpp`): it
+reuses the Shine's `ActorInitInfo`, registering the coin as a **placed** actor
+(view-id + clipping + scene actor groups). On scene re-entry the world-map state
+enumerates placed actors and virtual-dispatches on our bare `al::LiveActor` — wrong
+vtable → branch into `.rodata` → crash. The same corrupt placement state is the most
+likely cause of the "outline not coin" visual (phantom placed actor draws with broken
+transform/state).
+
+**Fix (v2):** use **`al::initChildActorWithArchiveNameNoPlacementInfo`** — it builds a
+fresh empty `PlacementInfo` + `ActorInitInfo` (`initNoViewId`), so the coin is never
+registered scene-wide. Symbol confirmed in 1.0.0 dynsym (`check_nso_symbols.py`).
+**Built + deployed to Ryujinx 2026-06-28; awaiting Devon retest.** Expect this to fix
+BOTH the crash and the visual; verify the visual before chasing it separately.
+
+**In-game data that v1 DID establish (good news):** cross-kingdom archive load WORKS —
+`CoinCollectD/N/C/I/L` all loaded fine while standing in Cap/Snow (children created,
+no hitch/assert). On-device unknown #1 below is effectively resolved.
+
+**Next lever if v2's coin is invisible or doesn't die on collect:** the sub-actor sync
+flag. Coin uses `registerSubActorSyncAll` (cAll = clipping+hide+dead/alive); LiveActor
+lifecycle sync is per-flag conditional (`alSubActorFunction::trySyncDead/Alive/Clipping*`).
+cAll's **cHide** may hide the coin if `Shine::hideAllModel` toggles the host's al-level
+hide flag (UNVERIFIED — read `Shine::hideAllModel` decomp first). Do NOT just drop to
+`registerSubActorSyncClipping` — that also drops dead-sync and orphans the coin after
+collection; the right move is a clipping+dead (no-hide) combo or hiding the host without
+an al-hide path.
+
+---
+
+## Part 2 — IMPLEMENTED v1 (2026-06-28) — Route A (decorative child coin model)
+
+Built, compiles + links clean (`build_switchmod.py`, `[98/98]`), staged but NOT yet
+deployed/tested in-game. All in `switch-mod/src/hooks/ShineAppearanceHook.cpp`
+(switch-mod-only — no apworld rebuild / re-seed; the existing palette-index wire
+field already encodes "our-own-slot moon for kingdom X"). Symbols added to
+`HookSymbols.hpp` (all CALL-only via `lookupSymbol`, **not** in the sail `.sym` —
+graceful-skip on miss, like `setStageShineAnimFrame`).
+
+**Scope (Devon, 2026-06-28):** in-world only · uncollected only · 3D moons only
+(2D dot shines keep Part-1 color-only).
+
+**How it works (Route A — chosen over archive-swap):** `Shine::init` builds its
+model via `al::initActorWithArchiveName(this, info, rs::getStageShineArchiveName(this), …)`
+(confirmed by `main.nso` disasm) — and that SAME archive drives the Shine's collect
+sensor + state actions, so swapping the string (the trivial route) would risk
+breaking collection / crashing on missing Shine anims. **Unacceptable for a cosmetic
+feature.** Instead we leave the Shine 100% intact and, in the existing `Shine::init`
+post-orig hook, for our-own 3D kingdom moons:
+1. resolve the granted kingdom's worldId (palette bit → `kingdomBitForWorldId`
+   inverse; honors the Sea/Snow swap),
+2. `GameDataHolder::getCoinCollectArchiveName(worldId)` → the `CoinCollect<letter>`
+   archive (runtime, data-driven, not IP),
+3. spawn a decorative model-only child `al::LiveActor` from that archive
+   (`operator new` on the stage heap + `al::LiveActor` ctor + `initActorWithArchiveName`),
+   strip its sensors/collision (`invalidateHitSensors`/`offCollide`), scale it
+   (`setScaleAll`, `kCoinModelScale`), `makeActorAlive`, `registerSubActorSyncAll(shine, child)`
+   so it follows transform + show/hide + alive/dead,
+4. `Shine::hideAllModel(shine)` so only the coin shows in-world,
+5. color the coin once via the existing `writeBodyTint` on material **`BodyMT`**
+   (the coin model uses the SAME material name as the moon — verified in the bfres —
+   so the Part-1 recolor path works unchanged; coins have no "Color" Mcl anim so it's
+   always the material-tint path, never the frame override).
+
+Per-frame `Shine::control` hook re-hides the moon model + re-tints the coin (guarded
+flags), keyed by a `uid → child` map. The get cutscene shows a SEPARATE demo model
+(`hideAllModel` doesn't touch it) which the existing visible-model pass still recolors
+→ cutscene = normal moon in the kingdom color (consistent with Part 1).
+
+**Coinless kingdoms** (CollectCoinNum=0 in `SystemData/WorldList`): Cloud, Ruined,
+Dark, Darker — `kHasRegionalCoin[]` skips them (their `WorldItemTypeInfo` entry may be
+null → `getCoinCollectArchiveName` would null-deref), so those moons stay recolored
+moons. (Ruined's "unused purple-coin model" the plan mentions is a future add.)
+
+**Revert:** `kCoinModelSwap = false` (master) — every moon reverts to a recolored moon.
+
+**On-device unknowns to verify (build → deploy → test; cannot be settled off-Switch):**
+1. **Cross-kingdom archive load** — the #1 risk. Loading e.g. `CoinCollectK`
+   (Bowser's) while standing in Cascade: regional-coin archives are normally only
+   resident in their home kingdom. `initActorWithArchiveName` may hitch or assert if
+   the archive isn't loadable on demand. *Test a same-kingdom moon first* (archive
+   resident), then a foreign-kingdom one.
+2. **Scale** (`kCoinModelScale`, currently 2.0) — coins are smaller than moons; tune.
+   `registerSubActorSyncAll` may sync the host scale and clobber it (the per-frame
+   re-tint doesn't re-apply scale — add if needed).
+3. **`hideAllModel` re-show** — if a Shine state re-shows the moon model alongside the
+   coin, the per-frame `kCoinReHidePerFrame` re-hide should catch it; confirm.
+4. **Cutscene/coin visibility** — confirm the coin child hides during the get cutscene
+   (sub-actor sync) and the demo moon shows kingdom-colored; confirm coin dies on
+   collect.
+5. **Coin color** — frame-override kingdoms' `kPaletteColors3D` rows are approximations
+   ("BodyMT" tint multiplies against the coin's own albedo); expect a per-kingdom tuning
+   pass to match the moon colors.
+6. **Sensor-less child** — confirm Mario can't interact with / isn't pushed by the coin
+   and collection still works by walking into the (hidden) moon.
+
+Build log tells: `[coin-swap] uid=… kingdom_bit=… worldId=… archive=CoinCollect… child=…`
+on each swap; `getCoinCollectArchiveName resolved @ …` etc. at boot.
+
+---
+
+## Part 2 — Coin-model swap (the caveat): ~55%, high effort (original analysis)
 
 This is a fundamentally harder, explicitly-deferred problem ("Purple-coin model swap
 is a separate, deferred problem" — plan-v2-vision.md). The recolor above changes

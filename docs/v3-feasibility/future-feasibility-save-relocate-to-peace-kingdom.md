@@ -26,6 +26,13 @@
 > **What this unlocks next:** a `start_kingdom`/`start_at_peace`-style **YAML option to
 > put Cap-Kingdom peace in sphere-0 logic**, now that games can start from this save.
 > Handoff: [handoff-cap-peace-sphere-0.md](../handoff-cap-peace-sphere-0.md).
+>
+> **Two known caveats in the shipped save artifact** (full detail in "Known caveats"
+> below): (1) the file card reads **"Total Power Moons: 1"** — a cosmetic aggregate
+> count from a `!getitem` grant, not a real collected moon (got-shine bitfield is 0).
+> (2) The save can fly **Cap → Sand directly, skipping Cascade** (`alreadyGoWorld`
+> bridge baked in by the bootstrap flight) — handled by a self-imposed "collect the
+> real Cascade moons first" rule; a proper clear is a deferred follow-up.
 
 **Goal.** Take a **minimally-progressed real save** (Devon's example: finished the
 Cap prologue, beat the opening miniboss, flew to Cascade, saved — **zero moons
@@ -288,6 +295,50 @@ state is ever needed that *cannot* be reached by play (none was here). Note this
 produces **one save artifact**, not a reusable feature — making Cap-peace a *startable*
 configuration for any player is the follow-up YAML work (handoff below), which is a
 logic-tier change, not another save bootstrap.
+
+---
+
+## Known caveats in the shipped save (recorded 2026-06-28)
+
+Two artifacts of the bootstrap route survive in the saved file. Both were evaluated
+this session and **accepted** rather than fixed — recorded here so they aren't
+rediscovered cold.
+
+**1. The file card reads "Total Power Moons: 1" (cosmetic).** Devon had used the
+Archipelago `!getitem Cascade Power Moon` console command (granting an AP *item*, not
+collecting a location) at some point on this save. That bumped the save's **aggregate**
+shine count to 1, but **no got-shine bit is set** — every snapshot this session logged
+`[snapshot] enumerateOwnedShines scanned=1024 emitted=0`, i.e. zero actually-collected
+moons. So it is purely cosmetic ("the Odyssey carries one extra moon"); the save is a
+true 0-*collected*-moon start for AP purposes. Attempts to scrub the displayed count
+in-game and re-save do **not** help, because the AP-credit half is replayed by the
+bridge on every connect (it lives in the server's received-items for the slot, not the
+save) — and on a *fresh* multiworld the count is 0 anyway. Verdict: leave it; it does
+not affect logic or the snapshot.
+
+**2. The save can fly Cap → Sand directly, skipping Cascade (`alreadyGoWorld` bridge).**
+Confirmed in-game 2026-06-28: from this save the world map offers Sand straight out of
+Cap. Root cause: the bootstrap flight went Cascade → Sand → … → Cap, so SMO set
+`isAlreadyGoWorld(Cascade)` (and the forward world-warp-hole adjacency that
+`checkIsNewWorldInAlreadyGoWorld` reads) — the game now treats Cascade as already
+departed, so its first-departure gating no longer applies. **Mitigation in use:** a
+self-imposed rule to collect the real Cascade moons before advancing to Sand.
+**Proper fix (deferred follow-up):** clear `isAlreadyGoWorld(Cascade)` back to false.
+Feasibility checked — the public surface only *sets* the flag true
+(`GameDataFunction::setAlreadyGoWorld`, resolved at runtime); `isAlreadyGoWorld`
+delegates to `GameDataFile::isAlreadyGoWorld(worldId)` reading a member **not exposed in
+OdysseyHeaders**, so clearing it needs a raw GameDataFile field-write (offset must be
+reverse-engineered) and pokes the same undecompiled world-warp-demo machinery
+(`isFirstTimeNextWorld` / `checkIsNewWorldInAlreadyGoWorld`) that resisted every leave-gate
+lever this session. Estimated low-confidence + a fresh RE pass — not worth it unless the
+skip proves genuinely disruptive in play.
+
+Aside (negative result worth keeping): the Cascade *leave* gate this session did **not**
+yield to any of `findUnlockShineNum→0`, forcing `isUnlockedNextWorld` true,
+`getPayShineNum→10`, or `getCurrentShineNum`/`getGotShineNum→100`. All four are header
+one-liners inlined at the (undecompiled) world-map takeoff site, so function hooks never
+reach the real comparison — consistent with caveat 2's conclusion that the live gating is
+governed by the warp-demo/`alreadyGoWorld` state, not a hookable moon-count predicate.
 
 ---
 
