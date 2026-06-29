@@ -324,8 +324,14 @@ confirmed in-game. All bootstrap scaffolding has been **reverted** (Cascade's pr
 force is back to scenario 1 = Broode present + Multi-Moon collectable). **This produced
 one save artifact, not a startable feature** — the natural follow-up is a YAML option to
 make Cap-peace a sphere-0 start for any player (handoff:
-[handoff-cap-peace-sphere-0.md](../handoff-cap-peace-sphere-0.md)). Full write-up
-(method + revert):
+[handoff-cap-peace-sphere-0.md](../handoff-cap-peace-sphere-0.md)). **And the doc's
+"real prize" corollary — the "reach Cap from Cascade but can't fly back" softlock — is
+ALSO solved + validated in-game (2026-06-29, `cap-start 40845c0`):** boarding Cascade's
+Odyssey post-Broode is redirected straight to Cap via an entrance-shuffle **door rewrite**
+(`EntranceShuffleHook::processCascadeOdysseyDivert`), not the "force visited kingdoms to
+peace" route this recon proposed — and with a premise corrected (the post-Broode Cascade
+Odyssey is flightworthy, not grounded; the real blocker was the AP leave-gate, which the
+divert sidesteps). Full write-up (method + revert + corollary):
 [future-feasibility-save-relocate-to-peace-kingdom.md](future-feasibility-save-relocate-to-peace-kingdom.md).
 
 ---

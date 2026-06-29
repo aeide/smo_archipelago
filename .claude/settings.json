@@ -252,6 +252,7 @@
       "Bash(python -)",
       "Bash(python -c \"import capstone; print\\('capstone', capstone.__version__\\)\")",
       "Bash(python /tmp/nso_disasm.py)",
+      "Bash(echo \"\\(grep exit: $?\\)\")",
       "Bash(ls -lt /e/Ryubin/Logs/ 2>/dev/null | head -20; echo \"---scratchpad---\"; ls -lt \"/c/Users/devon/AppData/Local/Temp/claude/e--smo-archipelago/960a1c60-d0fa-49a9-8e3c-7fcc0ef0dc8e/scratchpad/\" 2>/dev/null | head; echo \"---cwd recent---\"; ls -lt /e/smo_archipelago/*.log /e/smo_archipelago/logs 2>/dev/null | head)",
       "Read(//e/Ryubin/Logs//**)",
       "Read(//c/Users/devon/AppData/Local/Temp/claude/e--smo-archipelago/960a1c60-d0fa-49a9-8e3c-7fcc0ef0dc8e/scratchpad//**)",
@@ -271,7 +272,10 @@
       "Bash(curl -s \"https://raw.githubusercontent.com/MonsterDruide1/OdysseyDecomp/master/src/MapObj/WorldWarpHole.cpp\" -o /tmp/wwh.cpp)",
       "Bash(ninja \"CMakeFiles/smo_archipelago.dir/src/hooks/OdysseyBoardDivertHook.cpp.o\")",
       "Bash(ninja \"CMakeFiles/smo_archipelago.dir/src/hooks/OdysseyBoardDivertHook.cpp.obj\")",
-      "Bash(ninja \"CMakeFiles/smo_archipelago.dir/src/hooks/UnlockShineNumHook.cpp.obj\")"
+      "Bash(ninja \"CMakeFiles/smo_archipelago.dir/src/hooks/UnlockShineNumHook.cpp.obj\")",
+      "Bash(git rm *)",
+      "Bash(git restore *)",
+      "Bash(rm -f /tmp/smo_commit_msg.txt)"
     ],
     "additionalDirectories": [
       "\\tmp\\dbg",

@@ -40,8 +40,6 @@ void installShineNumByWorldGetHook();
 // the game's findUnlockShineNum reads. See hooks/UnlockShineNumHook.cpp.
 void installUnlockShineNumHook();
 void installUnlockShineNumByWorldIdHook();
-void installIsUnlockedNextWorldHook();
-void installHolderFindUnlockShineNumHook();
 void installAddHackDictionaryHook();
 void installAddPayShineHook();
 void installAddPayShineAllHook();
@@ -336,13 +334,14 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("installing kingdom-gate hooks (randomize_kingdom_gates)");
     smoap::hooks::installUnlockShineNumHook();
     smoap::hooks::installUnlockShineNumByWorldIdHook();
-    smoap::hooks::installIsUnlockedNextWorldHook();
-    smoap::hooks::installHolderFindUnlockShineNumHook();
-    // NOTE: the Cascade Odyssey "board -> Cap" divert moved to EntranceShuffleHook
-    // (processCascadeOdysseyDivert). Boarding the Odyssey is a plain door transition
-    // into HomeShipInsideStage caught on :file — NOT the ShineTowerRocket world-map
-    // nerves the old OdysseyBoardDivertHook hooked (one layer too deep; it never
-    // fired, confirmed in the 2026-06-29 boot/board log). That hook is retired.
+    // NOTE: the Cascade Odyssey escape (post-Broode fly-out) lives entirely in
+    // EntranceShuffleHook::processCascadeOdysseyDivert — boarding the Odyssey is a
+    // plain door transition into HomeShipInsideStage (caught on :file) that we
+    // redirect straight to Cap. The earlier gate-forcing hooks (isUnlockedNextWorld
+    // + GameDataHolder::findUnlockShineNum member worker) and the nerve-based
+    // OdysseyBoardDivertHook were all retired 2026-06-29: the nerve hook was one
+    // layer too deep (never fired) and the gate-forcing made Cascade's in-kingdom
+    // moon gauge read 0/"full". The divert needs neither.
 
     SMOAP_LOG_INFO("resolving M6-phase-B capture-grant symbols");
     smoap::game::installCaptureGrantSymbols();

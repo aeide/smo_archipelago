@@ -33,6 +33,14 @@
 > (2) The save can fly **Cap → Sand directly, skipping Cascade** (`alreadyGoWorld`
 > bridge baked in by the bootstrap flight) — handled by a self-imposed "collect the
 > real Cascade moons first" rule; a proper clear is a deferred follow-up.
+>
+> **The Cascade fly-back corollary is ALSO solved now (2026-06-29).** This doc's
+> "real prize" — dissolving the "reach Cap from Cascade but can't fly back" softlock —
+> shipped + validated in-game (`cap-start 40845c0`), via an Odyssey→Cap **door
+> redirect** rather than the "force visited kingdoms to peace" route reasoned about
+> here, and with one premise corrected (the post-Broode Cascade Odyssey is
+> flightworthy, not grounded; the real blocker was the AP leave-gate). See **The
+> Cascade corollary** section below.
 
 **Goal.** Take a **minimally-progressed real save** (Devon's example: finished the
 Cap prologue, beat the opening miniboss, flew to Cascade, saved — **zero moons
@@ -192,7 +200,33 @@ Approach B is more code than a hex edit but is the only path with a real shot at
 
 ---
 
-## The Cascade corollary — answer: YES, with a caveat (~80% confidence)
+## The Cascade corollary — ✅ SOLVED IN-GAME (2026-06-29), by a different mechanism
+
+> **The softlock this section set out to dissolve — "reach Cap from Cascade but
+> can't fly back" — is now fixed and validated in-game** (committed `cap-start
+> 40845c0`). But NOT by the "force every visited kingdom to peace" route reasoned
+> about below, and with one premise corrected:
+>
+> - **The Cascade Odyssey is NOT grounded post-Broode.** A 2026-06-29 in-game test
+>   proved the ship is fully flightworthy after Madame Broode is beaten
+>   (`exist=activate=launch=1 crash=0 level=1`); the "buried in the rocks" pose is
+>   purely the **pre-Broode** scenario-1 placement. So the real fly-back blocker was
+>   never a grounded ship — it was the **AP leave-gate** (the rolled
+>   `findUnlockShineNum` kingdom-gate moons): a free-travel/ability-randomizer seed
+>   could fly Cap→Cascade pre-equipped for one item and then not afford to leave.
+> - **The fix is a door redirect, not a peace-force.** `EntranceShuffleHook::
+>   processCascadeOdysseyDivert` treats *boarding the Odyssey* in Cascade post-Broode
+>   like a shuffled door: it's a plain stage transition into the cabin interior
+>   (`HomeShipInsideStage`), which we rewrite to warp straight to `CapWorldHomeStage`
+>   — no flight map, no gate. From Cap (always peace'd, Odyssey present) the player
+>   flies onward normally. This needed neither the gate forced open (three inlining-
+>   walled attempts failed) nor Cascade forced to peace. See
+>   [[cap-return-and-cascade-arrival-demo]] and CLAUDE.md (the `## ⚠️` notes were not
+>   touched; this is switch-mod-tier).
+>
+> The reasoning below is retained as the original (sound) analysis — and it remains
+> the right model if a *future* feature ever needs visited kingdoms genuinely at
+> peace with landed Odysseys (rather than just an escape hatch out of Cascade).
 
 Devon's hoped-for side effect is sound and is essentially *documented behavior*. A
 kingdom forced to its **post-peace scenario IS the launched/landed-Odyssey state** —
