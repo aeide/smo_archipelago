@@ -42,7 +42,6 @@ void installUnlockShineNumHook();
 void installUnlockShineNumByWorldIdHook();
 void installIsUnlockedNextWorldHook();
 void installHolderFindUnlockShineNumHook();
-void installOdysseyBoardDivertHook();
 void installAddHackDictionaryHook();
 void installAddPayShineHook();
 void installAddPayShineAllHook();
@@ -339,7 +338,11 @@ extern "C" void hkMain() {
     smoap::hooks::installUnlockShineNumByWorldIdHook();
     smoap::hooks::installIsUnlockedNextWorldHook();
     smoap::hooks::installHolderFindUnlockShineNumHook();
-    smoap::hooks::installOdysseyBoardDivertHook();
+    // NOTE: the Cascade Odyssey "board -> Cap" divert moved to EntranceShuffleHook
+    // (processCascadeOdysseyDivert). Boarding the Odyssey is a plain door transition
+    // into HomeShipInsideStage caught on :file — NOT the ShineTowerRocket world-map
+    // nerves the old OdysseyBoardDivertHook hooked (one layer too deep; it never
+    // fired, confirmed in the 2026-06-29 boot/board log). That hook is retired.
 
     SMOAP_LOG_INFO("resolving M6-phase-B capture-grant symbols");
     smoap::game::installCaptureGrantSymbols();

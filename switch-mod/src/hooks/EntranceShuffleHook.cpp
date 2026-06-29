@@ -71,6 +71,11 @@ void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName
 // load input, which actually drives the load (the GameDataFile field write did not).
 int cascadeArrivalScenarioOverride(void* gameDataFile, const char* destStageName);
 
+// Defined in CascadeBroodeRespawnHook.cpp — true once Cascade's Madame Broode
+// Multi-Moon is collected (Broode beaten). Pure save-state read; used by the
+// Cascade Odyssey "board -> Cap" door divert below.
+bool cascadeMultiMoonCollected();
+
 // Defined in CapReturnScenarioHook.cpp. Returns Cap's "return" placement scenario
 // (2) to FLOOR the upcoming Cap arrival to its post-peace layout when committing
 // into Cap's home stage AND the effective incoming scenario is below it, else -1.
@@ -110,6 +115,14 @@ constexpr std::size_t kOffScenarioNo          = 0x1CC;
 // landing id (read it off an [entrance:file] line from a legitimate fly-in).
 inline constexpr const char* kCascadeStoryArrivalId  = "start";
 inline constexpr const char* kCascadeFlightArrivalId = "";  // empty = home default spawn
+
+// Stage names for the Cascade Odyssey "board -> Cap" door divert (see
+// processCascadeOdysseyDivert). HomeShipInsideStage is the Odyssey cabin interior
+// reached by walking into the ship in ANY kingdom — boarding is a plain door
+// transition (proven on :file), not the in-cabin ShineTowerRocket world-map nerve.
+inline constexpr const char* kCascadeHomeStage   = "WaterfallWorldHomeStage";
+inline constexpr const char* kOdysseyInsideStage = "HomeShipInsideStage";
+inline constexpr const char* kCapHomeStage       = "CapWorldHomeStage";
 
 using GetCurrentStageNameFn = const char* (*)(GameDataHolderAccessor);
 GetCurrentStageNameFn s_getCurrentStageName = nullptr;
@@ -300,6 +313,59 @@ void processDetourExitGate(const ChangeStageInfo* info) {
                    cg.b_short, cg.b_have, cg.b_need, cg.redirect_stage);
 }
 
+// ── Cascade Odyssey "board -> Cap" door divert (Devon's no-flight-map escape) ──
+//
+// The free-travel softlock: the player flies the Odyssey Cap->Cascade pre-equipped
+// to grab one ability/capture, beats Broode (always possible — her Chain Chomp is a
+// fixed starter), collects her Multi-Moon... then can't afford the rolled
+// kingdom-gate moons to fly back out. Three attempts to OPEN the takeoff gate all
+// hit the inlining wall (findUnlockShineNum free-fn caught only globe labels;
+// isUnlockedNextWorld absent from dynsym; the member worker fired but did NOT open
+// the in-cabin gate). See [[cap-return-and-cascade-arrival-demo]].
+//
+// Devon's idea instead — and the seam the log finally revealed: BOARDING the Odyssey
+// is a plain door transition into the cabin interior (HomeShipInsideStage), which
+// fires :file right here with cur=='WaterfallWorldHomeStage'. (The earlier
+// OdysseyBoardDivertHook hooked ShineTowerRocket::exeGoToWorldMap* — the in-cabin
+// globe nerves — one layer too deep, so it never fired.) So we treat boarding like
+// a subarea door and rewrite ITS dest to Cap, exactly as processDetourExitGate
+// rewrites a held detour: when leaving Cascade's home stage post-Broode, walking
+// into the Odyssey loads Cap directly — no flight map. From Cap (always peace'd,
+// Odyssey present) the player flies onward normally.
+//
+// Empty entrance id = the HomeStage default-spawn shape (same as the detour gate).
+// The existing CapReturnScenarioHook floors Cap to scenario 2 + force-acquires the
+// Odyssey on the resulting commit into CapWorldHomeStage, so Cap arrives peace'd
+// with a boardable ship. Scope (Devon's choice): Cascade post-Broode ONLY — every
+// other kingdom keeps the vanilla cabin + flight map. Trade-off (accepted):
+// post-Broode, Cascade's Odyssey is a one-way Cap shuttle (pick another dest from
+// Cap, not Cascade). Runs after processEntranceRemap/processDetourExitGate so it
+// reads the final (post-remap) dest, and BEFORE the reportArrival block so the
+// tracker sees Cap, not the ship interior.
+void processCascadeOdysseyDivert(const ChangeStageInfo* info) {
+    if (!info) return;
+    const char* dest = readCstrAt(info, kOffChangeStageNameCstr);
+    if (!dest || std::strcmp(dest, kOdysseyInsideStage) != 0) return;
+    const char* cur = currentStageName();
+    if (!cur || std::strcmp(cur, kCascadeHomeStage) != 0) return;
+    if (!cascadeMultiMoonCollected()) return;
+
+    auto* mut       = const_cast<ChangeStageInfo*>(info);
+    char* dst_stage = mutableCstrAt(mut, kOffChangeStageNameCstr);
+    char* dst_id    = mutableCstrAt(mut, kOffChangeStageIdCstr);
+    const std::size_t stage_len = std::strlen(kCapHomeStage);
+    if (!dst_stage || !dst_id || stage_len + 1 > kFixedStringCap) {
+        SMOAP_LOG_WARN("[odyssey->cap] redirect buffer guard tripped — left vanilla "
+                       "(Cascade boarding enters the cabin instead)");
+        return;
+    }
+    std::memcpy(dst_stage, kCapHomeStage, stage_len + 1);
+    dst_id[0] = '\0';
+    SMOAP_LOG_INFO("[odyssey->cap] Cascade post-Broode boarding diverted to Cap "
+                   "(no flight map): %s -> %s (cur=%s)",
+                   kOdysseyInsideStage, kCapHomeStage, cur);
+}
+
 // [entrance:try] — GameDataFunction::tryChangeNextStage(writer, info). Free
 // function, writer passed by value. The GameDataFunction-path forward transitions.
 HkTrampoline<bool, GameDataHolderWriter, const ChangeStageInfo*>
@@ -319,6 +385,7 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
             logChangeStageInfo("file", info);
             processEntranceRemap(info);
             processDetourExitGate(info);
+            processCascadeOdysseyDivert(info);
             // Overworld-arrival signal for the PC tracker. processEntranceRemap
             // has already rewritten mChangeStageName in place when shuffled, so
             // the dest read here is the FINAL stage Mario is committing to. If
