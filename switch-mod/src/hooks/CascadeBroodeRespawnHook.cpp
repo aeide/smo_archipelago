@@ -154,6 +154,18 @@ std::int32_t scenarioOverride(const void* gdf) {
 // Cascade's placement scenario back to 1 so Madame Broode + her Multi-Moon are
 // placed, when the Multi-Moon is still uncollected. No-op for any non-Cascade
 // destination or once the moon is collected (fail-safe direction).
+// True once Cascade's Madame Broode Multi-Moon has been collected (= Broode
+// beaten). Exposed for UnlockShineNumHook: after Broode, Cascade's leave-gate
+// drops to 0 so the Odyssey takes off freely (e.g. back to Cap) without the
+// rolled kingdom-gate moons — the "beat Broode to leave" model. Reads the same
+// HintInfo collection probe the respawn self-heal uses (matched by stage,obj).
+// Returns false if the (stage,obj) couldn't be resolved or collection is unknown
+// — fail-safe direction (keep the gate rather than free it spuriously).
+bool cascadeMultiMoonCollected() {
+    if (s_multiMoonStage == nullptr || s_multiMoonObj == nullptr) return false;
+    return smoap::game::probeShineGot(s_multiMoonStage, s_multiMoonObj) == 1;
+}
+
 void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName,
                                    const char* tag) {
     if (gameDataFile == nullptr || destStageName == nullptr) return;

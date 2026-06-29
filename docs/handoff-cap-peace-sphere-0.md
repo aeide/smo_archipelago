@@ -1,5 +1,18 @@
 # Handoff — YAML option: start at Cap-Kingdom peace (Cap peace in sphere-0 logic)
 
+> ## ✅ STATUS: COMPLETE — SHIPPED & COMMITTED 2026-06-28 (commit `d960f0d`)
+>
+> **This handoff is DONE. Everything below is historical** — the "Recommended
+> implementation" sections are written in imperative future tense but were all carried out.
+> Do not re-implement. The shipped change set (verified present in the tree this session):
+>
+> 1. `StartAtCapPeace(Toggle)` (default OFF) in [hooks/Options.py](../apworld/smo_archipelago/hooks/Options.py) — class def + `options["start_at_cap_peace"]` registration.
+> 2. `CapPeace()` short-circuit (`if start_at_cap_peace: return True`) in [hooks/Rules.py](../apworld/smo_archipelago/hooks/Rules.py).
+> 3. `_apply_start_at_cap_peace_rules` region-entrance ungate in [hooks/World.py](../apworld/smo_archipelago/hooks/World.py), called from `after_set_rules` (the addendum below explains why this was *also* needed — flipping `CapPeace()` alone left the Cap region unreachable via the egress quirk).
+> 4. [tests/test_cap_peace_sphere0.py](../apworld/smo_archipelago/tests/test_cap_peace_sphere0.py) reachability guard.
+>
+> Apworld-only: no switch-mod / wire / re-seed of others. See memory [[save-relocate-to-peace-kingdom-feasibility]] and [[start-at-cap-peace-region-gap]].
+
 **Created 2026-06-28.** Opened up by the now-complete *save-relocate* work:
 we have a real save that loads into **post-peace Cap Kingdom, Odyssey landed, 0 moons**
 (see [v3-feasibility/future-feasibility-save-relocate-to-peace-kingdom.md](v3-feasibility/future-feasibility-save-relocate-to-peace-kingdom.md)

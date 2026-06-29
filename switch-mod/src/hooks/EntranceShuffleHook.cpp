@@ -71,6 +71,17 @@ void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName
 // load input, which actually drives the load (the GameDataFile field write did not).
 int cascadeArrivalScenarioOverride(void* gameDataFile, const char* destStageName);
 
+// Defined in CapReturnScenarioHook.cpp. Returns Cap's "return" placement scenario
+// (2) to FLOOR the upcoming Cap arrival to its post-peace layout when committing
+// into Cap's home stage AND the effective incoming scenario is below it, else -1.
+// Never lowers a higher (moon-rock) scenario, so Cap's Moon Rock and its 14 moons
+// stay gated and spawn/persist normally. Same lever as the Cascade force: written
+// into the ChangeStageInfo scenario field BEFORE orig (the scenario-jump load
+// input). Takes the GameDataFile* (to read Cap's stored scenario for a -1 info
+// value) and the incoming ChangeStageInfo.mScenarioNo.
+int capArrivalScenarioOverride(const void* gameDataFile, int incomingScenario,
+                               const char* destStageName);
+
 namespace {
 
 struct GameDataHolderWriter { void* mData; };
@@ -386,6 +397,40 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                                 kCascadeStoryArrivalId, kCascadeFlightArrivalId,
                                 dest);
                         }
+                    }
+                }
+
+                // Cap "return" scenario floor: ensure every commit into Cap's
+                // home stage loads AT LEAST its post-peace layout (scenario 2) so
+                // the {CapPeace()}-gated moons are placed, WITHOUT lowering a
+                // higher moon-rock scenario (Cap's Moon Rock + its 14 moons stay
+                // gated). Same lever as the Cascade force above — write the
+                // ChangeStageInfo scenario BEFORE orig consumes it. dest is the
+                // FINAL (post-remap) target; pass the current info scenario so the
+                // override can tell a fog/prologue load from a moon-rock load.
+                {
+                    auto* scp = reinterpret_cast<std::int32_t*>(
+                        reinterpret_cast<std::uint8_t*>(const_cast<ChangeStageInfo*>(info))
+                        + kOffScenarioNo);
+                    const std::int32_t before = *scp;
+                    const int capSc = capArrivalScenarioOverride(self, before, dest);
+                    if (capSc >= 0) {
+                        if (before != capSc) {
+                            *scp = capSc;
+                            SMOAP_LOG_INFO("[cap-return] changeNextStage floor Cap "
+                                           "arrival ChangeStageInfo.scenario %d -> "
+                                           "%d (dest=%s)",
+                                           before, capSc, dest);
+                        }
+                        // The prologue layout we're overriding has no Odyssey, so
+                        // the player can't leave Cap. Force the ship present +
+                        // boardable BEFORE the stage loads (no-op once owned), and
+                        // unlock Cascade so the world map offers it as a
+                        // destination (the prologue's scripted unlockWorld is
+                        // skipped). Mirrors the Cascade first-arrival fix above.
+                        smoap::game::forceAcquireOdyssey("changeNextStage->Cap");
+                        smoap::game::forceUnlockCascadeDestination(
+                            "changeNextStage->Cap");
                     }
                 }
             }

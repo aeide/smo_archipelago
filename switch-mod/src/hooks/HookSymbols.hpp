@@ -709,6 +709,64 @@ inline constexpr const char* kGameDataFunctionIsPlayDemoWorldWarp =
     "_ZN16GameDataFunction19isPlayDemoWorldWarpE22GameDataHolderAccessor";
 inline constexpr const char* kGameDataFunctionIsEnterStageFirst =
     "_ZN16GameDataFunction17isEnterStageFirstE22GameDataHolderAccessor";
+// GameDataFunction::noPlayDemoWorldWarp(GameDataHolderWriter) — clears the stored
+// mIsPlayDemoWorldWarp flag (decomp: writer->getGameDataFile()->noPlayDemoWorldWarp()).
+// The forward-warp into a never-visited kingdom (isForwardWorldWarpDemo true)
+// sets this flag inside changeNextStageWithDemoWorldWarp, and the arrival plays
+// the first-visit cutscene — which for Cascade ALSO grounds the Odyssey
+// (stranding free-travel players). We clear it post-orig in tryChangeDemoWarpHook
+// so the arrival is a plain parked flight landing. Resolved via hk::ro::lookupSymbol
+// (soft-degrade on miss). "noPlayDemoWorldWarp"=19, "GameDataHolderWriter"=20.
+inline constexpr const char* kGameDataFunctionNoPlayDemoWorldWarp =
+    "_ZN16GameDataFunction19noPlayDemoWorldWarpE20GameDataHolderWriter";
+
+// The Odyssey takeoff gate: GameDataFunction::isUnlockedNextWorld(accessor) =
+// is_game_clear || getPayShineNum(cur) >= findUnlockShineNum(cur). The free
+// findUnlockShineNum wrapper is INLINED into it, so hooking that free function
+// (UnlockShineNumHook) only catches the out-of-line world-map LABEL reads, not the
+// actual takeoff decision (proven in-game 2026-06-29: the cascade-postbroode zero
+// fired but Cascade stayed walled). So we force this gate true directly for Cascade
+// once Broode is beaten. Resolved via hk::ro::lookupSymbol (soft-degrade on miss —
+// NOT added to the sail .sym DB, so an inlined/absent symbol can't abort module
+// init). "isUnlockedNextWorld"=18, "GameDataHolderAccessor"=22.
+inline constexpr const char* kGameDataFunctionIsUnlockedNextWorld =
+    "_ZN16GameDataFunction18isUnlockedNextWorldE22GameDataHolderAccessor";
+
+// The SHARED out-of-line worker beneath BOTH the free findUnlockShineNum wrappers
+// AND the inlined takeoff gate: GameDataHolder::findUnlockShineNum(bool* isCountTotal,
+// s32 worldId) const (OdysseyHeaders GameDataHolder.h:173). isUnlockedNextWorld
+// inlined the FREE findUnlockShineNum wrapper (so our free-fn hook missed the gate)
+// AND isUnlockedNextWorld itself isn't in dynsym (the 2026-06-29 "lookup FAILED"
+// log) — but the inlined gate body still calls THIS member out-of-line. So hooking
+// the member catches the takeoff decision the free-fn + isUnlockedNextWorld hooks
+// both missed. Forcing it to 0 for Cascade's worldId post-Broode opens the gate
+// (getPayShineNum(cur) >= 0 is always true). Resolved via hk::ro::lookupSymbol
+// (soft-degrade on miss; const-qualified first, non-const fallback). The two free
+// hooks override the world-map label to the rolled value regardless, so labels are
+// unaffected. "GameDataHolder"=14, "findUnlockShineNum"=18; bool*=Pb, s32=i.
+inline constexpr const char* kGameDataHolderFindUnlockShineNum =
+    "_ZNK14GameDataHolder18findUnlockShineNumEPbi";
+inline constexpr const char* kGameDataHolderFindUnlockShineNumNonConst =
+    "_ZN14GameDataHolder18findUnlockShineNumEPbi";
+
+// Odyssey "board -> Cap" divert (Devon's no-flight-map escape hatch, Cascade-only).
+// The Odyssey takeoff/world-map flow lives on ShineTowerRocket (src/MapObj/
+// ShineTowerRocket.h). Two nerve states lead INTO the world-map UI:
+// exeGoToWorldMapWithCamera + exeGoToWorldMapWithFade. Nerve exe functions are
+// dispatched indirectly through the nerve system, so the compiler cannot inline
+// them — they always have a real address (unlike the inlined isUnlockedNextWorld /
+// findUnlockShineNum predicates). We hook both: in Cascade post-Broode, instead of
+// advancing into the map we issue tryChangeNextStageWithDemoWorldWarp(CapWorldHomeStage)
+// and suppress orig, so boarding warps straight to Cap with NO flight map. Resolved
+// via hk::ro::lookupSymbol (soft-degrade on miss; NOT in the sail DB). void, this-only.
+// "ShineTowerRocket"=16; "exeGoToWorldMapWithCamera"=25, "exeGoToWorldMapWithFade"=23.
+inline constexpr const char* kShineTowerRocketExeGoToWorldMapWithCamera =
+    "_ZN16ShineTowerRocket25exeGoToWorldMapWithCameraEv";
+inline constexpr const char* kShineTowerRocketExeGoToWorldMapWithFade =
+    "_ZN16ShineTowerRocket23exeGoToWorldMapWithFadeEv";
+// NOTE: the bare-stage-name Odyssey-flight commit we CALL —
+// kGameDataFunctionTryChangeNextStageWithDemoWorldWarp — is already declared above
+// (M7 Path A Layer 2). Reused here; do not re-declare.
 
 // First-arrival parked-pose FIX (2026-06-27). The warpdemo spike proved
 // isAlreadyGoWorld(Cascade) is the buried-vs-parked discriminator: 0 on the

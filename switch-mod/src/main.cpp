@@ -40,6 +40,9 @@ void installShineNumByWorldGetHook();
 // the game's findUnlockShineNum reads. See hooks/UnlockShineNumHook.cpp.
 void installUnlockShineNumHook();
 void installUnlockShineNumByWorldIdHook();
+void installIsUnlockedNextWorldHook();
+void installHolderFindUnlockShineNumHook();
+void installOdysseyBoardDivertHook();
 void installAddHackDictionaryHook();
 void installAddPayShineHook();
 void installAddPayShineAllHook();
@@ -98,6 +101,13 @@ void tickArrivalPoll();
 // and the moon is still uncollected. Self-healing — stops once the moon is got.
 // See hooks/CascadeBroodeRespawnHook.cpp.
 void installCascadeBroodeRespawnHook();
+
+// Cap "return" scenario floor: ensures every transition into Cap Kingdom loads
+// at least its post-peace layout (scenario 2) so the {CapPeace()}-gated moons are
+// placed, without lowering a higher moon-rock scenario (Cap's Moon Rock + its 14
+// moons stay gated). Applied from EntranceShuffleHook's changeNextStage commit.
+// See hooks/CapReturnScenarioHook.cpp.
+void installCapReturnScenarioHook();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
@@ -327,6 +337,9 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("installing kingdom-gate hooks (randomize_kingdom_gates)");
     smoap::hooks::installUnlockShineNumHook();
     smoap::hooks::installUnlockShineNumByWorldIdHook();
+    smoap::hooks::installIsUnlockedNextWorldHook();
+    smoap::hooks::installHolderFindUnlockShineNumHook();
+    smoap::hooks::installOdysseyBoardDivertHook();
 
     SMOAP_LOG_INFO("resolving M6-phase-B capture-grant symbols");
     smoap::game::installCaptureGrantSymbols();
@@ -411,6 +424,9 @@ extern "C" void hkMain() {
 
     SMOAP_LOG_INFO("installing CascadeBroodeRespawnHook (write mScenarioNoPlacement -> 1 on commit into Cascade pre-Broode)");
     smoap::hooks::installCascadeBroodeRespawnHook();
+
+    SMOAP_LOG_INFO("installing CapReturnScenarioHook (floor ChangeStageInfo.scenario up to 2 on commit into Cap; moon-rock scenario preserved)");
+    smoap::hooks::installCapReturnScenarioHook();
 
 #ifdef SMOAP_HAS_DEBUG_RENDERER
     // Install the Nvn bootstrap trampoline so ImGuiBackendNvn auto-wires

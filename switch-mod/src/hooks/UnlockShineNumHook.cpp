@@ -16,11 +16,13 @@
 // still -1 -> vanilla value passes through untouched.
 
 #include "hk/hook/Trampoline.h"
+#include "hk/ro/RoUtil.h"
 #include "hk/types.h"
 
 #include "../ap/ApState.hpp"
 #include "../game/KingdomUnlock.hpp"
 #include "../util/Log.hpp"
+#include "HookSymbols.hpp"
 
 #include <cstdint>
 
@@ -29,6 +31,13 @@ struct GameDataHolderAccessor {
 };
 
 namespace smoap::hooks {
+
+// Defined in CascadeBroodeRespawnHook.cpp. True once Cascade's Madame Broode
+// Multi-Moon is collected (Broode beaten). After that, Cascade's current-world
+// leave-gate drops to 0 (below) so the Odyssey takes off freely — the "beat
+// Broode to leave" model. Before Broode the globe is walled (scenario 1), so
+// this can't be exploited to skip her.
+bool cascadeMultiMoonCollected();
 
 namespace {
 
@@ -118,6 +127,28 @@ HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
             logSubstitution("findUnlockShineNum[free-detour]", bit, orig, 0);
             return 0;
         }
+        // Cascade "beat Broode to leave": once Madame Broode's Multi-Moon is
+        // collected, drop Cascade's CURRENT-WORLD leave-gate to 0 so the Odyssey
+        // takes off freely (e.g. back to Cap) without paying the rolled
+        // kingdom-gate moons. This prevents the free-travel / ability-randomizer
+        // softlock where too few Cascade moons are reachable to pay the gate
+        // (the player flew in from Cap pre-equipped only to fetch one thing).
+        // Same proven lever as the free detours — return 0 from the current-world
+        // findUnlockShineNum (the takeoff gate getPayShineNum(cur) >=
+        // findUnlockShineNum(cur)). Only the current-world variant; the by-world
+        // globe label (other hook) keeps the true threshold. Self-heals: false
+        // until Broode is beaten, and Broode is always beatable (her Chain Chomp
+        // is a fixed starter), so the gate is "do Cascade's story", not a moon
+        // count. Before Broode the globe is walled, so this can't skip her.
+        {
+            static const std::uint8_t s_cascade =
+                smoap::game::kingdomBitFor("Cascade");
+            if (bit == s_cascade && cascadeMultiMoonCollected()) {
+                logSubstitution("findUnlockShineNum[cascade-postbroode]", bit,
+                                orig, 0);
+                return 0;
+            }
+        }
         const int rolled = rolledGateForBit(bit);
         if (rolled < 0) return orig;
         logSubstitution("findUnlockShineNum", bit, orig, rolled);
@@ -144,7 +175,108 @@ HkTrampoline<int, bool*, GameDataHolderAccessor, int> unlockShineNumByWorldIdHoo
         return rolled;
     });
 
+// THE actual takeoff gate. isUnlockedNextWorld(accessor) =
+//   is_game_clear || getPayShineNum(cur) >= findUnlockShineNum(cur)
+// (OdysseyDecomp src/System/GameDataFunction.cpp). The free findUnlockShineNum
+// wrapper is INLINED into this, so zeroing its out-of-line copy above only moves
+// the world-map LABEL display — the Odyssey board / "I think there are still more
+// Power Moons" pre-warp check reads the inlined real value (5). Confirmed in-game
+// 2026-06-29: findUnlockShineNum[cascade-postbroode] -> 0 fired, yet Cascade stayed
+// walled. So force the gate itself true for Cascade once Broode's Multi-Moon is
+// collected. Only Cascade-postbroode is overridden; every other kingdom (and Cascade
+// pre-Broode, where the globe is walled) passes orig through unchanged.
+HkTrampoline<bool, GameDataHolderAccessor> isUnlockedNextWorldHook =
+    hk::hook::trampoline([](GameDataHolderAccessor accessor) -> bool {
+        const bool orig = isUnlockedNextWorldHook.orig(accessor);
+        if (orig) return true;
+        const std::uint8_t bit = resolveCurrentKingdomBit();
+        static const std::uint8_t s_cascade = smoap::game::kingdomBitFor("Cascade");
+        if (bit == s_cascade && cascadeMultiMoonCollected()) {
+            static std::uint8_t s_last_bit = 0xff;
+            if (s_last_bit != bit) {
+                s_last_bit = bit;
+                SMOAP_LOG_INFO("[kingdom-gates] isUnlockedNextWorld[cascade-postbroode] "
+                               "FORCED true (Broode beaten -> Odyssey takeoff allowed)");
+            }
+            return true;
+        }
+        return orig;
+    });
+
+// THE shared out-of-line worker beneath the inlined takeoff gate.
+// GameDataHolder::findUnlockShineNum(bool* isCountTotal, s32 worldId) const.
+// isUnlockedNextWorld inlined the free findUnlockShineNum wrapper (so the free-fn
+// hook above never saw the gate) and isUnlockedNextWorld itself isn't in dynsym
+// (the 2026-06-29 "lookup FAILED" log) — but the inlined gate body still calls
+// THIS member out-of-line. Zeroing it for Cascade's worldId once Broode's Multi-Moon
+// is collected makes the gate getPayShineNum(cur) >= 0 always true, so the Odyssey
+// takes off (e.g. back to Cap). Scoped to Cascade's worldId, so every other kingdom's
+// requirement is untouched; the two free hooks above re-derive the world-map label
+// from the rolled table regardless, so the globe display is unaffected.
+HkTrampoline<int, void* /*GameDataHolder* this*/, bool*, int>
+    holderFindUnlockShineNumHook = hk::hook::trampoline(
+        [](void* self, bool* is_count_total, int world_id) -> int {
+            const int orig =
+                holderFindUnlockShineNumHook.orig(self, is_count_total, world_id);
+            static const std::uint8_t s_cascade =
+                smoap::game::kingdomBitFor("Cascade");
+            if (smoap::game::kingdomBitForWorldId(world_id) == s_cascade &&
+                cascadeMultiMoonCollected()) {
+                static int s_last = -2;
+                if (s_last != orig) {
+                    s_last = orig;
+                    SMOAP_LOG_INFO("[kingdom-gates] GameDataHolder::findUnlockShineNum"
+                                   "[cascade-postbroode]: worldId=%d vanilla=%d -> 0 "
+                                   "(member worker; opens inlined takeoff gate)",
+                                   world_id, orig);
+                }
+                return 0;
+            }
+            return orig;
+        });
+
 }  // namespace
+
+// Hook the shared member worker so the INLINED takeoff gate inside
+// isUnlockedNextWorld reads 0 for Cascade post-Broode. Resolved at runtime
+// (const-qualified mangling first, non-const fallback) with soft-degrade — a
+// missing/inlined symbol logs a warning rather than aborting module init.
+void installHolderFindUnlockShineNumHook() {
+    ptr addr = hk::ro::lookupSymbol(smoap::sym::kGameDataHolderFindUnlockShineNum);
+    if (addr == 0) {
+        addr = hk::ro::lookupSymbol(
+            smoap::sym::kGameDataHolderFindUnlockShineNumNonConst);
+    }
+    if (addr == 0) {
+        SMOAP_LOG_WARN("[kingdom-gates] GameDataHolder::findUnlockShineNum lookup "
+                       "FAILED — Cascade post-Broode takeoff gate NOT forced (member "
+                       "worker inlined/absent); fly-back-to-Cap may stay walled. Next "
+                       "chokepoint: getPayShineNum inflate, or force the warp dest.");
+        return;
+    }
+    SMOAP_LOG_INFO("installing HolderFindUnlockShineNumHook -> "
+                   "GameDataHolder::findUnlockShineNum @ 0x%lx (zero Cascade worldId "
+                   "post-Broode -> opens inlined takeoff gate)",
+                   static_cast<unsigned long>(addr));
+    holderFindUnlockShineNumHook.installAtPtr(reinterpret_cast<void*>(addr));
+}
+
+void installIsUnlockedNextWorldHook() {
+    // Resolved against main.nso's real dynsym (NOT the sail .sym DB) so a missing or
+    // fully-inlined symbol soft-degrades to a warning instead of aborting module init.
+    const ptr addr = hk::ro::lookupSymbol(
+        smoap::sym::kGameDataFunctionIsUnlockedNextWorld);
+    if (addr == 0) {
+        SMOAP_LOG_WARN("[kingdom-gates] isUnlockedNextWorld lookup FAILED — Cascade "
+                       "post-Broode takeoff gate NOT forced (symbol inlined/absent); "
+                       "fly-back-to-Cap may stay walled");
+        return;
+    }
+    SMOAP_LOG_INFO("installing IsUnlockedNextWorldHook -> GameDataFunction::"
+                   "isUnlockedNextWorld @ 0x%lx (force takeoff gate true Cascade "
+                   "post-Broode)", static_cast<unsigned long>(addr));
+    isUnlockedNextWorldHook.installAtPtr(reinterpret_cast<void*>(addr));
+}
 
 void installUnlockShineNumHook() {
     SMOAP_LOG_INFO("installing UnlockShineNumHook -> "

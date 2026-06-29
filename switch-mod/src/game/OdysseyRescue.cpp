@@ -64,6 +64,18 @@ struct ResolvedFns {
     GetWorldIndexFn             getWorldIndexWaterfall    = nullptr;
 };
 
+// Cascade free-travel rescue (2026-06-29): DISABLED after in-game test. The
+// repairHome+launch sweep was a NO-OP — the log showed the ship already
+// exist=activate=launch=1, crash=0, level=1 on Cascade arrival, unchanged before
+// vs after, yet still unboardable pre-Broode. So the burial is the SCENARIO-1
+// actor placement, not any home-ship flag (repairHome had nothing to repair).
+// The real blocker to leaving Cascade was never the ship — it was the AP
+// leave-gate (findUnlockShineNum -> rolled 6); that's now handled in
+// UnlockShineNumHook (drop the gate to 0 once Broode's Multi-Moon is collected).
+// Kept as a documented stub (false) rather than deleted, in case the
+// scenario-placed-pose question is revisited.
+inline constexpr bool kCascadeFreeTravelRescue = false;
+
 ResolvedFns g_fns;
 bool        g_ready = false;        // repair path (the 5 Lost-softlock fns)
 bool        g_diag_ready = false;   // diagnostic getters (4 *Home flag reads)
@@ -372,6 +384,51 @@ void runOdysseySoftlockSweep() {
         }
     }
 
+    // --- Cascade free-travel rescue (Lost-style, 2026-06-29) ---
+    // Devon's request: make Cascade's Odyssey boardable the same way the Lost
+    // sweep below repairs Lost, so a free-travel player who flew in from Cap can
+    // fly back out WITHOUT first beating Broode / clearing the kingdom. Unlike
+    // Lost (isCrashHome=true → repairHome clears it), Cascade reads crash=0: its
+    // ship is placed buried by the SCENARIO-1 layout, not by the crash flag. So
+    // repairHome may be a no-op here — this is a TEST. The before/after home-state
+    // log tells us definitively: if (exist,activate,launch,crash,level) is
+    // unchanged AND the ship stays in the rocks, the burial is pure scenario
+    // placement and the real fix is to arrive in a peace scenario (which removes
+    // Broode — a trade-off to settle with Devon). repairHome is called UNGATED by
+    // isCrashHome (the one change vs. the Lost branch). We also force
+    // activate/launch/level so the save-state is fully flightworthy.
+    if (kCascadeFreeTravelRescue && g_ready && g_diag_ready && g_acquire_ready) {
+        const char* stage = g_fns.getCurrentStageName(acc);
+        if (stage && std::strcmp(stage, "WaterfallWorldHomeStage") == 0) {
+            const bool e0 = g_fns.isExistHome(acc);
+            const bool a0 = g_fns.isActivateHome(acc);
+            const bool l0 = g_fns.isLaunchHome(acc);
+            const bool c0 = g_fns.isCrashHome(acc);
+            const int  v0 = g_fns.getHomeLevel(acc);
+
+            // Lost-style repair (ungated by crash) + full flightworthy state.
+            g_fns.repairHome(wr);
+            if (!a0) g_fns.activateHome(wr);
+            if (!l0) g_fns.launchHome(wr);
+            if (v0 < 1) g_fns.upHomeLevel(wr);
+
+            const bool e1 = g_fns.isExistHome(acc);
+            const bool a1 = g_fns.isActivateHome(acc);
+            const bool l1 = g_fns.isLaunchHome(acc);
+            const bool c1 = g_fns.isCrashHome(acc);
+            const int  v1 = g_fns.getHomeLevel(acc);
+
+            static int s_resc_log = 0;
+            if (s_resc_log < 30) {
+                ++s_resc_log;
+                SMOAP_LOG_INFO("[cascade-rescue] repairHome+launch: before "
+                               "exist=%d act=%d launch=%d crash=%d lvl=%d -> after "
+                               "exist=%d act=%d launch=%d crash=%d lvl=%d #%d",
+                               e0, a0, l0, c0, v0, e1, a1, l1, c1, v1, s_resc_log);
+            }
+        }
+    }
+
     // Log throttle — the branch below is a no-op on virtually every call once
     // the player leaves Lost; only state transitions are worth logging.
     // Logging every 600 calls (≈10s at the caller's ~1 call/s throttle × 60
@@ -449,6 +506,23 @@ void logWorldWarpDemoDiagNow(const char* tag) {
         SMOAP_LOG_INFO(
             "OdysseyRescue/warpdemo-now[%s]: alreadyGoWorld[0..16]=%s "
             "(idx1=Cascade)", tag ? tag : "?", bits);
+    }
+}
+
+void forceUnlockCascadeDestination(const char* tag) {
+    if (!g_fns.unlockWorld || !g_fns.getWorldIndexWaterfall) return;
+    void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
+        std::memory_order_relaxed);
+    if (!gdh) return;
+    GameDataHolderWriter wr{gdh};
+    const int widx = g_fns.getWorldIndexWaterfall();  // Cascade's world index.
+    g_fns.unlockWorld(wr, widx);
+    static int s_log = 0;
+    if (s_log < 20) {
+        ++s_log;
+        SMOAP_LOG_INFO("[cap-return] %s unlockWorld(Cascade widx=%d) -> Odyssey "
+                       "world map offers Cascade as a flight destination #%d",
+                       tag ? tag : "?", widx, s_log);
     }
 }
 

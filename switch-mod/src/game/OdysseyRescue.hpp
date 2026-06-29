@@ -76,6 +76,16 @@ void forceAcquireOdyssey(const char* tag);
 // reads them post-arrival. Self-disables if its getters didn't resolve.
 void logWorldWarpDemoDiagNow(const char* tag);
 
+// Cap-departure destination unlock. Forcing Cap into its return layout
+// (CapReturnScenarioHook) skips the prologue's scripted unlockWorld(Cascade), so
+// a boardable Odyssey in Cap would have nowhere to fly. This unlocks Cascade
+// (GameDataFunction::unlockWorld at getWorldIndexWaterfall) so the Odyssey world
+// map offers it. Idempotent — unlockWorld just adds to the unlocked set, so it's
+// a no-op on a save that already has Cascade unlocked (e.g. the start_at_cap_peace
+// save, created by real flight). Self-disabling if its symbols didn't resolve.
+// Call from the Cap changeNextStage commit alongside forceAcquireOdyssey.
+void forceUnlockCascadeDestination(const char* tag);
+
 // First-arrival parked-pose FIX (2026-06-27). Mark Cascade "already visited"
 // (GameProgressData::setAlreadyGoWorld for the Waterfall world index) so the
 // engine runs the normal PARKED Odyssey flight landing instead of the buried
