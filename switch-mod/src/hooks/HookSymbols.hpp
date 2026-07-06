@@ -481,6 +481,17 @@ inline constexpr const char* kAlIsMclAnimExist =
 inline constexpr const char* kShineGetCurrentModel =
     "_ZN5Shine15getCurrentModelEv";
 
+// Shine::showCurrentModel() — fires on the SOURCE shine at collection, just
+// before the held-up get-cutscene demo model's init (confirmed in-game 2026-07-05:
+// getCurrentModel==self here and the palette resolves to the granted kingdom).
+// ShineAppearanceHook trampolines it PRE-orig to record the granted palette
+// (ApState::beginGetDemo) so the held-up demo model — which mis-resolves its own
+// index to a fixed wrong value (the uniform "Luncheon blue" cutscene bug) — can be
+// pinned to the granted color in setStageShineAnimFrameOverride. Installed via
+// lookupSymbol + installAtPtr (graceful on miss → cutscene keeps pre-fix behavior).
+inline constexpr const char* kShineShowCurrentModel =
+    "_ZN5Shine16showCurrentModelEv";
+
 // =============================================================================
 // M7 Path A — fork-cinematic kingdom-order gate (two-layer architecture).
 // =============================================================================

@@ -98,6 +98,11 @@ HkTrampoline<void, GameDataFile*, const ShineInfo*> moonGetHook =
 
         moonGetHook.orig(self, info);
         if (!info) return;
+        // Stamp the collection time so the get-cutscene demo-model recolor
+        // (ShineAppearanceHook) only trusts the showCurrentModel palette latch
+        // right after a real moon get — not during stage-load showCurrentModel
+        // bursts that would otherwise repaint on-screen world moons.
+        smoap::ap::ApState::instance().stampMoonGet();
         const int uid = smoap::game::shine_info_layout::shineId(info);
 
         if (stage_ok && obj_ok) {

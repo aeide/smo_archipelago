@@ -335,6 +335,34 @@ IsExistMaterialFn               s_isMclAnimExist                = nullptr;
 using GetCurrentModelFn               = void* (*)(void* shine);
 GetCurrentModelFn               s_getCurrentModel               = nullptr;
 
+// --- Get-cutscene ("You got a Power Moon!") demo-model recolor (2026-07-05) ---
+// The held-up moon in the get cutscene is a SEPARATE demo-model actor
+// (Shine::addDemoModelActor), not the world Shine. It does NOT carry the
+// collected moon's mShineIdx, so resolveShinePalIdx() reads a fixed WRONG value
+// off it — in-game every moon's get cutscene showed the SAME static color
+// (Luncheon / frame 6) regardless of the granted kingdom or the physical stage.
+//
+// Fix: the AddDemoModelActor trampoline records the SOURCE Shine's already-
+// correct granted palette (ApState::beginGetDemo) just before the demo model is
+// colored; setStageShineAnimFrameOverride then forces that palette for any
+// shine-color call landing within kGetDemoWindowMs. The demo-coloring call goes
+// through rs::setStageShineAnimFrame (same path the world moons use), so this
+// intercepts it and drives the granted kingdom's frame onto the held-up moon.
+//
+// Safe against collateral: a world moon that spawns within the window (rare —
+// gameplay is largely suspended during the get jingle) would briefly take the
+// collected moon's color, but Shine::control re-asserts the correct color every
+// frame WITHOUT the window (resolveShinePalIdx), so it self-heals. ⚠ REVERT:
+// set kGetDemoPersistThroughCutscene = false.
+inline constexpr bool         kGetDemoPersistThroughCutscene = true;
+// How long after a real collection (MoonGetHook stamp) the get-demo palette
+// latched by Shine::showCurrentModel is honored inside setStageShineAnimFrame-
+// Override. The held-up moon is colored by a single setframe call microseconds
+// into the cutscene, so this only needs to cover the collection→color latency;
+// 3500ms is generous and self-limited by the recentMoonGet() gate (no other
+// moon is colored during the frozen get cutscene, so a loose window is safe).
+inline constexpr std::int64_t kGetDemoHoldWindowMs = 3500;
+
 void writeBodyTint(void* actor, const char* mat_name, const Color4f& tint,
                    bool is_dot) {
     s_setMaterialProgrammable(actor);
@@ -452,6 +480,10 @@ HkTrampoline<void, void*, const void*> shineInitColorOverride =
         if (s_setMaterialProgrammable == nullptr ||
             s_setModelMaterialParameterRgba == nullptr) return;
 
+        // The get-cutscene held-up moon is NOT a Shine (it's a demo-model actor
+        // created by Shine::addDemoModelActor), so Shine::init never fires on it
+        // — its recolor is handled entirely in setStageShineAnimFrameOverride.
+        // Here we only ever see real world Shines; resolve their palette normally.
         const int pal_idx_signed = resolveShinePalIdx(self);
         if (pal_idx_signed < 0) return;
         const std::size_t pal_idx = static_cast<std::size_t>(pal_idx_signed);
@@ -535,13 +567,40 @@ HkTrampoline<void, void*, const char*, int, bool> setStageShineAnimFrameOverride
                                                 is_mat_anim);
             return;
         }
-        const int pal_idx_signed = resolveShinePalIdx(actor);
-        if (pal_idx_signed < 0) {
-            setStageShineAnimFrameOverride.orig(actor, stage_name, frame,
-                                                is_mat_anim);
-            return;
+
+        // Held-up demo model: the "You got a Power Moon!" cutscene shows the
+        // moon as a separate demo-model actor (Shine::addDemoModelActor) that is
+        // NOT a Shine — so Shine::init/control never run on it and it can't be
+        // recorded by identity. The ONLY hook that colors it is this one: vanilla
+        // drives its "Color" anim here once, and that single frame persists for
+        // the whole cutscene. Reading the palette off the demo actor's own bytes
+        // yields a fixed-WRONG value (Luncheon/frame 6), so instead we force the
+        // SOURCE moon's granted palette that Shine::showCurrentModel just latched.
+        //
+        // Gated on recentMoonGet(): showCurrentModel also latches during ordinary
+        // stage loads, so without the collection gate this would repaint on-screen
+        // world moons. A real get stamps MoonGetHook microseconds earlier, so the
+        // window is open exactly for the held-up moon's one setframe call and not
+        // for stage-load moon appears. During the cutscene the game is otherwise
+        // frozen, so no other moon is colored here.
+        std::size_t pal_idx;
+        const std::uint8_t demo_pal =
+            (kGetDemoPersistThroughCutscene &&
+             smoap::ap::ApState::instance().recentMoonGet(kGetDemoHoldWindowMs))
+                ? smoap::ap::ApState::instance().activeGetDemoPalette(kGetDemoHoldWindowMs)
+                : smoap::ap::ApState::kNoPaletteOverride;
+        const bool using_demo_pal = demo_pal != smoap::ap::ApState::kNoPaletteOverride;
+        if (using_demo_pal) {
+            pal_idx = demo_pal < kPaletteCount ? static_cast<std::size_t>(demo_pal) : 0;
+        } else {
+            const int pal_idx_signed = resolveShinePalIdx(actor);
+            if (pal_idx_signed < 0) {
+                setStageShineAnimFrameOverride.orig(actor, stage_name, frame,
+                                                    is_mat_anim);
+                return;
+            }
+            pal_idx = static_cast<std::size_t>(pal_idx_signed);
         }
-        const std::size_t pal_idx = static_cast<std::size_t>(pal_idx_signed);
 
         // Frame-override kingdom: substitute OUR granted kingdom's frame into
         // the vanilla call. Vanilla itself is the caller here, so the "Color"
@@ -561,7 +620,31 @@ HkTrampoline<void, void*, const char*, int, bool> setStageShineAnimFrameOverride
                                             is_mat_anim);
         if (s_setMaterialProgrammable == nullptr ||
             s_setModelMaterialParameterRgba == nullptr) return;
-        tryWriteShineTint(actor, readShineType(actor), pal_idx);
+        // On the get-demo model, readShineType() reads a garbage offset (it isn't
+        // the source Shine); held-up moons are the 3D type, so default to 0. The
+        // isExistMaterial guard inside tryWriteShineTint still skips cleanly if
+        // the demo model lacks the "BodyMT" material.
+        const int tint_type = using_demo_pal ? 0 : readShineType(actor);
+        tryWriteShineTint(actor, tint_type, pal_idx);
+    });
+
+// Shine::showCurrentModel() — fires on the SOURCE shine at collection, just
+// before the held-up demo model's init. getCurrentModel==self here and the
+// palette resolves to the granted kingdom, so we latch it (ApState::beginGetDemo)
+// for setStageShineAnimFrameOverride to force onto the held-up demo model — that
+// demo actor mis-resolves its own index to a fixed WRONG value (the uniform
+// "Luncheon blue" cutscene bug). This latch is the load-bearing half of the fix;
+// the recentMoonGet() gate keeps it from repainting world moons during ordinary
+// stage-load showCurrentModel bursts. Only latch a real override; no recursion.
+HkTrampoline<void, void*> shineShowCurrentModelLatch =
+    hk::hook::trampoline([](void* self) -> void {
+        if (self) {
+            const int pal = resolveShinePalIdx(self);
+            if (pal >= 0)
+                smoap::ap::ApState::instance().beginGetDemo(
+                    static_cast<std::uint8_t>(pal));
+        }
+        shineShowCurrentModelLatch.orig(self);
     });
 
 // The Shine's currently-VISIBLE model: the demo model during the get cutscene,
@@ -633,6 +716,10 @@ HkTrampoline<void, void*> shineControlColorCycle =
         if (!self) return;
         if (s_setMaterialProgrammable == nullptr ||
             s_setModelMaterialParameterRgba == nullptr) return;
+
+        // Only real world Shines tick here — the get-cutscene held-up moon is a
+        // demo-model actor, not a Shine, and is recolored in
+        // setStageShineAnimFrameOverride. Resolve this Shine's palette normally.
         const int pal = resolveShinePalIdx(self);
         if (pal < 0) return;
         const std::size_t pal_idx = static_cast<std::size_t>(pal);
@@ -707,6 +794,15 @@ void installShineAppearanceHook() {
     // resolved-@/FAILED line in the log confirms which case this build hit.
     resolveSymbol(smoap::sym::kShineGetCurrentModel,
                   s_getCurrentModel, "Shine::getCurrentModel");
+    // Get-cutscene demo-model palette latch (Shine::showCurrentModel). Fires on
+    // the SOURCE shine at collection and records the granted palette so the
+    // held-up demo model can be pinned to it in setStageShineAnimFrameOverride.
+    // Best-effort: a lookup miss (symbol inlined) just leaves the cutscene at its
+    // pre-fix behavior — the window is never opened, so the color resolves
+    // per-actor as before.
+    void (*showCurrentModelAddr)(void*) = nullptr;
+    resolveSymbol(smoap::sym::kShineShowCurrentModel,
+                  showCurrentModelAddr, "Shine::showCurrentModel");
 
     if (s_setMaterialProgrammable != nullptr &&
         s_setModelMaterialParameterRgba != nullptr) {
@@ -734,6 +830,26 @@ void installShineAppearanceHook() {
         } else {
             SMOAP_LOG_WARN("rs::setStageShineAnimFrame unresolved — spawned-moon "
                            "recolor not active");
+        }
+
+        // Latch the granted palette at collection (Shine::showCurrentModel) so
+        // the held-up get-cutscene demo model shows the granted kingdom color
+        // instead of the demo actor's bogus per-actor resolve (the uniform
+        // "Luncheon blue" bug). Feeds setStageShineAnimFrameOverride via the
+        // get-demo window. Install by ptr (graceful on miss, like
+        // setStageShineAnimFrame).
+        if (kGetDemoPersistThroughCutscene) {
+            if (showCurrentModelAddr != nullptr) {
+                SMOAP_LOG_INFO("installing ShineShowCurrentModelLatch -> "
+                               "Shine::showCurrentModel (get-cutscene color latch)");
+                const auto rc = shineShowCurrentModelLatch.installAtPtr(
+                    reinterpret_cast<ptr>(showCurrentModelAddr));
+                if (rc.failed())
+                    SMOAP_LOG_ERROR("showCurrentModel trampoline install FAILED");
+            } else {
+                SMOAP_LOG_WARN("Shine::showCurrentModel unresolved — get-cutscene "
+                               "color persistence not active");
+            }
         }
 
         // Per-frame Shine::control trampoline. Drives BOTH the classification

@@ -318,7 +318,13 @@
       "Bash(scripts/.extract-venv/Scripts/python.exe \"C:/Users/devon/AppData/Local/Temp/claude/e--smo-archipelago/30797ffb-a46e-4c62-8224-d3fdad331452/scratchpad/probe10.py\")",
       "Bash(PYTHONIOENCODING=utf-8 scripts/.extract-venv/Scripts/python.exe -c ' *)",
       "Bash(PYTHONIOENCODING=utf-8 scripts/.extract-venv/Scripts/python.exe \"C:/Users/devon/AppData/Local/Temp/claude/e--smo-archipelago/30797ffb-a46e-4c62-8224-d3fdad331452/scratchpad/probe11.py\")",
-      "Bash(PYTHONIOENCODING=utf-8 scripts/.extract-venv/Scripts/python.exe \"C:/Users/devon/AppData/Local/Temp/claude/e--smo-archipelago/30797ffb-a46e-4c62-8224-d3fdad331452/scratchpad/probe12.py\")"
+      "Bash(PYTHONIOENCODING=utf-8 scripts/.extract-venv/Scripts/python.exe \"C:/Users/devon/AppData/Local/Temp/claude/e--smo-archipelago/30797ffb-a46e-4c62-8224-d3fdad331452/scratchpad/probe12.py\")",
+      "Bash(curl -s \"https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/git/trees/master?recursive=1\")",
+      "Bash(ls -la \"E:/Ryubin/Logs\" 2>/dev/null | head; echo \"===smoap logs===\"; find \"E:/Ryubin\" -iname \"*.log\" 2>/dev/null | head; find /c/Users/devon/AppData/Roaming/Ryujinx -iname \"*.log\" 2>/dev/null | head)",
+      "Read(//e/Ryubin/**)",
+      "Read(//c/Users/devon/AppData/Roaming/Ryujinx/**)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/MonsterDruide1/OdysseyDecomp/master/src/Util/ItemUtil.cpp\")",
+      "PowerShell(python scripts\\\\build_switchmod.py \"-DBRIDGE_HOST=192.168.4.100\")"
     ],
     "additionalDirectories": [
       "\\tmp\\dbg",

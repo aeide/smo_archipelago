@@ -613,6 +613,53 @@ public:
         shine_palette[uid] = palette;
     }
 
+    // ---- Get-cutscene ("You got a Power Moon!") demo-model palette ----------
+    //
+    // The get cutscene holds up a SEPARATE demo-model actor (created by
+    // Shine::addDemoModelActor), not the world Shine. That demo actor does NOT
+    // carry the collected moon's mShineIdx, so resolving its palette off its own
+    // bytes yields a fixed WRONG value (observed in-game: Luncheon / frame 6 on
+    // every moon regardless of the granted kingdom). The AddDemoModelActor hook
+    // records the SOURCE shine's already-correct granted palette here right
+    // before the demo model is colored; the shine-color trampolines prefer this
+    // for the brief window afterward so the held-up moon shows the granted
+    // kingdom color instead of the bogus one. Game-thread only in practice, but
+    // atomic to match the rest of ApState. get_demo_stamp_ms starts far in the
+    // past so the window reads "inactive" until the first real collection.
+    std::atomic<std::uint8_t> get_demo_palette{kNoPaletteOverride};
+    std::atomic<std::int64_t> get_demo_stamp_ms{-1000000};
+
+    void beginGetDemo(std::uint8_t palette) {
+        get_demo_palette.store(palette, std::memory_order_relaxed);
+        get_demo_stamp_ms.store(nowMs(), std::memory_order_relaxed);
+    }
+    // The granted palette to force onto shine-color calls landing within
+    // `window_ms` of the last beginGetDemo(), or kNoPaletteOverride if the
+    // window has lapsed or none was recorded.
+    std::uint8_t activeGetDemoPalette(std::int64_t window_ms) const {
+        const std::uint8_t pal = get_demo_palette.load(std::memory_order_relaxed);
+        if (pal == kNoPaletteOverride) return kNoPaletteOverride;
+        if (nowMs() - get_demo_stamp_ms.load(std::memory_order_relaxed) > window_ms)
+            return kNoPaletteOverride;
+        return pal;
+    }
+
+    // Monotonic ms of the last REAL moon collection (stamped by MoonGetHook).
+    // The get-demo palette window above is only honored when a collection
+    // landed this recently — Shine::showCurrentModel also fires (and latches a
+    // palette) during ordinary stage loads, and without this gate that would
+    // repaint on-screen world moons the collected moon's color. Starts far in
+    // the past so nothing is "recent" until the first collection.
+    std::atomic<std::int64_t> last_moon_get_ms{-1000000};
+
+    void stampMoonGet() {
+        last_moon_get_ms.store(nowMs(), std::memory_order_relaxed);
+    }
+    bool recentMoonGet(std::int64_t window_ms) const {
+        return nowMs() - last_moon_get_ms.load(std::memory_order_relaxed)
+               <= window_ms;
+    }
+
     // DeathLink debounce. Set by the frame thread when PlayerHitPointData::kill
     // fires; cleared by the socket worker after the death message ships. A
     // second kill() within the same death event short-circuits.
