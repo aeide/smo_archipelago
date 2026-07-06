@@ -106,11 +106,57 @@ def pick_primary_entry(entries: list[dict]) -> tuple[dict | None, bool]:
     return sorted(cands, key=lambda e: e["entry_id"])[0], ambiguous
 
 
-def pick_primary_exit(exits: list[dict], parent: str | None) -> dict | None:
-    """Return the door to use when returning to the overworld, or None."""
+# Manual primary_exit overrides, keyed by subarea display name. Used when the
+# geometrically-correct "exit pipe" the player expects to emerge from is NOT one of
+# the interior's own return pipes — so pick_primary_exit (which only ranks the
+# interior's exits) can't find it. The classic case is Jaxi Driving
+# (SandWorldSphinxExStage): its own returns land OFF the mesa finish spot
+# (`run00`=desert pipe below; `run00return`=no Home arrival marker → Odyssey
+# fallback), while the pipe ON the mesa top beside the checkpoint/Jaxi/moon —
+# obj2160, ChangeStageId `arijigoku2` — belongs to a DIFFERENT subarea
+# (SandWorldPressExStage). On ARRIVAL the engine places Mario at the Home object
+# whose ChangeStageId matches, regardless of that object's own ChangeStageName, so
+# targeting `arijigoku2` emerges Mario on the mesa top. Keep in sync with the
+# hand-authored primary_exit in data/entrance_stages.json.
+PRIMARY_EXIT_OVERRIDE: dict[str, dict] = {
+    "Jaxi Driving": {
+        "dest": "SandWorldHomeStage",
+        "entry_id": "arijigoku2",
+        "unit": "DokanStageChange",
+    },
+}
+
+
+def pick_primary_exit(
+    exits: list[dict],
+    parent: str | None,
+    into_set: set[tuple[str, str]] | None = None,
+) -> dict | None:
+    """Return the door to use when returning to the overworld, or None.
+
+    `into_set` is the set of (source_stage, entry_id) pairs for every door that
+    leads INTO this interior. It's used to prefer a RECIPROCATED exit: SMO spawns
+    an arriving player at the dest stage's door whose ChangeStageId matches the
+    exit's — so a valid forward arrival requires the dest stage to have a door
+    back into this interior sharing the exit's entry_id, i.e. (exit.dest,
+    exit.entry_id) in into_set. An UNRECIPROCATED exit id is a departure-only pipe
+    with no arrival marker in the overworld, so a forward changeNextStage to it
+    can't resolve and the engine default-spawns at the Odyssey. This bit the
+    entrance shuffle at Jaxi Driving: its "return"-suffixed exit `run00return` is
+    such a dead departure-only id (no `run00return` marker exists in
+    SandWorldHomeStage — only `aaa` and `run00`), so exiting the shuffled interior
+    dumped Mario at the Sand Odyssey instead of the exit-pipe finish spot. The real
+    reciprocated exit is the `run00` pipe. We only NARROW to reciprocated
+    candidates when at least one exists, so subareas that legitimately leave via a
+    returnPrevStage-only path (no forward marker) keep the old behavior.
+    """
     if not exits:
         return None
     cands = [e for e in exits if e["dest"] == parent] or list(exits)
+    if into_set is not None:
+        recip = [e for e in cands if (e["dest"], e["entry_id"]) in into_set]
+        if recip:
+            cands = recip
     suffixed = [e for e in cands if _is_exit_like(e["entry_id"])]
     return sorted(suffixed or cands, key=lambda e: e["entry_id"])[0]
 
@@ -267,7 +313,12 @@ def main() -> None:
         exit_recs = [{"dest": e["dest"], "entry_id": e["entry_id"],
                       "unit": e["unit"]} for e in exits]
         primary_entry, entry_ambiguous = pick_primary_entry(entry_recs)
-        primary_exit = pick_primary_exit(exit_recs, parents[0] if parents else None)
+        # (source_stage, entry_id) for every door INTO this interior — the arrival
+        # markers a returning player can resolve. Used to reject unreciprocated
+        # departure-only exit ids (see pick_primary_exit).
+        into_set = {(e["source"], e["entry_id"]) for e in entries}
+        primary_exit = PRIMARY_EXIT_OVERRIDE.get(name) or pick_primary_exit(
+            exit_recs, parents[0] if parents else None, into_set)
         if entry_ambiguous:
             report["entry_ambiguous"].append({
                 "subarea": name, "picked": primary_entry["entry_id"],

@@ -472,6 +472,41 @@ def test_compile_stage_remaps_full_pool_entries_resolve():
     assert 0 < n_exit <= len(pool)
 
 
+def test_jaxi_driving_exit_lands_on_mesa_top():
+    """Regression: Jaxi Driving's primary_exit must be the mesa-top emergence pipe
+    `arijigoku2`, so exiting the interior lands Mario ON the finish mesa (moon +
+    checkpoint + Jaxi), NOT at an off-mesa pipe.
+
+    SphinxEx's OWN returns both miss the mesa: `run00` (obj2550) is the desert pipe
+    ~5500u away and below (the "entrance pipe near, not on top" the player saw), and
+    `run00return` (obj382) has no SandWorldHomeStage arrival marker at all, so a
+    forward changeNextStage to it can't resolve and the engine default-spawns at the
+    Sand Odyssey (the original bug). The only id-addressable pipe ON the mesa top
+    (Y=200, beside the checkpoint/Jaxi/moon) is obj2160 — ChangeStageId `arijigoku2`
+    — which nominally belongs to SandWorldPressExStage, but on ARRIVAL the engine
+    places Mario at whichever Home object carries the matching ChangeStageId,
+    regardless of that object's own destination. The three mesa PlayerStartObj have
+    no ChangeStageId, so they can't be targeted. See
+    scripts/extract_entrance_stages.py::PRIMARY_EXIT_OVERRIDE."""
+    stages = _entrance_stages()
+    jaxi = stages.get("Jaxi Driving")
+    if not jaxi:
+        pytest.skip("Jaxi Driving absent from table")
+    assert jaxi["primary_exit"]["entry_id"] == "arijigoku2", (
+        "Jaxi Driving primary_exit must be the mesa-top pipe `arijigoku2`; `run00` "
+        "lands below the mesa and `run00return` dumps Mario at the Odyssey")
+    assert jaxi["primary_exit"]["dest"] == "SandWorldHomeStage"
+    # And the compiled EXIT row must carry it through to the Switch.
+    from entrance_logic import compile_stage_remaps
+    door, interior = "Jaxi Driving", "Frog Pond"
+    if interior not in stages:
+        pytest.skip("Frog Pond absent from table")
+    rows = compile_stage_remaps({door: interior}, stages)
+    exits = [r for r in rows if r["kind"] == "exit"]
+    assert exits and exits[0]["to_id"] == "arijigoku2", (
+        "compiled Jaxi Driving exit row must rewrite to arijigoku2")
+
+
 # ---------------------------------------------------------------------------
 # SUBAREA_EXIT_GATES — mini-rocket interiors must require Mini Rocket to leave
 # even when reached via a shuffled (non-rocket) door.
@@ -492,9 +527,12 @@ def test_exit_gates_cover_every_mini_rocket_subarea():
     Mini Rocket — the only way out is to re-board the rocket inside."""
     from entrance_logic import SUBAREA_ENTRANCE_GATES, SUBAREA_EXIT_GATES
 
+    # "contains" not "==": Shards in the Fog's entry gate is "(|Mini Rocket| and
+    # |Climb|)" — Mini Rocket is still required to enter (so it still needs the
+    # rocket exit gate), plus Climb to reach the Wooded fog tier (Devon 2026-07-01).
     entry_rocket = {
         name for name, gate in SUBAREA_ENTRANCE_GATES.items()
-        if gate == "|Mini Rocket|"
+        if "|Mini Rocket|" in gate
     }
     assert entry_rocket == _MINI_ROCKET_SUBAREAS, (
         "mini-rocket entry-gated set drifted; update the test + exit table")
@@ -511,9 +549,12 @@ def test_exit_gates_are_subset_of_entrance_gates():
     for name, exit_gate in SUBAREA_EXIT_GATES.items():
         assert name in SUBAREA_ENTRANCE_GATES, (
             f"{name!r} has an exit gate but no entrance gate")
-        assert SUBAREA_ENTRANCE_GATES[name] == exit_gate, (
-            f"{name!r} entry/exit gate mismatch — mini-rocket subareas use the "
-            f"same capture both ways")
+        # The exit capture must be a component of the entrance gate (usually equal;
+        # Shards in the Fog's entrance ANDs Climb on, so it's a substring not ==).
+        assert exit_gate in SUBAREA_ENTRANCE_GATES[name], (
+            f"{name!r} exit gate {exit_gate!r} not present in entrance gate "
+            f"{SUBAREA_ENTRANCE_GATES[name]!r} — mini-rocket subareas must still "
+            f"require the exit capture to enter")
 
 
 def test_exit_gated_subareas_are_in_the_shuffle_pool():
@@ -610,3 +651,20 @@ def test_full_gate_mirror_compile_moon_logic():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert _mixed_door_gates() == mod.SUBAREA_INTERIOR_FULL_GATES
+
+
+def test_moon_rock_reach_capture_mirror_compile_moon_logic():
+    """The shuffle-ON moon-rock reach capture (entrance_logic.MOON_ROCK_REACH_CAPTURE,
+    ANDed onto a moon-pipe DOOR) must mirror the shuffle-OFF bake source
+    (compile_moon_logic.MOON_ROCK_REACH_CAPTURE, baked onto each rock moon's requires)
+    string-for-string — same Paragoomba/Lava-Bubble gate whether entrance shuffle is on
+    (door) or off (interior)."""
+    import importlib.util
+    from entrance_logic import MOON_ROCK_REACH_CAPTURE as ENTRANCE_REACH
+    script = APWORLD_ROOT.parents[1] / "scripts" / "compile_moon_logic.py"
+    if not script.exists():
+        pytest.skip("compile_moon_logic.py not present")
+    spec = importlib.util.spec_from_file_location("_cml", script)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert ENTRANCE_REACH == mod.MOON_ROCK_REACH_CAPTURE

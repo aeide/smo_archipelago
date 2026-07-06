@@ -581,17 +581,85 @@ def _trim_kingdom_moons_to_options(item_pool: list, multiworld: MultiWorld, play
 
 
 # The item pool after starting items are processed but before filler is added, in case you want to see the raw item pool at that stage
+def _drop_items_by_name(item_pool: list, names: set[str]) -> None:
+    """Remove every pool item whose name is in `names` (in place)."""
+    item_pool[:] = [it for it in item_pool if it.name not in names]
+
+
+# Re-fight / Dark Side multi-moon BONUS side-grants (handoff:
+# docs/handoff-refight-multi-moons.md). The 6 Mushroom Kingdom Multi-Moon
+# items collectively unlock 18 captures (3 apiece); the 1 Dark Side Multi-Moon
+# unlocks 3 abilities — "bonus on top" of the capturesanity/abilitysanity pool
+# items (duplicates fall through to the existing coin path). The picks are
+# rolled here from world.random (deterministic per seed) and shipped in
+# slot_data as `mm_bonus_captures` (ordered, 18) + `mm_bonus_abilities` (3);
+# the client consumes the capture list in ordered chunks of 3 as each
+# (same-named) Mushroom MM arrives, and folds the 3 abilities into the ability
+# snapshot when the Dark Side MM arrives. These are NOT real pool items — they
+# don't affect logic/fill, only in-game unlocks.
+MM_BONUS_CAPTURE_COUNT = 18   # 6 Mushroom Multi-Moons x 3 captures each
+MM_BONUS_ABILITY_COUNT = 3    # 1 Dark Side Multi-Moon  x 3 abilities
+
+
+def _names_in_item_category(world: World, category: str) -> list[str]:
+    """Sorted list of item names whose items.json `category` contains `category`.
+
+    Sorted for reproducibility before the seeded sample below — dict order is
+    insertion order (deterministic) but sorting removes any doubt.
+    """
+    return sorted(
+        name for name, data in world.item_name_to_item.items()
+        if category in data.get("category", [])
+    )
+
+
+def _roll_mm_bonus_grants(world: World) -> None:
+    """Roll the multi-moon bonus captures/abilities and stash on `world`.
+
+    Sampled from the FULL capture/ability name sets (not the current item_pool)
+    so the bonus is independent of whether capturesanity/abilitysanity put those
+    items in the pool — they ship as slot_data side-grants either way. The 3
+    always-owned fixed starters are excluded from the capture pick so a bonus is
+    more likely to be a real unlock (a dup just becomes coins, so this is only a
+    quality nicety). Mirrors how rolled_kingdom_gates is stashed for slot_data.
+    """
+    captures = [c for c in _names_in_item_category(world, "Capture")
+                if c not in FIXED_STARTER_CAPTURES]
+    abilities = _names_in_item_category(world, "Ability")
+    cap_k = min(MM_BONUS_CAPTURE_COUNT, len(captures))
+    abil_k = min(MM_BONUS_ABILITY_COUNT, len(abilities))
+    world.mm_bonus_captures = world.random.sample(captures, cap_k) if cap_k else []
+    world.mm_bonus_abilities = world.random.sample(abilities, abil_k) if abil_k else []
+    logging.info(
+        "multi_moon bonus grants rolled: %d captures, %d abilities",
+        len(world.mm_bonus_captures), len(world.mm_bonus_abilities))
+
+
 def before_create_items_filler(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> list:
+    goal_is_festival = get_option_value(multiworld, player, "goal") == 1
+    # Festival goal: the 6 Mushroom Kingdom + 1 Dark Side Multi-Moon items
+    # (added for the re-fight/Dark Side bundle feature) unlock post-game moon
+    # locations festival never reaches. Under multi_moon_shuffle they're
+    # constrained to the (now-unreachable) Mushroom/Dark Side multi_moon
+    # locations — a fill deadlock — and even without the shuffle they only
+    # bump post-game moon counts that are meaningless under festival. Drop all
+    # 7 in every mode; adjust_filler_items tops any freed slots with filler.
+    # See docs/handoff-refight-multi-moons.md (Tier 2).
+    if goal_is_festival:
+        _drop_items_by_name(
+            item_pool,
+            {"Mushroom Kingdom Multi-Moon", "Dark Side Multi-Moon"},
+        )
     # multi_moon_shuffle: under the FESTIVAL goal, "Metro: A Traditional
     # Festival!" is the victory location and can't hold an item, leaving
-    # 14 Multi-Moon items for only 13 fillable MM locations. Drop ONE Metro
+    # one more Multi-Moon item than fillable MM location. Drop ONE Metro
     # Multi-Moon (Metro has two) to balance the matching; adjust_filler_items
     # tops the freed slot back up with filler.
-    # Under any other goal the festival is a real 14th MM location (it
-    # survived __init__.create_regions as a normal check), so 14 items match
-    # 14 locations exactly — no drop.
+    # Under any other goal the festival is a real MM location (it survived
+    # __init__.create_regions as a normal check), so items match locations
+    # exactly — no drop.
     if (is_option_enabled(multiworld, player, "multi_moon_shuffle")
-            and get_option_value(multiworld, player, "goal") == 1):  # festival
+            and goal_is_festival):
         for i, it in enumerate(item_pool):
             if it.name == "Metro Kingdom Multi-Moon":
                 item_pool.pop(i)
@@ -635,6 +703,11 @@ def after_create_items(item_pool: list, world: World, multiworld: MultiWorld, pl
         prefer_demoting_multimoons=is_option_enabled(
             multiworld, player, "multi_moon_shuffle"))
     _demote_mobility_only_abilities(item_pool)
+    # Roll the re-fight/Dark Side multi-moon bonus grants (deterministic per
+    # seed). Rolled unconditionally so slot_data always carries them; inert
+    # when the MM items were dropped (festival goal) since the client never
+    # receives a Mushroom/Dark Side Multi-Moon to trigger a grant.
+    _roll_mm_bonus_grants(world)
     return item_pool
 
 
@@ -728,8 +801,10 @@ def _apply_filler_only_rules(world: World, multiworld: MultiWorld, player: int) 
 
 def _apply_multi_moon_rules(world: World, multiworld: MultiWorld, player: int) -> None:
     """multi_moon_shuffle: Multi-Moon items only on `multi_moon: true`
-    locations, and vice versa — a closed 14<->14 matching (the pinned Ruined
-    Multi-Moon is one fixed point of it; the other 13 float).
+    locations, and vice versa — a closed 21<->21 matching (the pinned Ruined
+    Multi-Moon is one fixed point of it; the other 20 float). The 21 are the 14
+    story-boss MMs plus the 6 Mushroom re-fights + Dark Side arrival added by
+    the re-fight/Dark Side bundle feature.
 
     Rules are additive with any existing item rule on the location
     (add_item_rule ANDs): notably "Cascade: Multi Moon Atop the Falls" is
@@ -1045,6 +1120,16 @@ def before_fill_slot_data(slot_data: dict, world: World, multiworld: MultiWorld,
     entrance_map = getattr(world, "_entrance_map", None)
     if entrance_map is not None:
         slot_data["entrance_map"] = entrance_map
+    # Re-fight / Dark Side multi-moon bonus side-grants (see
+    # _roll_mm_bonus_grants). The client folds these into the capture/ability
+    # unlock paths as each Mushroom/Dark Side Multi-Moon arrives. Absent when
+    # nothing was rolled (never, in practice) so old clients treat it as empty.
+    bonus_captures = getattr(world, "mm_bonus_captures", None)
+    if bonus_captures:
+        slot_data["mm_bonus_captures"] = list(bonus_captures)
+    bonus_abilities = getattr(world, "mm_bonus_abilities", None)
+    if bonus_abilities:
+        slot_data["mm_bonus_abilities"] = list(bonus_abilities)
     return slot_data
 
 # This is called after slot data is set and provides the slot data at the time, in case you want to check and modify it after the world fills it

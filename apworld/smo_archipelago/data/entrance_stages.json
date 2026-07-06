@@ -832,8 +832,9 @@
     },
     "primary_exit": {
       "dest": "SandWorldHomeStage",
-      "entry_id": "run00return",
-      "unit": "DokanStageChange"
+      "entry_id": "arijigoku2",
+      "unit": "DokanStageChange",
+      "_note": "arijigoku2/obj2160 is the ONLY id-addressable pipe on the Jaxi mesa top (Y=200, beside the checkpoint/Jaxi/moon). Its native ChangeStageName is SandWorldPressExStage, but on ARRIVAL the engine places Mario at the Home object whose ChangeStageId matches, regardless of that object's own destination. SphinxEx's own returns land off-mesa: run00=desert pipe below, run00return=no Home marker (falls back to the Odyssey primary spawn). The three mesa PlayerStartObj carry no ChangeStageId so cannot be targeted."
     },
     "entries": [
       {

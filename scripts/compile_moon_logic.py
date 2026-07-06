@@ -567,7 +567,10 @@ SUBAREA_GATES: dict[str, str] = {
     "Swinging Along the High-Rises":  "|Mini Rocket|",
     "A Sea of Clouds":                "|Mini Rocket|",
     "Strange Neighborhood":           "|Mini Rocket|",
-    "Shards in the Fog":              "|Mini Rocket|",
+    # Wooded fog subarea: Mini Rocket to reach the door + Climb to reach that tier
+    # (Devon 2026-07-01). Exit stays Mini-Rocket-only (climb was for the overworld
+    # approach, not to leave the interior) — see SUBAREA_EXIT_GATES.
+    "Shards in the Fog":              "(|Mini Rocket| and |Climb|)",
     "Picture Match (Mario)":          "|Mini Rocket|",
     "Roulette Tower":                 "|Mini Rocket|",
     "Shards Under Siege":             "|Taxi|",
@@ -578,11 +581,50 @@ SUBAREA_GATES: dict[str, str] = {
     "Fork-Flickin to the Summit":     "|Lava Bubble|",
     "Shards in the Cheese Rocks":     "|Hammer Bro|",
     "Spinning Athletics":             "|Lava Bubble|",
+    # Wooded: these subarea DOORS sit up in the climb-gated Sky Garden tier — you
+    # must be able to Climb to reach the door, but the moon INSIDE doesn't need it
+    # (Devon 2026-07-01). Door-keyed so shuffle ON leaves the interior free; shuffle
+    # OFF bakes |Climb| onto the members (door == interior there). Mirror in
+    # entrance_logic.SUBAREA_ENTRANCE_GATES.
+    "Crowded Elevator":               "|Climb|",
+    "Spinning-Platforms Treasure Vault": "|Climb|",
 }
 
 # Per-moon gates that are not subarea-wide (notes line 12).
 LOCATION_EXTRA_GATES: dict[str, str] = {
     "Sand: Employees Only": "|Progressive Crouch:1|",   # Crazy Cap back room
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Boss-defeat capture gates — ANDed onto each kingdom's PEACE-ANCHOR moon (the
+# story-completing / boss moon that hooks/Rules.py::<Kingdom>Peace() resolves to via
+# canReachLocation). Because every post-peace moon — moon-rock and non-rock alike —
+# gates on {<Kingdom>Peace()}, and every entrance-shuffle moon-pipe DOOR gates on the
+# same Peace function (entrance_logic.MOON_PIPE_PEACE_FUNCS), putting the boss's
+# required captures on the anchor makes ALL of that content transitively require them —
+# no per-rock-moon or per-door edit needed. This closes the same self-lock class as the
+# Cap Paragoomba fix: you cannot reach a kingdom's post-peace layer without beating its
+# boss, so the boss captures must never be fill-placed behind that layer.
+#
+# MOST boss kingdoms already carry their boss capture on the anchor via the community CSV
+# (Wooded=Uproot, Metro=Spark pylon, Snow=Shiverian Racer, Seaside=Gushen,
+# Luncheon=Volbonan+Lava Bubble, Bowser's=Pokio+Spark pylon, Ruined=Spark pylon) — see
+# the invariant lock in tests/test_boss_capture_gating.py. Only the entries below were
+# missing from the CSV. Cascade's boss capture (Broode's Chain Chomp) is a FIXED STARTER
+# so it's always satisfied (no anchor gate needed). Devon 2026-07-01.
+#
+# Sand (Knucklotec): reach the Showdown fight with Bullet Bill; the fight itself hands you
+# Knucklotec's Fist to win, so the post-boss "Hole in the Desert" (== SandPeace anchor)
+# needs both. Splitting Fist off Showdown keeps the capturesanity chain acyclic — the
+# "capture Knucklotec's Fist" location is reachable with Bullet Bill alone.
+#
+# Lake (Broodals): the anchor CSV lists Zipper only as one OR branch of the reach
+# movement; Devon confirms Zipper is MANDATORY to win the fight, so AND it on (that OR
+# branch collapses to require Zipper regardless).
+BOSS_CAPTURE_GATES: dict[str, str] = {
+    "Sand: Showdown on the Inverted Pyramid": "|Bullet Bill|",
+    "Sand: The Hole in the Desert": "(|Bullet Bill| and |Knucklotec's Fist|)",
+    "Lake: Broodals Over the Lake": "|Zipper|",
 }
 
 # Subarea name → INTERIOR-INTRINSIC FULL gate: a complete requires string that may
@@ -609,6 +651,35 @@ SUBAREA_INTERIOR_FULL_GATES: dict[str, str] = {
 MOON_ROCK_REACH_CAPTURE: dict[str, str] = {
     "Cap":      "|Paragoomba|",
     "Luncheon": "|Lava Bubble|",
+}
+
+# Overworld moons that ALSO sit physically behind a kingdom's moon rock but are NOT
+# in the "Moon Rock" locations.json category (that category tracks the P6.5 moon-pipe
+# SUBAREA checks + the moon_rock_checks enable toggle — see test_moon_rock_checks.py).
+# These existing overworld moons are romfs IsMoonRock-flagged (audited via
+# scripts/audit_moon_rock_locations.py) yet never got the category, so the
+# MOON_ROCK_REACH_CAPTURE gate above missed them. Cap's rock ledge is a Paragoomba
+# glide out over the poison fog, and every one of these fog moons is REVEALED only by
+# breaking that rock — so all of them require |Paragoomba| to reach, exactly like a
+# tagged rock moon. Without this, fill treated them as reachable on {CapPeace()} + a
+# jump and stranded Paragoomba (self-lock) and the Cascade-leave kingdom-gate items
+# behind the very capture needed to reach them. Names are already committed in
+# locations.json + scripts/moon_rock_candidates.json. Devon 2026-07-01.
+MOON_ROCK_REACH_EXTRA: dict[str, list[str]] = {
+    "Cap": [
+        "Cap: Next to Glasses Bridge",
+        "Cap: Danger Sign",
+        "Cap: Under the Big One's Brim",
+        "Cap: Fly to the Edge of the Fog",
+        "Cap: Spin the Hat, Get a Prize",
+        "Cap: Hidden in a Sunken Hat",
+        "Cap: Fog-Shrouded Platform",
+        "Cap: Bird Traveling in the Fog",
+        "Cap: Caught Hopping Near the Ship!",
+        "Cap: Taking Notes: In the Fog",
+        "Cap: Cap Kingdom Timer Challenge 2",
+        "Cap: Cap Kingdom Master Cup",
+    ],
 }
 
 # Moon Cave traversal gate (Devon-sourced 2026-06-20). To clear Moon Cave (the
@@ -779,7 +850,7 @@ def build_subarea_scenario_gates(
 
 def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
               scenario_gate_by_name: dict[str, str],
-              moon_rock_names: set[str] | frozenset[str],
+              moon_rock_reach_names: set[str] | frozenset[str],
               moon_cave_names: set[str] | frozenset[str] = frozenset()) -> list[str]:
     """Physical + scenario gates ANDed onto a moon's move-set/capture base.
 
@@ -792,9 +863,10 @@ def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
     prefix = location_name.split(": ", 1)[0]
     if prefix in KINGDOM_GATES:
         out.append(KINGDOM_GATES[prefix])
-    # Capture needed to reach the kingdom's moon rock (Cap=Goomba, Luncheon=Lava
-    # Bubble) — applies to every moon-pipe moon behind that rock.
-    if location_name in moon_rock_names and prefix in MOON_ROCK_REACH_CAPTURE:
+    # Capture needed to reach the kingdom's moon rock (Cap=Paragoomba, Luncheon=Lava
+    # Bubble) — applies to every moon behind that rock: the "Moon Rock" category set
+    # plus the MOON_ROCK_REACH_EXTRA overworld fog moons (merged into the reach set).
+    if location_name in moon_rock_reach_names and prefix in MOON_ROCK_REACH_CAPTURE:
         out.append(MOON_ROCK_REACH_CAPTURE[prefix])
     # Scenario reachability (spreadsheet-authoritative + Cascade/Moon carve-outs).
     frag = scenario_gate_by_name.get(location_name)
@@ -808,6 +880,10 @@ def gates_for(location_name: str, loc_subarea_gate: dict[str, str],
         out.append(loc_subarea_gate[location_name])
     if location_name in LOCATION_EXTRA_GATES:
         out.append(LOCATION_EXTRA_GATES[location_name])
+    # Boss-defeat captures on a kingdom's peace-anchor moon (propagates to all
+    # post-peace + moon-rock moons + entrance-shuffle doors via {<Kingdom>Peace()}).
+    if location_name in BOSS_CAPTURE_GATES:
+        out.append(BOSS_CAPTURE_GATES[location_name])
     return out
 
 
@@ -830,6 +906,15 @@ def main() -> None:
     # categories.json. Scenario gating is driven purely by the progress_bit_flag below.
     moon_rock_names = frozenset(
         l["name"] for l in locations if "Moon Rock" in l.get("category", [])
+    )
+
+    # Moons that get a kingdom's MOON_ROCK_REACH_CAPTURE gate: the "Moon Rock" category
+    # set PLUS the overworld fog moons that share the same physical rock (they never got
+    # the category — see MOON_ROCK_REACH_EXTRA). Used only for the reach-capture gate in
+    # gates_for; the "Moon Rock" category itself (enable toggle) is left untouched.
+    moon_rock_reach_names = frozenset(
+        moon_rock_names
+        | {n for names in MOON_ROCK_REACH_EXTRA.values() for n in names}
     )
 
     location_names = {l["name"] for l in locations}
@@ -918,7 +1003,7 @@ def main() -> None:
         base = compile_moon(rec)
         gated = and_join([base] + gates_for(
             ln, loc_subarea_gate, scenario_gate_by_name,
-            moon_rock_names, moon_cave_names))
+            moon_rock_reach_names, moon_cave_names))
         compiled[ln] = gated
         if gated == "":
             free_moons.append(ln)

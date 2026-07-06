@@ -11,11 +11,27 @@ story completes at the goal, so they could never be collected mid-run.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
+import sys
 from pathlib import Path
 
 APWORLD_ROOT = Path(__file__).resolve().parents[1]
+
+# compile_moon_logic.py lives in the repo-root scripts/ dir; load it by file path
+# (same pattern as test_scenario_gating.py) so we can read its committed constants
+# without duplicating the moon-name lists here.
+_SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "compile_moon_logic.py"
+
+
+def _load_compile_module():
+    spec = importlib.util.spec_from_file_location("compile_moon_logic", _SCRIPT)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault("compile_moon_logic", mod)
+    spec.loader.exec_module(mod)
+    return mod
 
 # Audited per-kingdom rock-moon counts (the audit's ROCK + approved
 # name-corrections). Any locations.json edit that drifts from this table
@@ -100,6 +116,26 @@ def test_pm_item_counts_include_rock_bump():
     assert counts == EXPECTED_PM_COUNTS, (
         f"Power Moon item counts drifted:\n  have: {counts}\n"
         f"  want: {EXPECTED_PM_COUNTS}")
+
+
+def test_moon_rock_reach_extra_gated_on_reach_capture():
+    """Every MOON_ROCK_REACH_EXTRA moon (overworld fog moons physically behind a
+    kingdom's rock but NOT in the "Moon Rock" category) must hard-require its
+    kingdom's reach capture in the compiled requires — otherwise fill can strand
+    that capture (or a downstream progression item) behind the rock it opens.
+
+    Regression guard for the Cap-fog self-lock: Paragoomba (and the Cascade-leave
+    kingdom-gate items) were placed on Cap rock moons that only listed {CapPeace()}.
+    """
+    cml = _load_compile_module()
+    locs = {l["name"]: l.get("requires", "") for l in _locations()}
+    for kingdom, names in cml.MOON_ROCK_REACH_EXTRA.items():
+        capture = cml.MOON_ROCK_REACH_CAPTURE[kingdom]
+        for name in names:
+            assert name in locs, f"MOON_ROCK_REACH_EXTRA name not in locations.json: {name}"
+            assert capture in locs[name], (
+                f"{name}: missing reach-capture {capture} in requires "
+                f"(re-run scripts/compile_moon_logic.py):\n  {locs[name]!r}")
 
 
 def test_option_and_category_wired():

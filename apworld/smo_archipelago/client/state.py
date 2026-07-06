@@ -327,6 +327,46 @@ class BridgeState:
         with self._lock:
             return dict(self.abilities_received)
 
+    def received_item_count(self, name: str) -> int:
+        """Number of received items with the given canonical name (mirror scan).
+
+        Used to index the multi-moon bonus capture chunks: the Nth
+        ``Mushroom Kingdom Multi-Moon`` in the mirror consumes bonus captures
+        ``[3*(N-1):3*N]``. Counting from the authoritative mirror keeps the
+        chunk selection order-agnostic and stable across reconnect replays.
+        """
+        with self._lock:
+            return sum(1 for e in self.received_items if e.item.name == name)
+
+    def grant_bonus_capture(self, cap: str) -> None:
+        """Register a synthetic capture unlock (multi-moon bonus side-grant).
+
+        Bumps the same counters a real capture receipt does (captures_unlocked +
+        captures_received_count) so a duplicate converts to coins via
+        compute_total_coin_grant — but does NOT append to received_items: the
+        grant is a side-effect of a Multi-Moon already in the mirror, not a real
+        received item. Idempotency is the caller's contract — invoke only when
+        the triggering Multi-Moon is newly processed (never on a same-slot
+        replay), mirroring how the Multi-Moon's own +3 moon weight is applied.
+        """
+        with self._lock:
+            self.captures_unlocked.add(cap)
+            self.captures_received_count[cap] = (
+                self.captures_received_count.get(cap, 0) + 1
+            )
+
+    def grant_bonus_ability(self, name: str) -> None:
+        """Register a synthetic ability unlock (multi-moon bonus side-grant).
+
+        Same contract as grant_bonus_capture, for abilities_received; the
+        AbilityStateMsg snapshot (get_ability_counts) then includes it and a
+        duplicate converts to coins via compute_total_coin_grant.
+        """
+        with self._lock:
+            self.abilities_received[name] = (
+                self.abilities_received.get(name, 0) + 1
+            )
+
     def get_pay_shine_num(self) -> dict[str, int] | None:
         """Return a defensive copy of the last received PayShineNum snapshot."""
         with self._lock:

@@ -292,7 +292,7 @@
       "Sand Kingdom"
     ],
     "region": "Sand Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {canReachLocation(Sand: Moon Shards in the Sand)})",
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {canReachLocation(Sand: Moon Shards in the Sand)} and |Bullet Bill|)",
     "progression": true
   },
   {
@@ -302,7 +302,7 @@
       "Sand Kingdom"
     ],
     "region": "Sand Kingdom",
-    "requires": "{canReachLocation(Sand: Showdown on the Inverted Pyramid)}",
+    "requires": "({canReachLocation(Sand: Showdown on the Inverted Pyramid)} and (|Bullet Bill| and |Knucklotec's Fist|))",
     "progression": true
   },
   {
@@ -808,7 +808,7 @@
       "Lake Kingdom"
     ],
     "region": "Lake Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Ground Pound:2|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Spin| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))))",
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Ground Pound:2|) and (|Zipper| or (((|Backflip| and |Progressive Crouch:1|) or |Side Flip| or |Spin| or |Progressive Jump:2| or (|Ground Pound Jump| and |Progressive Ground Pound:1|)) and |Cap Bounce| and (|Progressive Ground Pound:2| or |Wall Slide|))) and |Zipper|)",
     "progression": true
   },
   {
@@ -1063,7 +1063,7 @@
       "Wooded Kingdom"
     ],
     "region": "Wooded Kingdom",
-    "requires": "((|Sherm| or (|Sherm| and |Climb|) or (|Sherm| and |Progressive Ground Pound:2|)) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})",
+    "requires": "(((|Sherm| and |Climb|) or (|Sherm| and |Progressive Ground Pound:2| and |Climb|)) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})",
     "progression": true
   },
   {
@@ -1252,7 +1252,7 @@
       "Wooded Kingdom"
     ],
     "region": "Wooded Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)} and |Climb|)"
   },
   {
     "name": "Wooded: Make the Secret Flower Field Bloom",
@@ -1386,7 +1386,7 @@
       "Deep Woods"
     ],
     "region": "Wooded Kingdom",
-    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Paragoomba|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)} and |Mini Rocket|)"
+    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Paragoomba|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)} and (|Mini Rocket| and |Climb|))"
   },
   {
     "name": "Wooded: Nut Hidden in the Fog",
@@ -1395,7 +1395,7 @@
       "Deep Woods"
     ],
     "region": "Wooded Kingdom",
-    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Paragoomba|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)} and |Mini Rocket|)"
+    "requires": "((((|Ground Pound Jump| and |Progressive Ground Pound:1|) or |Progressive Jump:2|) and |Paragoomba|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)} and (|Mini Rocket| and |Climb|))"
   },
   {
     "name": "Wooded: Flower Road Run",
@@ -1422,7 +1422,7 @@
       "Long Course"
     ],
     "region": "Wooded Kingdom",
-    "requires": "(|Sherm| and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})"
+    "requires": "(|Sherm| and {canReachLocation(Wooded: Flower Thieves of Sky Garden)} and |Climb|)"
   },
   {
     "name": "Wooded: Elevator Blind Spot",
@@ -1431,7 +1431,7 @@
       "Long Course"
     ],
     "region": "Wooded Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Sherm|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)})"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Sherm|) and {canReachLocation(Wooded: Flower Thieves of Sky Garden)} and |Climb|)"
   },
   {
     "name": "Wooded: Walking on Clouds",
@@ -1458,7 +1458,7 @@
       "Snow/Seaside Peace",
       "post-metro"
     ],
-    "region": "Metro Kingdom",
+    "region": "Wooded Kingdom",
     "requires": "({SnowPeace()} or {SeasidePeace()})"
   },
   {
@@ -4556,57 +4556,57 @@
   },
   {
     "name": "Mushroom: Tussle in Tostarena: Rematch",
+    "multi_moon": true,
     "category": [
       "Mushroom Kingdom"
     ],
     "region": "Mushroom Kingdom",
-    "requires": "",
-    "junk_only": true
+    "requires": ""
   },
   {
     "name": "Mushroom: Struggle in Steam Gardens: Rematch",
+    "multi_moon": true,
     "category": [
       "Mushroom Kingdom"
     ],
     "region": "Mushroom Kingdom",
-    "requires": "",
-    "junk_only": true
+    "requires": ""
   },
   {
     "name": "Mushroom: Dust-Up in New Donk City: Rematch",
+    "multi_moon": true,
     "category": [
       "Mushroom Kingdom"
     ],
     "region": "Mushroom Kingdom",
-    "requires": "",
-    "junk_only": true
+    "requires": ""
   },
   {
     "name": "Mushroom: Battle in Bubblaine: Rematch",
+    "multi_moon": true,
     "category": [
       "Mushroom Kingdom"
     ],
     "region": "Mushroom Kingdom",
-    "requires": "",
-    "junk_only": true
+    "requires": ""
   },
   {
     "name": "Mushroom: Blowup at Mount Volbono: Rematch",
+    "multi_moon": true,
     "category": [
       "Mushroom Kingdom"
     ],
     "region": "Mushroom Kingdom",
-    "requires": "",
-    "junk_only": true
+    "requires": ""
   },
   {
     "name": "Mushroom: Rumble in Crumbleden: Rematch",
+    "multi_moon": true,
     "category": [
       "Mushroom Kingdom"
     ],
     "region": "Mushroom Kingdom",
-    "requires": "",
-    "junk_only": true
+    "requires": ""
   },
   {
     "name": "Mushroom: A Tourist in the Mushroom Kingdom!",
@@ -4646,12 +4646,12 @@
   },
   {
     "name": "Dark Side: Arrival at Rabbit Ridge!",
+    "multi_moon": true,
     "category": [
       "Dark Side"
     ],
     "region": "Dark Side",
-    "requires": "",
-    "junk_only": true
+    "requires": ""
   },
   {
     "name": "Dark Side: Captain Toad on the Dark Side!",
@@ -5539,7 +5539,7 @@
       "Extra"
     ],
     "region": "Cap Kingdom",
-    "requires": "{CapPeace()}"
+    "requires": "(|Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Danger Sign",
@@ -5557,7 +5557,7 @@
       "Extra"
     ],
     "region": "Cap Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:2|) and {CapPeace()})"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:2|) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Fly to the Edge of the Fog",
@@ -5575,7 +5575,7 @@
       "Extra"
     ],
     "region": "Cap Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {CapPeace()})"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Hidden in a Sunken Hat",
@@ -5584,7 +5584,7 @@
       "Extra"
     ],
     "region": "Cap Kingdom",
-    "requires": "((|Paragoomba| or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:2|) or (|Progressive Crouch:2| and |Progressive Crouch:3|)) and {CapPeace()})"
+    "requires": "((|Paragoomba| or ((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:2|) or (|Progressive Crouch:2| and |Progressive Crouch:3|)) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Fog-Shrouded Platform",
@@ -5593,7 +5593,7 @@
       "Extra"
     ],
     "region": "Cap Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) and {CapPeace()})"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) and |Progressive Ground Pound:1|) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Bird Traveling in the Fog",
@@ -5602,7 +5602,7 @@
       "Extra"
     ],
     "region": "Cap Kingdom",
-    "requires": "((|Progressive Ground Pound:2| or |Paragoomba|) and {CapPeace()})"
+    "requires": "((|Progressive Ground Pound:2| or |Paragoomba|) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Caught Hopping Near the Ship!",
@@ -5611,7 +5611,7 @@
       "Caught Hopping"
     ],
     "region": "Cap Kingdom",
-    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:2|) and {CapPeace()})"
+    "requires": "(((|Long Jump| and |Progressive Crouch:1|) or |Progressive Crouch:2|) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Taking Notes: In the Fog",
@@ -5620,7 +5620,7 @@
       "Taking Notes"
     ],
     "region": "Cap Kingdom",
-    "requires": "((((|Long Jump| and |Progressive Crouch:1|) and |Paragoomba|) or |Paragoomba|) and {CapPeace()})"
+    "requires": "((((|Long Jump| and |Progressive Crouch:1|) and |Paragoomba|) or |Paragoomba|) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Cap Kingdom Timer Challenge 2",
@@ -5629,7 +5629,7 @@
       "Timer Challenge"
     ],
     "region": "Cap Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and {CapPeace()})"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Paragoomba| and {CapPeace()})"
   },
   {
     "name": "Cap: Cap Kingdom Master Cup",
@@ -5638,7 +5638,7 @@
       "Cup"
     ],
     "region": "Cap Kingdom",
-    "requires": "((|Long Jump| and |Progressive Crouch:1|) and ({CapPeace()} and {canReachLocation(Cap: Cap Kingdom Regular Cup)}))"
+    "requires": "((|Long Jump| and |Progressive Crouch:1|) and |Paragoomba| and ({CapPeace()} and {canReachLocation(Cap: Cap Kingdom Regular Cup)}))"
   },
   {
     "name": "Cascade: Peach in the Cascade Kingdom",

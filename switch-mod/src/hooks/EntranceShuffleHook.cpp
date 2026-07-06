@@ -62,14 +62,17 @@ namespace smoap::hooks {
 // (a) runs before the next stage's placement and (b) hands us the GameDataFile*;
 // both getScenarioNoPlacement read seams are inlined (see that file's header).
 void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName,
-                                   const char* tag);
+                                   const char* curStageName, const char* tag);
 
 // Defined in CascadeBroodeRespawnHook.cpp. Returns the scenario to force the
 // upcoming Cascade arrival to (so Madame Broode is placed) when committing into
 // Cascade's home stage with her Multi-Moon uncollected, else -1. We write it into
 // the ChangeStageInfo scenario field BEFORE orig — the engine's scenario-jump
 // load input, which actually drives the load (the GameDataFile field write did not).
-int cascadeArrivalScenarioOverride(void* gameDataFile, const char* destStageName);
+// Fires ONLY on an Odyssey-flight arrival (curStageName == the cabin); subarea
+// returns and other arrivals get -1 so Cascade keeps its live scenario.
+int cascadeArrivalScenarioOverride(void* gameDataFile, const char* destStageName,
+                                   const char* curStageName);
 
 // Defined in CascadeBroodeRespawnHook.cpp — true once Cascade's Madame Broode
 // Multi-Moon is collected (Broode beaten). Pure save-state read; used by the
@@ -401,7 +404,11 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                 // moon rocks use). The post-orig GameDataFile field write below
                 // fired but did NOT take (the load recomputes it), so this drives
                 // the load instead. dest is the FINAL (post-remap) target.
-                const int sc = cascadeArrivalScenarioOverride(self, dest);
+                // currentStageName() = the stage we're leaving. The Broode force
+                // only fires when it's the Odyssey cabin (a flight arrival); a
+                // Cascade subarea return keeps the live scenario (Devon, 2026-07-05).
+                const int sc =
+                    cascadeArrivalScenarioOverride(self, dest, currentStageName());
                 if (sc >= 0) {
                     auto* mut = const_cast<ChangeStageInfo*>(info);
                     auto* scp = reinterpret_cast<std::int32_t*>(
@@ -501,14 +508,26 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                     }
                 }
             }
+            // Snapshot the ORIGIN stage before orig — post-orig currentStageName()
+            // may already reflect the new stage, and the belt-and-braces force
+            // below needs the departure stage (the Odyssey-cabin gate) to match
+            // the pre-orig cascadeArrivalScenarioOverride check.
+            char originStage[64];
+            {
+                const char* c = currentStageName();
+                if (c) { std::strncpy(originStage, c, sizeof(originStage) - 1);
+                         originStage[sizeof(originStage) - 1] = '\0'; }
+                else   { originStage[0] = '\0'; }
+            }
             fileChangeNextStageHook.orig(self, info, raceType);
             // Belt-and-braces: also re-assert the GameDataFile placement field
             // post-orig. It did NOT take alone (kept so the logs show both paths;
             // if the ChangeStageInfo write above succeeds this is redundant).
+            // Same Odyssey-cabin origin gate as the pre-orig force.
             if (info)
                 forceCascadePlacementScenario(
                     self, readCstrAt(info, kOffChangeStageNameCstr),
-                    "changeNextStage");
+                    originStage, "changeNextStage");
         });
 
 // [entrance:return] — GameDataFile::returnPrevStage(). Member function, no args.

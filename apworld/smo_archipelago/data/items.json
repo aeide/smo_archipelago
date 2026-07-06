@@ -212,6 +212,24 @@
     "filler": true
   },
   {
+    "name": "Mushroom Kingdom Multi-Moon",
+    "count": 6,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
+    "name": "Dark Side Multi-Moon",
+    "count": 1,
+    "category": [
+      "Moon",
+      "post-metro"
+    ],
+    "progression": true
+  },
+  {
     "name": "Frog",
     "category": [
       "Capture"

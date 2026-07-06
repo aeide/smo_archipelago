@@ -14,10 +14,18 @@
 #include "../ap/ApState.hpp"
 #include "../game/KingdomOrderGate.hpp"
 #include "../game/KingdomUnlock.hpp"
+#include "../game/OdysseyRescue.hpp"
 #include "../util/Log.hpp"
 #include "HookSymbols.hpp"
 
 namespace smoap::hooks {
+
+// Defined in CascadeBroodeRespawnHook.cpp — true once Cascade's Madame Broode
+// Multi-Moon is collected (Broode beaten). Used to scope the Cascade first-visit
+// world-warp-demo suppression below to PRE-Broode only: post-Broode this is a
+// normal revisit and clearing mIsPlayDemoWorldWarp desynced the arrival load
+// (crash on long-haul flights into Cascade, 2026-07-05). See the suppression site.
+bool cascadeMultiMoonCollected();
 
 namespace {
 
@@ -135,21 +143,60 @@ HkTrampoline<bool, GameDataHolderWriter, const char*> tryChangeDemoWarpHook =
         // at the universal GameDataFile::changeNextStage commit, where Cloud
         // provably resolves — see processDetourExitGate in EntranceShuffleHook.cpp.
         markVisitedFromStage("tryChange.Demo", final_stage);
+
+        const bool cascadeBound = final_stage &&
+            std::strcmp(final_stage, kCascadeHomeStage) == 0;
+
+        // DIAGNOSTIC (2026-07-05): dump the world-warp-demo flag set + the
+        // isAlreadyGoWorld bitmap for a Cascade-bound flight BEFORE orig sets
+        // mIsPlayDemoWorldWarp, so a WORKING (from Cap) vs CRASHING (from a
+        // long-haul kingdom) fly-in can be compared row-for-row. Read-only.
+        if (cascadeBound)
+            smoap::game::logWorldWarpDemoDiagNow("demoWarp-pre->Cascade");
+
         const bool r = tryChangeDemoWarpHook.orig(writer, final_stage);
-        // Suppress the first-visit cutscene for Cascade so its Odyssey isn't
-        // grounded (see header). orig has now set mIsPlayDemoWorldWarp; clear it
-        // before the arrival reads it. No-op for every other destination.
-        if (s_noPlayDemoWorldWarp && final_stage &&
-            std::strcmp(final_stage, kCascadeHomeStage) == 0) {
-            s_noPlayDemoWorldWarp(writer);
-            static int s_log = 0;
-            if (s_log < 20) {
-                ++s_log;
-                SMOAP_LOG_INFO("[cascade-arrival] noPlayDemoWorldWarp -> suppress "
-                               "first-visit cutscene, land Odyssey parked + "
-                               "boardable (dest=%s) #%d",
-                               final_stage, s_log);
+
+        // Cascade first-visit cutscene suppression — SCOPED TO PRE-BROODE.
+        //
+        // The suppression exists ONLY to stop the first-visit warp cutscene from
+        // GROUNDING the Odyssey (a pre-Broode tutorial state) and stranding a
+        // free-travel player who flew in from Cap. But
+        // tryChangeNextStageWithDemoWorldWarp is the STANDARD world-map flight
+        // commit (it fires on every globe flight, not just first visits — see
+        // HookSymbols.hpp:759), so clearing mIsPlayDemoWorldWarp unconditionally
+        // also cleared it on POST-Broode revisits. Devon, 2026-07-05: "I crash
+        // every time I revisit Cascade UNLESS I visit from Cap." Adjacent
+        // Cap->Cascade doesn't set the demo state, so clearing it there was a
+        // harmless no-op; a long-haul fly-in (Sand->Cascade, etc.) DOES set it,
+        // and clearing it mid-flight desynced the arrival load -> crash during
+        // load. Once Broode's Multi-Moon is collected there is no grounding
+        // tutorial left to suppress, so leave the vanilla revisit path untouched.
+        if (cascadeBound) {
+            const bool firstVisit = !cascadeMultiMoonCollected();
+            if (s_noPlayDemoWorldWarp && firstVisit) {
+                s_noPlayDemoWorldWarp(writer);
+                static int s_log = 0;
+                if (s_log < 20) {
+                    ++s_log;
+                    SMOAP_LOG_INFO("[cascade-arrival] noPlayDemoWorldWarp -> "
+                                   "suppress first-visit cutscene, land Odyssey "
+                                   "parked + boardable (dest=%s, PRE-Broode) #%d",
+                                   final_stage, s_log);
+                }
+            } else {
+                static int s_log2 = 0;
+                if (s_log2 < 20) {
+                    ++s_log2;
+                    SMOAP_LOG_INFO("[cascade-arrival] KEEP vanilla demo-warp "
+                                   "(dest=%s broodeCollected=%d suppressorReady=%d) "
+                                   "— post-Broode revisit path, do NOT clear "
+                                   "mIsPlayDemoWorldWarp #%d",
+                                   final_stage,
+                                   cascadeMultiMoonCollected() ? 1 : 0,
+                                   s_noPlayDemoWorldWarp ? 1 : 0, s_log2);
+                }
             }
+            smoap::game::logWorldWarpDemoDiagNow("demoWarp-post->Cascade");
         }
         return r;
     });

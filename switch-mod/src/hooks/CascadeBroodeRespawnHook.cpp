@@ -107,6 +107,18 @@ inline constexpr int kBroodeScenario = 1;
 // non-Cascade load would mis-place that kingdom).
 inline constexpr const char* kCascadeHomeStage = "WaterfallWorldHomeStage";
 
+// The Odyssey cabin interior. A flight arrival into a kingdom is a commit whose
+// CURRENT stage is this cabin (you board -> enter the cabin -> pick a destination
+// on the globe -> the flight commits changeNextStage from HomeShipInsideStage to
+// the kingdom's home stage). We force the Broode scenario ONLY on that
+// Odyssey-flight arrival — NOT when returning from a Cascade subarea (cur is a
+// WaterfallWorld sub-stage) or arriving any other way. Re-forcing on every
+// subarea pop-out re-injected scenario 1 and respawned Broode over and over
+// (Devon, 2026-07-05). Restricting to the cabin origin keeps the live scenario on
+// every non-flight arrival, so Broode only reappears on a genuine fly-in while her
+// Multi-Moon is still uncollected.
+inline constexpr const char* kOdysseyInsideStage = "HomeShipInsideStage";
+
 // GameDataFile::mScenarioNoPlacement byte offset (see header block: anchored to
 // the end of the 0xb68-byte struct, second-to-last s32).
 inline constexpr std::size_t kOffScenarioNoPlacement = 0xb60;
@@ -167,9 +179,13 @@ bool cascadeMultiMoonCollected() {
 }
 
 void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName,
-                                   const char* tag) {
+                                   const char* curStageName, const char* tag) {
     if (gameDataFile == nullptr || destStageName == nullptr) return;
     if (std::strcmp(destStageName, kCascadeHomeStage) != 0) return;
+    // ONLY on an Odyssey-flight arrival (cur == the cabin). A subarea return or
+    // any other arrival must keep Cascade's live scenario — see kOdysseyInsideStage.
+    if (curStageName == nullptr ||
+        std::strcmp(curStageName, kOdysseyInsideStage) != 0) return;
 
     // Can't resolve the Multi-Moon's (stage, obj)? Fail SAFE: do not force.
     if (s_multiMoonStage == nullptr || s_multiMoonObj == nullptr) return;
@@ -213,8 +229,10 @@ void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName
         *p = kBroodeScenario;
 }
 
-// Returns kBroodeScenario when committing a transition INTO Cascade's home stage
-// with the Multi-Moon still uncollected (else -1 = "don't force"). The caller
+// Returns kBroodeScenario when committing an ODYSSEY-FLIGHT arrival (cur == the
+// cabin, kOdysseyInsideStage) INTO Cascade's home stage with the Multi-Moon still
+// uncollected (else -1 = "don't force"). Subarea returns and any non-flight
+// arrival return -1 so Cascade keeps its live scenario. The caller
 // writes this into the ChangeStageInfo's scenario field (mScenarioNo) BEFORE
 // changeNextStage's orig, so the engine loads Cascade directly in Broode's
 // scenario. This is the documented scenario-jump input (what moon rocks use) and
@@ -222,10 +240,17 @@ void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName
 // (forceCascadePlacementScenario) which fired but did NOT take in-game — the
 // stage load recomputed the field back to 7 before placement read it (Cascade
 // returned in the world-peace scenario, 2026-06-26).
-int cascadeArrivalScenarioOverride(void* gameDataFile, const char* destStageName) {
+int cascadeArrivalScenarioOverride(void* gameDataFile, const char* destStageName,
+                                   const char* curStageName) {
     if (gameDataFile == nullptr || destStageName == nullptr) return -1;
     if (std::strcmp(destStageName, kCascadeHomeStage) != 0) return -1;
     if (!kCascadeRespawnApply) return -1;
+    // ONLY force on an Odyssey-flight arrival (cur == the cabin). Returning from a
+    // Cascade subarea (cur is a WaterfallWorld sub-stage) or arriving any other
+    // way keeps the live scenario — no more repeated Broode respawns on subarea
+    // pop-out (Devon, 2026-07-05). See kOdysseyInsideStage.
+    if (curStageName == nullptr ||
+        std::strcmp(curStageName, kOdysseyInsideStage) != 0) return -1;
     // Fail SAFE if we can't verify collection — never force forever. Only force
     // when the Multi-Moon is DEFINITIVELY uncollected (probe == 0).
     if (!multiMoonDefinitelyUncollected()) return -1;

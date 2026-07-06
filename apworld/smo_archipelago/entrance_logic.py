@@ -139,7 +139,9 @@ SUBAREA_ENTRANCE_GATES: dict[str, str] = {
     "Swinging Along the High-Rises":    "|Mini Rocket|",
     "A Sea of Clouds":                  "|Mini Rocket|",
     "Strange Neighborhood":             "|Mini Rocket|",
-    "Shards in the Fog":                "|Mini Rocket|",
+    # Wooded fog door: Mini Rocket + Climb to reach it (mirror of
+    # compile_moon_logic.SUBAREA_GATES). Exit stays Mini-Rocket-only below.
+    "Shards in the Fog":                "(|Mini Rocket| and |Climb|)",
     "Picture Match (Mario)":            "|Mini Rocket|",
     "Roulette Tower":                   "|Mini Rocket|",
     "Shards Under Siege":               "|Taxi|",
@@ -147,6 +149,10 @@ SUBAREA_ENTRANCE_GATES: dict[str, str] = {
     "Fork-Flickin to the Summit":       "|Lava Bubble|",
     "Shards in the Cheese Rocks":       "|Hammer Bro|",
     "Spinning Athletics":               "|Lava Bubble|",
+    # Wooded Sky-Garden-tier doors require Climb to REACH the door; interior stays
+    # free under shuffle. Mirror of compile_moon_logic.SUBAREA_GATES (Devon 2026-07-01).
+    "Crowded Elevator":                 "|Climb|",
+    "Spinning-Platforms Treasure Vault": "|Climb|",
     "Jaxi Driving":                     "({SandPeace()} or (|Bullet Bill| and |Progressive Ground Pound:2| and |Wall Slide|))",
 }
 
@@ -188,6 +194,19 @@ SUBAREA_EXIT_GATES: dict[str, str] = {
 # evaluator). compile_moon_logic.SUBAREA_INTERIOR_FULL_GATES still bakes the identical
 # string into each member moon's locations.json `requires` for the shuffle-OFF path
 # (door == interior there, so keying is moot); keep the two strings in sync.
+
+# Kingdom prefix → capture needed to physically REACH that kingdom's moon rock.
+# MUST mirror compile_moon_logic.MOON_ROCK_REACH_CAPTURE (guarded by
+# test_entrance_shuffle.py). Under entrance shuffle a rock/moon-pipe subarea's interior
+# loses its baked reach-capture gate (the interior `requires` becomes move-set only), so
+# the capture has to ride the DOOR: reaching a moon-pipe door means breaking that
+# kingdom's rock, which needs this capture (Cap's rolling course sits behind the
+# Paragoomba-glide rock; Luncheon's moon-pipes behind the Lava-Bubble rock). Only Cap
+# and Luncheon rocks are capture-gated to reach; every other kingdom resolves to "".
+MOON_ROCK_REACH_CAPTURE: dict[str, str] = {
+    "Cap":      "|Paragoomba|",
+    "Luncheon": "|Lava Bubble|",
+}
 
 # Kingdom prefix → peace-function name (from hooks/Rules.py).
 # Cap, Cloud, Lost omitted — their peace = kingdom reachability; no extra gate.
@@ -779,6 +798,17 @@ def make_door_access_rule(
     if xg:
         checks.append(lambda state, r=xg, w=world, p=player:
                        evaluate_interior_requires(state, r, w, p))
+
+    # Moon-rock reach capture (moon-pipe door). Shuffle OFF bakes this onto each
+    # rock moon's `requires` via compile_moon_logic.MOON_ROCK_REACH_CAPTURE; shuffle ON
+    # strips the interior gate, so the capture rides the DOOR instead — reaching a
+    # moon-pipe door means breaking that kingdom's rock (Cap=Paragoomba, Luncheon=Lava
+    # Bubble). "" for every other kingdom, so this is a no-op there.
+    if is_moon_pipe:
+        reach = MOON_ROCK_REACH_CAPTURE.get(door_prefix, "")
+        if reach:
+            checks.append(lambda state, r=reach, w=world, p=player:
+                           evaluate_interior_requires(state, r, w, p))
 
     # Peace gate (moon-pipe door)
     if is_moon_pipe:

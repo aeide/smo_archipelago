@@ -35,12 +35,13 @@ def test_multi_moon_location_counts_match_item_counts():
     """The MM<->MM-location matching is only solvable if, per kingdom, the
     number of `multi_moon: true` locations equals the Multi-Moon item count.
 
-    Under the default (mushroom_kingdom) goal "Metro: A Traditional Festival!"
-    is a real 14th MM location, so 14 items == 14 locations with no pool drop.
-    Under the festival goal the festival is the victory location (can't hold
-    an item), so before_create_items_filler drops one Metro MM giving 13 items
-    for 13 locations — but that's goal-conditional logic, not a static count
-    mismatch, so we assert the raw counts match without any drop here."""
+    21<->21 since the re-fight/Dark Side bundle added 6 Mushroom + 1 Dark Side
+    MM locations + items. Under the default (mushroom_kingdom) goal every MM
+    location is a real check, so 21 items == 21 locations with no pool drop.
+    Under the festival goal the Mushroom/Dark Side locations vanish and the
+    festival is the victory location — before_create_items_filler drops the 7
+    new MMs plus one Metro MM — but that's goal-conditional logic, not a static
+    count mismatch, so we assert the raw counts match without any drop here."""
     mm_locs = Counter()
     for l in _locations():
         if l.get("multi_moon"):
@@ -48,7 +49,9 @@ def test_multi_moon_location_counts_match_item_counts():
 
     mm_items = Counter()
     for i in _items():
-        m = re.match(r"^(.+) Kingdom Multi-Moon$", i.get("name", ""))
+        # " Kingdom" is optional so the Dark Side Multi-Moon (a non-kingdom
+        # area) is counted under key "Dark Side", matching its region tag.
+        m = re.match(r"^(.+?)(?: Kingdom)? Multi-Moon$", i.get("name", ""))
         if m:
             mm_items[m.group(1)] += int(i.get("count", 1))
 
@@ -57,12 +60,42 @@ def test_multi_moon_location_counts_match_item_counts():
         f"  locations: {dict(mm_locs)}\n  items: {dict(mm_items)}")
 
 
-def test_multi_moon_total_is_fourteen():
-    """14 multi_moon locations: 13 floating + festival (real MM boss fight).
-    Under festival goal the festival becomes victory and before_create_items_filler
-    drops one Metro MM, giving 13 items for 13 locations. Under the default goal
-    the festival is a normal 14th MM check holding the second Metro MM."""
-    assert sum(1 for l in _locations() if l.get("multi_moon")) == 14
+def test_multi_moon_total_is_twenty_one():
+    """21 multi_moon locations: the 14 story-boss MMs (13 floating + festival)
+    plus the 6 Mushroom Kingdom re-fights and the Dark Side arrival added by the
+    re-fight/Dark Side bundle feature. Under the festival goal the 7 new ones
+    vanish (post-Metro) and a Metro MM is dropped; under the default goal all 21
+    are real checks."""
+    assert sum(1 for l in _locations() if l.get("multi_moon")) == 21
+
+
+def test_refight_and_dark_side_locations_tagged_multi_moon_not_junk():
+    """The 6 Mushroom re-fights + Dark Side arrival must be multi_moon and must
+    NOT be junk_only (the two rules conflict: junk_only rejects the very MM item
+    the shuffle needs to place there)."""
+    want = {
+        "Mushroom: Tussle in Tostarena: Rematch",
+        "Mushroom: Struggle in Steam Gardens: Rematch",
+        "Mushroom: Dust-Up in New Donk City: Rematch",
+        "Mushroom: Battle in Bubblaine: Rematch",
+        "Mushroom: Blowup at Mount Volbono: Rematch",
+        "Mushroom: Rumble in Crumbleden: Rematch",
+        "Dark Side: Arrival at Rabbit Ridge!",
+    }
+    seen = set()
+    for l in _locations():
+        if l.get("name") in want:
+            seen.add(l["name"])
+            assert l.get("multi_moon") is True, f"{l['name']} not tagged multi_moon"
+            assert not l.get("junk_only"), f"{l['name']} still junk_only"
+    assert seen == want, f"missing tagged locations: {want - seen}"
+
+
+def test_new_multi_moon_items_present():
+    """The 6 Mushroom + 1 Dark Side Multi-Moon items back the 7 new locations."""
+    by_name = {i["name"]: i for i in _items()}
+    assert by_name["Mushroom Kingdom Multi-Moon"]["count"] == 6
+    assert by_name["Dark Side Multi-Moon"]["count"] == 1
 
 
 def test_festival_location_is_tagged_multi_moon():
@@ -90,6 +123,42 @@ def test_world_drops_one_metro_mm_only_under_festival_goal():
         "one Metro Multi-Moon must be dropped (under festival goal) to balance the MM matching"
     assert 'goal' in body and '== 1' in body, \
         "Metro MM drop must be conditional on goal == 1 (festival), not always active"
+
+
+def test_world_drops_new_mms_under_festival_goal():
+    """Festival removes the post-Metro Mushroom/Dark Side locations, so the 6
+    Mushroom + 1 Dark Side MM items must be dropped there too or they orphan the
+    fill (under multi_moon_shuffle they're constrained to now-unreachable MM
+    locations)."""
+    src = _hooks_src("World.py")
+    m = re.search(r"def before_create_items_filler\b.*?(?=\n# |\ndef )",
+                  src, re.DOTALL)
+    assert m, "before_create_items_filler not found"
+    body = m.group(0)
+    assert '"Mushroom Kingdom Multi-Moon"' in body and '"Dark Side Multi-Moon"' in body, \
+        "festival drop must remove both new Multi-Moon items"
+    assert "goal_is_festival" in body, \
+        "the new-MM drop must be gated on the festival goal"
+
+
+def test_bonus_grants_rolled_and_shipped():
+    """18 bonus captures + 3 bonus abilities are rolled from world.random and
+    emitted into slot_data as mm_bonus_captures / mm_bonus_abilities."""
+    src = _hooks_src("World.py")
+    assert "MM_BONUS_CAPTURE_COUNT = 18" in src
+    assert "MM_BONUS_ABILITY_COUNT = 3" in src
+    assert "def _roll_mm_bonus_grants" in src
+    assert "world.random.sample" in src, "picks must come from the seeded RNG"
+    # Rolled in after_create_items (alongside the kingdom-gate roll).
+    m = re.search(r"def after_create_items\b.*?(?=\n# |\ndef )", src, re.DOTALL)
+    assert m and "_roll_mm_bonus_grants" in m.group(0), \
+        "after_create_items must roll the bonus grants"
+    # Emitted in slot_data.
+    m = re.search(r"def before_fill_slot_data\b.*?(?=\n# |\ndef )", src, re.DOTALL)
+    assert m, "before_fill_slot_data not found"
+    body = m.group(0)
+    assert '"mm_bonus_captures"' in body and '"mm_bonus_abilities"' in body, \
+        "slot_data must carry both bonus lists"
 
 
 def test_ruined_pin_is_a_tagged_mm_location():

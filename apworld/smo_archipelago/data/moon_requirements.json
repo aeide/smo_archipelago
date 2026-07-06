@@ -4285,7 +4285,8 @@
           "spin"
         ],
         "other_required": [
-          "capture"
+          "capture",
+          "climb"
         ]
       },
       "2": {
@@ -4308,7 +4309,8 @@
         ],
         "other_required": [
           "capture",
-          "dive"
+          "dive",
+          "climb"
         ]
       },
       "4": null,

@@ -289,6 +289,14 @@ class SMOContext(CommonContext):
         # older apworld build that doesn't ship `talkatoo_order` still
         # works). Keyed by AP-form kingdom name ("Cascade", "Bowser's").
         self.talkatoo_order: dict[str, list[str]] = {}
+        # Re-fight / Dark Side multi-moon BONUS side-grants, populated from
+        # slot_data on AP Connected. mm_bonus_captures is a flat ordered list of
+        # 18 capture names; the Nth Mushroom Kingdom Multi-Moon received unlocks
+        # captures[3*(N-1):3*N]. mm_bonus_abilities is 3 ability names the Dark
+        # Side Multi-Moon folds into the ability snapshot. Empty when the seed
+        # didn't roll them (older apworld build / bonus rolled empty).
+        self.mm_bonus_captures: list[str] = []
+        self.mm_bonus_abilities: list[str] = []
         self.display_enabled = display_enabled
         # M-color: AP-classification -> palette index for in-world moon
         # coloring. Defaults give each non-filler classification a unique
@@ -643,6 +651,38 @@ class SMOContext(CommonContext):
                     hack_name=ref.hack_name,
                     classification=classification,
                 ))
+            # Re-fight / Dark Side multi-moon BONUS side-grants. These items
+            # already granted their 3 moons via the MOON branch above; on top of
+            # that the Mushroom Kingdom Multi-Moon unlocks 3 bonus captures and
+            # the Dark Side Multi-Moon 3 bonus abilities (rolled into slot_data,
+            # see World._roll_mm_bonus_grants). Only NEW items reach here (the
+            # pos < initial_mirror_len replay was skipped above) and the chunk
+            # index is read from the authoritative mirror, so a reconnect replay
+            # never re-fires. See docs/handoff-refight-multi-moons.md.
+            if ref.name == "Mushroom Kingdom Multi-Moon" and self.mm_bonus_captures:
+                # Nth Mushroom MM (1-based, counted from the mirror which now
+                # includes this one) consumes captures [3*(N-1):3*N] — order-
+                # agnostic across the 6 identically-named items.
+                n = self.state.received_item_count(ref.name)
+                for cap in self.mm_bonus_captures[3 * (n - 1): 3 * n]:
+                    self.state.grant_bonus_capture(cap)
+                    if self.switch is not None:
+                        await self.switch.send_item(ItemMsg(
+                            kind=ItemKind.CAPTURE.value,
+                            cap=cap,
+                            name=cap,
+                            from_="(self)",
+                            hack_name=self.capture_map.cap_to_hack(cap),
+                        ))
+                coin_relevant_this_batch = True
+            elif ref.name == "Dark Side Multi-Moon" and self.mm_bonus_abilities:
+                # Fold the 3 bonus abilities into the snapshot (pushed once at the
+                # end of the batch). A duplicate levels a progressive chain or
+                # converts to coins, exactly like a real ability receipt.
+                for ab in self.mm_bonus_abilities:
+                    self.state.grant_bonus_ability(ab)
+                ability_received_this_batch = True
+                coin_relevant_this_batch = True
 
         if moon_received_this_batch:
             # lifetime_received bumped; re-derive outstanding and push.
@@ -990,6 +1030,16 @@ class SMOContext(CommonContext):
                     {str(k): str(v) for k, v in raw_entrance_map.items()}
                 )
                 await self.switch.push_entrance_map()
+                # Re-fight / Dark Side multi-moon bonus side-grants. Stashed for
+                # the ReceivedItems handler, which unlocks them as each Mushroom/
+                # Dark Side Multi-Moon arrives. Reassigned (not merged) so a
+                # reconnect to a non-bonus seed clears stale picks.
+                self.mm_bonus_captures = [
+                    str(c) for c in (slot_data.get("mm_bonus_captures") or [])
+                ]
+                self.mm_bonus_abilities = [
+                    str(a) for a in (slot_data.get("mm_bonus_abilities") or [])
+                ]
                 # Shop moon label substitution. Depends on the datapackage
                 # being hot (loc_name_to_id) AND scout cache lookups
                 # working — both are true by the time we reach here.

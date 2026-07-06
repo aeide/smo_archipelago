@@ -27,8 +27,12 @@ _LOC_PREFIX_RE = re.compile(r"^([A-Za-z' ]+):\s*(.+)$")
 # Items use " Kingdom " (space-separated, no colon):
 #   "Cap Kingdom Power Moon" -> kingdom="Cap",     shine_id="Power Moon"
 #   "Cascade Kingdom Multi-Moon" -> kingdom="Cascade", shine_id="Multi-Moon"
-# Non-greedy head captures multi-word kingdom names like "Dark Side".
-_ITEM_MOON_KINGDOM_RE = re.compile(r"^(.+?) Kingdom (Power Moon|Multi-Moon)$")
+# " Kingdom" is OPTIONAL so the non-kingdom moon areas parse too:
+#   "Dark Side Multi-Moon" -> kingdom="Dark Side", shine_id="Multi-Moon"
+# Non-greedy head captures multi-word names like "Dark Side"/"Darker Side"
+# (it backtracks to the shortest head that lets the tail match, so
+# "Mushroom Kingdom Multi-Moon" still yields kingdom="Mushroom").
+_ITEM_MOON_KINGDOM_RE = re.compile(r"^(.+?)(?: Kingdom)? (Power Moon|Multi-Moon)$")
 
 # regions.json `requires` strings contain clauses like `{KingdomMoons(Cascade,5)}`
 # meaning "to enter this region the player needs 5 moon-credits FROM Cascade".
