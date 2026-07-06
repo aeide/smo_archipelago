@@ -62,6 +62,38 @@ _ZN16GameDataFunction32calcNextLockedWorldIdForWorldMapEPKN2al5SceneEi
 _ZN16GameDataFunction35tryChangeNextStageWithDemoWorldWarpE20GameDataHolderWriterPKc
 _ZN16GameDataFunction35tryChangeNextStageWithWorldWarpHoleE20GameDataHolderWriterPKc
 
+// Warp-paintings-always-open spike (docs/v3-feasibility/future-feasibility-warp-
+// paintings-always-open.md, Tier 1). GameDataHolder::checkIsOpenWorldWarpHoleIn
+// Scenario(worldId, scenarioNo) const is the named availability predicate that
+// gates whether a warp painting to `worldId` is usable in the current scenario.
+// Confirmed present out-of-line in retail main.nso dynsym (not inlined away) via
+// scripts/check_nso_symbols.py. WorldWarpHoleGateHook trampolines it to log
+// (worldId, scenarioNo, origResult) and force true.
+_ZNK14GameDataHolder34checkIsOpenWorldWarpHoleInScenarioEii
+
+// Warp-paintings spike, probe 2 (2026-07-06). The in-game log proved
+// checkIsOpenWorldWarpHoleInScenario is NOT the gate for normally-late paintings:
+// it is never even called with the late destination's worldId (the actor doesn't
+// know the dest). The blank painting is an upstream appearance gate. These two
+// getters are the prime suspects for "what makes the painting blank":
+//   GameProgressData::getWorldIdForWorldWarpHole(idx) — the per-hole destination
+//     mapping; returns -1 until the destination world is revealed (blank).
+//   GameDataFunction::isUnlockedWorld(accessor, worldId) — cross-check.
+// Both confirmed present in retail dynsym (scripts/check_nso_symbols.py). Hooked
+// log-only by WorldWarpHoleGateHook to find which reports the late dest as
+// unavailable.
+_ZNK16GameProgressData26getWorldIdForWorldWarpHoleEi
+_ZN16GameDataFunction15isUnlockedWorldE22GameDataHolderAccessori
+
+// Warp-paintings spike, probe 3 (2026-07-06). Forcing isUnlockedWorld true did
+// NOT un-blank the post-game Cascade->Bowser's painting, so the appearance gate
+// is deeper. isAlreadyGoWorld(worldId) ("have you already gone to this world" /
+// game-clear-ish) is the prime suspect. Hooked LOG-ONLY (arm-scoped) by
+// WorldWarpHoleGateHook to confirm the actor reads it during the warp eval.
+// (Already resolved at runtime by OdysseyRescue via lookupSymbol; adding here so
+// installAtSym can trampoline it. Verified present in retail dynsym.)
+_ZN16GameDataFunction16isAlreadyGoWorldE22GameDataHolderAccessori
+
 // CreditsStartHook (Strategy A): patches the BL @+0x4C54A4 inside
 // StaffRollScene::init to call our onCreditsStart, which then chain-calls
 // the original target — al::Scene::initDrawSystemInfo. Sail needs to

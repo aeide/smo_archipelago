@@ -324,7 +324,15 @@
       "Read(//e/Ryubin/**)",
       "Read(//c/Users/devon/AppData/Roaming/Ryujinx/**)",
       "Bash(curl -s \"https://raw.githubusercontent.com/MonsterDruide1/OdysseyDecomp/master/src/Util/ItemUtil.cpp\")",
-      "PowerShell(python scripts\\\\build_switchmod.py \"-DBRIDGE_HOST=192.168.4.100\")"
+      "PowerShell(python scripts\\\\build_switchmod.py \"-DBRIDGE_HOST=192.168.4.100\")",
+      "Bash(ls -la e:/smo_archipelago/docs/main-*.nso 2>/dev/null; ls -la e:/smo_archipelago/.romfs-cache/ 2>/dev/null | head; find /c/Users/devon/AppData/Roaming/SMOArchipelago -iname 'main*.nso' 2>/dev/null; find e:/smo_archipelago -iname 'main*.nso' 2>/dev/null | head)",
+      "Read(//c/Users/devon/AppData/Roaming/SMOArchipelago/**)",
+      "Bash(xxd)",
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main.nso checkIsOpenWorldWarpHoleInScenario _ZNK14GameDataHolder34checkIsOpenWorldWarpHoleInScenarioEii calcWorldWarpHoleDestId tryChangeNextStageWithWorldWarpHole WorldWarpHole)",
+      "Bash(awk -F: '{s+=$2} END{print \"trampoline decls \\(approx\\):\", s}')",
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main.nso _ZNK16GameProgressData26getWorldIdForWorldWarpHoleEi getWorldIdForWorldWarpHole _ZN16GameDataFunction15isUnlockedWorldE22GameDataHolderAccessori _ZN16GameDataFunction15isAlreadyGoWorldE22GameDataHolderAccessori setWorldIdForWorldWarpHole _ZN16GameDataFunction22tryChangeNextStageWithWorldWarpHoleE)",
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main.nso _ZN16GameDataFunction15isAlreadyGoWorldE22GameDataHolderAccessori _ZNK16GameDataFunction15isAlreadyGoWorldE22GameDataHolderAccessori _ZN16GameDataFunction21isPlayDemoWorldWarpHoleE22GameDataHolderAccessor isPlayDemoWorldWarpHole isAlreadyGoWorld)",
+      "Bash(python scripts/check_nso_symbols.py .romfs-cache/main.nso _ZN16GameDataFunction16isAlreadyGoWorldE22GameDataHolderAccessori)"
     ],
     "additionalDirectories": [
       "\\tmp\\dbg",

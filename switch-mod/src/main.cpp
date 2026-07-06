@@ -105,6 +105,14 @@ void installCascadeBroodeRespawnHook();
 // moons stay gated). Applied from EntranceShuffleHook's changeNextStage commit.
 // See hooks/CapReturnScenarioHook.cpp.
 void installCapReturnScenarioHook();
+
+// Warp paintings always open — Tier 1 force+log spike. Trampolines
+// GameDataHolder::checkIsOpenWorldWarpHoleInScenario, logs each distinct
+// (worldId, scenarioNo, origResult) once, and forces the painting open. Answers
+// whether the actor reads this out-of-line predicate and whether normally-late
+// destinations load pre-unlock. See hooks/WorldWarpHoleGateHook.cpp and
+// docs/v3-feasibility/future-feasibility-warp-paintings-always-open.md.
+void installWorldWarpHoleGateHook();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
@@ -429,6 +437,8 @@ extern "C" void hkMain() {
 
     SMOAP_LOG_INFO("installing CapReturnScenarioHook (floor ChangeStageInfo.scenario up to 2 on commit into Cap; moon-rock scenario preserved)");
     smoap::hooks::installCapReturnScenarioHook();
+
+    smoap::hooks::installWorldWarpHoleGateHook();
 
 #ifdef SMOAP_HAS_DEBUG_RENDERER
     // Install the Nvn bootstrap trampoline so ImGuiBackendNvn auto-wires

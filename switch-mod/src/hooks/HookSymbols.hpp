@@ -544,6 +544,28 @@ inline constexpr const char* kGameDataFunctionTryChangeNextStageWithDemoWorldWar
 inline constexpr const char* kGameDataFunctionTryChangeNextStageWithWorldWarpHole =
     "_ZN16GameDataFunction35tryChangeNextStageWithWorldWarpHoleE20GameDataHolderWriterPKc";
 
+// ---- Warp-paintings-always-open spike (Tier 1) ----
+// GameDataHolder::checkIsOpenWorldWarpHoleInScenario(worldId, scenarioNo) const —
+// the availability predicate a warp painting consults to decide whether it is
+// usable in the current scenario (returns false early in vanilla until the
+// destination kingdom is unlocked, with the Metro/Luncheon/Mushroom early-view
+// exceptions). Trampolined by WorldWarpHoleGateHook to log + force open. Verified
+// present out-of-line in retail main.nso via scripts/check_nso_symbols.py.
+// See docs/v3-feasibility/future-feasibility-warp-paintings-always-open.md.
+inline constexpr const char* kGameDataHolderCheckIsOpenWorldWarpHoleInScenario =
+    "_ZNK14GameDataHolder34checkIsOpenWorldWarpHoleInScenarioEii";
+
+// ---- Warp-paintings spike, probe 2 (upstream appearance gate) ----
+// checkIsOpen proved NOT the gate for late paintings (never called with the late
+// dest worldId). These two getters are the prime suspects for the "blank" state:
+// GameProgressData::getWorldIdForWorldWarpHole(idx) returns the per-hole dest
+// world (-1 until revealed); GameDataFunction::isUnlockedWorld(acc, worldId) is a
+// cross-check. Log-only in WorldWarpHoleGateHook. Both verified in retail dynsym.
+inline constexpr const char* kGameProgressDataGetWorldIdForWorldWarpHole =
+    "_ZNK16GameProgressData26getWorldIdForWorldWarpHoleEi";
+inline constexpr const char* kGameDataFunctionIsUnlockedWorld =
+    "_ZN16GameDataFunction15isUnlockedWorldE22GameDataHolderAccessori";
+
 // =============================================================================
 // Talkatoo% mode — speech-bubble substitution.
 // =============================================================================

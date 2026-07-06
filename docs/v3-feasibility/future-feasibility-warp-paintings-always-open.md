@@ -15,7 +15,47 @@ kingdom is normally reached). Devon wants:
    warp-painting destination moon is reachable as soon as you can reach the painting's
    **source** kingdom.
 
-**Status: investigated, NOT started. Estimate ~70% feasible, Medium effort.** The big
+**Status: SPIKE COMPLETE (2026-07-06, 5 in-game iterations). Gate chain fully mapped;
+`isUnlockedWorld` force built + working for the normal case; the post-game Cascade→Bowser's
+painting is gated by undecompiled actor-internal logic and is recommended CURATED OUT.
+Net: ~70% estimate confirmed — feasible for normal paintings, actor-RE-gated for post-game
+ones.** See the "Spike conclusion" box immediately below, then the iteration log.
+
+### Spike conclusion (2026-07-06)
+
+- **Gate chain (mapped in-game):** a warp painting resolves its destination via
+  `getWorldIdForWorldWarpHole(idx)`, then queries `isUnlockedWorld(dest)`; only if that
+  passes does it reach `checkIsOpenWorldWarpHoleInScenario(dest, scenario)`. All three are
+  hookable named functions.
+- **Built + working:** `WorldWarpHoleGateHook` force-opens `checkIsOpen` (all paintings)
+  and force-returns `isUnlockedWorld(dest)=true` **scoped to the warp-hole path** via a
+  150 ms arm ring keyed on `getWorldIdForWorldWarpHole` (so the world map / order gate /
+  Odyssey travel are untouched — verified: world 15/Dark, never armed, stayed `0`). This
+  is the right lever for **normal** warp paintings (those gated on destination-kingdom
+  unlock).
+- **The post-game Cascade→Bowser's painting is NOT crackable this way.** With
+  `isUnlockedWorld(12)` forced true it stayed **fully blank**, and the actor made **no other
+  world-12 query at all** (`checkIsOpen`/`isAlreadyGoWorld` fired only for worlds 1 & 10,
+  never 12). So its blank state is decided **inside the undecompiled `WorldWarpHole` actor**
+  (model/asset selection or cached placement state), below the world-state API layer — it
+  would require a `main.nso` actor disassembly pass to force.
+- **Save-coverage caveat:** on the test save (worlds 0–10 unlocked) the Bowser's painting
+  is the *only* warp painting to a locked destination — every normal warp painting targets
+  an already-unlocked kingdom and works in vanilla. So the `isUnlockedWorld` fix for the
+  normal case is **built but unvalidated**; validate on an earlier save where a normal
+  destination is still locked (e.g. Sand→Metro pre-Metro).
+- **Recommendation:** land here. **Curate the post-game painting(s) out** of the always-open
+  set (exactly the "curated subset" this doc predicted); keep the `isUnlockedWorld` force as
+  the normal-case mechanism; gate the whole thing behind `warp_paintings_always_open`; do the
+  Tier-2 logic edges. Only pursue the `WorldWarpHole` actor-RE pass if post-game paintings
+  specifically become a priority. The spike hook (`WorldWarpHoleGateHook.cpp`) currently runs
+  unconditionally with `kWarpPaintingsAlwaysOpen=true` — before shipping, gate it behind the
+  option and add the post-game exclusion.
+
+---
+
+**Estimate
+~70% feasible → higher after the dynsym check below, Medium effort.** The big
 de-riskers: the warp-painting machinery is a **named, data-driven** SMO subsystem
 (`WorldWarpHole`), its transition commit is **already hooked in this project**, and the
 "is this painting open?" decision is a **named predicate** we can force true — far better
@@ -23,6 +63,103 @@ seams than the undecompiled-actor docs in this index. The points off are one rea
 content risk (do the seven non-early destinations load correctly when their kingdom was
 never visited?) and the logic care-work (route-variant destinations + opening a
 normally-post-game painting early).
+
+**⚠ Spike RESULT (2026-07-06): `checkIsOpenWorldWarpHoleInScenario` is NOT the gate
+for normally-late paintings — the blank state is an UPSTREAM appearance gate.**
+Devon built the force+log spike and approached the Cascade→Bowser's painting; it
+stayed **blank and unusable**. The `[warp-painting]` log fired (seam is live, not
+inlined) but only for destinations that were *already* open (`origResult=1`): dest=10
+(Luncheon) on Luncheon load and dest=1 (Cascade) on Cascade load. **The Bowser's
+destination (worldId=12) was never queried at all.** The decomp explains why:
+
+```cpp
+bool GameDataHolder::checkIsOpenWorldWarpHoleInScenario(s32 worldId, s32 scenarioNo) const {
+    for (i…) if (mWorldWarpHoleInfos[i].worldId == worldId && name=="Go")
+                 return scenarioNo >= mWorldWarpHoleInfos[i].scenarioNo;
+    return false;   // worldId = DESTINATION world
+}
+```
+
+The actor must already know its **destination** to call this. Destination comes from
+`calcWorldIdFromWorldWarpHoleId(holeId)` → `GameProgressData::getWorldIdForWorldWarpHole(idx)`
+(the `mWorldIdForWorldWarpHole` array), which returns **-1 until the destination world
+is revealed**. So a `-1` there both **blanks the painting** (no dest → no preview
+image) **and** stops `checkIsOpen(12, …)` from ever being asked — exactly matching the
+log. Corroboration: OdysseyRescue's `isAlreadyGoWorld` bitmap at Cascade was
+`11111111111000000` — index 12 (Bowser's) = 0, not unlocked. **Consequence:** the
+always-open feature needs the three-layer pattern (this project's known "lie to the
+game" shape) — force the UPSTREAM appearance gate (destination mapping / unlock), not
+just the `checkIsOpen` commit predicate. Forcing `checkIsOpen` alone is necessary but
+insufficient. Feasibility is unchanged in spirit but the Tier-1 hook target moves
+upstream into (or adjacent to) the undecompiled `WorldWarpHole` actor's data source —
+closer to the doc's ~75% actor-pass floor than the one-liner. **Probe 2 RESULT (2026-07-06):
+the gate is `isUnlockedWorld(destWorldId)`.** The "-1 destination" theory was WRONG —
+`getWorldIdForWorldWarpHole(idx=12) -> dest=12` (the actor knows dest = Bowser's). The
+next call is `isUnlockedWorld(12) -> 0`, and *that* blanks the painting and prevents
+`checkIsOpen(12)` from ever running. The working mirror: `idx=8 -> dest=9` then
+`isUnlockedWorld(9) -> 1`. So the appearance gate is the generic world-unlock query, not
+a warp-specific predicate.
+
+**Scoped-force fix (built 2026-07-06, awaiting test).** `isUnlockedWorld` cannot be
+forced true globally (it drives the world map, kingdom-order gate, and Odyssey travel).
+But the log shows a tight same-thread pairing — `getWorldIdForWorldWarpHole(idx)->dest=X`
+*immediately* followed by `isUnlockedWorld(X)` — and the world map uses a *different*
+getter (`getWorldIdForWorldMap`). So `WorldWarpHoleGateHook` now **arms** on the warp-hole
+dest in `getWorldIdForWorldWarpHole` and forces `isUnlockedWorld` true **only** for that
+just-armed world (single-shot, consumed on match), confining the force to the warp-hole
+enumeration path. Combined with the existing `checkIsOpen` force, a normally-late painting
+should now light up and be enterable. **Next in-game test answers the doc's dominant
+content risk:** does the Bowser's destination sub-stage actually load + present its moon
+when entered pre-unlock? Watch for `isUnlockedWorld worldId=12 -> 0 FORCED->1 (warp-hole
+path)` to confirm the force fired.
+
+**Iteration 2 (2026-07-06): single-slot arm was too fragile — replaced with a
+time-bounded ring.** The first scoped-force attempt did NOT fire (`isUnlockedWorld(12)`
+logged plainly, no `FORCED`). Cause: `getWorldIdForWorldWarpHole` is called repeatedly by
+the actor loop and *silent repeats* (dedup hides only the log line, not the call)
+overwrote the single-slot arm before the matching `isUnlockedWorld(12)` read it. Fix: a
+16-entry ring of `(dest, nowMs)`; `isUnlockedWorld(w)` forces true only if `w` was
+returned by `getWorldIdForWorldWarpHole` within `kArmWindowMs` (150 ms) — robust to the
+interleaving, still time-scoped so an unrelated world-map `isUnlockedWorld(w)` seconds
+later is untouched.
+
+**Iteration 3 RESULT (2026-07-06): the force now fires correctly, but the painting is
+STILL fully blank.** Log confirms `isUnlockedWorld worldId=12 -> 0 FORCED->1 (warp-hole
+path)` fired, and scoping held (`isUnlockedWorld(15)` for Dark, never armed, logged plain
+`-> 0`). Devon confirmed in-game: still a blank frame. So **`isUnlockedWorld` is not the
+appearance gate** for this painting — the blank is decided one layer deeper. Two facts
+reframe the effort: (1) **Cascade→Bowser's is the doc's worst case** — the post-game
+"blank until game clear" painting, gated at game-clear level, not kingdom-unlock level;
+(2) it is the **only locked warp painting on Devon's save** (bitmap `11111111111000000`:
+worlds 0–10 unlocked; every *normal* warp painting targets those and already works in
+vanilla). So the `isUnlockedWorld` lever we built is the plausible fix for *normal*
+paintings but can't be validated on this save, and the post-game painting needs
+deeper/game-clear state. **Probe 3 (built, log-only): arm-scoped logger on
+`isAlreadyGoWorld(dest)`** — the prime suspect for the blank gate; NOT forced (it drives
+scenario/cutscene/kingdom state game-wide, so confirm before touching). Next test: watch
+for `isAlreadyGoWorld worldId=12 -> 0 (warp-hole path — appearance-gate suspect)` during
+the Cascade scene load. **Likely landing:** curate the post-game paintings OUT of the
+always-open set (the doc anticipated a curated subset) and keep `isUnlockedWorld` as the
+normal-case lever; validate the normal case on an earlier save where a normal warp
+destination is still locked.
+
+**Spike progress (2026-07-06).** The predicate symbol
+`_ZNK14GameDataHolder34checkIsOpenWorldWarpHoleInScenarioEii` was mangling-verified
+(demangle round-trip: `GameDataHolder::checkIsOpenWorldWarpHoleInScenario(int, int)
+const`, length prefixes 14/34 correct) **and confirmed present out-of-line in retail
+`main.nso`'s dynsym** via `scripts/check_nso_symbols.py` — so it was **not fully inlined
+away**, which retires most of the "predicate-is-inlined" risk and guarantees
+`installAtSym` resolves (no boot abort). The Tier-1 spike is now coded:
+[WorldWarpHoleGateHook.cpp](../../switch-mod/src/hooks/WorldWarpHoleGateHook.cpp)
+trampolines the predicate, logs each distinct `(worldId, scenarioNo, origResult)` once,
+and forces it open (`kWarpPaintingsAlwaysOpen = true`, no AP toggle / no logic change
+yet). Symbol added to `SmoApSymbols.sym` + `HookSymbols.hpp`; install wired into
+`main.cpp` (pool at `0x100`, ample headroom). **The one seam question the dynsym check
+can't answer — does the `WorldWarpHole` actor call this out-of-line copy or an inlined
+copy at its call site? — is what the in-game log answers:** build + deploy, approach a
+painting, and watch for `[warp-painting] checkIsOpenWorldWarpHoleInScenario …` in the
+Ryujinx/SMOClient log. If it fires, the seam is live; then enter a normally-late painting
+to answer the content question (does the destination load pre-unlock).
 
 ---
 
