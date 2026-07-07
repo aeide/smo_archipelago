@@ -138,6 +138,15 @@ goal); Dark/Darker are post-game and Moon-coupled ("leave Moon = win").
 Subarea ports from ALL kingdoms (including Moon/Dark/Darker) stay in the
 pool — the exclusion is overworld door-mouths only.
 
+**Erratum (P3b, 2026-07-07):** the paragraph above is wrong as written —
+exclusion must propagate DOOR-WISE. If an excluded overworld mouth stayed
+vanilla while its door's interior mouth were rematched, the player would see
+an asymmetric door (walk in vanilla, walk back → somewhere else). Since
+Moon/Dark/Darker subareas' only doors hang off excluded overworlds, those
+subareas drop from the decoupled matching entirely; their checks stay
+flight-reachable exactly as today. Implemented in `port_graph.py`
+(`build_port_graph`), guarded by `test_excluded_kingdoms_have_no_mouths`.
+
 **Festival-goal note:** under `goal: festival`, post-Metro regions are
 emptied (`FESTIVAL_REGIONS_TO_EMPTY`); their overworld door-mouths must also
 drop out of the pool under that goal (landing there would open zero checks
@@ -172,15 +181,50 @@ interior requirements). Two prerequisites before P3b lands:
   (abilitysanity/capturesanity off × decoupled) so the fix's guarantee holds
   under the new graph.
 
-## Sign-off questions for Devon
+## D9 — Mushroom check promotion under decoupled (Devon, 2026-07-07)
 
-1. **D3** — accept "reload evicts to last unlocked kingdom" as the v1 rule
-   (no current-world write on chain arrival)?
-2. **D5** — agree with the v1 overworld exclusions (Moon, Mushroom, Dark,
-   Darker, Ruined)? Anything else you'd pull (Bowser's? Lost?) or keep?
-3. **D6** — endgame-via-chain: permanently out, or "out for v1, revisit"?
-4. **D1** — confirm chains should NOT reduce flight costs (a chain visit
-   doesn't discount that kingdom's Odyssey gate)?
+Since decoupled chains make Mushroom reachable at virtually any time, its 43
+checks are PROMOTED from junk-only to full checks **iff
+`entrance_shuffle == decoupled`**:
 
-On sign-off, P3b (port-graph data model) starts with these as fixed
-constraints; the in-game probes in D2/D4 fold into P4's walk matrix.
+- **Mechanism:** `locations.json` keeps `junk_only: true` (static data);
+  `_apply_junk_only_rules` (`hooks/World.py`) exempts Mushroom-Kingdom-category
+  locations when the mode is decoupled. Off/simple behavior stays
+  byte-identical. Dark/Darker junk_only checks are NOT exempted (their
+  overworlds are excluded, D5).
+- **Requires:** all 43 Mushroom locations have back-filled records in
+  `moon_requirements.json` (verified 1:1, 2026-07-07 — sourced from Devon's
+  `SMO Requirements.xlsx` via the import pipeline). Devon re-runs
+  `compile_moon_logic.py` on the romfs machine (NEVER without
+  shine_map/world_scenarios present — see CLAUDE.md) to fill their
+  `requires:""`. Compiled requires ship unconditionally: under off/simple the
+  checks are post-goal junk where a movement gate is also correct. No
+  shine_table resync needed (names don't change).
+- **⚠ The in-game unknown (probe before relying on it):** the vanilla
+  painting-warp precedent proves pre-clear Mushroom LOADS safely, but in
+  vanilla that scenario has NO moons placed — Mushroom moons spawn in the
+  post-clear scenario. P4's walk matrix must probe whether moons/NPCs spawn
+  in a chain-reached pre-clear Mushroom. If not, the contingency is the
+  established scenario-floor pattern (`capArrivalScenarioOverride` /
+  CapReturnScenarioHook): floor commits into `PeachWorldHomeStage` to the
+  post-clear placement scenario, never lowering a higher one. Mushroom has no
+  story to corrupt, so this is the low-risk variant of the pattern — but it
+  is a switch-mod change and stays OUT of scope until the probe demands it.
+- **Goal integrity unaffected:** the victory location lives in Moon Kingdom
+  (D6); Mushroom holding progression under decoupled is exactly the intended
+  widening of the fill surface.
+
+## Sign-off record (Devon, 2026-07-07)
+
+1. **D3** — ACCEPTED: reload evicts to last unlocked kingdom; no
+   current-world write on chain arrival.
+2. **D5** — MODIFIED then accepted: exclude Moon/Dark/Darker only; Ruined
+   and Mushroom stay in the pool. Mushroom data verified (see D5).
+3. **D6** — PERMANENTLY OUT: endgame-via-chain is closed, not deferred.
+4. **D1** — CONFIRMED: chains never discount flight costs.
+5. **D9** — ADDED at Devon's request: Mushroom checks promoted from
+   junk-only iff decoupled; requires compiled from SMO Requirements.xlsx
+   data; pre-clear moon-spawn probe added to P4.
+
+These are fixed constraints for P3b–3e. The in-game probes in D2/D4/D9 fold
+into P4's walk matrix.

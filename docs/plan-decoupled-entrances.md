@@ -1,6 +1,9 @@
 # Plan — Decoupled / chained entrance randomizer (v3)
 
-**Status: P0 spike PASSED (2026-07-06), Phase 1 (data: full port enumeration) DONE (2026-07-07).**
+**Status: P0 spike PASSED (2026-07-06), Phase 1 (data) DONE (2026-07-07), P2
+(compound key + option Choice) CODE COMPLETE awaiting in-game walk
+(2026-07-08), P3a signed off, P3b–3d IMPLEMENTED (2026-07-07) — next up: 3e
+(slot_data/client/Switch wire path), then 3f.**
 Results: see the "Phase 1 results" subsection below. This is the execution plan for
 [v3-feasibility/future-feasibility-decoupled-entrance-randomizer.md](v3-feasibility/future-feasibility-decoupled-entrance-randomizer.md)
 (read that first — it holds the full design rationale, risk analysis, and source
@@ -214,11 +217,14 @@ needs a switch-mod build/deploy, tracked for Devon.
 
 ### 3a. Design doc FIRST — kingdom-order reconciliation
 
-**Status: DRAFT WRITTEN (2026-07-07), awaiting Devon sign-off —
+**Status: COMPLETE — SIGNED OFF 2026-07-07 —
 [design-decoupled-kingdom-order.md](design-decoupled-kingdom-order.md).**
 Key reframe: the strict order-rule table is already empty (free-detour work),
 so the design keeps ALL existing order/economy machinery untouched and models
-chains as a second access channel. Four sign-off questions at the end of the doc.
+chains as a second access channel. Decisions: accept reload-eviction (D3);
+door-mouth pool excludes Moon/Dark/Darker only — Ruined + Mushroom IN, data
+verified (D5); endgame-via-chain permanently out (D6); chains never discount
+flight costs (D1). P3b may start.
 The deep collision: chained overworld access breaks the Odyssey-flight-order
 assumption that the kingdom-order gate, peace gates, moon-pipe gating,
 detour-exit gates, and the Cascade Odyssey divert all share. Before any code,
@@ -239,6 +245,35 @@ what `make_door_access_rule` composes today); reverse = interior requirements
 to physically reach that exit pipe (`SUBAREA_EXIT_GATES` generalizes from a
 per-subarea escape gate to a per-port reverse cost).
 
+**Status: IMPLEMENTED (2026-07-07) — `apworld/smo_archipelago/port_graph.py`
++ `tests/test_port_graph.py` (pytest run on Windows pending).** Model notes
+(full rationale in the module docstring):
+
+- **Nodes are door MOUTHS** (each P1 `port_id` door = overworld mouth +
+  interior mouth; vanilla = the identity involution pairing each door's two
+  mouths). Pool = **ingest-capable** mouths only (walkable from their own
+  side, derived from `entries[]`/`exits[]`); emit-only mouths (e.g. PBP's
+  pipe overworld end) become unused markers — path symmetry holds by
+  construction for every matched pair.
+- **D5 exclusions propagate door-wise** (design-doc erratum, recorded there):
+  Moon/Dark/Darker subareas drop entirely (their only doors hang off excluded
+  overworlds), else the player would see asymmetric doors. Festival adds the
+  post-Metro set + Mushroom (cross-checked against `FESTIVAL_REGIONS_TO_EMPTY`
+  by test).
+- **Per-mouth cost** (`mouth_cost`): overworld = door gate + kingdom gate +
+  moon-pipe reach/peace; interior = `SUBAREA_EXIT_GATES` +
+  `PORT_EXIT_GATE_OVERRIDES` (empty, authored later). Door-side SCENARIO
+  fragments stay a 3d wiring concern (need multiworld context).
+- **Two flagged follow-ups:** (a) P3e must verify the Switch ENTRY lookup
+  branch consults `from_id` (P2 added the field everywhere but only wired the
+  EXIT branch) — needed once multi-door subareas diverge; (b) emission-marker
+  validity for NON-reciprocated exit ids (spawning inside a stage at an
+  exit-only marker) is P0-proven only for reciprocated ids — P4 walk item,
+  with "fall back to default spawn" as the expected failure shape. Also note
+  nested subareas: an "overworld" mouth may live in a parent INTERIOR stage —
+  region attachment in 3d must use the mouth's stage, not assume a kingdom
+  HomeStage.
+
 ### 3c. Connectivity-guaranteed random involution
 A naïve random matching can strand closed loops. Frontier-growing construction
 (each edge placement keeps the reachable-port frontier able to grow) or random
@@ -246,16 +281,164 @@ match + repair pass; seeded from `world.random`. Heavy unit tests: adversarial
 seeds, no dead pockets, one-way strand shapes (mini-rocket interiors),
 determinism per seed, row-count ceiling.
 
+**Step 0 baseline (2026-07-07, recorded before any P3c code).** Devon's
+"151 failed / 813 passed / 84 skipped" run was on the bare Python 3.13
+interpreter (`C:\Users\devon\AppData\Local\Programs\Python\Python313`), which
+has pytest but NONE of the dev deps — in particular no `pytest-asyncio`, so
+all 140 `@pytest.mark.asyncio` tests fail "async functions not natively
+supported". Not regressions. The canonical interpreter is the repo venv
+(`e:\smo_archipelago\.venv`, Python 3.12.10, pytest 9.0.3 — what `python`
+resolves to in a fresh shell). On the venv the suite is **964 passed /
+84 skipped / 0 failed** (33s) — fully green, no P2/P3b regressions — but ONLY
+with `--basetemp` redirected: two directories have broken ACLs (created
+2026-07-07 ~11:58 by the sandboxed Cowork run; even `icacls`/`takeown` are
+denied without elevation):
+
+- `C:\Users\devon\AppData\Local\Temp\pytest-of-devon` — pytest's `tmp_path`
+  root; while it exists, every `tmp_path`-using test (236 of them) ERRORS
+  with `PermissionError`. Workaround: `pytest --basetemp=<fresh dir>`.
+- `E:\smo_archipelago\apworld\smo_archipelago\tests\.pytest_cache\v\cache` —
+  harmless (cache-write warnings only).
+
+**Devon action:** delete both from an elevated prompt; then plain `pytest`
+works again.
+
+**Status: IMPLEMENTED (2026-07-07) — `apworld/smo_archipelago/port_matching.py`
++ `tests/test_port_matching.py` (19 tests; full suite 983 passed / 84 skipped).**
+`roll_port_matching(graph, rng) -> dict[str, str]`: frontier-growing phase 1
+(every pairing lands one new stage on the root-connected frontier; provably
+terminating), uniform phase 2, loud RuntimeError postconditions (involution,
+connectivity, row budget) so a bad roll can never escape into fill. Checker is
+`unconnected_stages(matching, graph)`; roots via `root_stages`. Deterministic
+in the caller's `rng` (sorted candidate lists before every `rng.choice`).
+Real-pool stats (100 seeds): standard 289 mouths / 125 stages (22 roots),
+282–288 rewrite rows vs the 480 budget (`kEntranceRemapMax` 512 − 32
+headroom); festival 166 mouths / 68 stages, ≤166 rows. Pool 289 is odd ⇒
+exactly one fixed point per roll, always a lone (vanilla self-mapped) mouth
+⇒ zero-row vanilla passthrough.
+
+Three real-data discoveries (load-bearing for 3d/3e — the naive model in this
+section's original sketch was wrong about all three):
+
+1. **One-way-ENTRY subareas must stay vanilla — P3b pool rule added
+   (`port_graph.py`).** The 6 Mushroom boss re-fight painting arenas have
+   `exits: []` (scripted return); re-matching a painting would orphan the
+   arena and its re-fight Multi-Moon. `build_port_graph` now drops ALL doors
+   of any subarea that would contribute pooled mouths but zero interior
+   ingest mouths (mirror image of the emit-only-pipe case; docstring
+   erratum). Blast radius verified = exactly those 6 subareas.
+2. **Roots are NOT just `*HomeStage`.** Overworld door mouths also live in
+   placement zones of the kingdom map (`SkyWorldCastleZone`,
+   `LakeWorldTownZone`, `SeaWorldLava/Lighthouse/SphinxQuiz/WallCaveWestZone`,
+   `ForestWorldWoodsStage` = Deep Woods, `SnowWorldTownStage`) — no suffix
+   convention holds ('…Zone' and '…Stage' both occur, and `LavaBonus1Zone` is
+   Luncheon Slots' INTERIOR). Rule shipped: root = any stage hosting a pooled
+   overworld mouth that is not itself a pooled interior stage (+ HomeStages
+   unconditionally). Self-consistent for vanilla-kept parent interiors too.
+3. **Zone-split doors: one physical door can be TWO lone one-way mouths with
+   different port_ids** (`LakeWorldTownZone#CapTrampolineA` overworld half vs
+   `LakeWorldHomeStage#CapTrampolineA` interior half — the door actor sits in
+   the zone, the interior exit records the parent stage). Both are
+   independently matchable and sound. Consequence for the checker: a lone
+   OVERWORLD mouth left vanilla-fixed still walks INTO its subarea, credited
+   as a directed entry edge — without that credit vanilla itself reads
+   "stranded" for those subareas. ⚠ 3e note: these halves produce entry-side
+   and exit-side rows whose stage keys are the ZONE name on one side and the
+   HomeStage on the other — verify the Switch-side lookup keys against
+   `getCurrentStageName` semantics for zones (does a zone-hosted door report
+   the zone or the parent stage as `cur`?) before compiling rows.
+
 ### 3d. Region graph rebuild (`hooks/World.py::_wire_entrance_shuffle`)
 Star → general graph, both direction rules attached per edge, scenario gates
 still riding member locations (`_apply_subarea_scenario_gates` pattern).
 ⚠ Remember the Manual-derived engine quirk: a region's `requires` gates its
 **outgoing** entrances ([handoff-region-gating-egress.md](handoff-region-gating-egress.md)).
 
+**Status: IMPLEMENTED (2026-07-07) — `hooks/World.py`
+(`_prepare_decoupled_entrance_shuffle` / `_wire_decoupled_entrances` /
+`after_set_rules` decoupled branch), `port_graph.make_mouth_access_rule`,
+`tests/test_decoupled_region_wiring.py` (7 SMOAP_LIVE_AP probes in the
+test_cascade_reachability style) + a readiness-flag source guard in
+test_entrance_shuffle.py. Suite: 984 passed / 91 skipped (the 983/84 baseline
+held exactly — the +1/+7 are the new tests); live: all 7 new probes green
+plus the cascade-reachability and option-modes files re-run green against the
+reinstalled zip. A one-off `distribute_items_restrictive` probe also passed
+(below).** The mode stays player-BLOCKED: the P2 OptionError now short-circuits
+on a module flag `PORT_SHUFFLE_SHIPPABLE = False` (hooks/World.py) that tests
+flip to exercise the wiring; flipping it for real is P3e's last step.
+
+How the wiring resolves the egress-quirk × two-channel collision (the load-
+bearing design decision of this phase):
+
+- **Synthetic "{K} Arrival" region per kingdom hosting pooled overworld
+  mouths** (14 standard / 8 festival). Region-reachability of a kingdom is
+  one-kingdom-early under the Manual engine (its `requires` gates EGRESS);
+  simple mode compensates by keeping the clobbered regionCheck ANDed onto
+  every door, but under decoupled that would demand *flight* arrival for
+  *chain* traversal through K — defeating the mode. Instead: `K -> K Arrival`
+  is deliberately left rule-less at wiring time so the Manual core set_rules
+  clobber OVERWRITES it with K's own fullRegionCheck — the honest
+  flight-arrival predicate, applied by the engine itself. Every matched edge
+  targeting an overworld mouth in K lands in `K Arrival` (the chain channel —
+  ingress-authored rules, no off-by-one), every overworld-mouth edge SOURCES
+  from `K Arrival`, and a free `K Arrival -> K` presence edge hands the
+  kingdom region (its overworld locations) to whichever channel arrived
+  first. Flight edges between kingdoms are untouched and asserted
+  clobber-owned by the tests (D1: chains never discount flight costs).
+- **Every port entrance is sourced from a region set_rules has never heard
+  of** (interior / Arrival regions aren't in regions.json), so rules are set
+  once at wiring time and survive — no simple-style after_set_rules door pass
+  exists in this mode. after_set_rules runs only the two location helpers
+  (interior-requires replacement + D3 scenario-gate re-apply), shared with
+  simple.
+- **Per-direction rules:** `make_mouth_access_rule` (port_graph.py) = mouth
+  cost (item/peace via evaluate_full_requires + peace fn) + door-side
+  scenario fragments for OVERWORLD mouths only (OR over the door subarea's
+  members, same composition as simple). The interior exit gate rides the
+  interior mouth's own outgoing edge ONLY — never re-ANDed onto the partner
+  door the way simple's make_door_access_rule does (the handoff's
+  double-application trap).
+- **Fixed points wire NO entrance** (vanilla passthrough) except the
+  lone-overworld credit shape, which gets its vanilla directed
+  `region(ow) -> subarea Interior` edge (P3c discovery 3's zone-split
+  subareas would otherwise logic-strand when a roll fixes their overworld
+  half).
+- **Mouth → region resolution is side+stage** with a loud RuntimeError if two
+  pooled subareas ever claim one interior stage (P1 data guarantees
+  uniqueness today), and a nested-door branch (overworld mouth in a pooled
+  parent's interior stage → parent's interior region).
+
+Real-data findings (probe-verified 2026-07-07, load-bearing for 3e):
+
+1. **All 14 mouth kingdoms map 1:1 to regions.json region names** (incl.
+   Cloud + Mushroom; no "Night Metro" complication — metro subarea records
+   all say "Metro Kingdom"). No name-translation layer needed anywhere.
+2. **Zero nested doors and zero interior-stage collisions in current data** —
+   every pooled overworld mouth lives in a HomeStage or one of the 8 known
+   placement-zone stages. The nested-door branch and the collision
+   RuntimeError are future-proofing for re-extractions, not live paths.
+3. **Decoupled seeds FILL today**: a one-off `distribute_items_restrictive`
+   probe over seeds 1/11/22 (capturesanity + abilitysanity +
+   randomize_kingdom_gates + multi_moon_shuffle) placed every item, 0
+   unfilled locations, no FillError — the general graph does not reproduce
+   the full+shuffle "No more spots" tightness, and 3f's Mushroom promotion is
+   not load-bearing for fill health.
+4. **Deliberately absent until 3e:** `world._entrance_map` is never set under
+   decoupled, so no `entrance_map` slot_data key ships (wrong-mode data) and
+   the spoiler-log entrance block is silent for decoupled seeds — 3e's new
+   slot_data key should bring a port-matching spoiler block with it.
+
 ### 3e. slot_data + client plumbing
 Ship the port matching under a NEW slot_data key (keep `entrance_map` for
 coupled mode back-compat); generalize the client's `compile_stage_remaps`
 call path (`switch_server.py` / `push_entrance_map`).
+
+### 3f. Mushroom check promotion (design D9)
+`_apply_junk_only_rules` exempts Mushroom-category locations iff decoupled;
+Devon re-runs `compile_moon_logic.py` (romfs machine, shine_map present) to
+fill the 43 Mushroom `requires` from the xlsx-derived requirements data.
+In-game moon-spawn probe rides P4; scenario-floor contingency (PeachWorld
+arrival, `capArrivalScenarioOverride` pattern) only if the probe fails.
 
 - **Model: Fable 5 for 3a–3d** (highest-interlock design + algorithm work in
   the repo; a subtle one-way logic bug is the top failure mode). Opus 4.8 is

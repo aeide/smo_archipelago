@@ -1,6 +1,7 @@
 ---
 name: smo-host-tests
 description: Build and run the SMO switch-mod C++ host tests (test_json, test_protocol, test_cappy_messenger, test_msg_font_safe, test_shine_lookup) on Windows. Use when the user mentions "host tests", "test_json", "test_protocol", "test_cappy_messenger", "test_msg_font_safe", "test_shine_lookup", "switch-mod tests", or asks to run/build C++ tests for switch-mod/. Covers the msys2 mingw64 PATH dance + the host-side ApState::nowMs stub the CappyMessenger settle gate depends on.
+model: claude-sonnet-5
 ---
 
 # Switch-mod host tests (C++)

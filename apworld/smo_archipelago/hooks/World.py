@@ -17,7 +17,15 @@ from ..Helpers import is_location_enabled, is_option_enabled, get_option_value
 # _entrance_shuffle_mode below. OptionError is AP's standard "fail generation
 # loudly with a player-facing message" exception (Options.OptionError).
 from Options import OptionError
-from .Options import EntranceShuffle
+from .Options import EntranceShuffle, Goal
+
+# P3d readiness flag: the decoupled region wiring below is implemented and
+# test-exercised, but the mode stays generation-BLOCKED for players until P3e
+# ships the slot_data/wire path — a decoupled seed today would be logically
+# shuffled but physically vanilla on the Switch. Tests flip this module
+# attribute to exercise the full wiring; YAMLs cannot reach it. Flip to True
+# (and delete this comment) when P3e lands.
+PORT_SHUFFLE_SHIPPABLE = False
 
 # calling logging.info("message") anywhere below in this file will output the message to both console and log file
 import logging
@@ -138,12 +146,17 @@ def _entrance_shuffle_mode(multiworld: MultiWorld, player: int) -> int:
 def _raise_if_decoupled_entrance_shuffle(multiworld: MultiWorld, player: int) -> None:
     """Fail generation loudly if entrance_shuffle=decoupled is selected.
 
-    decoupled (P3's full port-graph shuffle) is reserved but not implemented
-    yet — only `off`/`simple` have working generation logic. Called from the
-    earliest hook that consults the option (before_create_regions) so a
-    decoupled seed never silently falls back to the coupled `simple` bijection
-    (which would happily roll a bijection and ship a working-looking, but
-    wrong-mode, entrance_map)."""
+    The generation logic for decoupled (P3d) exists below, but the wire path
+    (P3e slot_data + client + Switch rows) does not — a decoupled seed would
+    be logically shuffled but physically vanilla in-game. Gated on the
+    PORT_SHUFFLE_SHIPPABLE module flag (False until P3e) so the test suite
+    can exercise the wiring without opening the option to YAMLs. Called from
+    the earliest hook that consults the option (before_create_regions) so a
+    decoupled seed never silently falls back to the coupled `simple`
+    bijection (which would happily roll a bijection and ship a
+    working-looking, but wrong-mode, entrance_map)."""
+    if PORT_SHUFFLE_SHIPPABLE:
+        return
     if _entrance_shuffle_mode(multiworld, player) == EntranceShuffle.option_decoupled:
         raise OptionError(
             "entrance_shuffle: 'decoupled' is reserved for a future release "
@@ -156,7 +169,11 @@ def _raise_if_decoupled_entrance_shuffle(multiworld: MultiWorld, player: int) ->
 # Called before regions and locations are created. Victory location is included, but Victory event is not placed yet.
 def before_create_regions(world: World, multiworld: MultiWorld, player: int):
     _raise_if_decoupled_entrance_shuffle(multiworld, player)
-    if _entrance_shuffle_mode(multiworld, player) != EntranceShuffle.option_simple:
+    mode = _entrance_shuffle_mode(multiworld, player)
+    if mode == EntranceShuffle.option_decoupled:
+        _prepare_decoupled_entrance_shuffle(world, multiworld, player)
+        return
+    if mode != EntranceShuffle.option_simple:
         return
 
     from ..entrance_logic import (
@@ -202,6 +219,63 @@ def before_create_regions(world: World, multiworld: MultiWorld, player: int):
         len(pool), player
     )
 
+
+def _prepare_decoupled_entrance_shuffle(
+    world: World, multiworld: MultiWorld, player: int
+) -> None:
+    """Roll the P3d decoupled port matching and stash everything the wiring
+    passes need (the decoupled counterpart of the simple-mode body above).
+
+    Deliberately does NOT set `world._entrance_map`: that attribute drives the
+    simple-mode wiring, the `entrance_map` slot_data key, and the spoiler
+    block. Decoupled ships its matching under a NEW slot_data key in P3e; a
+    coupled-shaped entrance_map for a decoupled seed would be wrong-mode data
+    on the wire. The roller's RuntimeErrors (involution/connectivity/row
+    budget) are intentionally loud — a bad roll must fail generation, never
+    escape into fill.
+    """
+    from ..entrance_logic import (
+        build_interior_requires_map, build_moonpipe_subarea_set,
+        load_entrance_stages,
+    )
+    from ..port_graph import build_port_graph
+    from ..port_matching import roll_port_matching
+
+    subareas, exclusions = _load_entrance_data()
+    festival = (get_option_value(multiworld, player, "goal")
+                == Goal.option_festival)
+    graph = build_port_graph(
+        load_entrance_stages(), subareas, exclusions, festival=festival)
+    matching = roll_port_matching(graph, world.random)
+
+    # Shuffled-location set = every member of a subarea that contributes
+    # pooled mouths. Dropped subareas (D5 exclusions, one-way-ENTRY re-fight
+    # arenas, unsound doors) keep their locations in their kingdom regions
+    # with the baked locations.json rules — flight-reachable exactly as today.
+    pooled_subareas = sorted({m.subarea for m in graph.mouths.values()})
+    shuffled_locs: set[str] = set()
+    for sub_name in pooled_subareas:
+        shuffled_locs.update(
+            subareas.get(sub_name, {}).get("location_names", []))
+
+    interior_requires = build_interior_requires_map(world.location_table)
+
+    world._port_graph = graph
+    world._port_matching = matching
+    world._port_subareas = pooled_subareas
+    world._entrance_subareas = subareas
+    world._entrance_shuffled_locs = shuffled_locs
+    world._interior_requires = {
+        name: interior_requires.get(name, "") for name in shuffled_locs
+    }
+    world._entrance_moonpipe = build_moonpipe_subarea_set(
+        subareas, world.location_table)
+
+    logging.info(
+        "entrance_shuffle: decoupled matching rolled over %d mouths / %d "
+        "subareas (player %d)", len(graph.mouths), len(pooled_subareas),
+        player)
+
 # Called after regions and locations are created, in case you want to see or modify that information. Victory location is included.
 def after_create_regions(world: World, multiworld: MultiWorld, player: int):
     # Every location whose category set resolves "disabled" via the generic
@@ -224,6 +298,7 @@ def after_create_regions(world: World, multiworld: MultiWorld, player: int):
         multiworld.clear_location_cache()
 
     _wire_entrance_shuffle(world, multiworld, player)
+    _wire_decoupled_entrances(world, multiworld, player)
 
 
 def _kingdom_region_for_subarea(
@@ -316,6 +391,230 @@ def _wire_entrance_shuffle(world: World, multiworld: MultiWorld, player: int) ->
         entrance = Entrance(player, entrance_name, door_kingdom_region)
         entrance.connect(interior_reg)
         door_kingdom_region.exits.append(entrance)
+
+
+def _wire_decoupled_entrances(world: World, multiworld: MultiWorld, player: int) -> None:
+    """P3d: replace the star region graph with the port graph (decoupled mode).
+
+    Structure AND rules are both built here, unlike simple mode's split
+    wiring/after_set_rules dance. The Manual core set_rules only clobbers the
+    exits of regions it knows from regions.json (`for region in regionMap.keys():
+    ... set_rule(exit, fullRegionCheck)` — Rules.py), and every decoupled port
+    entrance is sourced from a region set_rules has never heard of (a subarea
+    interior or a kingdom Arrival region), so wiring-time rules survive. The
+    ONE decoupled entrance sourced from a regions.json region — each kingdom's
+    "{K} -> {K} Arrival" flight-verification edge — is left rule-less here
+    precisely BECAUSE the clobber will overwrite it with that kingdom's own
+    fullRegionCheck (its `requires` string), which is exactly the honest
+    flight-arrival predicate we want (see the Arrival-region note below).
+
+    The two-channel arrival model (design D1 × the Manual egress quirk):
+    region-reachability of a kingdom K is one-kingdom-early under the Manual
+    engine (K's `requires` gates its OUTGOING entrances, so the flight edge
+    INTO K carries the PREDECESSOR's requires — see
+    handoff-region-gating-egress.md). Simple mode compensates by keeping the
+    clobbered regionCheck ANDed onto every door (the Cascade-departure fix).
+    Under decoupled that regionCheck would also demand flight arrival for
+    CHAIN traversal through K — defeating the mode. So the compensation is
+    structural instead: each kingdom hosting pooled overworld mouths gets a
+    synthetic "{K} Arrival" region meaning "Mario is honestly present in K's
+    overworld", reachable via EITHER channel:
+
+      * flight:  K -> K Arrival, rule = K's own requires (the set_rules
+        clobber applies it for free — eval'd only when regions.json gives K a
+        requires; e.g. Sand's {KingdomMoons(Cascade,5)}), with reach(K)
+        itself already carrying the requires-chain of every kingdom before K;
+      * chain:   every matched edge whose target mouth is an overworld mouth
+        in K lands in K Arrival directly (its rule is ingress-authored, so
+        no off-by-one exists on this channel).
+
+    All overworld-mouth edges SOURCE from K Arrival too (using a door in K
+    means being honestly present in K), and a free "K Arrival -> K" edge
+    grants the kingdom region itself on chain arrival so K's overworld
+    locations enter logic (D1/D4: peace + scenario gates keep riding the
+    locations' own requires, channel-agnostic). Flight edges between kingdoms
+    (regions.json connects_to) are untouched — chains never discount flight
+    costs (D1), and a chain-reached K only opens K's onward FLIGHT edge if
+    K's requires is also genuinely satisfied (the clobbered egress rule).
+
+    Per matched pair (A,B), both directions are wired: region(A) -> region(B)
+    gated by cost(A); region(B) -> region(A) gated by cost(B)
+    (make_mouth_access_rule: mouth_cost item/peace parts + door-side scenario
+    fragments for overworld mouths; the interior exit gate rides the interior
+    mouth's own edge ONLY — never re-ANDed onto the partner door the way
+    simple's make_door_access_rule does). Fixed points get no entrance
+    (vanilla passthrough) EXCEPT the lone-overworld credit shape: a lone
+    (vanilla self-mapped) overworld mouth left fixed still physically walks
+    into its own subarea, so its vanilla directed entrance
+    region(ow) -> region(subarea interior) is preserved — without it the
+    zone-split subareas (P3c discovery 3) would be logic-stranded under a
+    roll that happens to fix their overworld half.
+
+    Mouth -> region resolution is by mouth SIDE + stage, never stage name
+    alone (P3c: zone-split doors put a HomeStage in an interior mouth's
+    port_id, and placement zones like LakeWorldTownZone are kingdom-map
+    stages with no suffix convention):
+      * interior mouth -> its subarea's "<name> Interior" region;
+      * overworld mouth in a pooled subarea's interior stage (nested door)
+        -> that parent subarea's interior region;
+      * any other overworld mouth (HomeStage, placement zone, vanilla-kept
+        parent interior) -> its kingdom's Arrival region, kingdom taken from
+        the subarea record's `kingdom` field (never suffix-derived).
+    """
+    matching: dict[str, str] | None = getattr(world, "_port_matching", None)
+    if matching is None:
+        return
+
+    from ..entrance_logic import load_data_json
+    from ..port_graph import INTERIOR, OVERWORLD, make_mouth_access_rule
+
+    graph = world._port_graph
+    subareas: dict = world._entrance_subareas
+    moonpipe: frozenset[str] = world._entrance_moonpipe
+    try:
+        scenario_gates: dict = load_data_json("subarea_scenario_gates.json")
+    except Exception:
+        scenario_gates = {}
+
+    # Step 1: one interior Region per pooled subarea (same shape as simple's
+    # Step 1, over the port pool's subarea set instead of the bijection pool).
+    interior_regions: dict[str, Region] = {}
+    for sub_name in world._port_subareas:
+        interior_reg = Region(f"{sub_name} Interior", player, multiworld)
+        interior_regions[sub_name] = interior_reg
+        multiworld.regions.append(interior_reg)
+
+    # Step 2: move member SMOLocations into their interior regions (identical
+    # to simple's Step 2 — kept duplicated so the byte-identical simple path
+    # is never touched by decoupled work).
+    loc_to_subarea: dict[str, str] = {}
+    for sub_name, info in subareas.items():
+        if sub_name not in interior_regions:
+            continue
+        for loc_name in info.get("location_names", []):
+            loc_to_subarea[loc_name] = sub_name
+
+    for region in multiworld.regions:
+        if region.player != player:
+            continue
+        for loc_obj in list(region.locations):
+            sub_name = loc_to_subarea.get(loc_obj.name)
+            if sub_name is not None and sub_name in interior_regions:
+                region.locations.remove(loc_obj)
+                interior_regions[sub_name].locations.append(loc_obj)
+                loc_obj.parent_region = interior_regions[sub_name]
+
+    if hasattr(multiworld, "clear_location_cache"):
+        multiworld.clear_location_cache()
+
+    # Step 3: mouth -> region resolution tables. Interior-stage ownership must
+    # be unique — two pooled subareas sharing an interior stage would make
+    # nested-door attachment ambiguous (P1 data guarantees uniqueness today;
+    # loud failure if a future re-extraction regresses it).
+    interior_stage_to_sub: dict[str, str] = {}
+    for m in graph.mouths.values():
+        if m.side != INTERIOR:
+            continue
+        prev = interior_stage_to_sub.setdefault(m.stage, m.subarea)
+        if prev != m.subarea:
+            raise RuntimeError(
+                f"decoupled entrance shuffle: interior stage '{m.stage}' is "
+                f"claimed by two pooled subareas ('{prev}' and "
+                f"'{m.subarea}') — nested-door region attachment is ambiguous")
+
+    arrival_regions: dict[str, Region] = {}
+
+    def _arrival_region(kingdom: str) -> Region | None:
+        reg = arrival_regions.get(kingdom)
+        if reg is not None:
+            return reg
+        try:
+            kingdom_region = multiworld.get_region(kingdom, player)
+        except Exception:
+            logging.warning(
+                "decoupled entrance shuffle: no region for kingdom '%s'",
+                kingdom)
+            return None
+        reg = Region(f"{kingdom} Arrival", player, multiworld)
+        multiworld.regions.append(reg)
+        # Flight-verification edge — rule-less on purpose: the Manual core
+        # set_rules clobber overwrites every regions.json region's exits with
+        # that region's own fullRegionCheck, which for this edge IS the honest
+        # flight-arrival predicate (see docstring).
+        flight = Entrance(player, f"{kingdom} -> {kingdom} Arrival",
+                          kingdom_region)
+        flight.connect(reg)
+        kingdom_region.exits.append(flight)
+        # Presence edge: honest arrival by either channel grants the kingdom
+        # region itself (overworld locations). Free; never clobbered (its
+        # source region is not in regions.json).
+        back = Entrance(player, f"{kingdom} Arrival -> {kingdom}", reg)
+        back.connect(kingdom_region)
+        reg.exits.append(back)
+        arrival_regions[kingdom] = reg
+        return reg
+
+    def _mouth_region(m) -> Region | None:
+        if m.side == INTERIOR:
+            return interior_regions.get(m.subarea)
+        parent_sub = interior_stage_to_sub.get(m.stage)
+        if parent_sub is not None:
+            return interior_regions.get(parent_sub)
+        return _arrival_region(m.kingdom)
+
+    def _connect(name: str, src: Region, dst: Region, rule) -> None:
+        entrance = Entrance(player, name, src)
+        entrance.connect(dst)
+        src.exits.append(entrance)
+        entrance.access_rule = rule
+
+    # Step 4: two directed entrances per matched pair, one per mouth side.
+    wired = 0
+    credited = 0
+    for a_id in sorted(matching):
+        b_id = matching[a_id]
+        a = graph.mouths[a_id]
+        if a_id == b_id:
+            # Fixed point = vanilla passthrough (zero rewrite rows). Only the
+            # lone-OVERWORLD shape earns a logic edge: it still walks into its
+            # own subarea (the checker's vanilla credit). A lone-interior
+            # fixed point is one-way OUT into always-reachable territory —
+            # no logic value, no entrance.
+            if (a.side == OVERWORLD
+                    and graph.vanilla_matching.get(a_id) == a_id
+                    and a.subarea in interior_regions):
+                src = _mouth_region(a)
+                if src is not None:
+                    _connect(
+                        f"{a_id} => {a.subarea} Interior (vanilla credit)",
+                        src, interior_regions[a.subarea],
+                        make_mouth_access_rule(
+                            a, moonpipe, scenario_gates, subareas,
+                            world, multiworld, player))
+                    credited += 1
+            continue
+        if a_id > b_id:
+            continue  # each pair wires both directions once, from its low id
+        b = graph.mouths[b_id]
+        reg_a, reg_b = _mouth_region(a), _mouth_region(b)
+        if reg_a is None or reg_b is None:
+            logging.warning(
+                "decoupled entrance shuffle: unresolvable region for pair "
+                "(%s, %s) — pair left unwired", a_id, b_id)
+            continue
+        _connect(f"{a_id} => {b_id}", reg_a, reg_b,
+                 make_mouth_access_rule(a, moonpipe, scenario_gates,
+                                        subareas, world, multiworld, player))
+        _connect(f"{b_id} => {a_id}", reg_b, reg_a,
+                 make_mouth_access_rule(b, moonpipe, scenario_gates,
+                                        subareas, world, multiworld, player))
+        wired += 1
+
+    world._port_arrival_regions = sorted(arrival_regions)
+    logging.info(
+        "entrance_shuffle: decoupled wiring — %d pair(s) wired both ways, "
+        "%d vanilla credit edge(s), %d kingdom Arrival region(s) (player %d)",
+        wired, credited, len(arrival_regions), player)
 
 
 def _apply_entrance_shuffle_door_rules(
@@ -1030,7 +1329,8 @@ def after_set_rules(world: World, multiworld: MultiWorld, player: int):
     # With remapped doors, the regionCheck comes from the wrong kingdom, so we
     # replace it with just the interior_requires (the door entrance handles the
     # kingdom gate + peace gate).
-    if _entrance_shuffle_mode(multiworld, player) == EntranceShuffle.option_simple:
+    _es_mode = _entrance_shuffle_mode(multiworld, player)
+    if _es_mode == EntranceShuffle.option_simple:
         _apply_entrance_shuffle_location_rules(world, multiworld, player)
         # D3: re-apply the interior-intrinsic scenario gates that the rule
         # replacement above stripped from pooled-subarea moons. MUST run after
@@ -1042,6 +1342,18 @@ def after_set_rules(world: World, multiworld: MultiWorld, player: int):
         # overwrote them with each door's home-region regionCheck (see
         # _wire_entrance_shuffle Step 3 clobber note); this set_rule wins.
         _apply_entrance_shuffle_door_rules(world, multiworld, player)
+    elif _es_mode == EntranceShuffle.option_decoupled:
+        # Same replace-then-re-gate dance as simple for LOCATIONS (both
+        # helpers key off the world attrs the decoupled prepare pass set) —
+        # but NO door pass: every decoupled port entrance is sourced from a
+        # region the Manual core set_rules never touches (interior / Arrival
+        # regions aren't in regions.json), so the wiring-time rules survive
+        # un-clobbered. The one decoupled entrance that IS clobbered — each
+        # kingdom's "{K} -> {K} Arrival" flight edge — WANTS its clobbered
+        # rule (the kingdom's own requires = honest flight arrival; see
+        # _wire_decoupled_entrances).
+        _apply_entrance_shuffle_location_rules(world, multiworld, player)
+        _apply_subarea_scenario_gates(world, multiworld, player)
     if is_option_enabled(multiworld, player, "start_at_cap_peace"):
         _apply_start_at_cap_peace_rules(world, multiworld, player)
     # Must run last so it wins over the access rules set in set_rules.
