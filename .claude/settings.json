@@ -324,7 +324,16 @@
       "Read(//e/Ryubin/**)",
       "Read(//c/Users/devon/AppData/Roaming/Ryujinx/**)",
       "Bash(curl -s \"https://raw.githubusercontent.com/MonsterDruide1/OdysseyDecomp/master/src/Util/ItemUtil.cpp\")",
-      "PowerShell(python scripts\\\\build_switchmod.py \"-DBRIDGE_HOST=192.168.4.100\")"
+      "PowerShell(python scripts\\\\build_switchmod.py \"-DBRIDGE_HOST=192.168.4.100\")",
+      "Bash(python scripts/build_switchmod.py \"-DBRIDGE_HOST=192.168.4.100\")",
+      "Bash(python -c \"import oead; print\\('oead ok', oead.__file__\\)\")",
+      "Bash(\"e:\\\\smo_archipelago\\\\scripts\\\\.extract-venv\\\\Scripts\\\\python.exe\" -c \"import oead; print\\('ok'\\)\")",
+      "Bash(\"scripts/.extract-venv/Scripts/python.exe\" -)",
+      "Bash(\"scripts/.extract-venv/Scripts/python.exe\" scripts/extract_entrance_stages.py)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(python -m pytest tests/test_entrance_shuffle.py -q)",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(python -m pytest tests/test_wizard_persisted_paths.py -q)"
     ],
     "additionalDirectories": [
       "\\tmp\\dbg",

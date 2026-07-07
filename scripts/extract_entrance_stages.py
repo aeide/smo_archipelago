@@ -95,6 +95,29 @@ def _is_exit_like(entry_id: str) -> bool:
     return bool(EXIT_SUFFIX_RE.search(entry_id))
 
 
+def port_id(other_stage: str | None, entry_id: str | None) -> str | None:
+    """Stable id for the overworld-side coordinate of a physical door/pipe.
+
+    Every door is placed at one stage carrying a ChangeStageId that is reused
+    on BOTH ends of the pair by SMO convention: the trigger placed in the
+    overworld (an "entries" record's `parent`+`entry_id`) is the exact object a
+    reciprocal "exits" record targets to land Mario back outside (its
+    `dest`+`entry_id`) — see pick_primary_exit's reciprocation check, which
+    already relies on this mechanic. So `(other_stage, entry_id)` — the
+    overworld stage plus the shared id — uniquely names one physical door
+    instance, independent of whether it was discovered via an entry or an exit
+    scan. A reciprocated pair (e.g. Costume Room's "abc" door) yields the SAME
+    port_id from both its entries[] and exits[] record; a one-way pipe (e.g.
+    Push Block Peril's `PushBlockExStageEntDokan` exit, which has no matching
+    entries[] record) gets its own distinct port_id — this is the concrete
+    mechanism that gives Push Block Peril's two exits (main door vs. pipe)
+    different ids instead of collapsing to one node keyed on `cur` alone.
+    """
+    if not other_stage or not entry_id:
+        return None
+    return f"{other_stage}#{entry_id}"
+
+
 def pick_primary_entry(entries: list[dict]) -> tuple[dict | None, bool]:
     """Return (primary_entry_or_None, ambiguous?)."""
     if not entries:
@@ -308,23 +331,62 @@ def main() -> None:
             report["multi_parent"].append({"subarea": name, "stage": stage,
                                            "parents": parents})
 
+        # `port_id` (see port_id() docstring) turns each entries[]/exits[] item
+        # into its own addressable node instead of an unlabeled list slot —
+        # required for a future port-level shuffle where e.g. Push Block
+        # Peril's two exits (main door vs. pipe) must resolve to distinct
+        # targets, not both fall out of one `cur`-keyed primary_exit.
         entry_recs = [{"parent": e["source"], "entry_id": e["entry_id"],
-                       "unit": e["unit"]} for e in entries]
+                       "unit": e["unit"],
+                       "port_id": port_id(e["source"], e["entry_id"])}
+                      for e in entries]
         exit_recs = [{"dest": e["dest"], "entry_id": e["entry_id"],
-                      "unit": e["unit"]} for e in exits]
+                      "unit": e["unit"],
+                      "port_id": port_id(e["dest"], e["entry_id"])}
+                     for e in exits]
         primary_entry, entry_ambiguous = pick_primary_entry(entry_recs)
         # (source_stage, entry_id) for every door INTO this interior — the arrival
         # markers a returning player can resolve. Used to reject unreciprocated
         # departure-only exit ids (see pick_primary_exit).
         into_set = {(e["source"], e["entry_id"]) for e in entries}
-        primary_exit = PRIMARY_EXIT_OVERRIDE.get(name) or pick_primary_exit(
-            exit_recs, parents[0] if parents else None, into_set)
+        override = PRIMARY_EXIT_OVERRIDE.get(name)
+        if override is not None:
+            # Copy (not mutate the module-level constant) and stamp a port_id —
+            # the override bypasses exit_recs, so it wouldn't otherwise get one.
+            primary_exit = dict(override)
+            primary_exit["port_id"] = port_id(
+                primary_exit.get("dest"), primary_exit.get("entry_id"))
+        else:
+            primary_exit = pick_primary_exit(
+                exit_recs, parents[0] if parents else None, into_set)
         if entry_ambiguous:
             report["entry_ambiguous"].append({
                 "subarea": name, "picked": primary_entry["entry_id"],
                 "candidates": sorted({e["entry_id"] for e in entry_recs})})
         if primary_exit is None:
             report["no_door_exit"].append({"subarea": name, "stage": stage})
+
+        # Global-per-subarea catalogue of the overworld-side coordinate of
+        # every door (entry + exit), deduped by port_id so a reciprocated pair
+        # (entry + exit sharing one physical door) collapses to one entry
+        # tagged with both roles, while a one-way pipe keeps its own row.
+        door_mouths: dict[str, dict] = {}
+        for e in entry_recs:
+            pid = e["port_id"]
+            if pid is None:
+                continue
+            dm = door_mouths.setdefault(pid, {
+                "stage": e["parent"], "entry_id": e["entry_id"], "roles": []})
+            if "entry" not in dm["roles"]:
+                dm["roles"].append("entry")
+        for e in exit_recs:
+            pid = e["port_id"]
+            if pid is None:
+                continue
+            dm = door_mouths.setdefault(pid, {
+                "stage": e["dest"], "entry_id": e["entry_id"], "roles": []})
+            if "exit" not in dm["roles"]:
+                dm["roles"].append("exit")
 
         result[name] = {
             "kingdom": info.get("kingdom"),
@@ -334,16 +396,24 @@ def main() -> None:
             "primary_exit": primary_exit,
             "entries": entry_recs,
             "exits": exit_recs,
+            "door_mouths": door_mouths,
         }
         if entries:
             report["resolved"] += 1
 
-    OUT.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n",
+    output = {"_schema_version": 2, **result}
+    OUT.write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n",
                    encoding="utf-8")
 
     # Report to stderr so stdout stays clean JSON if ever piped.
+    total_entry_ports = sum(len(v["entries"]) for v in result.values())
+    total_exit_ports = sum(len(v["exits"]) for v in result.values())
     print(f"[entrance-stages] subareas={len(subareas)} doors={len(doors)} "
           f"resolved_with_entry={report['resolved']}", file=sys.stderr)
+    print(f"[entrance-stages] ports: entries={total_entry_ports} "
+          f"exits={total_exit_ports} total={total_entry_ports + total_exit_ports} "
+          f"(raw, ALL subareas — see docs/plan-decoupled-entrances.md Phase 1 "
+          f"for the pool-scoped budget vs kEntranceRemapMax)", file=sys.stderr)
     print(f"[entrance-stages] wrote {OUT}", file=sys.stderr)
     for cat in ("no_stage", "no_entry_door", "ambiguous_stage", "multi_parent",
                 "entry_ambiguous", "no_door_exit"):

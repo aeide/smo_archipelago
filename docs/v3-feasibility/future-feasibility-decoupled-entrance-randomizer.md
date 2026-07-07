@@ -15,13 +15,17 @@ bijection* into a **full any-to-any port randomizer**:
    in Luncheon Kingdom, as if you'd flown the Odyssey there").
 4. **Purpose:** break the early-game bottleneck by widening the opening options.
 
-**Status: investigated, NOT started. Estimate ~65% feasible, VERY HIGH effort** —
-the largest item in this folder. The good news is concentrated and real: the
+**Status: P0 spike PASSED (2026-07-06). Estimate revised to ~75% feasible, VERY HIGH
+effort** — the largest item in this folder. The good news is concentrated and real: the
 hard-won Switch apply-mode machinery (the precomputed table + the "lie to the game"
-ChangeStageInfo rewrite) **survives almost intact**. The risk is concentrated in two
-places: a genuine in-game unknown (landing in an overworld via a door/pipe instead of
-the Odyssey flight) and a large *logic* redesign (a connectivity-guaranteed matching
-that collides head-on with the kingdom-order model).
+ChangeStageInfo rewrite) **survives almost intact**, and the #1 in-game unknown below
+(landing in a chain-reached overworld) is now **confirmed working**, not hypothetical —
+see [devon-p0-decoupled-spike-results.md](../devon-p0-decoupled-spike-results.md). The
+remaining risk is concentrated in the *logic* redesign (a connectivity-guaranteed
+matching that collides head-on with the kingdom-order model) plus one newly-confirmed
+cost: save+reload does not preserve a chain-reached kingdom as Mario's "current world"
+(it reverts to the last officially-unlocked kingdom) — a real design input for Phase 3a,
+not a blocker.
 
 ---
 
@@ -166,11 +170,17 @@ piece.**
 
 ---
 
-## Risks / unknowns (why ~65%, not higher)
+## Risks / unknowns (why ~75%, not higher)
 
-- **Overworld-via-transition load state (#1).** Whether Mario lands in a chain-reached
-  overworld in a sane scenario/Odyssey state is unverified. Mitigated hard by approach
-  (A) (reuse existing door-mouth exits) but still needs a first in-game probe.
+- **Overworld-via-transition load state (#1) — RESOLVED, confirmed working.** The P0
+  spike (2026-07-06) confirmed Mario lands in a chain-reached overworld (Cap → Push
+  Block Peril exit → Luncheon) in a sane scenario state, no crash, no corruption.
+  Odyssey absent on arrival, as expected. See
+  [devon-p0-decoupled-spike-results.md](../devon-p0-decoupled-spike-results.md). New
+  finding from the same spike: **save+quit+reload reverts to the last
+  officially-unlocked kingdom, not the chain-reached one** — Phase 3a's design doc must
+  decide whether to write an explicit "current world" on chain arrival or accept this
+  as the rule.
 - **Connectivity-guaranteed matching.** A random involution can strand regions; the
   shuffle must guarantee solvability. Real algorithm work; AP's assumed-fill helps but
   doesn't free you from producing a connected, logic-respecting graph.
@@ -203,10 +213,10 @@ piece.**
 
 Strong long-term feature, but it's a **near-total P7 rework**, so stage it:
 
-1. **Spike the #1 unknown first (one cheap build).** Hand-author a single remap row
-   that points a subarea exit at a *different kingdom's* existing door-mouth and walk it
-   in-game (approach A). Confirm Mario lands in that overworld in a usable state. This
-   binary result gates the whole feature — do it before any apworld work.
+1. **Spike the #1 unknown first (one cheap build). DONE — PASSED 2026-07-06.** Hand-authored
+   remap rows pointed Push Block Peril's exit at Luncheon's shop door-mouth; Devon
+   confirmed Mario lands in that overworld in a usable state. See
+   [devon-p0-decoupled-spike-results.md](../devon-p0-decoupled-spike-results.md).
 2. **Generalize the data + Switch key** (port enumeration, conflated-subarea split,
    compound exit key — the `from_parent` work order). Switch-side, this is mostly the
    already-scoped deferred fix.
@@ -216,11 +226,12 @@ Strong long-term feature, but it's a **near-total P7 rework**, so stage it:
 4. **Add literal Odyssey-arrival landings (approach B) as an optional fidelity pass**
    if approach A's "no Odyssey parked" feel isn't good enough.
 
-**Why ~65%:** no single piece looks impossible and the costliest machinery is already
-built and validated, but it stacks a true in-game unknown (overworld landing) on top of
-a substantial logic redesign (solvable matching + order-model reconciliation) — more,
-and more interlocking, surface than any other v3 item. The spike in step 1 would move
-this number a lot in either direction.
+**Why ~75%:** the costliest machinery is already built and validated, and the one true
+in-game unknown (overworld landing) is now confirmed working rather than hypothetical.
+What remains is a substantial logic redesign (solvable matching + order-model
+reconciliation, now with a confirmed save/reload cost to design around) — still more,
+and more interlocking, surface than any other v3 item, but no longer stacked on an
+unverified risk.
 
 Sources consulted (disk-truth reads this session):
 [EntranceShuffleHook.cpp](../../switch-mod/src/hooks/EntranceShuffleHook.cpp),

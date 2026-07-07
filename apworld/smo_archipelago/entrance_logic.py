@@ -354,9 +354,45 @@ def build_interior_requires_map(
 # Pool helpers
 # ---------------------------------------------------------------------------
 
+def is_port_sound(port: dict | None) -> bool:
+    """True if a port record (an entries[]/exits[]/primary_entry/primary_exit
+    item) carries enough key data to be a valid shuffle endpoint.
+
+    Prefers the extractor's precomputed `port_id`
+    (scripts/extract_entrance_stages.py::port_id — stable id for the
+    overworld-side coordinate of a physical door) when present, falling back
+    to the raw stage+entry_id fields for records that predate it or were
+    built by hand (tests, PRIMARY_EXIT_OVERRIDE-style entries). A port missing
+    either half can't be resolved into a Switch-side match key — matching it
+    anyway is the Sand->Bowser one-way-warp bug in miniature (see
+    is_round_trippable), just at port granularity instead of subarea
+    granularity.
+    """
+    if not port:
+        return False
+    if port.get("port_id"):
+        return True
+    stage = port.get("dest") or port.get("parent")
+    return bool(stage) and bool(port.get("entry_id"))
+
+
+def is_edge_sound(port_a: dict | None, port_b: dict | None) -> bool:
+    """True only when BOTH ends of a port-edge are individually sound.
+
+    Load-bearing for the future port-graph matching (Phase 3 of
+    docs/plan-decoupled-entrances.md): a matching must never keep one sound
+    endpoint while silently dropping its unsound partner — that produces
+    exactly the asymmetric, one-way coupling that stranded Mario in the
+    Sand->Bowser bug (see is_round_trippable's docstring). Drop the whole
+    edge, never just the broken half.
+    """
+    return is_port_sound(port_a) and is_port_sound(port_b)
+
+
 def is_round_trippable(name: str, entrance_stages: dict) -> bool:
     """True if `name` can be a sound shuffle endpoint: it must be present in
-    entrance_stages.json with a `stage` and a `primary_entry.entry_id`.
+    entrance_stages.json with a `stage`, a sound `primary_entry`, and every
+    listed exit (if any) individually sound.
 
     Rationale (load-bearing — see the Sand→Bowser one-way-warp bug): the bijection
     is a permutation over the pool, so EVERY pooled subarea is both some door's
@@ -366,19 +402,25 @@ def is_round_trippable(name: str, entrance_stages: dict) -> bool:
     one-way couplings — Mario reaches the unresolved subarea's stage the vanilla
     way (its own door reverted to vanilla) yet exits via a foreign door's coupling,
     stranding him in the wrong kingdom. The fix is to never let such a subarea into
-    the pool in the first place. `primary_entry.entry_id` is the inbound key
+    the pool in the first place. `primary_entry` is the inbound key
     compile_stage_remaps needs to redirect INTO the subarea; without it the entry
-    row drops and the same asymmetry appears. (`primary_exit` is intentionally NOT
-    required: pipe-less interiors — e.g. boss re-fight arenas — exit via the
-    game's return stack (returnPrevStage / :return), which is correct for free and
-    needs no exit row.)
+    row drops and the same asymmetry appears. (An EMPTY exits list is intentionally
+    NOT disqualifying: pipe-less interiors — e.g. boss re-fight arenas — exit via
+    the game's return stack (returnPrevStage / :return), which is correct for free
+    and needs no exit row. But a PRESENT exit record that is individually unsound —
+    per is_port_sound — must drop the whole subarea, same as an unsound
+    primary_entry: this generalizes the check to per-port soundness ahead of the
+    full port-graph matching, so a partially-resolved port can never poison the
+    pool the way a partially-resolved subarea used to.)
     """
     rec = entrance_stages.get(name)
     if not rec:
         return False
     if not rec.get("stage"):
         return False
-    return bool((rec.get("primary_entry") or {}).get("entry_id"))
+    if not is_port_sound(rec.get("primary_entry")):
+        return False
+    return all(is_port_sound(e) for e in rec.get("exits", []))
 
 
 def build_entrance_pool(

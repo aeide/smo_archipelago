@@ -187,6 +187,18 @@ void logChangeStageInfo(const char* tag, const ChangeStageInfo* info) {
 // guard skips moon-rock same-stage reloads.
 static constexpr bool kEntranceRemapApply = true;
 
+// ── P0 decoupled-entrance-randomizer gate spike (approach A) ────────────────
+// Hardcoded two-row test: does a subarea exit chained into a FOREIGN kingdom's
+// door-mouth land Mario in a usable overworld state? No entrance_shuffle seed
+// needed (the real remap table is empty), no new hooks, no new symbols — rides
+// the same changeNextStage chokepoint as the coupled shuffle above. See
+// docs/handoff-decoupled-p0-spike.md.
+//
+// RESULT: PASS (2026-07-06) — see docs/devon-p0-decoupled-spike-results.md.
+// Flag left OFF; rows kept in place (harmless while false) as a documented,
+// pre-verified fixture in case Phase 1+ work wants to re-run this exact probe.
+static constexpr bool kP0DecoupledSpike = false;
+
 // FixedSafeString<0x80> inline buffer capacity (incl. terminator). mStringTop
 // (cstr ptr @ +0x08) points into this object-owned buffer, so a bounded,
 // null-terminated overwrite is a safe in-place edit; sead stores capacity in
@@ -196,6 +208,36 @@ constexpr std::size_t kFixedStringCap = 0x80;
 char* mutableCstrAt(ChangeStageInfo* info, std::size_t off) {
     auto* base = reinterpret_cast<std::uint8_t*>(info);
     return *reinterpret_cast<char* const*>(base + off);
+}
+
+// Shared bounded-mutation body for both the table-driven remap below and the
+// P0 spike rows: verify BOTH strings fit before writing EITHER (never leave a
+// torn rewrite — right stage / stale entrance id), then overwrite
+// ChangeStageInfo's stage/id cstrs in place. `tag` names the caller for the
+// APPLIED/FAILED log lines (e.g. "remap", "p0-spike").
+void applyEntranceMutation(const ChangeStageInfo* info, const char* dest,
+                           const char* cur, const char* to_stage,
+                           const char* to_id, const char* tag) {
+    auto* mut       = const_cast<ChangeStageInfo*>(info);
+    char* dst_stage = mutableCstrAt(mut, kOffChangeStageNameCstr);
+    char* dst_id    = mutableCstrAt(mut, kOffChangeStageIdCstr);
+    const std::size_t stage_len = std::strlen(to_stage);
+    const std::size_t id_len    = std::strlen(to_id);
+    if (!dst_stage || !dst_id ||
+        stage_len + 1 > kFixedStringCap || id_len + 1 > kFixedStringCap) {
+        SMOAP_LOG_WARN("[entrance:%s-FAILED] dest='%s' cur='%s' -> stage='%s' "
+                       "id='%s' (buffer guard tripped) — left vanilla",
+                       tag, dest, cur, to_stage, to_id);
+        return;
+    }
+    char old_id[smoap::ap::kCheckFieldCap];
+    std::strncpy(old_id, readCstrAt(info, kOffChangeStageIdCstr),
+                 smoap::ap::kCheckFieldCap - 1);
+    old_id[smoap::ap::kCheckFieldCap - 1] = '\0';
+    std::memcpy(dst_stage, to_stage, stage_len + 1);
+    std::memcpy(dst_id, to_id, id_len + 1);
+    SMOAP_LOG_INFO("[entrance:%s-APPLIED] dest='%s'/'%s' cur='%s' -> stage='%s' id='%s'",
+                   tag, dest, old_id, cur, to_stage, to_id);
 }
 
 void processEntranceRemap(const ChangeStageInfo* info) {
@@ -212,6 +254,36 @@ void processEntranceRemap(const ChangeStageInfo* info) {
     // guard is inert and we fall back to an entry-only lookup below.)
     if (cur && std::strcmp(dest, cur) == 0) return;
 
+    if constexpr (kP0DecoupledSpike) {
+        const int scenario =
+            *reinterpret_cast<const std::int32_t*>(
+                reinterpret_cast<const std::uint8_t*>(info) + kOffScenarioNo);
+        // Row 1 — the actual P0 test: leaving Push Block Peril (Cap, reachable
+        // at game start; its exit pipes are proven to fire :file) lands outside
+        // Luncheon's Crazy Cap shop — that door-mouth's primary_exit
+        // (entrance_stages.json) is exactly where SMO places Mario walking out
+        // of the shop, a known-good arrival point (approach A).
+        if (cur && std::strcmp(cur, "PushBlockExStage") == 0) {
+            SMOAP_LOG_INFO("[entrance:p0-spike] dest='%s' cur='%s' scenario=%d "
+                           "-> stage='LavaWorldHomeStage' id='shop'",
+                           dest, cur, scenario);
+            applyEntranceMutation(info, dest, cur, "LavaWorldHomeStage", "shop",
+                                 "p0-spike");
+            return;
+        }
+        // Row 2 — the return edge: walking into the Luncheon shop from this
+        // chained port arrives back inside Push Block Peril, making it a true
+        // undirected port edge (retrace works both ways).
+        if (std::strcmp(dest, "LavaWorldShopStage") == 0) {
+            SMOAP_LOG_INFO("[entrance:p0-spike] dest='%s' cur='%s' scenario=%d "
+                           "-> stage='PushBlockExStage' id='PushBlockExStageEnt'",
+                           dest, cur, scenario);
+            applyEntranceMutation(info, dest, cur, "PushBlockExStage",
+                                 "PushBlockExStageEnt", "p0-spike");
+            return;
+        }
+    }
+
     char to_stage[smoap::ap::kCheckFieldCap];
     char to_id[smoap::ap::kCheckFieldCap];
     if (!smoap::ap::ApState::instance().lookupEntranceRemap(dest, cur, to_stage, to_id))
@@ -224,29 +296,7 @@ void processEntranceRemap(const ChangeStageInfo* info) {
         return;
     }
 
-    auto* mut          = const_cast<ChangeStageInfo*>(info);
-    char* dst_stage    = mutableCstrAt(mut, kOffChangeStageNameCstr);
-    char* dst_id       = mutableCstrAt(mut, kOffChangeStageIdCstr);
-    const std::size_t stage_len = std::strlen(to_stage);
-    const std::size_t id_len    = std::strlen(to_id);
-    // Verify BOTH fit before writing EITHER — never leave a torn rewrite (right
-    // stage / stale entrance id). to_stage/to_id come from kCheckFieldCap(64)
-    // buffers, so this always passes in practice; the guard is belt-and-braces.
-    if (!dst_stage || !dst_id ||
-        stage_len + 1 > kFixedStringCap || id_len + 1 > kFixedStringCap) {
-        SMOAP_LOG_WARN("[entrance:remap-FAILED] dest='%s' cur='%s' -> stage='%s' "
-                       "id='%s' (buffer guard tripped) — left vanilla",
-                       dest, cur, to_stage, to_id);
-        return;
-    }
-    char old_id[smoap::ap::kCheckFieldCap];
-    std::strncpy(old_id, readCstrAt(info, kOffChangeStageIdCstr),
-                 smoap::ap::kCheckFieldCap - 1);
-    old_id[smoap::ap::kCheckFieldCap - 1] = '\0';
-    std::memcpy(dst_stage, to_stage, stage_len + 1);
-    std::memcpy(dst_id, to_id, id_len + 1);
-    SMOAP_LOG_INFO("[entrance:remap-APPLIED] dest='%s'/'%s' cur='%s' -> stage='%s' id='%s'",
-                   dest, old_id, cur, to_stage, to_id);
+    applyEntranceMutation(info, dest, cur, to_stage, to_id, "remap");
 }
 
 // ── Free-detour: "both siblings before the exit" gate ───────────────────────

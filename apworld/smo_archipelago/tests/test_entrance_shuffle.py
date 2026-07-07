@@ -653,6 +653,175 @@ def test_full_gate_mirror_compile_moon_logic():
     assert _mixed_door_gates() == mod.SUBAREA_INTERIOR_FULL_GATES
 
 
+# ---------------------------------------------------------------------------
+# Phase 1 (decoupled entrance rando) — full port enumeration
+# ---------------------------------------------------------------------------
+# entrance_stages.json v2: every entries[]/exits[] item carries a stable
+# port_id (scripts/extract_entrance_stages.py::port_id), and each subarea
+# carries a door_mouths table cataloguing the overworld-side coordinate of
+# every door. See docs/plan-decoupled-entrances.md Phase 1.
+
+def test_entrance_stages_schema_version_is_2():
+    stages = _entrance_stages()
+    assert stages.get("_schema_version") == 2
+
+
+def test_every_entry_and_exit_has_a_port_id():
+    """Every entries[]/exits[] item must resolve to a non-null port_id — a
+    None here means port_id()'s stage/entry_id inputs were empty, which
+    should never happen for data sourced from collect_doors()."""
+    stages = _entrance_stages()
+    missing = []
+    for name, rec in stages.items():
+        if name.startswith("_"):
+            continue
+        for kind in ("entries", "exits"):
+            for i, port in enumerate(rec.get(kind, [])):
+                if not port.get("port_id"):
+                    missing.append((name, kind, i))
+    assert not missing, f"entries/exits missing port_id: {missing}"
+
+
+def test_push_block_peril_two_exits_have_distinct_port_ids():
+    """Concrete proof case (P0 spike finding): Push Block Peril's main door
+    and pipe are two physically distinct exits and MUST resolve to different
+    port_ids — collapsing them to one node is exactly the bug Phase 2's
+    compound-key exit lookup exists to fix. The main door's exit shares its
+    port_id with primary_entry (a reciprocated two-way door); the pipe is
+    exit-only and gets its own id."""
+    stages = _entrance_stages()
+    pbp = stages.get("Push Block Peril")
+    if not pbp:
+        pytest.skip("Push Block Peril absent from table")
+    exits = pbp["exits"]
+    assert len(exits) == 2
+    port_ids = {e["port_id"] for e in exits}
+    assert len(port_ids) == 2, f"expected 2 distinct exit port_ids, got {port_ids}"
+
+    main_door = next(e for e in exits if e["entry_id"] == "PushBlockExStageEnt")
+    pipe = next(e for e in exits if e["entry_id"] == "PushBlockExStageEntDokan")
+    assert main_door["port_id"] == pbp["primary_entry"]["port_id"], (
+        "the main door's exit should reciprocate the primary_entry's door")
+    assert pipe["port_id"] != main_door["port_id"]
+
+    door_mouths = pbp["door_mouths"]
+    assert set(door_mouths[main_door["port_id"]]["roles"]) == {"entry", "exit"}
+    assert door_mouths[pipe["port_id"]]["roles"] == ["exit"]
+
+
+def test_reciprocated_door_mouth_has_both_roles():
+    """A subarea whose entries[] and exits[] share a port_id (a normal 2-way
+    door, e.g. Costume Room (Sand)'s 'abc' door) must be tagged with both
+    'entry' and 'exit' roles in door_mouths, not duplicated as two nodes."""
+    stages = _entrance_stages()
+    rec = stages.get("Costume Room (Sand)")
+    if not rec:
+        pytest.skip("Costume Room (Sand) absent from table")
+    entry_port = rec["entries"][0]["port_id"]
+    exit_port = rec["exits"][0]["port_id"]
+    assert entry_port == exit_port
+    assert set(rec["door_mouths"][entry_port]["roles"]) == {"entry", "exit"}
+
+
+@pytest.mark.parametrize("name,expected_kingdom", [
+    ("Costume Room (Sand)", "Sand Kingdom"),
+    ("Costume Room (Wooded)", "Wooded Kingdom"),
+    ("Costume Room (Seaside)", "Seaside Kingdom"),
+    ("Sphynx Treasure Vault (Sand)", "Sand Kingdom"),
+    ("Sphynx Treasure Vault (Seaside)", "Seaside Kingdom"),
+])
+def test_previously_conflated_subareas_are_one_physical_door_each(name, expected_kingdom):
+    """Regression guard for the §1b-bis conflation (Costume Room x3, Sphynx
+    Treasure Vault x2): each per-kingdom variant must resolve to its own
+    distinct stage and door_mouths entries, never merging back into a shared
+    node across kingdoms."""
+    stages = _entrance_stages()
+    rec = stages.get(name)
+    if not rec:
+        pytest.skip(f"{name} absent from table")
+    assert rec["kingdom"] == expected_kingdom
+    assert rec["door_mouths"], f"{name} has no door_mouths"
+
+
+def test_jaxi_driving_override_exit_has_port_id():
+    """PRIMARY_EXIT_OVERRIDE entries (Jaxi Driving) bypass exit_recs, so they
+    need their port_id stamped separately — regression guard for that path."""
+    stages = _entrance_stages()
+    jaxi = stages.get("Jaxi Driving")
+    if not jaxi:
+        pytest.skip("Jaxi Driving absent from table")
+    assert jaxi["primary_exit"]["port_id"] == "SandWorldHomeStage#arijigoku2"
+
+
+def test_is_port_sound():
+    from entrance_logic import is_port_sound
+    assert is_port_sound({"parent": "CapWorldHomeStage", "entry_id": "x",
+                           "port_id": "CapWorldHomeStage#x"})
+    assert is_port_sound({"dest": "CapWorldHomeStage", "entry_id": "x"})  # no port_id, falls back
+    assert not is_port_sound(None)
+    assert not is_port_sound({})
+    assert not is_port_sound({"dest": "CapWorldHomeStage", "entry_id": ""})
+    assert not is_port_sound({"dest": "", "entry_id": "x"})
+
+
+def test_is_edge_sound_drops_whole_edge_if_either_end_unsound():
+    """Per the Sand->Bowser one-way-warp lesson, generalized to ports: an edge
+    is only sound if BOTH ends are — never keep one end and drop the other."""
+    from entrance_logic import is_edge_sound
+    good = {"dest": "CapWorldHomeStage", "entry_id": "x", "port_id": "CapWorldHomeStage#x"}
+    bad = {"dest": "CapWorldHomeStage", "entry_id": ""}
+    assert is_edge_sound(good, good)
+    assert not is_edge_sound(good, bad)
+    assert not is_edge_sound(bad, good)
+    assert not is_edge_sound(bad, bad)
+
+
+def test_is_round_trippable_drops_subarea_with_an_unsound_exit():
+    """Generalization: is_round_trippable must reject a subarea whose exits
+    list contains an individually-unsound port, not just check primary_entry.
+    A present-but-broken exit record must poison the whole subarea, mirroring
+    is_edge_sound's 'drop both ends' rule at subarea granularity."""
+    from entrance_logic import is_round_trippable
+    stages = {
+        "Fake Subarea": {
+            "stage": "FakeStage",
+            "primary_entry": {"parent": "FakeHome", "entry_id": "in",
+                               "port_id": "FakeHome#in"},
+            "exits": [
+                {"dest": "FakeHome", "entry_id": "out", "port_id": "FakeHome#out"},
+                {"dest": "FakeHome", "entry_id": ""},  # unsound: no entry_id
+            ],
+        }
+    }
+    assert not is_round_trippable("Fake Subarea", stages)
+
+    # Same subarea with only the sound exit is fine.
+    stages["Fake Subarea"]["exits"].pop()
+    assert is_round_trippable("Fake Subarea", stages)
+
+
+def test_port_count_within_switch_remap_budget_or_documented():
+    """Sizing sanity check (Phase 1's deliberate row-budget decision): the raw
+    entries+exits port total across the shuffle pool is reported so a future
+    Phase 2/3 session can compare it against kEntranceRemapMax (256,
+    switch-mod/src/ap/ApState.hpp) BEFORE writing Switch code. This test does
+    not assert a pass/fail bound (the cap bump is Phase 2's call) — it just
+    guards that the count stays in the ballpark analyzed in
+    docs/plan-decoupled-entrances.md (Phase 1 results), so a wildly different
+    number (a data regression, e.g. everything merging back into one node) is
+    caught immediately."""
+    from entrance_logic import build_entrance_pool
+    stages = _entrance_stages()
+    pool = build_entrance_pool(_subareas(), _exclusions(), stages)
+    total = sum(len(stages[n]["entries"]) + len(stages[n]["exits"])
+                for n in pool if n in stages)
+    # Analyzed range at time of writing: 331 raw port halves over a 119-pool.
+    # Generous bounds so incidental data drift doesn't spuriously fail this.
+    assert 250 <= total <= 450, (
+        f"pool-scoped port total {total} drifted far from the analyzed ~331 — "
+        f"re-check docs/plan-decoupled-entrances.md Phase 1's row-budget math")
+
+
 def test_moon_rock_reach_capture_mirror_compile_moon_logic():
     """The shuffle-ON moon-rock reach capture (entrance_logic.MOON_ROCK_REACH_CAPTURE,
     ANDed onto a moon-pipe DOOR) must mirror the shuffle-OFF bake source
