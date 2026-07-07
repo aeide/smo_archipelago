@@ -333,7 +333,15 @@
       "Bash(echo \"exit: $?\")",
       "Bash(python -m pytest tests/test_entrance_shuffle.py -q)",
       "Bash(python -m pytest tests/ -q)",
-      "Bash(python -m pytest tests/test_wizard_persisted_paths.py -q)"
+      "Bash(python -m pytest tests/test_wizard_persisted_paths.py -q)",
+      "Bash(python -m pytest apworld/smo_archipelago/tests -q -c apworld/smo_archipelago/tests/pyproject.toml)",
+      "Bash(python -m pytest apworld/smo_archipelago/tests/test_setup_audit_hook.py -q -c apworld/smo_archipelago/tests/pyproject.toml)",
+      "Bash(python -m pytest apworld/smo_archipelago/tests/test_abilitysanity.py apworld/smo_archipelago/tests/test_abilitysanity_precollect_reachability.py apworld/smo_archipelago/tests/test_apworld_generation.py -v -c apworld/smo_archipelago/tests/pyproject.toml)",
+      "Bash(SMOAP_LIVE_AP=1 python -m pytest apworld/smo_archipelago/tests/test_abilitysanity_precollect_reachability.py -v -c apworld/smo_archipelago/tests/pyproject.toml)",
+      "Bash(SMOAP_LIVE_AP=1 python -m pytest \"apworld/smo_archipelago/tests/test_apworld_generation.py::test_smo_generation_abilitysanity_off_multiple_seeds\" \"apworld/smo_archipelago/tests/test_apworld_generation.py::test_smo_generation_solo\" -k \"abilitysanity_off\" -v -c apworld/smo_archipelago/tests/pyproject.toml)",
+      "Bash(SMOAP_LIVE_AP=1 SMOAP_GEN_TEST_FAST=1 python -m pytest apworld/smo_archipelago/tests/test_apworld_generation.py -v -c apworld/smo_archipelago/tests/pyproject.toml)",
+      "Bash(grep -E \"^\\(apworld.*\\(PASSED|FAILED|SKIPPED\\)|=+ .* =+\\)$\" \"C:\\\\Users\\\\devon\\\\.claude\\\\projects\\\\e--smo-archipelago\\\\03bb1b18-9135-4c74-91cc-4468f5164ad2\\\\tool-results\\\\bfvwky5yb.txt\")",
+      "Bash(SMOAP_LIVE_AP=1 python -m pytest \"apworld/smo_archipelago/tests/test_apworld_generation.py::test_smo_generation_with_random_partner\" -k \"all_on\" -v -c apworld/smo_archipelago/tests/pyproject.toml)"
     ],
     "additionalDirectories": [
       "\\tmp\\dbg",

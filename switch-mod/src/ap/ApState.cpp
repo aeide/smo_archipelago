@@ -393,14 +393,16 @@ void ApState::applyEntranceMap(const EntranceRemapEntry* entries,
     for (std::size_t i = 0; i < count; ++i) {
         const auto& e = entries[i];
         if (e.from[0] == '\0') continue;
-        // Merge by (from, is_exit) — an entry key and an exit key can be the
-        // same stage string for different transitions, so the direction is part
-        // of the identity. Overwrite a matching slot (idempotent HELLO replay /
-        // multi-chunk update), else append.
+        // Merge by (from, from_id, is_exit) — an entry key and an exit key can
+        // be the same stage string for different transitions, so direction is
+        // part of the identity; from_id further splits a multi-exit stage's
+        // physical exit ports (P2). Overwrite a matching slot (idempotent
+        // HELLO replay / multi-chunk update), else append.
         std::size_t slot = entrance_remap_count;
         for (std::size_t j = 0; j < entrance_remap_count; ++j) {
             if (entrance_remap[j].is_exit == e.is_exit &&
-                std::strcmp(entrance_remap[j].from, e.from) == 0) {
+                std::strcmp(entrance_remap[j].from, e.from) == 0 &&
+                std::strcmp(entrance_remap[j].from_id, e.from_id) == 0) {
                 slot = j;
                 break;
             }
@@ -414,9 +416,11 @@ void ApState::applyEntranceMap(const EntranceRemapEntry* entries,
             ++entrance_remap_count;
         }
         std::memcpy(entrance_remap[slot].from, e.from, kCheckFieldCap);
+        std::memcpy(entrance_remap[slot].from_id, e.from_id, kCheckFieldCap);
         std::memcpy(entrance_remap[slot].to_stage, e.to_stage, kCheckFieldCap);
         std::memcpy(entrance_remap[slot].to_id, e.to_id, kCheckFieldCap);
         entrance_remap[slot].from[kCheckFieldCap - 1] = '\0';
+        entrance_remap[slot].from_id[kCheckFieldCap - 1] = '\0';
         entrance_remap[slot].to_stage[kCheckFieldCap - 1] = '\0';
         entrance_remap[slot].to_id[kCheckFieldCap - 1] = '\0';
         entrance_remap[slot].is_exit = e.is_exit;
@@ -434,21 +438,24 @@ void ApState::applyEntranceMap(const EntranceRemapEntry* entries,
 
 bool ApState::lookupEntranceRemap(const char* dest_stage,
                                   const char* cur_stage,
+                                  const char* transition_id,
                                   char (&to_stage)[kCheckFieldCap],
                                   char (&to_id)[kCheckFieldCap]) const {
     const bool have_dest = dest_stage && *dest_stage;
     const bool have_cur = cur_stage && *cur_stage;
+    const bool have_id = transition_id && *transition_id;
     if (!have_dest && !have_cur) return false;
     // Seqlock read (mirrors abilityCount): retry on odd seq / torn snapshot.
     // Fail-safe — a contended read returns false so the transition stays
     // vanilla rather than warping Mario to a half-written remap target.
     //
-    // Two-key, entry-first: an ENTRY row matching the inbound dest stage wins
-    // (you walked through a shuffled door, including a nested deeper door whose
-    // dest is itself an interior). Only if no entry matches do we try an EXIT
-    // row matching the current stage (you're leaving a shuffled interior — its
-    // vanilla forward exit fires :file with an overworld dest, which is not an
-    // entry key, so it falls through to here).
+    // Three-tier, entry-first: an ENTRY row matching the inbound dest stage
+    // wins (you walked through a shuffled door, including a nested deeper door
+    // whose dest is itself an interior). Failing that, an EXIT row matching
+    // (cur_stage, transition_id) exactly — a specific physical exit port of a
+    // multi-exit stage (P2). Failing that, an EXIT row matching cur_stage with
+    // an empty from_id (wildcard) — the back-compat path every pre-P2 row and
+    // every coupled-shuffle row without per-port data still hits.
     for (int attempt = 0; attempt < 8; ++attempt) {
         const std::uint32_t s0 = entrance_remap_seq.load(std::memory_order_acquire);
         if (s0 & 1u) continue;  // writer mid-update
@@ -464,9 +471,21 @@ bool ApState::lookupEntranceRemap(const char* dest_stage,
                 }
             }
         }
+        if (hit < 0 && have_cur && have_id) {
+            for (std::size_t i = 0; i < n; ++i) {
+                if (entrance_remap[i].is_exit &&
+                    entrance_remap[i].from_id[0] != '\0' &&
+                    std::strcmp(entrance_remap[i].from, cur_stage) == 0 &&
+                    std::strcmp(entrance_remap[i].from_id, transition_id) == 0) {
+                    hit = static_cast<int>(i);
+                    break;
+                }
+            }
+        }
         if (hit < 0 && have_cur) {
             for (std::size_t i = 0; i < n; ++i) {
                 if (entrance_remap[i].is_exit &&
+                    entrance_remap[i].from_id[0] == '\0' &&
                     std::strcmp(entrance_remap[i].from, cur_stage) == 0) {
                     hit = static_cast<int>(i);
                     break;

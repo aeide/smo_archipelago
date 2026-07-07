@@ -886,6 +886,87 @@ TEST(decode_ability_state_enforce_false) {
     EXPECT_EQ_S(m.ability_state.entries[0].ability, "Climb");
 }
 
+// P7/P2 — entrance_map wire message (compound exit key) --------------------
+
+TEST(decode_entrance_map_entry_row_from_id_absent) {
+    // ENTRY rows never carry from_id on the wire; absence parses to the empty
+    // wildcard sentinel (entry rows don't consult it — dest-keyed only).
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"entrance_map","reset":true,"entries":[)"
+        R"({"kind":"entry","from":"PushBlockExStage","to_stage":"LavaWorldHomeStage","to_id":"shop"}]})",
+        m));
+    EXPECT_EQ_I(m.entrance_map.entry_count, 1u);
+    EXPECT(!m.entrance_map.entries[0].is_exit);
+    EXPECT_EQ_S(m.entrance_map.entries[0].from, "PushBlockExStage");
+    EXPECT_EQ_S(m.entrance_map.entries[0].from_id, "");
+}
+
+TEST(decode_entrance_map_exit_row_from_id_present) {
+    // P2 — exit row carries the compound key: from_id disambiguates a
+    // multi-exit stage's physical exit ports.
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"entrance_map","reset":false,"entries":[)"
+        R"({"kind":"exit","from":"PushBlockExStage","from_id":"PushBlockExStageEntDokan",)"
+        R"("to_stage":"SandWorldHomeStage","to_id":"pipe"}]})",
+        m));
+    EXPECT_EQ_I(m.entrance_map.entry_count, 1u);
+    EXPECT(m.entrance_map.entries[0].is_exit);
+    EXPECT_EQ_S(m.entrance_map.entries[0].from, "PushBlockExStage");
+    EXPECT_EQ_S(m.entrance_map.entries[0].from_id, "PushBlockExStageEntDokan");
+    EXPECT_EQ_S(m.entrance_map.entries[0].to_stage, "SandWorldHomeStage");
+    EXPECT_EQ_S(m.entrance_map.entries[0].to_id, "pipe");
+}
+
+TEST(decode_entrance_map_exit_row_from_id_absent_is_wildcard) {
+    // Absent from_id on an exit row parses as empty — the wildcard sentinel,
+    // back-compat with every pre-P2 row the coupled shuffle emits.
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"entrance_map","reset":true,"entries":[)"
+        R"({"kind":"exit","from":"ShootingElevatorExStage",)"
+        R"("to_stage":"ForestWorldHomeStage","to_id":"EX_Tankuro"}]})",
+        m));
+    EXPECT_EQ_I(m.entrance_map.entry_count, 1u);
+    EXPECT(m.entrance_map.entries[0].is_exit);
+    EXPECT_EQ_S(m.entrance_map.entries[0].from_id, "");
+}
+
+TEST(decode_entrance_map_unknown_field_rejected) {
+    // The parser hard-rejects unknown fields — the parser change and the
+    // client's emit-side change must ship in the same build (see the
+    // parseEntranceMap docstring). A typo'd or unrecognized field fails the
+    // whole message rather than silently dropping it.
+    DecodedMsg m;
+    EXPECT(!decodeFrom(
+        R"({"t":"entrance_map","entries":[)"
+        R"({"kind":"exit","from":"X","from_id":"Y","to_stage":"Z","to_id":"W","bogus":1}]})",
+        m));
+}
+
+TEST(decode_entrance_map_two_exit_rows_same_from_different_from_id) {
+    // Push Block Peril's two physical exits (main door + Dokan pipe) compile
+    // to two distinct rows sharing `from` but keyed apart by from_id — the
+    // exact compound key lookupEntranceRemap's exit tier matches on (P0 found
+    // this ambiguity; P2 fixes the substrate for it).
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"entrance_map","reset":true,"entries":[)"
+        R"({"kind":"exit","from":"PushBlockExStage","from_id":"PushBlockExStageEnt",)"
+        R"("to_stage":"LavaWorldHomeStage","to_id":"shop"},)"
+        R"({"kind":"exit","from":"PushBlockExStage","from_id":"PushBlockExStageEntDokan",)"
+        R"("to_stage":"SandWorldHomeStage","to_id":"pipe"}]})",
+        m));
+    EXPECT_EQ_I(m.entrance_map.entry_count, 2u);
+    EXPECT_EQ_S(m.entrance_map.entries[0].from, "PushBlockExStage");
+    EXPECT_EQ_S(m.entrance_map.entries[1].from, "PushBlockExStage");
+    EXPECT_EQ_S(m.entrance_map.entries[0].from_id, "PushBlockExStageEnt");
+    EXPECT_EQ_S(m.entrance_map.entries[1].from_id, "PushBlockExStageEntDokan");
+    EXPECT_EQ_S(m.entrance_map.entries[0].to_stage, "LavaWorldHomeStage");
+    EXPECT_EQ_S(m.entrance_map.entries[1].to_stage, "SandWorldHomeStage");
+}
+
 TEST(roundtrip_check_via_reader) {
     Check c{.kind=ItemKind::Moon, .kingdom="Cap", .shine_id="Spinning-Hat Stack"};
     std::string w = wire([&](auto& b){ encodeCheck(b, c); });

@@ -13,6 +13,12 @@ from ..Data import game_table, item_table, location_table, region_table
 # These helper methods allow you to determine if an option has been set, or what its value is, for any player in the multiworld
 from ..Helpers import is_location_enabled, is_option_enabled, get_option_value
 
+# entrance_shuffle is a 3-value Choice (off/simple/decoupled) as of P2 — see
+# _entrance_shuffle_mode below. OptionError is AP's standard "fail generation
+# loudly with a player-facing message" exception (Options.OptionError).
+from Options import OptionError
+from .Options import EntranceShuffle
+
 # calling logging.info("message") anywhere below in this file will output the message to both console and log file
 import logging
 import json
@@ -118,9 +124,39 @@ def _roll_entrance_bijection(
     return {door: interior for door, interior in zip(pool, shuffled)}
 
 
+def _entrance_shuffle_mode(multiworld: MultiWorld, player: int) -> int:
+    """Return the raw entrance_shuffle Choice value (EntranceShuffle.option_*).
+
+    Deliberately NOT `is_option_enabled` (a `> 0` truthiness check): since P2,
+    entrance_shuffle is a 3-value Choice (off=0/simple=1/decoupled=2) and both
+    simple and decoupled are truthy under that check. Every call site needs
+    the raw value so it can tell the two apart instead of silently treating
+    a future `decoupled` seed as `simple`."""
+    return get_option_value(multiworld, player, "entrance_shuffle")
+
+
+def _raise_if_decoupled_entrance_shuffle(multiworld: MultiWorld, player: int) -> None:
+    """Fail generation loudly if entrance_shuffle=decoupled is selected.
+
+    decoupled (P3's full port-graph shuffle) is reserved but not implemented
+    yet — only `off`/`simple` have working generation logic. Called from the
+    earliest hook that consults the option (before_create_regions) so a
+    decoupled seed never silently falls back to the coupled `simple` bijection
+    (which would happily roll a bijection and ship a working-looking, but
+    wrong-mode, entrance_map)."""
+    if _entrance_shuffle_mode(multiworld, player) == EntranceShuffle.option_decoupled:
+        raise OptionError(
+            "entrance_shuffle: 'decoupled' is reserved for a future release "
+            "(P3's full port-graph shuffle) and is not implemented yet. Use "
+            "'simple' for the current coupled entrance shuffle, or 'off' to "
+            "disable entrance shuffling."
+        )
+
+
 # Called before regions and locations are created. Victory location is included, but Victory event is not placed yet.
 def before_create_regions(world: World, multiworld: MultiWorld, player: int):
-    if not is_option_enabled(multiworld, player, "entrance_shuffle"):
+    _raise_if_decoupled_entrance_shuffle(multiworld, player)
+    if _entrance_shuffle_mode(multiworld, player) != EntranceShuffle.option_simple:
         return
 
     from ..entrance_logic import (
@@ -552,6 +588,28 @@ def _drop_ability_items_if_disabled(item_pool: list, world: World, multiworld: M
     ]
 
 
+def _precollect_ability_items_if_disabled(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> None:
+    """abilitysanity OFF: precollect every Ability item at its full copy count.
+
+    _drop_ability_items_if_disabled removes all Ability-category items from
+    the pool, but the compiled moon/door/victory `requires` strings still
+    demand ability tokens (e.g. `|Progressive Ground Pound:1|`) — with zero
+    such items ever existing, every location gated behind one becomes
+    permanently unreachable and fill collapses (FillError). Precollecting
+    each ability at full count satisfies those tokens in CollectionState
+    while the pool drop keeps the item/location counts unchanged; the
+    Switch-side gate is separately opened via ability_state `enforce=False`.
+    See docs/handoff-abilitysanity-precollect-fix.md.
+    """
+    if is_option_enabled(multiworld, player, "abilitysanity"):
+        return
+    name_to_item = world.item_name_to_item
+    for name in _names_in_item_category(world, "Ability"):
+        count = int(name_to_item.get(name, {}).get("count", 1))
+        for _ in range(count):
+            multiworld.push_precollected(world.create_item(name))
+
+
 def _trim_kingdom_moons_to_options(item_pool: list, multiworld: MultiWorld, player: int) -> None:
     """Drop surplus per-kingdom Moon items down to the option-configured cap.
 
@@ -668,7 +726,11 @@ def before_create_items_filler(item_pool: list, world: World, multiworld: MultiW
     # freed slots are topped up with filler by adjust_filler_items, same as the
     # moon-count trim below). Runs here so the reduced pool flows into
     # adjust_filler_items / after_create_items unchanged when the option is on.
+    # Precollect the same items at full copy count so the compiled `requires`
+    # strings' ability tokens stay satisfiable — otherwise every location
+    # gated behind an ability becomes unreachable and fill collapses.
     _drop_ability_items_if_disabled(item_pool, world, multiworld, player)
+    _precollect_ability_items_if_disabled(item_pool, world, multiworld, player)
     # Apply the per-kingdom moon-count caps before adjust_filler_items runs
     # in create_items: the trim leaves locations > items, which then triggers
     # adjust_filler_items' top-up branch (filler / traps). Runs before
@@ -968,7 +1030,7 @@ def after_set_rules(world: World, multiworld: MultiWorld, player: int):
     # With remapped doors, the regionCheck comes from the wrong kingdom, so we
     # replace it with just the interior_requires (the door entrance handles the
     # kingdom gate + peace gate).
-    if is_option_enabled(multiworld, player, "entrance_shuffle"):
+    if _entrance_shuffle_mode(multiworld, player) == EntranceShuffle.option_simple:
         _apply_entrance_shuffle_location_rules(world, multiworld, player)
         # D3: re-apply the interior-intrinsic scenario gates that the rule
         # replacement above stripped from pooled-subarea moons. MUST run after

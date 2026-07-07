@@ -175,10 +175,12 @@ void logChangeStageInfo(const char* tag, const ChangeStageInfo* info) {
 // Flip kEntranceRemapApply to true (and rebuild) to enable the actual rewrite:
 // the "lie to the game" swap of mChangeStageName + mChangeStageId in the
 // ChangeStageInfo buffer. This is BOTH-directions ready (Step 4 exit rows
-// landed 2026-06-19): processEntranceRemap passes both keys to
-// lookupEntranceRemap, which prefers an entry row matching `dest` else an exit
-// row matching `cur`, and the same mutation body rewrites whichever hit. Coupled
-// return-to-origin is handled two ways: exits that fire :file (changeNextStage
+// landed 2026-06-19; P2 added the compound exit key 2026-07-07):
+// processEntranceRemap passes dest/cur/transition_id to lookupEntranceRemap,
+// which prefers an entry row matching `dest`, else an exit row matching
+// (`cur`, transition_id) exactly, else an exit row matching `cur` with an
+// empty from_id (wildcard) — and the same mutation body rewrites whichever
+// hit. Coupled return-to-origin is handled two ways: exits that fire :file (changeNextStage
 // with a ChangeStageInfo hardcoded to the vanilla parent overworld) get the
 // exit-by-cur rewrite here; exits that fire :return (returnPrevStage, no info)
 // pop back to wherever Mario came FROM, which under a rewritten forward entry is
@@ -247,6 +249,11 @@ void processEntranceRemap(const ChangeStageInfo* info) {
     // getCurrentStageName — the EXIT key. We're leaving `cur`; an exit row keyed
     // on it rewrites the forward "exit pipe" dest to the origin door's overworld.
     const char* cur = currentStageName();
+    // P2 — the transition's own id (mChangeStageId). At exit time this is the
+    // shared ChangeStageId of the door pair Mario used (SMO convention), so it
+    // disambiguates which of `cur`'s physical exits fired — the exact key
+    // lookupEntranceRemap's compound-exit tier matches on.
+    const char* transition_id = readCstrAt(info, kOffChangeStageIdCstr);
     // Moon-rock reload (and any self-transition) fires :file with dest == cur:
     // a scenario-jump reload of the SAME stage, never a door/exit. Skip it so we
     // don't remap a reload. (cur may be a sentinel like "(unresolved)" when
@@ -286,7 +293,8 @@ void processEntranceRemap(const ChangeStageInfo* info) {
 
     char to_stage[smoap::ap::kCheckFieldCap];
     char to_id[smoap::ap::kCheckFieldCap];
-    if (!smoap::ap::ApState::instance().lookupEntranceRemap(dest, cur, to_stage, to_id))
+    if (!smoap::ap::ApState::instance().lookupEntranceRemap(dest, cur, transition_id,
+                                                             to_stage, to_id))
         return;
 
     if constexpr (!kEntranceRemapApply) {

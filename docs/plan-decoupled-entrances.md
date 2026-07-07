@@ -173,6 +173,13 @@ dest is a parent interior).
 - **Wire-format shapes are committed contracts** — extend the fixed-buffer
   structs, don't rewrite them. Chunked full-overwrite send (64-row chunks)
   already exists and carries over.
+- **Option model (Devon, 2026-07-08), lands in this phase:** `entrance_shuffle`
+  converts from Toggle to a three-value Choice — `off` / `simple` (today's
+  coupled bijection) / `decoupled` (the P3 port involution; raises at
+  generation until P3 ships). YAML back-compat via `alias_true = simple`,
+  `alias_false = off` — which is also why the new mode can't be named "true"
+  (bare YAML `true` parses as a boolean and must keep meaning simple). Full
+  detail in the P2 handoff §3.5.
 - **Validate against the CURRENT coupled shuffle before P3:** host C++ tests
   (`switch-mod/tests/`, smo-host-tests skill) + pytest for
   `compile_stage_remaps`, then an in-game regression walk of the existing
@@ -183,16 +190,43 @@ dest is a parent interior).
   contracts and the frame-thread lookup path; a regression here costs full
   build+deploy+in-game cycles to find.
 
+### Phase 2 status (2026-07-08) — code complete, awaiting Devon's in-game walk
+
+All 5 work-order sections done: `EntranceRemapSlot`/`EntranceRemapEntry` gained
+`from_id` (empty = wildcard), `kEntranceRemapMax` 256→512,
+`applyEntranceMap`/`lookupEntranceRemap` merge/match on
+`(from, from_id, is_exit)` with the documented 3-tier precedence,
+`parseEntranceMap` accepts the optional field, `processEntranceRemap` passes
+`mChangeStageId` through, `compile_stage_remaps` emits one exit row per
+physical exit port (falling back to the old single wildcard row when a
+subarea's `exits[]` can't be enumerated), and the `entrance_shuffle`
+Toggle→Choice conversion (§3.5) landed with the `is_option_enabled` truthiness
+sweep in `hooks/World.py` (2 call sites) replaced by an explicit
+`option_simple`/`option_decoupled` check, plus the generation-time raise.
+
+Full detail + test results: [devon-p2-compound-key-results.md](devon-p2-compound-key-results.md).
+Host C++ + pytest suites green (56 entrance-shuffle unit tests + 5 new
+Choice-option tests, both host and SMOAP_LIVE_AP=1 runs). Not yet done: the
+in-game walk (regression + Push Block Peril two-exits capability proof) —
+needs a switch-mod build/deploy, tracked for Devon.
+
 ## Phase 3 — Apworld: involution matching + general-graph logic (the bulk)
 
 ### 3a. Design doc FIRST — kingdom-order reconciliation
+
+**Status: DRAFT WRITTEN (2026-07-07), awaiting Devon sign-off —
+[design-decoupled-kingdom-order.md](design-decoupled-kingdom-order.md).**
+Key reframe: the strict order-rule table is already empty (free-detour work),
+so the design keeps ALL existing order/economy machinery untouched and models
+chains as a second access channel. Four sign-off questions at the end of the doc.
 The deep collision: chained overworld access breaks the Odyssey-flight-order
 assumption that the kingdom-order gate, peace gates, moon-pipe gating,
 detour-exit gates, and the Cascade Odyssey divert all share. Before any code,
 write `docs/design-decoupled-kingdom-order.md` deciding:
-- New option (working name `decoupled_entrances`) and what it implies: order
-  gate relaxed or disabled? What happens to `randomize_kingdom_gates` totals,
-  `kingdom_gates` wire msg, `UnlockShineNumHook` costs?
+- The option already exists after P2: `entrance_shuffle = decoupled` (the
+  three-value Choice, see Phase 2). This doc decides what the mode IMPLIES:
+  order gate relaxed or disabled? What happens to `randomize_kingdom_gates`
+  totals, `kingdom_gates` wire msg, `UnlockShineNumHook` costs?
 - How peace/scenario state composes for a chain-reached kingdom (P0's findings
   feed directly in here).
 - What the detour gates and `processCascadeOdysseyDivert` do under this mode.

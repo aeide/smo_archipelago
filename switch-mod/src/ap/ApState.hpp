@@ -499,35 +499,57 @@ public:
     // dest stage, and an exit row (is_exit=true) keyed by the interior's own
     // stage (cur at exit time). Both directions share the pool of subarea
     // stages, so an entry key and an exit key can be the SAME string for
-    // different transitions — merge/lookup must therefore key on (from,is_exit),
-    // not from alone. ~238 rows worst case (119 pairs x 2); cap 256 with
-    // headroom. 256 slots x (3 x 64 + 1) ~= 50 KiB BSS. Fixed buffers per the
-    // M6.1 allocator-safety contract.
+    // different transitions — merge/lookup must therefore key on
+    // (from,from_id,is_exit), not from alone.
+    //
+    // P2 (decoupled entrance randomizer substrate): exit rows carry a second
+    // match key, from_id — the transition's entry_id (SMO's mChangeStageId,
+    // shared by both placements of a matched door pair). This disambiguates a
+    // multi-exit stage's physical exits (e.g. Push Block Peril's door + pipe),
+    // which previously both matched one wildcard cur-keyed row and could only
+    // route to a single destination. Empty from_id = wildcard: matches any
+    // transition id for that `from` stage, so every pre-P2 row (and every
+    // coupled-shuffle row that doesn't need per-port routing) keeps working
+    // unchanged. Entry rows stay dest-keyed only — from_id is exit-only.
+    //
+    // P1 sized this for P3's full port-involution worst case (331-390 rows);
+    // cap 512 with headroom. 512 slots x (4 x 64 + 1) ~= 128.5 KiB BSS. Fixed
+    // buffers per the M6.1 allocator-safety contract.
     struct EntranceRemapSlot {
         char from[kCheckFieldCap] = {};       // match key (entry: dest; exit: cur)
+        char from_id[kCheckFieldCap] = {};    // exit-only compound key: transition id
+                                               // (mChangeStageId); empty = wildcard
         char to_stage[kCheckFieldCap] = {};   // rewrite dest stage
         char to_id[kCheckFieldCap] = {};      // rewrite arrival entrance id
         bool is_exit = false;                 // false=entry (dest key), true=exit (cur key)
     };
-    static constexpr std::size_t kEntranceRemapMax = 256;
+    static constexpr std::size_t kEntranceRemapMax = 512;
     EntranceRemapSlot entrance_remap[kEntranceRemapMax]{};
     std::size_t entrance_remap_count = 0;
     std::atomic<std::uint32_t> entrance_remap_seq{0};
 
     // Worker-thread write. `reset` clears the table before applying (first chunk
-    // of a send); a follow-up chunk with reset=false merges by (from,is_exit)
-    // (overwrites a matching slot, else appends). Idempotent under HELLO replay.
+    // of a send); a follow-up chunk with reset=false merges by
+    // (from,from_id,is_exit) (overwrites a matching slot, else appends).
+    // Idempotent under HELLO replay.
     void applyEntranceMap(const EntranceRemapEntry* entries, std::size_t count,
                           bool reset);
 
-    // Frame-thread read, two-key. Prefers an ENTRY row matching `dest_stage`
-    // (the inbound ChangeStageInfo dest); failing that, an EXIT row matching
-    // `cur_stage` (getCurrentStageName — the interior being left). On hit fills
-    // to_stage / to_id (null-terminated) and returns true. Lock-free seqlock
-    // read; a torn / contended read returns false (vanilla). `cur_stage` may be
-    // null (caller couldn't resolve it) — then only the entry key is tried.
+    // Frame-thread read, two-key + compound exit disambiguator. Match
+    // precedence, first hit wins:
+    //   1. ENTRY row matching `dest_stage` (the inbound ChangeStageInfo dest;
+    //      walked through a shuffled door) — unchanged, dest-keyed only.
+    //   2. EXIT row matching (`cur_stage`, `transition_id`) exactly — a
+    //      specific physical exit port of a multi-exit stage.
+    //   3. EXIT row matching `cur_stage` with an empty from_id (wildcard) —
+    //      the back-compat path every pre-P2 row still hits.
+    // On hit fills to_stage / to_id (null-terminated) and returns true.
+    // Lock-free seqlock read; a torn / contended read returns false (vanilla).
+    // `cur_stage` / `transition_id` may be null (caller couldn't resolve them)
+    // — then only the entry key is tried.
     bool lookupEntranceRemap(const char* dest_stage,
                              const char* cur_stage,
+                             const char* transition_id,
                              char (&to_stage)[kCheckFieldCap],
                              char (&to_id)[kCheckFieldCap]) const;
 

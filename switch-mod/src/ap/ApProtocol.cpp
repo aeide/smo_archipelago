@@ -464,9 +464,12 @@ bool parseKingdomGates(Reader& r, KingdomGates& out) {
 
 bool parseEntranceMap(Reader& r, EntranceMap& out) {
     // P7 — full-overwrite (possibly chunked) entrance remap. `reset` (bool) and
-    // `entries` (array of {from, to_stage, to_id}) may arrive in either order;
-    // overflow past kEntranceMapMax is parse-and-discarded so the JSON stays
-    // well-formed and the consumer logs truncation.
+    // `entries` (array of {from, to_stage, to_id, kind, from_id}) may arrive in
+    // either order; overflow past kEntranceMapMax is parse-and-discarded so the
+    // JSON stays well-formed and the consumer logs truncation. `from_id` (P2)
+    // is optional — absent parses as empty (wildcard); an unknown field name
+    // still hard-rejects the whole message (see the `else { return false; }`
+    // below), so this parser and the client's emit side must ship together.
     out.entry_count = 0;
     out.reset = false;
     out.truncated = false;
@@ -482,6 +485,7 @@ bool parseEntranceMap(Reader& r, EntranceMap& out) {
                 std::string_view k2;
                 while (r.nextField(k2)) {
                     if      (k2 == "from")     { if (!readIntoField(r, entry.from)) return false; }
+                    else if (k2 == "from_id")  { if (!readIntoField(r, entry.from_id)) return false; }
                     else if (k2 == "to_stage") { if (!readIntoField(r, entry.to_stage)) return false; }
                     else if (k2 == "to_id")    { if (!readIntoField(r, entry.to_id)) return false; }
                     else if (k2 == "kind")     {

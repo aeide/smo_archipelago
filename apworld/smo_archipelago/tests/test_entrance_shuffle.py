@@ -403,7 +403,9 @@ def test_compile_stage_remaps_identity_skipped():
 
 def test_compile_stage_remaps_cross_pair():
     """A door -> different interior emits one ENTRY row (into the interior) and
-    one EXIT row (out of the interior, back to the door's exterior)."""
+    one EXIT row PER PHYSICAL EXIT PORT of the interior (P2: compound-keyed by
+    from_id so a multi-exit interior like Crowded Elevator — main door + Dokan
+    pipe — gets one row per port instead of one wildcard row covering both)."""
     from entrance_logic import compile_stage_remaps
     stages = _entrance_stages()
     door, interior = "Poison Tides", "Crowded Elevator"
@@ -414,7 +416,8 @@ def test_compile_stage_remaps_cross_pair():
     entries = [r for r in rows if r["kind"] == "entry"]
     exits = [r for r in rows if r["kind"] == "exit"]
     assert len(entries) == 1
-    assert len(exits) == 1
+    int_exit_ports = stages[interior]["exits"]
+    assert len(exits) == len(int_exit_ports)
 
     # ENTRY: walk through the door that vanilla-leads-to `door`; matched on the
     # door's own stage, rewritten to the interior's primary entrance.
@@ -423,12 +426,40 @@ def test_compile_stage_remaps_cross_pair():
     assert e["to_stage"] == stages[interior]["stage"]
     assert e["to_id"] == stages[interior]["primary_entry"]["entry_id"]
 
-    # EXIT: leave the interior; matched on the interior's OWN stage (cur), and
-    # rewritten to the origin DOOR's exterior coordinate (primary_exit).
-    x = exits[0]
-    assert x["from"] == stages[interior]["stage"]
-    assert x["to_stage"] == stages[door]["primary_exit"]["dest"]
-    assert x["to_id"] == stages[door]["primary_exit"]["entry_id"]
+    # EXIT: leave the interior via ANY of its physical exit ports; each row is
+    # matched on the interior's OWN stage (cur) + that port's own entry_id
+    # (from_id — the P2 compound key), and rewritten to the origin DOOR's
+    # exterior coordinate (primary_exit). Coupled mode: every port still
+    # targets the same origin door — only the row shape gained a key.
+    exit_from_ids = {r["from_id"] for r in exits}
+    assert exit_from_ids == {p["entry_id"] for p in int_exit_ports}
+    for x in exits:
+        assert x["from"] == stages[interior]["stage"]
+        assert x["to_stage"] == stages[door]["primary_exit"]["dest"]
+        assert x["to_id"] == stages[door]["primary_exit"]["entry_id"]
+
+
+def test_compile_stage_remaps_push_block_peril_two_exit_rows():
+    """P2 capability substrate: Push Block Peril's two physical exits (main
+    door `PushBlockExStageEnt` + Dokan pipe `PushBlockExStageEntDokan`) must
+    compile to TWO distinct compound-keyed EXIT rows, not one wildcard row —
+    this is precisely the ambiguity the P0 spike found (both exits matched a
+    single cur-keyed row) and P2 fixes the wire/table substrate for (P3's
+    port-graph matching can later route the two ports to different origins;
+    in today's coupled mode both still target the same origin door)."""
+    from entrance_logic import compile_stage_remaps
+    stages = _entrance_stages()
+    door, interior = "Poison Tides", "Push Block Peril"
+    if interior not in stages:
+        pytest.skip("Push Block Peril absent from table")
+    rows = compile_stage_remaps({door: interior}, stages)
+    exits = [r for r in rows if r["kind"] == "exit"]
+    assert len(exits) == 2
+    from_ids = {r["from_id"] for r in exits}
+    assert from_ids == {"PushBlockExStageEnt", "PushBlockExStageEntDokan"}
+    # Coupled mode: both ports still target the same origin door.
+    targets = {(r["to_stage"], r["to_id"]) for r in exits}
+    assert len(targets) == 1
 
 
 def test_compile_stage_remaps_skips_unknown():
@@ -450,7 +481,12 @@ def test_compile_stage_remaps_skips_unknown():
 
 def test_compile_stage_remaps_full_pool_entries_resolve():
     """A full-pool derangement yields one ENTRY row per shuffled door (no silent
-    drops) plus an EXIT row for every door whose interior has a primary_exit."""
+    drops) plus one EXIT row per physical exit port of each door's interior.
+
+    P2: exit rows are no longer capped at len(pool) — a multi-exit interior
+    (e.g. Push Block Peril's door + Dokan pipe) fans out into multiple
+    compound-keyed rows, so n_exit is only bounded below (every pair with a
+    resolvable primary_exit contributes at least one row), not above."""
     from entrance_logic import build_entrance_pool, compile_stage_remaps
     stages = _entrance_stages()
     pool = build_entrance_pool(_subareas(), _exclusions())
@@ -465,11 +501,20 @@ def test_compile_stage_remaps_full_pool_entries_resolve():
         if stages.get(name, {}).get("stage") not in entry_froms
     ]
     assert not missing, f"pool doors with no resolved entry row: {missing}"
-    # One entry per door; exits are >=... and never exceed the door count.
     n_entry = sum(1 for r in rows if r["kind"] == "entry")
     n_exit = sum(1 for r in rows if r["kind"] == "exit")
     assert n_entry == len(pool)
-    assert 0 < n_exit <= len(pool)
+    assert n_exit > 0
+    # Every exit row from a multi-exit interior must carry a distinct from_id
+    # (no duplicate compound keys within the same `from` stage).
+    from collections import defaultdict
+    by_from: dict[str, list[str]] = defaultdict(list)
+    for r in rows:
+        if r["kind"] == "exit":
+            by_from[r["from"]].append(r.get("from_id", ""))
+    for stage, ids in by_from.items():
+        if all(ids):  # per-port rows (not the pre-P2 wildcard fallback)
+            assert len(ids) == len(set(ids)), f"duplicate from_id for {stage}: {ids}"
 
 
 def test_jaxi_driving_exit_lands_on_mesa_top():

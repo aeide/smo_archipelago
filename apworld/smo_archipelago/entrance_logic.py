@@ -504,8 +504,9 @@ def compile_stage_remaps(
     For a coupled bijection the return target is a pure function of the
     permutation, so exits are precomputed here exactly like entries — no
     runtime origin tracking on the Switch (see docs/p7-step4-return-design.md).
-    Each shuffled pair (door D, interior I = σ(D)) emits TWO rows, tagged with
-    a `kind` discriminator so the Switch knows which key to match on:
+    Each shuffled pair (door D, interior I = σ(D)) emits ONE entry row and one
+    OR MORE exit rows, tagged with a `kind` discriminator so the Switch knows
+    which key to match on:
 
         # ENTRY — fires when you walk through the door that vanilla leads to D;
         #         matched against the inbound dest stage (D.stage is unique).
@@ -516,14 +517,28 @@ def compile_stage_remaps(
         #         stage (I.stage), NOT the dest, because the vanilla exit dest
         #         is the shared kingdom overworld and can't disambiguate which
         #         interior you're in. Rewrites to door D's exterior coordinate.
-        {"kind": "exit",  "from": I.stage,
+        #
+        #         P2 (decoupled entrance randomizer substrate): one row per
+        #         physical exit port of I (I.exits[], schema v2), each keyed
+        #         by that port's OWN entry_id (SMO's mChangeStageId at exit
+        #         time) via "from_id" — this is what lets a multi-exit stage
+        #         (e.g. Push Block Peril's door + Dokan pipe) eventually route
+        #         each exit to a DIFFERENT destination; in today's coupled
+        #         mode every port still targets the same origin door, so the
+        #         in-game result is unchanged, only the row shape gained a
+        #         key. Falls back to ONE wildcard row (no "from_id", matches
+        #         any exit of I.stage) when I.exits is empty/unresolvable —
+        #         the pre-P2 shape — so a pipe-less interior (exits only via
+        #         the return stack) or thin test fixture still gets covered.
+        #         Never both for the same pair.
+        {"kind": "exit",  "from": I.stage, "from_id": port.entry_id,
          "to_stage": D.primary_exit.dest, "to_id": D.primary_exit.entry_id}
 
     Identity pairs (σ(D) == D) are skipped — both rows would rewrite a vanilla
     transition to itself. `entrance_stages` is parsed data/entrance_stages.json,
     keyed by subarea display name. A pair is skipped (stays vanilla) when either
     subarea is missing from the table, or the needed primary_entry / primary_exit
-    fields are absent; the entry row can land even if the exit row can't (a
+    fields are absent; the entry row can land even if the exit row(s) can't (a
     missing primary_exit drops only the exit half). Callers can diff the
     entry-row count against the non-identity pair count to surface drift.
     """
@@ -544,12 +559,25 @@ def compile_stage_remaps(
         if door_stage and int_stage and entry_id:
             rows.append({"kind": "entry", "from": door_stage,
                          "to_stage": int_stage, "to_id": entry_id})
-        # EXIT row — keyed on the interior's stage (cur at exit time); rewrites
-        # to the ORIGIN door's exterior. Independent of the entry row landing.
+        # EXIT row(s) — keyed on the interior's stage (cur at exit time);
+        # rewrite to the ORIGIN door's exterior. Independent of the entry row
+        # landing.
         door_exit = door_rec.get("primary_exit") or {}
         exit_dest = door_exit.get("dest")
         exit_id = door_exit.get("entry_id")
-        if int_stage and exit_dest and exit_id:
+        if not (int_stage and exit_dest and exit_id):
+            continue
+        exit_ports = [p for p in int_rec.get("exits") or [] if p.get("entry_id")]
+        if exit_ports:
+            for port in exit_ports:
+                rows.append({"kind": "exit", "from": int_stage,
+                             "from_id": port["entry_id"],
+                             "to_stage": exit_dest, "to_id": exit_id})
+        else:
+            # No enumerable exit ports for this interior (missing schema-v2
+            # data, or a pipe-less interior that exits via the return stack
+            # and needs no rewrite) — pre-P2 single wildcard row so behavior
+            # is unchanged rather than silently dropping the exit.
             rows.append({"kind": "exit", "from": int_stage,
                          "to_stage": exit_dest, "to_id": exit_id})
     return rows

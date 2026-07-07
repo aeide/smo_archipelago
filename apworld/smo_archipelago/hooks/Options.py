@@ -226,21 +226,35 @@ class NoLogic(Toggle):
     is still being authored. NOT for real playthroughs — seeds may be unwinnable."""
     display_name = "No Logic (testing)"
 
-class EntranceShuffle(Toggle):
+class EntranceShuffle(Choice):
     """Shuffle subarea entrances (P7 feature, default OFF).
 
-    The Switch-mod remap is LIVE + validated in-game (kEntranceRemapApply=true,
-    coupled-bijection return handling); this option is OFF by default so vanilla
-    seeds are unaffected. Turn on to enable the shuffle.
+    off: vanilla — no entrances are shuffled (default).
 
-    When on, every non-story subarea door leads to a randomly-assigned subarea
-    interior (a global bijection over ~116 pooled subareas). Story-critical
-    areas (Sewers, Shiveria Town, Wedding Room, etc.) are excluded from the
-    pool and stay in their vanilla locations.
+    simple: today's coupled bijection — every non-story subarea door leads to
+        a randomly-assigned subarea interior AND BACK (a global bijection over
+        ~116 pooled subareas). Story-critical areas (Sewers, Shiveria Town,
+        Wedding Room, etc.) are excluded from the pool and stay in their
+        vanilla locations. The Switch-mod remap is LIVE + validated in-game
+        (kEntranceRemapApply=true, coupled-bijection return handling). The
+        bijection is stored in slot_data as `entrance_map` and sent to the
+        Switch mod at connect time so it can remap door loads in real time.
 
-    The bijection is stored in slot_data as `entrance_map` and sent to the
-    Switch mod at connect time so it can remap door loads in real time."""
+    decoupled: the future full port-graph shuffle (each physical door/pipe
+        matched independently, not paired with its own return trip) — NOT YET
+        IMPLEMENTED. Selecting it fails generation loudly with an error
+        rather than silently falling back to `simple`.
+
+    Existing YAMLs using the old boolean form (`entrance_shuffle: true` /
+    `false`) keep working unchanged: `true` aliases to `simple`, `false`
+    aliases to `off`."""
     display_name = "Entrance Shuffle"
+    option_off = 0
+    option_simple = 1
+    option_decoupled = 2
+    alias_true = option_simple
+    alias_false = option_off
+    default = option_off
 
 class TalkatooMode(Toggle):
     """Talkatoo% mode: Talkatoo's speech bubble names 3 of YOUR AP-pool moons from the current

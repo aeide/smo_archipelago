@@ -140,7 +140,7 @@ def _partner_yaml(game: str, slot_name: str = "Partner") -> str:
     )
 
 
-def _run_generation(yaml_dir: Path) -> subprocess.CompletedProcess[str]:
+def _run_generation(yaml_dir: Path, seed: str = "20260516") -> subprocess.CompletedProcess[str]:
     out_dir = yaml_dir / "out"
     out_dir.mkdir(exist_ok=True)
     return subprocess.run(
@@ -150,7 +150,7 @@ def _run_generation(yaml_dir: Path) -> subprocess.CompletedProcess[str]:
             "--outputpath", str(out_dir),
             "--skip_output",
             # Deterministic across runs for reproducibility on failure.
-            "--seed", "20260516",
+            "--seed", seed,
         ],
         capture_output=True, text=True, check=False,
         # Generate.py calls `input()` on fatal errors via an atexit handler;
@@ -211,6 +211,18 @@ def _moon_count_with_peace_off() -> dict[str, object]:
     return overrides
 
 
+# docs/handoff-abilitysanity-precollect-fix.md: real logic (no_logic stays
+# default off) + abilitysanity off + capturesanity off + entrance_shuffle
+# simple reliably killed generation with FillError before the ability
+# precollect fix (Devon's "Aeide.yaml" combo, Generate seed
+# 81285200019472365252). goal stays default (mushroom_kingdom).
+ABILITY_PRECOLLECT_OVERRIDES: dict[str, object] = {
+    "abilitysanity": False,
+    "capturesanity": False,
+    "entrance_shuffle": "simple",
+}
+
+
 def _build_scenarios() -> list[tuple[str, dict[str, bool]]]:
     fast = os.environ.get("SMOAP_GEN_TEST_FAST") == "1"
     if fast:
@@ -222,6 +234,7 @@ def _build_scenarios() -> list[tuple[str, dict[str, bool]]]:
             # greedy permutation builder is caught even on the fast run.
             ("talkatoo_mode", {"talkatoo_mode": True}),
             ("moon_count_all_floor", _moon_count_all_floor()),
+            ("abilitysanity_off_real_logic", ABILITY_PRECOLLECT_OVERRIDES),
         ]
     return [
         ("all_on", _all_on()),
@@ -231,6 +244,7 @@ def _build_scenarios() -> list[tuple[str, dict[str, bool]]]:
         ("moon_count_all_floor", _moon_count_all_floor()),
         ("moon_count_cascade_floor", {"cascade_moon_count": MOON_COUNT_FLOORS["cascade_moon_count"]}),
         ("moon_count_with_peace_off", _moon_count_with_peace_off()),
+        ("abilitysanity_off_real_logic", ABILITY_PRECOLLECT_OVERRIDES),
         *_individual_off_cases(),
     ]
 
@@ -261,3 +275,24 @@ def test_smo_generation_with_random_partner(_apworld_zip_built, scenario_name, o
         (td_path / "Partner.yaml").write_text(_partner_yaml(partner), encoding="utf-8")
         result = _run_generation(td_path)
         _assert_gen_ok(result, f"multi/{scenario_name}+{partner}")
+
+
+# docs/handoff-abilitysanity-precollect-fix.md: the FillError this fix closes
+# was fill-probabilistic (surfaced on one specific rolled seed, not every
+# seed), so the single scenario run above isn't enough evidence on its own.
+# Try a handful of distinct seeds against the exact failing combo.
+ABILITY_PRECOLLECT_SEEDS = ["11111", "22222", "33333"]
+
+
+@pytest.mark.parametrize("seed", ABILITY_PRECOLLECT_SEEDS)
+def test_smo_generation_abilitysanity_off_multiple_seeds(_apworld_zip_built, seed):
+    """Devon's failing combo (real logic, abilitysanity off, capturesanity
+    off, entrance_shuffle simple) across several seeds, since fill collapse
+    was probabilistic rather than deterministic per-seed."""
+    with tempfile.TemporaryDirectory(prefix=f"smo_gen_ability_precollect_{seed}_") as td:
+        td_path = Path(td)
+        (td_path / "Mario.yaml").write_text(
+            _smo_yaml(ABILITY_PRECOLLECT_OVERRIDES), encoding="utf-8"
+        )
+        result = _run_generation(td_path, seed=seed)
+        _assert_gen_ok(result, f"solo/abilitysanity_off_seed_{seed}")

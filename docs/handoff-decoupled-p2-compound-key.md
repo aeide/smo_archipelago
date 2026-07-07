@@ -88,6 +88,31 @@ placements of a matched door pair reuse one id — the same convention P1's
 - ⚠ The client ships INSIDE the apworld zip — after client/apworld edits, run
   `python scripts/install_apworld.py` (Windows) before testing SMOClient.
 
+### 3.5. Option: convert `entrance_shuffle` Toggle → three-value Choice
+Devon's decision (2026-07-08): entrance shuffle becomes a single YAML option
+with three values, and the conversion lands in THIS phase so P3 builds on it:
+- `EntranceShuffle(Toggle)` in `hooks/Options.py` becomes a `Choice`:
+  `option_off = 0` (no shuffle), `option_simple = 1` (today's coupled
+  bijection — every door leads to one whole subarea and back),
+  `option_decoupled = 2` (the P3 port involution — reserved NOW, but must
+  **fail loudly at generation** until P3 ships: raise/OptionError, don't
+  silently fall back to simple).
+- **YAML back-compat is mandatory:** existing YAMLs say
+  `entrance_shuffle: true`/`false` (parsed as booleans). Set
+  `alias_true = option_simple` and `alias_false = option_off` so every
+  existing YAML keeps its exact current behavior. This is also WHY the new
+  mode is named `decoupled` and not `true`: a value literally named "true"
+  would collide with the boolean alias.
+- Sweep every consumer of the option for boolean-truthiness assumptions
+  (`hooks/World.py` `_wire_entrance_shuffle` guard, `before_create_regions`
+  roll site, slot_data emission, any `if world.options.entrance_shuffle`
+  checks — Choice values 1 and 2 are both truthy, so most sites keep working,
+  but each one must now distinguish simple vs decoupled deliberately).
+  slot_data/wire/Switch need no change here: `simple` keeps shipping
+  `entrance_map` exactly as today; `decoupled`'s new slot_data key is P3e.
+- Tests: off/simple/decoupled option parsing, both aliases, and
+  decoupled-raises-until-P3.
+
 ### 4. Tests
 - Host C++ (`switch-mod/tests/`, run via the smo-host-tests skill):
   `test_protocol` — from_id present / absent / unknown-field rejection;
@@ -119,7 +144,9 @@ Full loop: `sync` scripts NOT needed (no items/locations change);
 
 Coupled shuffle regression-clean; PBP's two exits provably diverge in-game;
 host + pytest suites green; `kEntranceRemapMax=512` landed with the comment
-math updated. Then P3 (matching algorithm, Fable session) has its Switch
+math updated; `entrance_shuffle` is a three-value Choice with alias
+back-compat (old boolean YAMLs behave identically) and `decoupled` failing
+loudly at generation. Then P3 (matching algorithm, Fable session) has its Switch
 substrate done.
 
 ## Wrap-up

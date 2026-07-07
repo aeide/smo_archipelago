@@ -664,11 +664,18 @@ class AbilityStateMsg:
         return {"t": self.t, "entries": self.entries, "enforce": self.enforce}
 
 
-# Entrance-map chunk size. The resolved bijection is ~119 stage quads; at
-# ~70-100 bytes each that overruns the 8 KiB line cap, so push_entrance_map
+# Entrance-map chunk size. The resolved bijection is ~119 stage quads (more
+# once multi-exit interiors fan out into multiple exit rows — see P2 below);
+# at ~70-100 bytes each that overruns the 8 KiB line cap, so push_entrance_map
 # splits into chunks of this many entries. 48 keeps a worst-case chunk
 # (long stage names) comfortably under the cap. The Switch's parser cap is
 # kEntranceMapMax=64, so this stays under that too.
+#
+# P2 re-check: the added "from_id" field costs ~11 bytes of key/quote/colon
+# overhead plus the entry_id value (SMO entry_id strings run ~10-30 chars in
+# practice, well under the kCheckFieldCap=64 wire cap). Worst-case chunk is
+# 48 * (~100 + ~41) ~= 6.8 KB plus the outer envelope — still comfortably
+# under the 8 KiB cap, so 48 stays unchanged.
 ENTRANCE_MAP_CHUNK = 48
 
 
@@ -682,20 +689,31 @@ class EntranceMapMsg:
     lookup + ChangeStageInfo rewrite without needing the subarea-name table.
 
     Each entry: {"kind": <"entry"|"exit">, "from": <match-key stage>,
-    "to_stage": <rewrite dest stage>, "to_id": <rewrite arrival id>}.
+    "to_stage": <rewrite dest stage>, "to_id": <rewrite arrival id>}, plus for
+    EXIT rows an optional "from_id" (P2): the exit port's own entry_id (SMO's
+    mChangeStageId at exit time), disambiguating a multi-exit stage's physical
+    exit ports so each CAN route to a different destination (coupled mode
+    today still routes every port of one interior to the same origin door —
+    see compile_stage_remaps). Absent "from_id" is a wildcard: matches any
+    exit of that `from` stage — the pre-P2 shape, kept for back-compat and for
+    interiors compile_stage_remaps can't enumerate ports for. ENTRY rows never
+    carry from_id (dest-keyed only).
+
     ENTRY rows match the inbound dest stage (you walk through a door); EXIT
     rows match the CURRENT stage (you leave a shuffled interior — the return
     target is precomputed because a coupled bijection's exit is deterministic).
     A row with no "kind" is treated as an entry by older Switch builds. When
     SMO fires GameDataFile::changeNextStage, the EntranceShuffleHook looks up
-    the dest as an entry key first, then the current stage as an exit key, and
-    rewrites the destination to (to_stage, to_id).
+    the dest as an entry key first, then an EXIT row matching (current stage,
+    transition id) exactly, then an EXIT row matching just the current stage
+    with an empty from_id (wildcard), and rewrites the destination to
+    (to_stage, to_id).
 
     FULL-OVERWRITE, possibly chunked: the first chunk carries reset=True to
-    clear the Switch table; follow-up chunks merge by `from` (the bijection can
-    exceed the 8 KiB line cap at ~119 doors, so push_entrance_map splits at
-    ENTRANCE_MAP_CHUNK). An empty reset=True message reverts to vanilla
-    (entrance_shuffle off / no-shuffle seed).
+    clear the Switch table; follow-up chunks merge by (from, from_id, kind)
+    (the bijection can exceed the 8 KiB line cap at ~119 doors, so
+    push_entrance_map splits at ENTRANCE_MAP_CHUNK). An empty reset=True
+    message reverts to vanilla (entrance_shuffle off / no-shuffle seed).
 
     Sent on AP Connected (slot_data["entrance_map"]) and on every HELLO replay.
     """

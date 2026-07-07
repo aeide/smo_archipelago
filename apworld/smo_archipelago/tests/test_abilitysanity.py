@@ -109,6 +109,61 @@ def test_drop_ability_wired_into_before_create_items_filler():
     )
 
 
+# ─── 2b. Precollect fix (docs/handoff-abilitysanity-precollect-fix.md) ────────
+#
+# abilitysanity OFF drops every Ability item from the pool, but the compiled
+# `requires` strings still demand ability tokens. Without compensating,
+# every ability-gated location (including progression anchors) becomes
+# permanently unreachable and fill collapses with FillError. The fix
+# precollects each Ability item at its full items.json copy count.
+
+def test_precollect_ability_helper_defined():
+    src = _hooks_src("World.py")
+    assert "def _precollect_ability_items_if_disabled(" in src, (
+        "_precollect_ability_items_if_disabled not found in hooks/World.py"
+    )
+
+
+def test_precollect_ability_helper_gated_on_option_and_uses_full_count():
+    src = _hooks_src("World.py")
+    m = re.search(
+        r"def _precollect_ability_items_if_disabled\b(.+?)(?=\n# |\ndef |\Z)",
+        src, re.DOTALL,
+    )
+    assert m, "_precollect_ability_items_if_disabled body not found"
+    body = m.group(1)
+    # Must be a no-op when abilitysanity is enabled (early return) -- same
+    # guard as the drop helper, just not inverted (both check-and-return the
+    # same way; the drop runs its filter when off, this precollects when off).
+    assert 'is_option_enabled(multiworld, player, "abilitysanity")' in body, (
+        "_precollect_ability_items_if_disabled must check the abilitysanity option"
+    )
+    assert "return" in body
+    # Must precollect via push_precollected, using each item's declared count
+    # (not a hardcoded 1) and the Ability category helper.
+    assert "push_precollected(" in body
+    assert '"count"' in body, (
+        "_precollect_ability_items_if_disabled must read copy counts from "
+        "items.json, not hardcode them"
+    )
+    assert '_names_in_item_category(world, "Ability")' in body
+
+
+def test_precollect_ability_wired_into_before_create_items_filler():
+    src = _hooks_src("World.py")
+    m = re.search(
+        r"def before_create_items_filler\b(.+?)(?=\n# |\ndef |\Z)",
+        src, re.DOTALL,
+    )
+    assert m, "before_create_items_filler body not found"
+    body = m.group(1)
+    assert "_precollect_ability_items_if_disabled(" in body, (
+        "before_create_items_filler must call _precollect_ability_items_if_disabled"
+    )
+    # The precollect must run alongside (not instead of) the pool drop.
+    assert "_drop_ability_items_if_disabled(" in body
+
+
 # ─── 3. Client wiring ─────────────────────────────────────────────────────────
 
 def test_context_reads_abilitysanity_from_slot_data():

@@ -563,8 +563,16 @@ struct AbilityState {
 // never needs the subarea-name table — it does a flat stage lookup + buffer
 // rewrite. FULL-OVERWRITE semantics: the first chunk carries reset=true to
 // clear the table; follow-up chunks (the bijection can exceed the 8 KiB line
-// cap at ~119 doors) merge by `from`. An empty reset=true message reverts to
-// vanilla. The apworld chunks at <= 48 entries to stay well under the line cap.
+// cap at ~119 doors) merge by (from,from_id,is_exit) — see P2 below. An empty
+// reset=true message reverts to vanilla. The apworld chunks at <= 48 entries
+// to stay well under the line cap (P2's extra from_id field is well within
+// the 8 KiB budget at that chunk size).
+//
+// P2 (decoupled entrance randomizer substrate, additive): exit rows carry an
+// optional "from_id" field — the transition's entry_id (mChangeStageId),
+// disambiguating a multi-exit stage's physical exit ports so each can route
+// to a different destination. Absent "from_id" parses as empty = wildcard, so
+// every pre-P2 row keeps working unchanged. Entry rows ignore the field.
 //
 // Fixed-buffer storage (same M6.1 allocator-safety contract every inbound
 // struct uses). Per-chunk parser cap 64 — overflow sets `truncated`.
@@ -572,6 +580,12 @@ inline constexpr std::size_t kEntranceMapMax = 64;
 
 struct EntranceRemapEntry {
     char from[kCheckFieldCap] = {};       // match key (entry: dest stage; exit: cur stage)
+    // P2 — exit-only compound key: the transition's entry_id (SMO's
+    // mChangeStageId), disambiguating a multi-exit stage's physical exit
+    // ports. Empty = wildcard (matches any id for `from`); absent from the
+    // wire message parses as empty, so pre-P2 rows keep working unchanged.
+    // Unused / ignored for ENTRY rows (entry rows stay dest-keyed only).
+    char from_id[kCheckFieldCap] = {};
     char to_stage[kCheckFieldCap] = {};   // rewrite dest stage
     char to_id[kCheckFieldCap] = {};      // rewrite arrival entrance id
     // false = ENTRY row (match against the inbound dest stage); true = EXIT row
