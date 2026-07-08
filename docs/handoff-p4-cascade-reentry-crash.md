@@ -1,7 +1,12 @@
 # Handoff — P4 walk crash: FrameHeap abort re-entering Cascade post-moon-rock
 
-> **RESOLVED (2026-07-08) — root cause + fix below; awaiting Devon's rebuild
-> + retest.** Devon's repro matrix: R1 (fresh boot → PBP door) crashes iff
+> **RESOLVED (2026-07-08) — root cause + fix below; CONFIRMED IN-GAME by
+> Devon's rebuild + R1 retest same day** (Broode defeated → PBP door:
+> `[entrance:remap-scenario] stale explicit scenario 1 -> -1` + clean load
+> at `WindBlowExStart`). NOTE a SECOND crash of the same allocator
+> signature but a DIFFERENT class (subarea-exit → big-overworld target,
+> scenario already -1) was found the same walk — see plan doc P4 finding
+> 10; the neutralization below does not cover it. Devon's repro matrix: R1 (fresh boot → PBP door) crashes iff
 > Broode is DEFEATED, clean if undefeated; R2 (fly in normally) clean; R3
 > (beat Broode → PBP door) crashed. Fresh-boot crash kills hypothesis #3
 > (fragmentation); R2-clean + R3-crash-with-the-force-inactive kill #2's

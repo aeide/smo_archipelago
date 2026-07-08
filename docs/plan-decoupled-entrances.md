@@ -802,6 +802,204 @@ text, `EntranceShuffle` docstring, and the readiness test — now
 `test_port_shuffle_readiness_flag_shipped` — all updated; targeted pytest
 green, full suite on Windows pending).
 
+### P4 findings (2026-07-08, Devon's pre-fix walk — two notes + a topology theme)
+
+Both walks predate this session's fixes; diagnoses against the attached log
+(`Ryujinx_1.3.3_2026-07-08_00-25-03.log`).
+
+7. **NOTE 1 — stranded in chain-reached Metro (no Odyssey, no way back).**
+   Sand shop door → Metro overworld (day), Odyssey's parking spot EMPTY —
+   the P0-Luncheon `exist=0` case (chain arrivals never ran the engine's
+   ship-placement bookkeeping). No return path; save+quit recovered (S&Q
+   respawns via the save's own kingdom — worth remembering as the universal
+   escape hatch). **Addressed by this session's chain-arrival normalization
+   + chain-return flight** (forceAcquireOdyssey + setAlreadyGoWorld +
+   unlockWorld on remapped overworld commits; takeoff allowance + visited-
+   only bounce): post-rebuild, that arrival should land with a parked ship
+   and Sand selectable on the globe. Also note: post-fix, chain arrivals
+   load the kingdom's TRUE story scenario (scenario neutralization) — a
+   never-visited Metro chain arrival will be scenario-1 NIGHT, not the day
+   layout Devon saw; that's the coherent behavior, not a regression.
+
+8. **NOTE 2 — Sand ice cavern → broken Bowser's (no skybox, wrong colors,
+   map still Sand). CONFIRMED: the ZONE_STAGE_ALIAS case, live.** Log:
+   `[entrance:file] stage='SandWorldPressExStage' id='arijigoku'` →
+   `[entrance:remap-APPLIED] … -> stage='SkyWorldCastleZone' id='jizo02'`.
+   The matched Bowser's door-mouth's extracted per-door `.stage` is the
+   placement-zone root `SkyWorldCastleZone`; shipped verbatim as a rewrite
+   target it loads the ZONE as a standalone stage: castle geometry, no
+   skybox/graphics preset (the wrong colors), no world-list entry → world id
+   stays Sand (hence the map, and Devon's checkpoint-warp escape working).
+   This is precisely what §3e item 4's empty data seam anticipated. **Fix is
+   the designed one-liner** — `ZONE_STAGE_ALIAS = {"SkyWorldCastleZone":
+   "SkyWorldHomeStage"}` in `port_graph.py` → `install_apworld.py` →
+   reconnect (rows compile client-side at Connected; NO re-seed, NO Switch
+   rebuild). Held back per Devon's "no solutions right now" — apply on his
+   word. The other ~5 extracted zone roots (`SeaWorldLava/Lighthouse/
+   SphinxQuiz/WallCaveWestZone`, …) will almost certainly need the same
+   entry when a walk lands on them; per the seam's one-confirmation-at-a-
+   time protocol they stay out until observed. Side interaction worth
+   noting: a zone-named target also BYPASSES the new scenario
+   neutralization + chain-arrival bookkeeping (both gate on
+   `kingdomShortFromHomeStage`, which doesn't know zone names) — the alias
+   restores those too.
+
+9. **THEME (Devon, 2026-07-08) — proposed matching-topology constraint,
+   PENDING decision.** Proposal: overworld mouths must always match subarea
+   INTERIOR mouths (either end); interior mouths may match interiors or
+   overworlds; **an overworld↔overworld pair is never allowed.** If mouth
+   counts don't balance, add kingdom overworlds to the pool (spawn at the
+   Odyssey). This partially supersedes ruling 3(a) ("free matching stays —
+   any mouth ↔ any mouth", 2026-07-07) — final call is Devon's. Discussion
+   points logged for that decision:
+   - Both motivating incidents trace to now-addressed causes (note 7 → the
+     chain-arrival/return fixes; note 8 → the zone alias). The one
+     previously validated O↔O hop (PBP → Gusty Bridges) worked. Recommend
+     RE-WALKING overworld hops on the fixed build before deciding — the
+     constraint may be solving already-solved pain.
+   - Independent merits regardless: preserves the vanilla "doors go inside
+     something" feel, and shrinks the overworld-arrival edge-case surface
+     (arrival flow, ship state, scenario, zone stages) to chain EXITS only.
+   - Feasibility: no pool compensation should be needed. Every overworld
+     mouth has a vanilla interior partner, and multi-exit subareas add
+     surplus interior mouths, so #interior ≥ #overworld holds by
+     construction — "no O–O pairs" is satisfiable without adding kingdom
+     overworlds. (If kingdom-overworld pool entries are ever wanted for
+     flavor, note they'd be landing-only pseudo-mouths, which breaks the
+     validated involution symmetry — that's a directed-matching redesign,
+     not a constraint tweak.)
+   - Cost/locus: `roll_port_matching` constraint + the 3d logic wiring —
+     apworld-only, needs a RE-SEED, no client/Switch changes. Cleanest as a
+     third topology knob (e.g. keep free matching available) rather than a
+     hard replacement, given 3(a) was an explicit ruling.
+   - **RESOLVED (2026-07-08, Devon's ruling after sleeping on it): ADOPT
+     "no overworld↔overworld pairs" — REPLACING free matching, no option
+     knob.** Implemented same session in `port_matching.py`
+     (`roll_port_matching`): O↔O pairs are never rolled; I↔I pairs are
+     deferred while the unmatched pool's interior surplus ("slack" =
+     #interior − #overworld) is < 2, so phase 2 can always give every
+     overworld mouth an interior partner; loud RuntimeError postcondition
+     sweeps the rolled matching for O↔O. The 3d logic wiring needed NO
+     change (it consumes the matching generically). New tests: real-pool +
+     festival no-O↔O sweeps, a real-pool `#interior ≥ #overworld`
+     data-shape guard, and a zero-slack adversarial pool that forces
+     all-O–I pairing. Suite 1007/97 green; zip reinstalled. **Needs a
+     RE-SEED to take effect** (rolled at generation).
+
+### P4 session 2026-07-08 (second) — retest results, triage, topology shipped
+
+Devon rebuilt (install_apworld + build_switchmod + deploy) and ran the watch
+matrix. First: his full-pytest "157 failed" was **environmental, not a
+regression** — every failure was `async def functions are not natively
+supported`, i.e. the run used a Python without `pytest-asyncio`. The repo
+`.venv` (which has it) runs the identical set **1003 passed / 97 skipped,
+zero failures** (re-confirmed this session; 1007 after the item-9 tests).
+Run tests via `.venv\Scripts\python -m pytest apworld\smo_archipelago\tests`.
+(Separately: under the sandboxed agent shell, `tmp_path` tests need
+`--basetemp` pointed somewhere writable — the `pytest-of-devon` ACL issue
+from the P3c session.)
+
+**Validated this walk (fixed build, seed unchanged):**
+
+- **R1 Broode-defeated → PBP door: CLEAN.** `[entrance:remap-scenario]
+  stale explicit scenario 1 -> -1` fired, clean load at `WindBlowExStart`.
+  The Cascade re-entry crash fix (handoff banner) is CONFIRMED IN-GAME —
+  no P5 escalation needed for THAT class.
+- **Chain into unvisited Metro (Sand shop door): the finding-7 case now
+  lands right.** `[chain-arrival]` bookkeeping ran (setAlreadyGoWorld +
+  unlockWorld + parked-flight arrival, scenario-1 night as predicted),
+  Odyssey parked and boardable, globe opens at gate 0
+  (`findUnlockShineNum[chain-return]` log present), un-visited pick bounced
+  with the Cappy bubble, visited pick flew normally. Chain-return flight's
+  core loop works.
+- **Sand ice cavern → Bowser's: the ZONE_STAGE_ALIAS one-liner is
+  CONFIRMED IN-GAME** (proper `SkyWorldHomeStage` arrival, Odyssey present,
+  world id correct). First alias entry stays; the ~5 other zone roots wait
+  for walks per protocol.
+- **Odyssey flight → Lake marked visited correctly**
+  (`[wmap.tryChange.Demo] visited[Lake] = true`).
+- **Mysterious Clouds moon pipe → PBP interior landed correctly** (moon-pipe
+  row + interior-target chain both fine; the EXIT from PBP is finding 10).
+
+**New findings (10–13):**
+
+10. **BLOCKER — FrameHeap abort leaving PBP (subarea) into remapped Metro
+    overworld; scenario neutralization is NOT sufficient for this class.**
+    `cur='PushBlockExStage'` exit → `CityWorldHomeStage`/`donsuke`: the
+    ChangeStageInfo already carried `scenario=-1` (no stale-scenario input
+    at all), `[chain-arrival]` ran (Metro already chain-reached), then the
+    same `sead::FrameHeap::tryAlloc` abort on FileLoadThread mid
+    `ParallelSZSDecompressor`/`ResourceMgr::tryLoad` as 07-07. Control
+    contrast: the SAME session's Sand-overworld shop door → Metro
+    (`bikereturn`) loaded CLEAN at 00:08; the crash at 00:40 differs by (a)
+    origin being a pooled SUBAREA stage, (b) 30 more minutes of session
+    (Bowser/Moon/Lake flights, moon grants), (c) Metro re-load vs first
+    load. Residual suspect from the handoff stands: the door/exit-path
+    scene-heap shape when the destination is a big overworld. Repro matrix
+    for Devon: fresh boot → Mysterious Clouds pipe → PBP → main-entrance
+    exit (does it crash cold?); same exit remapped to a SMALL overworld;
+    overworld-door → Metro again late-session (fragmentation control). If
+    it repros cold, escalate overworld-TARGET commits to **P5 approach B**
+    (route through `tryChangeNextStageWithDemoWorldWarp` — flights into
+    Metro are consistently clean, and it would also solve findings 11–13's
+    arrival-state edge cases at the root). Decomp read of the stage-load
+    heap sizing REQUIRED before any fix (CLAUDE.md rule).
+
+11. **Chain-reached Bowser's: takeoff allowance does NOT open the
+    post-peace story launch.** Pre-boss AND post-boss (RoboBrood beaten),
+    Cappy-on-Odyssey gives the story line ("let's hurry after those two");
+    the gauge reads full (allowance zeroed `findUnlockShineNum(current)`)
+    but launch is refused until 8 Bowser moons were AP-granted and
+    deposited (`addPayShine count=8`). So the "chase Bowser" story state's
+    launch predicate consults something OTHER than the current-world
+    `findUnlockShineNum` — candidates: the by-world-id variant
+    (deliberately left honest), the un-hooked `GameDataHolder::
+    findUnlockShineNum` member inlined at the site, or a shine-count
+    compare via `getCurrentShineNum`. Same family as Lost/Ruined
+    story-managed ship states (already exempted from normalization).
+    **Decomp read of the boarding/launch flow required before picking a
+    seam.** Until fixed, a chain into a post-peace-story kingdom can
+    strand (S&Q is the escape hatch).
+
+12. **`unlockWorld` on chain arrival OVERSHOOTS — decomp-confirmed.**
+    OdysseyDecomp `GameProgressData`: `unlockWorld(idx)` loops
+    `unlockNormalWorld()` (`mUnlockWorldNum++`) until `isUnlockWorld(idx)`
+    — a **monotonic counter written to the save**. Chain-arriving in
+    Bowser's (worldId 12) permanently unlocked EVERY kingdom up to Bowser
+    on the globe. This is the old mUnlockWorldNum-overshoot fear realized
+    (watch item 3). Consequences observed: globe lists everything (Devon
+    wants visited-only — [[kingdom-order-gate-premature-destinations]] now
+    load-bearing, not cosmetic), and once no bounce is active the unlocked
+    worlds are freely flyable from ANY kingdom.
+
+13. **Post-payment forward leak — visited-only enforcement dies with the
+    allowance.** Paying the chain-reached kingdom's rolled gate clears
+    `chain_allowance_bit` (by design, "revert to honest"), which turns the
+    Layer-2 bounce OFF entirely; nothing else enforces order
+    (`KingdomOrderGate::kRules` is an empty sentinel — the strict-order
+    table has no active entries). Result: after granting+depositing 8
+    Bowser moons, the story `firstNext` flight to MOON committed through
+    `tryChange.Demo` unbounced (Moon reached with only Cascade+Bowser
+    progressed — out of AP logic), and thereafter free travel anywhere
+    (finding 12's unlocked worlds + no bounce). **Fix sketch (next
+    switch-mod session, with Devon):** decouple the visited-only rule from
+    the allowance bit — bounce any un-visited/not-alreadyGo pick whenever
+    the DEPARTING kingdom is still chain-reached-only (persist the chain
+    bit; clear it only if the kingdom is later reached legitimately), and
+    decide what to do about finding 12's already-unlocked earlier kingdoms
+    (options: stop calling unlockWorld and find a listing-only seam via
+    decomp; or extend the bounce to cover mod-unlocked-but-unvisited picks
+    from ALL kingdoms — needs care not to break vanilla forward
+    progression, where flying to an unvisited next kingdom is the normal
+    move). Devon's design ruling needed on whether paying a chain
+    kingdom's gate should EVER legitimize story-forward travel (this walk
+    says no).
+
+**Still open from the watch list:** Lake town-zone `cur=`/`dest=` log check,
+walk 3 (coupled `simple` regression), PBP both-exits-diverge (half done —
+entry validated, exit is finding 10), save/load mid-chain, scenario
+drag-down verify on a progressed kingdom.
+
 ## Phase 5 (optional) — Approach B: literal Odyssey-arrival landings
 
 Route overworld landings through the `tryChangeNextStageWithDemoWorldWarp` seam
