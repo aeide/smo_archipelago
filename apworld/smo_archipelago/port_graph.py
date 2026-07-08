@@ -178,16 +178,25 @@ ROW_HEADROOM = 32
 # CostumeDoorHook.cpp's confirmed finding that the Lake town-zone trampoline
 # door (`DoorWarp`) is a SAME-STAGE warp (no real changeNextStage fires for
 # it at all), which is suggestive but not conclusive for OTHER zone-hosted
-# doors. Until Devon's preview-mode (`kEntranceRemapApply=false`) log walk
-# settles this per zone (docs/plan-decoupled-entrances.md §3e), this table is
-# authored EMPTY and compile_port_remaps emits the raw extracted stage
-# verbatim. If a walk shows `cur`/`dest` reporting the parent stage for a
-# given zone, add `{"ZoneName": "ParentHomeStage"}` here — a pure data change,
-# no code change — and compile_port_remaps will alias both match keys (the
-# ENTRY row's `from`, via the subarea's own interior stage, is never a
-# per-door zone value, so it needs no aliasing) and rewrite targets that land
-# on that zone.
-ZONE_STAGE_ALIAS: dict[str, str] = {}
+# doors. Entries are added one confirmed walk at a time (docs/
+# plan-decoupled-entrances.md §3e + P4 findings item 8): if a walk shows a
+# zone name reaching the wire (a remap-APPLIED `to_stage`, or `cur`/`dest`
+# reporting a zone), add `{"ZoneName": "ParentHomeStage"}` here — a pure data
+# change, no code change — and compile_port_remaps will alias rewrite targets
+# that land on that zone (the ENTRY row's `from`, via the subarea's own
+# interior stage, is never a per-door zone value, so match keys need no
+# aliasing in practice).
+#
+# CONFIRMED 2026-07-08 (Devon's walk, log Ryujinx_..._00-25-03): a rewrite
+# target of `SkyWorldCastleZone` (Bowser's `jizo02` door mouth) loaded the
+# ZONE as a standalone stage — castle geometry, no skybox/graphics preset,
+# world id stuck on the origin kingdom (map showed Sand). Shipping the parent
+# HomeStage instead is the fix; the entrance marker id resolves within the
+# composite stage load. The remaining extracted zone roots (SkyWorldCastleZone
+# was one of ~6; see plan doc §3e item 4) stay out until a walk lands on them.
+ZONE_STAGE_ALIAS: dict[str, str] = {
+    "SkyWorldCastleZone": "SkyWorldHomeStage",
+}
 
 
 @dataclass(frozen=True)
@@ -491,8 +500,8 @@ def compile_port_remaps(matching: dict[str, str], graph: PortGraph) -> list[dict
     `to_stage`/`to_id` come straight from B's own Mouth fields regardless of
     B's side — walking into either mouth of a matched pair lands you at the
     OTHER mouth's own marker, symmetric by construction (the mouth model).
-    `ZONE_STAGE_ALIAS` (data-driven, empty until Devon's preview-walk
-    confirms it's needed — see that constant's docstring) is applied to any
+    `ZONE_STAGE_ALIAS` (data-driven, one confirmed walk at a time — see that
+    constant's docstring; first entry landed 2026-07-08) is applied to any
     stage that comes from an OVERWORLD mouth's own per-door `.stage` field
     (i.e. `to_stage`/`to_id` when the target is an OVERWORLD mouth) — the one
     schema-v2 field never exercised by the already-validated coupled shuffle.
