@@ -59,6 +59,19 @@ mouths vs ~120 stages to connect).
 Phase 2: all stages connected — uniform random pairing of the remainder
 (no pairing can UN-connect anything).
 
+Matching-topology constraint (Devon ruling 2026-07-08, plan doc P4 item 9)
+--------------------------------------------------------------------------
+An OVERWORLD mouth must always pair with an INTERIOR mouth; an
+OVERWORLD↔OVERWORLD pair is never rolled. (Interior↔interior stays legal.)
+This REPLACES the earlier "free matching" ruling 3(a) — no option knob.
+Feasibility holds on real data by construction: every overworld mouth has a
+vanilla interior partner and multi-exit subareas contribute surplus interior
+mouths, so #interior ≥ #overworld. To keep phase 2 completable the roller
+maintains the invariant "unmatched #interior − #overworld ≥ 0" at every
+step: O–I pairs leave the slack unchanged, and I–I pairs (slack −2) are
+only taken while slack ≥ 2. A pool where the slack starts negative cannot
+satisfy the constraint at all — loud RuntimeError at roll time.
+
 Odd pool ⇒ one fixed point. Parity guarantee: the pool is odd iff an odd
 number of doors contributed exactly ONE ingest mouth (lone mouths, vanilla
 self-mapped per port_graph), so a lone mouth always exists to take the fixed
@@ -207,11 +220,22 @@ def _reserve_fixed_point(graph: PortGraph, unmatched: set[str],
     return rng.choice(safe or lone)
 
 
+def _interior_slack(graph: PortGraph, unmatched: set[str]) -> int:
+    """#interior − #overworld over the unmatched pool — the topology
+    constraint's feasibility margin (module docstring)."""
+    slack = 0
+    for m in unmatched:
+        slack += 1 if graph.mouths[m].side == INTERIOR else -1
+    return slack
+
+
 def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
     """Roll a random total involution over `graph.mouths` such that every
-    pooled stage is root-connected (see module docstring). Deterministic in
-    `rng`; raises RuntimeError (loudly, at generation time) rather than ever
-    returning an unsolvable or over-budget matching."""
+    pooled stage is root-connected (see module docstring) and no pair is
+    OVERWORLD↔OVERWORLD (matching-topology constraint, Devon ruling
+    2026-07-08). Deterministic in `rng`; raises RuntimeError (loudly, at
+    generation time) rather than ever returning an unsolvable or over-budget
+    matching."""
     matching: dict[str, str] = {}
     if not graph.mouths:
         return matching
@@ -222,10 +246,20 @@ def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
         fixed_point = _reserve_fixed_point(graph, unmatched, rng)
         unmatched.discard(fixed_point)
 
+    if _interior_slack(graph, unmatched) < 0:
+        raise RuntimeError(
+            "port_matching: overworld mouths outnumber interior mouths in "
+            "the pool — the no-overworld↔overworld constraint cannot be "
+            "satisfied (pool shape changed under us; see module docstring)")
+
     nodes = stage_nodes(graph)
     connected = set(root_stages(graph))
 
-    # Phase 1 — frontier growing: every pairing lands one new stage.
+    # Phase 1 — frontier growing: every pairing lands one new stage. The
+    # connecting mouth `b` (in a not-yet-connected stage) is picked first;
+    # its frontier partner is then drawn from the side-compatible subset:
+    # an OVERWORLD b needs an INTERIOR a, and an INTERIOR b may take any a
+    # only while the slack invariant survives an I–I pair.
     while nodes - connected:
         frontier = sorted(m for m in unmatched
                           if graph.mouths[m].stage in connected)
@@ -241,25 +275,61 @@ def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
                 "port_matching: no unmatched mouths left in root-connected "
                 f"territory while {sorted(nodes - connected)} remain "
                 "unconnected (root-side mouth supply exhausted)")
-        a = rng.choice(frontier)
-        b = rng.choice(targets)
+        slack = _interior_slack(graph, unmatched)
+        rng.shuffle(targets)
+        a = b = None
+        for cand in targets:
+            if graph.mouths[cand].side == OVERWORLD or slack < 2:
+                # b overworld → a must be interior; slack-tight interior b
+                # must also take an overworld a (an I–I pair would strand an
+                # overworld mouth later).
+                want = INTERIOR if graph.mouths[cand].side == OVERWORLD \
+                    else OVERWORLD
+                compat = [m for m in frontier
+                          if graph.mouths[m].side == want]
+            else:
+                compat = frontier
+            if compat:
+                b = cand
+                a = rng.choice(compat)
+                break
+        if a is None or b is None:
+            raise RuntimeError(
+                "port_matching: no side-compatible frontier pairing under "
+                "the no-overworld↔overworld constraint while stages "
+                f"{sorted(nodes - connected)} remain unconnected")
         matching[a] = b
         matching[b] = a
         unmatched.discard(a)
         unmatched.discard(b)
         connected.add(graph.mouths[b].stage)
 
-    # Phase 2 — everything is connected; pair the rest uniformly.
-    rest = sorted(unmatched)
-    rng.shuffle(rest)
-    while len(rest) >= 2:
-        a, b = rest.pop(), rest.pop()
+    # Phase 2 — everything is connected; pair the rest uniformly under the
+    # constraint: every remaining overworld mouth takes an interior partner
+    # first, then the surplus interiors pair among themselves.
+    rest_o = sorted(m for m in unmatched
+                    if graph.mouths[m].side == OVERWORLD)
+    rest_i = sorted(m for m in unmatched
+                    if graph.mouths[m].side == INTERIOR)
+    rng.shuffle(rest_o)
+    rng.shuffle(rest_i)
+    if len(rest_o) > len(rest_i):
+        # Unreachable while the slack invariant holds; defensive.
+        raise RuntimeError(
+            "port_matching: phase-2 overworld surplus despite the slack "
+            "invariant — roller bug")
+    for a in rest_o:
+        b = rest_i.pop()
         matching[a] = b
         matching[b] = a
-    if rest:
+    while len(rest_i) >= 2:
+        a, b = rest_i.pop(), rest_i.pop()
+        matching[a] = b
+        matching[b] = a
+    if rest_i:
         # Only possible when the pool was even but phase 1 + shuffle left one
         # (cannot happen — pairs consume two at a time); defensive.
-        leftover = rest.pop()
+        leftover = rest_i.pop()
         matching[leftover] = leftover
         logger.warning("port_matching: unexpected even-pool leftover %s "
                        "left as fixed point", leftover)
@@ -270,6 +340,14 @@ def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
     if not is_involution(matching, graph.mouths):
         raise RuntimeError("port_matching: rolled matching is not a total "
                            "involution over the mouth pool")
+    oo = sorted(a for a, b in matching.items()
+                if a != b
+                and graph.mouths[a].side == OVERWORLD
+                and graph.mouths[b].side == OVERWORLD)
+    if oo:
+        raise RuntimeError(
+            "port_matching: rolled matching contains overworld↔overworld "
+            f"pairs (topology constraint violated): {oo}")
     missing = unconnected_stages(matching, graph)
     if missing:
         raise RuntimeError(

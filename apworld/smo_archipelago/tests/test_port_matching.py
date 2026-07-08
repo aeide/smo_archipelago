@@ -258,6 +258,62 @@ def test_festival_pool_variant(festival_graph):
 
 
 # ---------------------------------------------------------------------------
+# Matching-topology constraint (Devon ruling 2026-07-08, plan doc P4 item 9):
+# no OVERWORLD↔OVERWORLD pair, ever. Replaces the "free matching" ruling 3(a).
+# ---------------------------------------------------------------------------
+
+def _overworld_overworld_pairs(m: dict[str, str], mouths) -> list[str]:
+    return sorted(a for a, b in m.items()
+                  if a != b
+                  and mouths[a].side == OVERWORLD
+                  and mouths[b].side == OVERWORLD)
+
+
+def test_no_overworld_overworld_pairs_many_seeds(graph):
+    for seed in range(MANY_SEEDS):
+        m = roll_port_matching(graph, Random(seed))
+        oo = _overworld_overworld_pairs(m, graph.mouths)
+        assert oo == [], f"seed {seed}: O↔O pairs {oo}"
+
+
+def test_no_overworld_overworld_pairs_festival(festival_graph):
+    for seed in range(20):
+        m = roll_port_matching(festival_graph, Random(seed))
+        oo = _overworld_overworld_pairs(m, festival_graph.mouths)
+        assert oo == [], f"seed {seed}: O↔O pairs {oo}"
+
+
+def test_real_pool_interior_slack_nonnegative(graph):
+    # Feasibility-by-construction guard (plan doc item 9): every overworld
+    # mouth has a vanilla interior partner and multi-exit subareas add
+    # surplus interiors, so #interior >= #overworld. If a data change ever
+    # breaks this, the constraint becomes unsatisfiable — fail here, in the
+    # data-shape test, not inside a generation.
+    n_i = sum(1 for m in graph.mouths.values() if m.side == INTERIOR)
+    n_o = sum(1 for m in graph.mouths.values() if m.side == OVERWORLD)
+    assert n_i >= n_o, f"interior {n_i} < overworld {n_o}"
+
+
+def test_zero_slack_pool_completes_with_all_o_i_pairs():
+    # adversarial_graph is 4 two-way doors = 4 overworld + 4 interior mouths
+    # (slack 0): the roller must emit ONLY O–I pairs — a single I–I pair
+    # would strand two overworld mouths with no legal partner.
+    g = adversarial_graph()
+    n_i = sum(1 for m in g.mouths.values() if m.side == INTERIOR)
+    n_o = sum(1 for m in g.mouths.values() if m.side == OVERWORLD)
+    assert n_i == n_o, "fixture drifted: expected a zero-slack pool"
+    for seed in range(MANY_SEEDS):
+        m = roll_port_matching(g, Random(seed))
+        assert is_involution(m, g.mouths), f"seed {seed}"
+        assert unconnected_stages(m, g) == set(), f"seed {seed}"
+        for a, b in m.items():
+            if a == b:
+                continue
+            assert {g.mouths[a].side, g.mouths[b].side} == \
+                {OVERWORLD, INTERIOR}, f"seed {seed}: {a} <-> {b}"
+
+
+# ---------------------------------------------------------------------------
 # roll_port_matching — adversarial / degenerate shapes
 # ---------------------------------------------------------------------------
 
