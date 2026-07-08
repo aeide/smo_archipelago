@@ -1200,11 +1200,27 @@ def _apply_junk_only_rules(world: World, multiworld: MultiWorld, player: int) ->
     Locations are tagged `junk_only: true` in locations.json. Stricter than
     `filler_only` (which only blocks progression), matching the design's
     "filled only with filler/traps" intent.
+
+    D9 (decoupled entrance shuffle): under `entrance_shuffle == decoupled`,
+    chained ports can make Mushroom Kingdom reachable pre-clear, so its
+    junk_only locations are promoted to full AP checks (eligible for
+    progression/useful items). Dark Side and Darker Side stay junk_only in
+    every mode (D5): their overworlds are excluded from the port pool, so
+    decoupled doesn't change their reachability versus vanilla flight — read
+    the raw Choice value via `_entrance_shuffle_mode`, not `is_option_enabled`
+    (simple is also truthy there; see the helper's own docstring above).
     """
     junk_only_names = {
         loc["name"] for loc in world.location_table
         if loc.get("junk_only", False)
     }
+    if _entrance_shuffle_mode(multiworld, player) == EntranceShuffle.option_decoupled:
+        mushroom_junk_only_names = {
+            loc["name"] for loc in world.location_table
+            if loc.get("junk_only", False)
+            and "Mushroom Kingdom" in loc.get("category", [])
+        }
+        junk_only_names -= mushroom_junk_only_names
     if not junk_only_names:
         return
     from worlds.generic.Rules import add_item_rule
@@ -1494,6 +1510,17 @@ def before_fill_slot_data(slot_data: dict, world: World, multiworld: MultiWorld,
     entrance_map = getattr(world, "_entrance_map", None)
     if entrance_map is not None:
         slot_data["entrance_map"] = entrance_map
+    # P3e — decoupled entrance shuffle: mouth-level {mouth_id: mouth_id}
+    # involution (P3c's roll_port_matching output, verbatim). NEVER both this
+    # AND entrance_map for the same seed — _entrance_map (simple mode) and
+    # _port_matching (decoupled mode) are set by mutually exclusive
+    # before_create_regions branches. The client owns row compilation
+    # (compile_port_remaps against its own bundled entrance_stages.json), the
+    # same division of labor as the coupled entrance_map/compile_stage_remaps
+    # split — so the tracker/spoiler can introspect mouth ids too.
+    port_matching = getattr(world, "_port_matching", None)
+    if port_matching is not None:
+        slot_data["port_matching"] = port_matching
     # Re-fight / Dark Side multi-moon bonus side-grants (see
     # _roll_mm_bonus_grants). The client folds these into the capture/ability
     # unlock paths as each Mushroom/Dark Side Multi-Moon arrives. Absent when
@@ -1539,7 +1566,9 @@ def before_write_spoiler(world: World, multiworld: MultiWorld, spoiler_handle) -
     """
     bijection: dict[str, str] | None = getattr(world, "_entrance_map", None)
     if not bijection:
-        return  # entrance_shuffle disabled (or nothing rolled) — nothing to log
+        # Not coupled-mode (off, or decoupled — which ships its own block).
+        _write_decoupled_spoiler(world, multiworld, spoiler_handle)
+        return
 
     subareas: dict = getattr(world, "_entrance_subareas", None) or {}
 
@@ -1579,3 +1608,74 @@ def before_write_spoiler(world: World, multiworld: MultiWorld, spoiler_handle) -
             "\n  Unchanged (door leads to its own vanilla interior): "
             + ", ".join(unchanged) + "\n"
         )
+
+
+def _write_decoupled_spoiler(world: World, multiworld: MultiWorld, spoiler_handle) -> None:
+    """P3e — the decoupled counterpart of the coupled block above.
+
+    Keyed by MOUTH (not subarea): the port matching is a mouth-level
+    involution, so a subarea can have several independently-shuffled doors
+    (e.g. Push Block Peril's two exits can now lead to two different
+    places). Each deviating pair is printed once, both mouths described, and
+    moons are listed under whichever side(s) of the pair are an interior —
+    the usual question is "I have a moon in interior X — which door do I
+    take to get there?", same as the coupled block's framing.
+    """
+    matching: dict[str, str] | None = getattr(world, "_port_matching", None)
+    graph = getattr(world, "_port_graph", None)
+    if not matching or graph is None:
+        return  # off, or decoupled rolled nothing (empty pool) — nothing to log
+
+    from ..port_graph import INTERIOR, OVERWORLD
+
+    subareas: dict = getattr(world, "_entrance_subareas", None) or {}
+
+    def _moons(sub: str) -> list[str]:
+        return (subareas.get(sub, {}) or {}).get("location_names", [])
+
+    def _describe(mouth_id: str) -> str:
+        m = graph.mouths.get(mouth_id)
+        if m is None:
+            return mouth_id
+        role = "door" if m.side == OVERWORLD else "exit"
+        return f'"{m.subarea}" {role} ({m.kingdom}, marker \'{m.entry_id}\')'
+
+    try:
+        slot_name = multiworld.get_player_name(player=world.player)
+    except Exception:
+        slot_name = str(world.player)
+
+    pairs: list[tuple[str, str, str]] = []  # (kingdom, mouth_a, mouth_b)
+    seen: set[frozenset[str]] = set()
+    for a, b in matching.items():
+        if graph.vanilla_matching.get(a) == b:
+            continue
+        key = frozenset((a, b))
+        if key in seen:
+            continue
+        seen.add(key)
+        ma = graph.mouths.get(a)
+        if ma is None:
+            continue
+        pairs.append((ma.kingdom, a, b))
+    pairs.sort(key=lambda r: (r[0], r[1]))
+
+    fixed_count = sum(1 for a, b in matching.items()
+                      if graph.vanilla_matching.get(a) == b)
+
+    spoiler_handle.write(f"\n\nEntrance Shuffle - decoupled ({slot_name}):\n")
+    if not pairs:
+        spoiler_handle.write("  (every mouth rolled to its vanilla partner)\n")
+        return
+    for kingdom, a, b in pairs:
+        ma, mb = graph.mouths[a], graph.mouths[b]
+        spoiler_handle.write(f"\n  [{kingdom}] {_describe(a)} <-> {_describe(b)}\n")
+        for side_mouth in (ma, mb):
+            if side_mouth.side == INTERIOR:
+                for moon in _moons(side_mouth.subarea):
+                    spoiler_handle.write(
+                        f"      moon inside \"{side_mouth.subarea}\": {moon}\n")
+    spoiler_handle.write(
+        f"\n  Unchanged (mouth leads to its own vanilla partner): "
+        f"{fixed_count} mouth(s)\n"
+    )

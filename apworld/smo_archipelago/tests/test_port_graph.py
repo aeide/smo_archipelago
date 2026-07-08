@@ -18,8 +18,12 @@ from port_graph import (
     FESTIVAL_EXCLUDED_KINGDOMS,
     INTERIOR,
     OVERWORLD,
+    ROW_HEADROOM,
+    ROW_TABLE_CAP,
     Mouth,
+    PortGraph,
     build_port_graph,
+    compile_port_remaps,
     estimate_remap_rows,
     is_involution,
     mouth_cost,
@@ -253,3 +257,181 @@ def test_interior_cost_never_carries_peace(graph, moonpipes):
     for m in graph.mouths.values():
         if m.side == INTERIOR:
             assert mouth_cost(m, moonpipes).peace_func is None
+
+
+# ---------------------------------------------------------------------------
+# P3e — compile_port_remaps (row compiler)
+# ---------------------------------------------------------------------------
+# A small hand-built two-door graph (no data file dependency) so row-shape
+# assertions are exact and don't depend on which real subarea happens to have
+# which gates today. `estimate_remap_rows` correctness against the REAL pool
+# is covered separately below via a real roll.
+
+def _mouth(door, side, stage, entry_id, subarea, kingdom="Kingdom X"):
+    return Mouth(door_port_id=door, side=side, stage=stage, entry_id=entry_id,
+                subarea=subarea, kingdom=kingdom, ingest=True)
+
+
+@pytest.fixture
+def tiny_graph():
+    ow1 = _mouth("doorA", OVERWORLD, "KingdomHomeA", "entA", "SubareaA")
+    in1 = _mouth("doorA", INTERIOR, "InteriorA", "entA", "SubareaA")
+    ow2 = _mouth("doorB", OVERWORLD, "KingdomHomeB", "entB", "SubareaB")
+    in2 = _mouth("doorB", INTERIOR, "InteriorB", "entB", "SubareaB")
+    mouths = {m.mouth_id: m for m in (ow1, in1, ow2, in2)}
+    vanilla = {
+        ow1.mouth_id: in1.mouth_id, in1.mouth_id: ow1.mouth_id,
+        ow2.mouth_id: in2.mouth_id, in2.mouth_id: ow2.mouth_id,
+    }
+    return PortGraph(mouths=mouths, vanilla_matching=vanilla, dropped_doors=[]), \
+        ow1, in1, ow2, in2
+
+
+def test_compile_port_remaps_vanilla_emits_nothing(tiny_graph):
+    graph, *_ = tiny_graph
+    assert compile_port_remaps(graph.vanilla_matching, graph) == []
+
+
+def test_compile_port_remaps_row_count_matches_estimate(tiny_graph):
+    graph, ow1, in1, ow2, in2 = tiny_graph
+    # Cross-swap both doors' partners.
+    matching = {
+        ow1.mouth_id: in2.mouth_id, in2.mouth_id: ow1.mouth_id,
+        in1.mouth_id: ow2.mouth_id, ow2.mouth_id: in1.mouth_id,
+    }
+    rows = compile_port_remaps(matching, graph)
+    assert len(rows) == estimate_remap_rows(matching, graph.vanilla_matching) == 4
+
+
+def test_compile_port_remaps_overworld_entry_row_shape(tiny_graph):
+    graph, ow1, in1, ow2, in2 = tiny_graph
+    matching = {
+        ow1.mouth_id: in2.mouth_id, in2.mouth_id: ow1.mouth_id,
+        in1.mouth_id: ow2.mouth_id, ow2.mouth_id: in1.mouth_id,
+    }
+    rows = compile_port_remaps(matching, graph)
+    # ow1's row: kind=entry, "from" = ow1's OWN subarea's interior stage
+    # (in1.stage), NOT ow1's own physical stage (KingdomHomeA) — that's the
+    # vanilla dest when walking through ow1 unmodified. from_id = ow1's own
+    # marker (disambiguates it from any OTHER door of SubareaA).
+    row = next(r for r in rows
+              if r["kind"] == "entry" and r["from_id"] == "entA")
+    assert row["from"] == "InteriorA"
+    assert row["to_stage"] == "InteriorB" and row["to_id"] == "entB"
+
+
+def test_compile_port_remaps_interior_exit_row_shape(tiny_graph):
+    graph, ow1, in1, ow2, in2 = tiny_graph
+    matching = {
+        ow1.mouth_id: in2.mouth_id, in2.mouth_id: ow1.mouth_id,
+        in1.mouth_id: ow2.mouth_id, ow2.mouth_id: in1.mouth_id,
+    }
+    rows = compile_port_remaps(matching, graph)
+    row = next(r for r in rows
+              if r["kind"] == "exit" and r["from"] == "InteriorA")
+    # in1's row: "from"/"from_id" = in1's OWN stage/marker (cur at exit
+    # time); target is ow2 (an OVERWORLD mouth) -> lands at its own marker.
+    assert row["from_id"] == "entA"
+    assert row["to_stage"] == "KingdomHomeB" and row["to_id"] == "entB"
+
+
+def test_compile_port_remaps_two_exits_can_diverge(tiny_graph):
+    """The capability P2 built the substrate for and P3e finally exercises:
+    two exit mouths sharing no `from` here (different subareas) still show
+    each rewrites independently to a DIFFERENT target — unlike coupled mode,
+    which always routes every physical port of one interior to one origin."""
+    graph, ow1, in1, ow2, in2 = tiny_graph
+    matching = {
+        in1.mouth_id: ow1.mouth_id, ow1.mouth_id: in1.mouth_id,  # fixed (vanilla)
+        in2.mouth_id: ow2.mouth_id, ow2.mouth_id: in2.mouth_id,  # fixed (vanilla)
+    }
+    # Both fixed (vanilla) -> no rows.
+    assert compile_port_remaps(matching, graph) == []
+    # Now cross them: in1 -> ow2, in2 -> ow1 (both interiors now exit to the
+    # OTHER door instead of their own).
+    matching = {
+        in1.mouth_id: ow2.mouth_id, ow2.mouth_id: in1.mouth_id,
+        in2.mouth_id: ow1.mouth_id, ow1.mouth_id: in2.mouth_id,
+    }
+    rows = compile_port_remaps(matching, graph)
+    exits = {r["from"]: (r["to_stage"], r["to_id"])
+             for r in rows if r["kind"] == "exit"}
+    assert exits["InteriorA"] == ("KingdomHomeB", "entB")
+    assert exits["InteriorB"] == ("KingdomHomeA", "entA")
+    assert exits["InteriorA"] != exits["InteriorB"]
+
+
+def test_compile_port_remaps_drops_unresolvable_both_ends(tiny_graph, caplog):
+    """A mouth id absent from the local graph (client/server data drift)
+    drops BOTH ends of that pair — never a one-sided row."""
+    graph, ow1, *_ = tiny_graph
+    ghost = "ghostDoor@overworld"
+    matching = {ow1.mouth_id: ghost, ghost: ow1.mouth_id}
+    rows = compile_port_remaps(matching, graph)
+    assert rows == []
+
+
+def test_compile_port_remaps_sorted_deterministic(tiny_graph):
+    graph, ow1, in1, ow2, in2 = tiny_graph
+    matching = {
+        ow1.mouth_id: in2.mouth_id, in2.mouth_id: ow1.mouth_id,
+        in1.mouth_id: ow2.mouth_id, ow2.mouth_id: in1.mouth_id,
+    }
+    rows1 = compile_port_remaps(matching, graph)
+    rows2 = compile_port_remaps(dict(matching), graph)
+    assert rows1 == rows2
+    keys = [(r["kind"], r["from"], r.get("from_id", ""), r["to_stage"], r["to_id"])
+            for r in rows1]
+    assert keys == sorted(keys)
+
+
+def test_compile_port_remaps_budget_enforced(tiny_graph, monkeypatch):
+    import port_graph
+    graph, ow1, in1, ow2, in2 = tiny_graph
+    matching = {
+        ow1.mouth_id: in2.mouth_id, in2.mouth_id: ow1.mouth_id,
+        in1.mouth_id: ow2.mouth_id, ow2.mouth_id: in1.mouth_id,
+    }
+    # 4 rows fine at the real budget; shrink it below 4 to force the raise.
+    monkeypatch.setattr(port_graph, "ROW_TABLE_CAP", 3)
+    monkeypatch.setattr(port_graph, "ROW_HEADROOM", 0)
+    with pytest.raises(RuntimeError, match="budget"):
+        compile_port_remaps(matching, graph)
+
+
+def test_compile_port_remaps_zone_alias_applied_to_overworld_target(
+    tiny_graph, monkeypatch,
+):
+    """ZONE_STAGE_ALIAS (empty by default — see its docstring) only ever
+    substitutes a TARGET's stage when the target is an OVERWORLD mouth (the
+    schema-v2 per-door field never exercised by the already-validated
+    coupled shuffle) — never a subarea's own interior stage (already
+    validated, used verbatim by both compile_stage_remaps and the ENTRY row's
+    `from` here)."""
+    import port_graph
+    graph, ow1, in1, ow2, in2 = tiny_graph
+    monkeypatch.setattr(port_graph, "ZONE_STAGE_ALIAS",
+                        {"KingdomHomeA": "AliasedZoneStage"})
+    matching = {in2.mouth_id: ow1.mouth_id, ow1.mouth_id: in2.mouth_id}
+    rows = compile_port_remaps(matching, graph)
+    exit_row = next(r for r in rows if r["kind"] == "exit")
+    assert exit_row["to_stage"] == "AliasedZoneStage"  # target ow1 aliased
+    entry_row = next(r for r in rows if r["kind"] == "entry")
+    # ow1's ENTRY row "from" is its subarea's interior stage (in1.stage),
+    # never aliased — only OVERWORLD-side "to" targets go through the table.
+    assert entry_row["from"] == "InteriorA"
+
+
+def test_real_pool_row_compiler_matches_estimate_across_seeds():
+    """Real-data round trip: a real roll's row count and the estimator agree,
+    same invariant the roller itself asserts at generation time (P3c)."""
+    import random
+    from port_matching import roll_port_matching
+    graph = build_port_graph(
+        _load("entrance_stages.json"), _load("subareas.json"),
+        _load("entrance_exclusions.json"))
+    for seed in (1, 11, 22):
+        matching = roll_port_matching(graph, random.Random(seed))
+        rows = compile_port_remaps(matching, graph)
+        assert len(rows) == estimate_remap_rows(matching, graph.vanilla_matching)
+        assert len(rows) <= ROW_TABLE_CAP - ROW_HEADROOM

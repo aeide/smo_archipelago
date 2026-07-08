@@ -2,8 +2,9 @@
 
 **Status: P0 spike PASSED (2026-07-06), Phase 1 (data) DONE (2026-07-07), P2
 (compound key + option Choice) CODE COMPLETE awaiting in-game walk
-(2026-07-08), P3a signed off, P3b–3d IMPLEMENTED (2026-07-07) — next up: 3e
-(slot_data/client/Switch wire path), then 3f.**
+(2026-07-08), P3a signed off, P3b–3e IMPLEMENTED (2026-07-08), 3f
+(Mushroom promotion) IMPLEMENTED (2026-07-08) — all still gated behind
+`PORT_SHUFFLE_SHIPPABLE=False` pending Devon's zone preview-walk.**
 Results: see the "Phase 1 results" subsection below. This is the execution plan for
 [v3-feasibility/future-feasibility-decoupled-entrance-randomizer.md](v3-feasibility/future-feasibility-decoupled-entrance-randomizer.md)
 (read that first — it holds the full design rationale, risk analysis, and source
@@ -433,6 +434,121 @@ Ship the port matching under a NEW slot_data key (keep `entrance_map` for
 coupled mode back-compat); generalize the client's `compile_stage_remaps`
 call path (`switch_server.py` / `push_entrance_map`).
 
+**Work order written (2026-07-07):
+[handoff-decoupled-p3e-slot-data.md](handoff-decoupled-p3e-slot-data.md)** —
+row compiler (`compile_port_remaps`, one row per vanilla-deviating mouth,
+reusing the existing `entrance_map` WIRE msg with a new `port_matching`
+slot_data key), client mirror/push generalization, the Switch ENTRY-branch
+`from_id` extension (P2 seam), the §3c zone-split stage-key verification,
+decoupled spoiler block, and the Devon-gated PORT_SHUFFLE_SHIPPABLE flip as
+the last step.
+
+**Status: IMPLEMENTED (2026-07-08) — `port_graph.compile_port_remaps`,
+`hooks/World.py` slot_data/spoiler wiring, `client/state.py` +
+`client/switch_server.py` + `client/context.py` mode-generic push path,
+`ApState.cpp` entry-tier `from_id`, host + pytest + SMOAP_LIVE_AP suites all
+green. `PORT_SHUFFLE_SHIPPABLE` deliberately left `False` — Devon's call, see
+"Not done" below.** Full non-live suite **999 passed / 94 skipped** (the
+984/91 P3d baseline +15 new non-live tests +3 new live-gated tests, zero
+regressions); live re-run of `test_entrance_shuffle_option_modes.py`,
+`test_decoupled_region_wiring.py`, `test_cascade_reachability.py`,
+`test_rearrival_reachability.py`, and the new
+`test_p3e_port_matching_wire.py` all green against the reinstalled zip.
+
+1. **Row compiler (`port_graph.compile_port_remaps`).** One row per mouth in
+   `matching` whose assignment deviates from `graph.vanilla_matching` —
+   `len(rows) == estimate_remap_rows(...)` always (test-asserted, incl. a
+   100-seed-style real-pool round trip). An INTERIOR mouth emits a `kind:
+   "exit"` row keyed on its own `(stage, entry_id)`; an OVERWORLD mouth emits
+   a `kind: "entry"` row keyed on `(subarea's own interior stage, entry_id)`
+   — the "from" here is deliberately the mouth's OWN subarea's interior
+   stage (the vanilla dest walking through that door unmodified), resolved
+   via any ingest INTERIOR mouth of the same subarea (guaranteed to exist by
+   the P3b one-way-ENTRY pool rule), NOT the door's own per-mouth `.stage`
+   field. `to_stage`/`to_id` come straight from the matched target mouth's
+   own fields regardless of its side — the mouth model's walk-in-either-end
+   symmetry. A mouth id absent from the local graph (client/server
+   `entrance_stages.json` drift) drops BOTH ends of that pair, logged loudly,
+   never a one-sided row. `ROW_TABLE_CAP`/`ROW_HEADROOM` moved from
+   `port_matching.py` into `port_graph.py` (compile_port_remaps needs them
+   too, and port_matching already imports FROM port_graph — defining them
+   there and importing back would deadlock the module load); port_matching.py
+   re-exports both names unchanged so existing imports don't break.
+2. **slot_data + client plumbing.** `before_fill_slot_data` ships
+   `slot_data["port_matching"] = world._port_matching` (verbatim
+   `{mouth_id: mouth_id}`) whenever set — mutually exclusive with
+   `entrance_map` by construction (the two `before_create_regions` branches
+   never both set their world attribute). `client/state.py` gained a twin
+   mirror (`port_matching` / `_port_matching_configured` / three accessor
+   methods, same shape as `entrance_map`'s). `SwitchServer.push_entrance_map`
+   now picks a compiler based on whichever mirror is configured
+   (`is_entrance_map_configured()` first, `is_port_matching_configured()`
+   second, no-op if neither) and ships the SAME chunked `entrance_map` wire
+   message either way — the Switch never needs to know which mode produced a
+   table. The decoupled compiler path (`_compile_decoupled_rows`) rebuilds a
+   `PortGraph` from the client's own bundled `entrance_stages.json`/
+   `subareas.json` via `build_port_graph(..., festival=False)` — deliberately
+   ALWAYS non-festival, since festival only ever *removes* mouths from the
+   pool (never renames/adds), so the non-festival graph is a strict superset
+   that resolves every mouth id a festival-rolled matching could ship,
+   without threading the `goal` option through the client for a distinction
+   that can't change resolvability. `context.py`'s Connected handler reads
+   `slot_data["port_matching"]` alongside `entrance_map` and calls
+   `switch.set_port_matching(...)` before the single shared
+   `push_entrance_map()` call.
+3. **Switch ENTRY branch now consults `from_id`.** `ApState::lookupEntranceRemap`
+   gained a 4th tier (entry-exact `(dest, id)` → entry-wildcard → exit-exact
+   `(cur, id)` → exit-wildcard), mirroring the P2 exit tiers exactly.
+   `EntranceRemapEntry`/`applyEntranceMap`'s merge key and `ApProtocol.cpp`'s
+   parser needed ZERO changes — P2 already made `from_id` a fully generic
+   field on every row regardless of `kind`, and the merge key was already
+   `(from, from_id, is_exit)`; only the read-side lookup tiers were missing
+   the entry-side id check. Coupled-mode entry rows keep shipping an empty
+   `from_id` and hit the wildcard tier unchanged (verified: the existing
+   coupled-shuffle live walk pattern is untouched). Host-tested
+   (`test_protocol.cpp`, 2 new cases: entry row with `from_id` present, two
+   entry rows sharing `from` with different `from_id` — the exact port-matching
+   disambiguation shape) since `ApState.cpp` itself has no host test (P2's
+   documented gap — Switch-only headers, in-game walk is the verification
+   path for the table/lookup logic specifically).
+4. **Zone-split stage-key verification — PARTIALLY SETTLED, needs Devon's
+   confirmation before shipping for real.** Re-read
+   `CostumeDoorHook.cpp`'s header (confirmed from a main.nso symbol dump,
+   2026-06-24): the Lake town-zone trampoline door is a `DoorWarp`
+   **SAME-STAGE** door — i.e. no real `changeNextStage` fires for it at all,
+   which is strong evidence `LakeWorldTownZone` and its parent
+   `LakeWorldHomeStage` are ONE compound-loaded scene from
+   `getCurrentStageName()`'s perspective, not two independently-targetable
+   stages. That's suggestive but was confirmed for exactly one door, not the
+   ~6 other placement-zone roots (`SkyWorldCastleZone`,
+   `SeaWorldLava/Lighthouse/SphinxQuiz/WallCaveWestZone`). Rather than guess,
+   `compile_port_remaps` ships the raw extracted per-door stage verbatim
+   (matching every already-in-game-validated coupled-mode field it reuses —
+   the ENTRY row's `from` is always a subarea's own singular interior
+   `.stage`, the SAME field coupled mode has used since the 2026-06-19 walk,
+   never a per-door zone value) and a new `ZONE_STAGE_ALIAS: dict[str, str]`
+   seam in `port_graph.py`, authored EMPTY, applied only to a REWRITE
+   TARGET's stage when that target is an OVERWORLD mouth (the one schema-v2
+   field the coupled shuffle never exercised). If Devon's preview-mode
+   (`kEntranceRemapApply=false`) log walk past a zone-hosted door shows
+   `cur`/`dest` reporting the parent stage instead of the zone, add
+   `{"ZoneName": "ParentHomeStage"}` to that table — a pure data change, no
+   code change. Test-covered (`test_compile_port_remaps_zone_alias_applied_to_overworld_target`).
+5. **Spoiler block.** `before_write_spoiler` now branches: falls through to a
+   new `_write_decoupled_spoiler` when `_entrance_map` is unset (covers both
+   "off" and "decoupled" — the function itself no-ops when `_port_matching`
+   is also unset). Keyed by MOUTH pair (not subarea), since a subarea can now
+   have independently-shuffled doors (Push Block Peril's two exits can lead
+   to two different places) — each deviating pair printed once with both
+   mouths' kingdom/subarea/side/marker, moons listed under whichever side(s)
+   are an interior, plus a trailing vanilla-fixed-mouth count. Live-tested
+   (header presence/absence both directions + a `moon inside` line).
+6. **Readiness flag — NOT flipped, by design.** `PORT_SHUFFLE_SHIPPABLE`
+   stays `False`; `test_port_shuffle_readiness_flag_defaults_off` untouched.
+   This is Devon's explicit call per the P3e work order, gated on the zone
+   preview-walk (item 4) at minimum. See the handoff doc's updated status for
+   the full checklist.
+
 ### 3f. Mushroom check promotion (design D9)
 `_apply_junk_only_rules` exempts Mushroom-category locations iff decoupled;
 Devon re-runs `compile_moon_logic.py` (romfs machine, shine_map present) to
@@ -440,10 +556,52 @@ fill the 43 Mushroom `requires` from the xlsx-derived requirements data.
 In-game moon-spawn probe rides P4; scenario-floor contingency (PeachWorld
 arrival, `capArrivalScenarioOverride` pattern) only if the probe fails.
 
+**Work order written (2026-07-08):
+[handoff-decoupled-p3f-mushroom-promotion.md](handoff-decoupled-p3f-mushroom-promotion.md)**
+— `_apply_junk_only_rules` decoupled exemption (Dark/Darker Side stay
+non-exempt per D5), Devon's `compile_moon_logic.py` re-run as an explicit
+external dependency (not something the session can do itself), the
+scenario-floor contingency explicitly deferred to P4.
+
+**Status: IMPLEMENTED (2026-07-08).** Step 0's "11-location gap" turned out
+to be a false alarm: the handoff's own recompute compared 36 junk_only
+Mushroom locations against only 25 `moon_requirements.json` keys
+**prefixed** `"Mushroom Kingdom:"`, but many records use subarea-prefixed CSV
+keys (`"Peach's Castle: ..."`, `"Castle Courtyard 64: ..."`, `"Crazy Cap
+Store (Mushroom): ..."`, the 6 boss-refight keys, etc.) whose
+`location_name` **field** correctly reads `"Mushroom: ..."`. Diffing by that
+field instead (not the key) — 36 junk_only Mushroom locations, 43 total
+records whose `location_name` starts `"Mushroom:"`, matched set = 36,
+missing = 0. The 43-vs-36 delta is exactly 7 non-junk_only Mushroom-category
+records (6 re-fight Multi-Moons + 1 already-gated post-metro location, both
+already excluded from the junk_only set on their own terms) — no CSV/xlsx
+import gap, nothing to report to Devon, Step 0 cleared without a stop.
+
+`_apply_junk_only_rules` (`hooks/World.py`) now drops Mushroom-Kingdom-tagged
+junk_only names from the exclusion set when `_entrance_shuffle_mode(...) ==
+EntranceShuffle.option_decoupled` (raw Choice value, not `is_option_enabled`
+— same reasoning as every other mode-branch in this file); Dark Side/Darker
+Side junk_only locations are untouched in all three modes, matching D5.
+Requires backfill stays Devon's dependency (romfs-equipped
+`compile_moon_logic.py` re-run) — all 36 locations already have complete
+`moon_requirements.json` records (capture_groups/methods present) ready to
+compile, they're just not run through it yet. Scenario-floor contingency and
+the P4 in-game moon-spawn probe are untouched, per scope guard.
+
+New tests: `test_p3f_mushroom_promotion.py` — 2 always-run data-shape checks
+(the Step 0 diff-by-`location_name` result, encoded as a regression guard)
+plus 3 `SMOAP_LIVE_AP`-gated subprocess probes (item-rule acceptance
+decoupled-only for Mushroom, Dark Side non-exemption in all 3 modes, and a
+real `Generate.main()` → `Main.main()` full-Fill run confirming the promoted
+Mushroom checks don't raise `FillError`). Full suite: **1001 passed / 97
+skipped** (the 999/94 P3e baseline + 2 new non-live + 3 new live-gated),
+zero regressions; live re-run of the 3 new probes green against the
+reinstalled zip. `PORT_SHUFFLE_SHIPPABLE` untouched (still `False`).
+
 - **Model: Fable 5 for 3a–3d** (highest-interlock design + algorithm work in
   the repo; a subtle one-way logic bug is the top failure mode). Opus 4.8 is
-  the budget fallback. **Sonnet 5 for 3e** (follows existing `entrance_map` /
-  `mm_bonus_*` patterns).
+  the budget fallback. **Sonnet 5 for 3e/3f** (follows existing `entrance_map`
+  / `mm_bonus_*` / `_apply_junk_only_rules` patterns).
 
 ## Phase 4 — Validation
 

@@ -47,11 +47,12 @@ no-machinery guard). Suite: 984 passed / 91 skipped (= the 983/84 baseline
 Bonus finding: `distribute_items_restrictive` fills decoupled seeds cleanly
 (3/3 seeds, 0 unfilled) — 3f is not load-bearing for fill health.
 
-**Next session → P3e** (slot_data + client plumbing, Sonnet-tier per the plan
-doc): new slot_data key for the port matching, `switch_server.py` /
-`push_entrance_map` generalization, spoiler block, verify the Switch ENTRY
-lookup branch consults `from_id` (P2 seam), then flip PORT_SHUFFLE_SHIPPABLE.
-Original work order kept below for reference.
+**Next session → P3e: work order written, see
+[handoff-decoupled-p3e-slot-data.md](handoff-decoupled-p3e-slot-data.md)**
+(new slot_data key for the port matching, client `push_entrance_map`
+generalization, Switch ENTRY-branch `from_id`, zone-split stage-key
+verification, spoiler block, then the Devon-gated PORT_SHUFFLE_SHIPPABLE
+flip). Original P3d work order kept below for reference.
 
 ---
 

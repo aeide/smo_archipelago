@@ -758,7 +758,8 @@ class SwitchServer:
         ]))
 
     def set_entrance_map(self, m: dict[str, str]) -> None:
-        """Stash the P7 entrance-shuffle bijection for delivery to the Switch.
+        """Stash the P7 (coupled) entrance-shuffle bijection for delivery to
+        the Switch.
 
         `m` is {door_subarea_name: interior_subarea_name} in AP form (the raw
         strings from slot_data["entrance_map"]). Stored verbatim; HELLO replays
@@ -767,26 +768,63 @@ class SwitchServer:
         """
         self._state.set_entrance_map(m)
 
+    def set_port_matching(self, m: dict[str, str]) -> None:
+        """Stash the P3e (decoupled) mouth-level port matching for delivery
+        to the Switch.
+
+        `m` is {mouth_id: mouth_id} (port_graph mouth ids), the raw strings
+        from slot_data["port_matching"]. Stored verbatim; HELLO replays
+        re-ship across Switch reconnects. Mutually exclusive with
+        set_entrance_map — a seed ships exactly one of the two (see
+        push_entrance_map, which compiles rows from whichever is configured).
+        """
+        self._state.set_port_matching(m)
+
     async def push_entrance_map(self) -> None:
-        """Resolve the stashed bijection to stage quads and ship to the Switch.
+        """Compile rows from whichever entrance-shuffle mode is configured
+        and ship them to the Switch as the shared `entrance_map` wire message.
 
-        The stored form is the AP-name bijection {door_subarea: interior_subarea}
-        from slot_data; the Switch hook works on raw SMO stage names, so we
-        resolve here via data/entrance_stages.json (compile_stage_remaps) and
-        send the quads full-overwrite, chunked at ENTRANCE_MAP_CHUNK (the ~119
-        doors overrun the 8 KiB line cap). The first chunk carries reset=True;
-        an empty bijection sends a single reset=True clear so the Switch reverts
-        to vanilla.
+        Exactly one of entrance_map (coupled) / port_matching (decoupled) is
+        ever configured for a seed — before_fill_slot_data ships at most one
+        key, so at most one of the two state mirrors gets set. Coupled
+        resolves via entrance_logic.compile_stage_remaps (the AP-name
+        bijection {door_subarea: interior_subarea}); decoupled resolves via
+        port_graph.compile_port_remaps (the mouth-level involution), first
+        rebuilding a PortGraph from the client's own bundled data (pure, no
+        rng — the same graph generation built, so mouth ids resolve
+        identically). A mouth id slot_data references that the local graph
+        can't resolve is data drift (stale bundled entrance_stages.json/
+        subareas.json) — compile_port_remaps logs loudly and drops both ends
+        of that pair rather than shipping a one-sided row.
 
-        No-op when set_entrance_map has never been called (HELLO before AP
+        Both modes send the resolved quads full-overwrite, chunked at
+        ENTRANCE_MAP_CHUNK (the row set can overrun the 8 KiB line cap). The
+        first chunk carries reset=True; an empty/fully-unresolved result sends
+        a single reset=True clear so the Switch reverts to vanilla.
+
+        No-op when neither mode has been configured (HELLO before AP
         Connected — the context handler re-pushes once slot_data lands).
         """
-        if not self._state.is_entrance_map_configured():
+        if self._state.is_entrance_map_configured():
+            rows = self._compile_coupled_rows()
+        elif self._state.is_port_matching_configured():
+            rows = self._compile_decoupled_rows()
+        else:
             return
+        from .protocol import ENTRANCE_MAP_CHUNK
+
+        if not rows:
+            # Empty (or fully-unresolved) — send one reset to clear the Switch.
+            await self._send(EntranceMapMsg(entries=[], reset=True))
+            return
+        for i in range(0, len(rows), ENTRANCE_MAP_CHUNK):
+            chunk = rows[i:i + ENTRANCE_MAP_CHUNK]
+            await self._send(EntranceMapMsg(entries=chunk, reset=(i == 0)))
+
+    def _compile_coupled_rows(self) -> list[dict]:
         # Lazy imports: keep the SMOClient module-load path off entrance_logic
         # (which lazily pulls hooks/Rules) until an actual shuffle seed connects.
         from ..entrance_logic import compile_stage_remaps, load_entrance_stages
-        from .protocol import ENTRANCE_MAP_CHUNK
 
         bijection = self._state.get_entrance_map()
         rows = compile_stage_remaps(bijection, load_entrance_stages())
@@ -804,15 +842,36 @@ class SwitchServer:
                 dropped, non_identity, len(rows), entry_rows,
                 len(rows) - entry_rows,
             )
+        return rows
 
-        quads = rows
-        if not quads:
-            # Empty (or fully-unresolved) — send one reset to clear the Switch.
-            await self._send(EntranceMapMsg(entries=[], reset=True))
-            return
-        for i in range(0, len(quads), ENTRANCE_MAP_CHUNK):
-            chunk = quads[i:i + ENTRANCE_MAP_CHUNK]
-            await self._send(EntranceMapMsg(entries=chunk, reset=(i == 0)))
+    def _compile_decoupled_rows(self) -> list[dict]:
+        # Lazy imports: same rationale as _compile_coupled_rows — keep
+        # port_graph/entrance_logic off the module-load path.
+        from ..entrance_logic import load_data_json, load_entrance_stages
+        from ..port_graph import build_port_graph, compile_port_remaps
+
+        matching = self._state.get_port_matching()
+        if not matching:
+            return []
+        subareas = load_data_json("subareas.json")
+        exclusions = load_data_json("entrance_exclusions.json")
+        # festival=False: the pool enumeration only drops festival-excluded
+        # kingdoms' MOUTHS from the pool; those mouths never appear as keys in
+        # a festival-generated matching either, so a non-festival (superset)
+        # graph resolves every mouth id a festival seed could ship. Building
+        # non-festival here avoids threading the goal option through the
+        # client for a distinction that doesn't change resolvability.
+        graph = build_port_graph(
+            load_entrance_stages(), subareas, exclusions, festival=False)
+        rows = compile_port_remaps(matching, graph)
+        resolved = sum(1 for a in matching if a in graph.mouths)
+        if resolved < len(matching):
+            log.warning(
+                "[entrance] %d/%d port-matching mouths unresolved against "
+                "local entrance_stages.json/subareas.json (shipping %d rows)",
+                len(matching) - resolved, len(matching), len(rows),
+            )
+        return rows
 
     def set_shop_labels(self, entries: list[dict]) -> None:
         """Stash the per-shop label entries for shipping to the Switch.

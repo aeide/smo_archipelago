@@ -1029,6 +1029,14 @@ class SMOContext(CommonContext):
                 self.switch.set_entrance_map(
                     {str(k): str(v) for k, v in raw_entrance_map.items()}
                 )
+                # P3e decoupled entrance shuffle: mouth-level port matching.
+                # Mutually exclusive with entrance_map (a seed ships at most
+                # one of the two keys) — push_entrance_map picks whichever
+                # mirror is configured.
+                raw_port_matching = slot_data.get("port_matching") or {}
+                self.switch.set_port_matching(
+                    {str(k): str(v) for k, v in raw_port_matching.items()}
+                )
                 await self.switch.push_entrance_map()
                 # Re-fight / Dark Side multi-moon bonus side-grants. Stashed for
                 # the ReceivedItems handler, which unlocks them as each Mushroom/

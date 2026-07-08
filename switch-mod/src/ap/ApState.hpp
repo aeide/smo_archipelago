@@ -510,7 +510,15 @@ public:
     // route to a single destination. Empty from_id = wildcard: matches any
     // transition id for that `from` stage, so every pre-P2 row (and every
     // coupled-shuffle row that doesn't need per-port routing) keeps working
-    // unchanged. Entry rows stay dest-keyed only — from_id is exit-only.
+    // unchanged.
+    //
+    // P3e (full port-involution substrate): entry rows now ALSO consult
+    // from_id, same wildcard convention. Under a port matching two doors of
+    // the SAME subarea can point at DIFFERENT partners, so entry rows sharing
+    // `from` (the shared vanilla-dest interior stage) must disambiguate by
+    // the door's own entry_id — mirrors the exit tiers exactly. Coupled-mode
+    // entry rows keep shipping an empty from_id and hit the wildcard tier
+    // unchanged (additive, no behavior change for existing seeds).
     //
     // P1 sized this for P3's full port-involution worst case (331-390 rows);
     // cap 512 with headroom. 512 slots x (4 x 64 + 1) ~= 128.5 KiB BSS. Fixed
@@ -535,13 +543,16 @@ public:
     void applyEntranceMap(const EntranceRemapEntry* entries, std::size_t count,
                           bool reset);
 
-    // Frame-thread read, two-key + compound exit disambiguator. Match
+    // Frame-thread read, two-key + compound entry/exit disambiguator. Match
     // precedence, first hit wins:
-    //   1. ENTRY row matching `dest_stage` (the inbound ChangeStageInfo dest;
-    //      walked through a shuffled door) — unchanged, dest-keyed only.
-    //   2. EXIT row matching (`cur_stage`, `transition_id`) exactly — a
+    //   1. ENTRY row matching (`dest_stage`, `transition_id`) exactly (P3e) —
+    //      a specific physical door of a subarea with multiple doors.
+    //   2. ENTRY row matching `dest_stage` with an empty from_id (wildcard) —
+    //      the back-compat path every pre-P3e (incl. every coupled-shuffle)
+    //      row still hits.
+    //   3. EXIT row matching (`cur_stage`, `transition_id`) exactly (P2) — a
     //      specific physical exit port of a multi-exit stage.
-    //   3. EXIT row matching `cur_stage` with an empty from_id (wildcard) —
+    //   4. EXIT row matching `cur_stage` with an empty from_id (wildcard) —
     //      the back-compat path every pre-P2 row still hits.
     // On hit fills to_stage / to_id (null-terminated) and returns true.
     // Lock-free seqlock read; a torn / contended read returns false (vanilla).

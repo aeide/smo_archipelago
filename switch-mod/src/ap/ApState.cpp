@@ -449,22 +449,39 @@ bool ApState::lookupEntranceRemap(const char* dest_stage,
     // Fail-safe — a contended read returns false so the transition stays
     // vanilla rather than warping Mario to a half-written remap target.
     //
-    // Three-tier, entry-first: an ENTRY row matching the inbound dest stage
-    // wins (you walked through a shuffled door, including a nested deeper door
-    // whose dest is itself an interior). Failing that, an EXIT row matching
-    // (cur_stage, transition_id) exactly — a specific physical exit port of a
-    // multi-exit stage (P2). Failing that, an EXIT row matching cur_stage with
-    // an empty from_id (wildcard) — the back-compat path every pre-P2 row and
-    // every coupled-shuffle row without per-port data still hits.
+    // Four-tier, entry-first: an ENTRY row matching (dest_stage,
+    // transition_id) exactly wins first (P3e — a specific physical door of a
+    // subarea with multiple doors, needed once a port matching can route two
+    // doors of the same subarea to different partners). Failing that, an
+    // ENTRY row matching dest_stage with an empty from_id (wildcard) — the
+    // back-compat path every pre-P3e row (incl. every coupled-shuffle row)
+    // still hits, including nested deeper doors whose dest is itself an
+    // interior. Failing that, an EXIT row matching (cur_stage, transition_id)
+    // exactly — a specific physical exit port of a multi-exit stage (P2).
+    // Failing that, an EXIT row matching cur_stage with an empty from_id
+    // (wildcard) — the back-compat path every pre-P2 row and every
+    // coupled-shuffle row without per-port data still hits.
     for (int attempt = 0; attempt < 8; ++attempt) {
         const std::uint32_t s0 = entrance_remap_seq.load(std::memory_order_acquire);
         if (s0 & 1u) continue;  // writer mid-update
         std::size_t n = entrance_remap_count;
         if (n > kEntranceRemapMax) n = kEntranceRemapMax;
         int hit = -1;
-        if (have_dest) {
+        if (have_dest && have_id) {
             for (std::size_t i = 0; i < n; ++i) {
                 if (!entrance_remap[i].is_exit &&
+                    entrance_remap[i].from_id[0] != '\0' &&
+                    std::strcmp(entrance_remap[i].from, dest_stage) == 0 &&
+                    std::strcmp(entrance_remap[i].from_id, transition_id) == 0) {
+                    hit = static_cast<int>(i);
+                    break;
+                }
+            }
+        }
+        if (hit < 0 && have_dest) {
+            for (std::size_t i = 0; i < n; ++i) {
+                if (!entrance_remap[i].is_exit &&
+                    entrance_remap[i].from_id[0] == '\0' &&
                     std::strcmp(entrance_remap[i].from, dest_stage) == 0) {
                     hit = static_cast<int>(i);
                     break;

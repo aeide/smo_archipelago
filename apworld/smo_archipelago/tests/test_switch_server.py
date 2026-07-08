@@ -1790,3 +1790,146 @@ async def test_talkatoo_disable_resets_tracker():
     talkatoo_messages = [m for m in sent if m.t == "talkatoo_pool"]
     assert len(talkatoo_messages) == 1
     assert talkatoo_messages[0].kingdom == "Cascade"
+
+
+# ---------------------------------------------------------------------------
+# P3e — push_entrance_map mode selection (coupled entrance_map vs decoupled
+# port_matching). The real row compilers (compile_stage_remaps /
+# compile_port_remaps) do a lazy cross-package relative import
+# (`from ..entrance_logic import ...`) that only resolves when `client` is
+# nested under the real apworld package (worlds.meatballs.client, the zipped/
+# installed shape) — NOT under this test suite's loose sys.path setup, where
+# `client` is its own top-level package (see conftest.py). That's pre-existing
+# (compile_stage_remaps has never been unit-tested through push_entrance_map
+# here either — only via the SMOAP_LIVE_AP subprocess suite). So these tests
+# monkeypatch the two `_compile_*_rows` seams instead of the real compilers,
+# to isolate and verify the NEW P3e mode-selection contract: exactly one
+# compiler runs, picked by which state mirror is configured. The real
+# compiler output is covered directly in test_port_graph.py
+# (compile_port_remaps) and test_entrance_shuffle.py (compile_stage_remaps);
+# the full slot_data -> wire round trip is covered by the SMOAP_LIVE_AP
+# suite (test_entrance_shuffle_option_modes.py / a P3e live probe).
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_push_entrance_map_noop_when_neither_configured():
+    state = BridgeState()
+    sw = SwitchServer("127.0.0.1", 0, state,
+                      on_check=lambda _msg: None,
+                      on_goal=lambda: None)
+    sent: list = []
+
+    async def fake_send(msg):
+        sent.append(msg)
+
+    sw._send = fake_send  # type: ignore[assignment]
+    await sw.push_entrance_map()
+    assert sent == []
+
+
+@pytest.mark.asyncio
+async def test_push_entrance_map_uses_coupled_compiler_when_entrance_map_set():
+    state = BridgeState()
+    sw = SwitchServer("127.0.0.1", 0, state,
+                      on_check=lambda _msg: None,
+                      on_goal=lambda: None)
+    sent: list = []
+
+    async def fake_send(msg):
+        sent.append(msg)
+
+    coupled_calls: list[int] = []
+    decoupled_calls: list[int] = []
+    sw._send = fake_send  # type: ignore[assignment]
+    sw._compile_coupled_rows = lambda: (coupled_calls.append(1) or  # type: ignore[method-assign]
+                                        [{"kind": "entry", "from": "A", "to_stage": "B", "to_id": "b"}])
+    sw._compile_decoupled_rows = lambda: (decoupled_calls.append(1) or [])  # type: ignore[method-assign]
+
+    sw.set_entrance_map({"A": "B"})
+    await sw.push_entrance_map()
+
+    assert coupled_calls == [1]
+    assert decoupled_calls == []
+    assert len(sent) == 1
+    assert sent[0].t == "entrance_map"
+    assert sent[0].reset is True
+    assert sent[0].entries == [{"kind": "entry", "from": "A", "to_stage": "B", "to_id": "b"}]
+
+
+@pytest.mark.asyncio
+async def test_push_entrance_map_uses_decoupled_compiler_when_port_matching_set():
+    state = BridgeState()
+    sw = SwitchServer("127.0.0.1", 0, state,
+                      on_check=lambda _msg: None,
+                      on_goal=lambda: None)
+    sent: list = []
+
+    async def fake_send(msg):
+        sent.append(msg)
+
+    coupled_calls: list[int] = []
+    decoupled_calls: list[int] = []
+    sw._send = fake_send  # type: ignore[assignment]
+    sw._compile_coupled_rows = lambda: (coupled_calls.append(1) or [])  # type: ignore[method-assign]
+    sw._compile_decoupled_rows = lambda: (decoupled_calls.append(1) or  # type: ignore[method-assign]
+                                          [{"kind": "exit", "from": "X", "from_id": "x1",
+                                            "to_stage": "Y", "to_id": "y1"}])
+
+    sw.set_port_matching({"doorA@overworld": "doorB@interior"})
+    await sw.push_entrance_map()
+
+    assert decoupled_calls == [1]
+    assert coupled_calls == []
+    assert len(sent) == 1
+    assert sent[0].t == "entrance_map"
+    assert sent[0].entries[0]["from_id"] == "x1"
+
+
+@pytest.mark.asyncio
+async def test_push_entrance_map_prefers_coupled_when_both_configured():
+    """Defensive: World.py's two before_create_regions branches are mutually
+    exclusive (only one of _entrance_map/_port_matching is ever set for a
+    seed), but push_entrance_map's own precedence should still be
+    deterministic if that invariant is ever violated."""
+    state = BridgeState()
+    sw = SwitchServer("127.0.0.1", 0, state,
+                      on_check=lambda _msg: None,
+                      on_goal=lambda: None)
+    sent: list = []
+
+    async def fake_send(msg):
+        sent.append(msg)
+
+    coupled_calls: list[int] = []
+    decoupled_calls: list[int] = []
+    sw._send = fake_send  # type: ignore[assignment]
+    sw._compile_coupled_rows = lambda: (coupled_calls.append(1) or [])  # type: ignore[method-assign]
+    sw._compile_decoupled_rows = lambda: (decoupled_calls.append(1) or [])  # type: ignore[method-assign]
+
+    sw.set_entrance_map({"A": "B"})
+    sw.set_port_matching({"doorA@overworld": "doorB@interior"})
+    await sw.push_entrance_map()
+
+    assert coupled_calls == [1]
+    assert decoupled_calls == []
+
+
+def test_bridge_state_port_matching_mirror_roundtrip():
+    """Pure BridgeState mirror behavior (no SwitchServer/asyncio needed) —
+    the P3e sibling of the existing entrance_map mirror."""
+    state = BridgeState()
+    assert state.is_port_matching_configured() is False
+    assert state.get_port_matching() == {}
+
+    state.set_port_matching({"doorA@overworld": "doorB@interior",
+                             "doorB@interior": "doorA@overworld"})
+    assert state.is_port_matching_configured() is True
+    assert state.get_port_matching() == {
+        "doorA@overworld": "doorB@interior",
+        "doorB@interior": "doorA@overworld",
+    }
+
+    # Empty dict is meaningful (clears to vanilla) and still marks configured.
+    state.set_port_matching({})
+    assert state.is_port_matching_configured() is True
+    assert state.get_port_matching() == {}

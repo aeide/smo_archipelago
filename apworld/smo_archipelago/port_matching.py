@@ -87,6 +87,8 @@ try:  # package import (bundled .apworld / generation)
         INTERIOR,
         OVERWORLD,
         PortGraph,
+        ROW_HEADROOM,
+        ROW_TABLE_CAP,
         estimate_remap_rows,
         is_involution,
     )
@@ -95,15 +97,18 @@ except ImportError:  # loose import (test suite, sys.path = package dir)
         INTERIOR,
         OVERWORLD,
         PortGraph,
+        ROW_HEADROOM,
+        ROW_TABLE_CAP,
         estimate_remap_rows,
         is_involution,
     )
 
 logger = logging.getLogger(__name__)
 
-# Keep in sync with kEntranceRemapMax in EntranceShuffleHook.cpp (P2).
-ROW_TABLE_CAP = 512
-ROW_HEADROOM = 32
+# ROW_TABLE_CAP / ROW_HEADROOM now live in port_graph.py (P3e: compile_port_remaps
+# needs them too, and port_graph is the module port_matching already imports
+# FROM, so defining them there avoids a circular import). Re-exported here
+# unchanged so existing imports of `port_matching.ROW_TABLE_CAP` keep working.
 
 
 # ---------------------------------------------------------------------------

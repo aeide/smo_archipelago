@@ -159,6 +159,36 @@ PORT_EXIT_GATE_OVERRIDES: dict[str, str] = {}
 OVERWORLD = "overworld"
 INTERIOR = "interior"
 
+# Row-table budget (P2/P3c/P3e). Owned here (not port_matching.py) because
+# compile_port_remaps (P3e) needs it and port_matching already imports FROM
+# this module — defining it there and importing it back would be a circular
+# import. port_matching.py re-exports these two names for its own callers/
+# tests, unchanged. Keep in sync with kEntranceRemapMax in
+# switch-mod/src/ap/ApState.hpp.
+ROW_TABLE_CAP = 512
+ROW_HEADROOM = 32
+
+# P3c discovery 3 / P3e §4: a handful of overworld door mouths physically sit
+# in a kingdom's placement ZONE (e.g. `LakeWorldTownZone`) rather than its
+# HomeStage. `entrance_stages.json` records the zone as that mouth's own
+# `stage` (correct for placing Mario there as a spawn TARGET), but it is
+# UNVERIFIED whether `GameDataFunction::getCurrentStageName()` ever reports
+# the zone name as `cur`/`dest` at transition-fire time, or always reports
+# the parent HomeStage (compound same-scene load) — see
+# CostumeDoorHook.cpp's confirmed finding that the Lake town-zone trampoline
+# door (`DoorWarp`) is a SAME-STAGE warp (no real changeNextStage fires for
+# it at all), which is suggestive but not conclusive for OTHER zone-hosted
+# doors. Until Devon's preview-mode (`kEntranceRemapApply=false`) log walk
+# settles this per zone (docs/plan-decoupled-entrances.md §3e), this table is
+# authored EMPTY and compile_port_remaps emits the raw extracted stage
+# verbatim. If a walk shows `cur`/`dest` reporting the parent stage for a
+# given zone, add `{"ZoneName": "ParentHomeStage"}` here — a pure data change,
+# no code change — and compile_port_remaps will alias both match keys (the
+# ENTRY row's `from`, via the subarea's own interior stage, is never a
+# per-door zone value, so it needs no aliasing) and rewrite targets that land
+# on that zone.
+ZONE_STAGE_ALIAS: dict[str, str] = {}
+
 
 @dataclass(frozen=True)
 class Mouth:
@@ -417,3 +447,122 @@ def estimate_remap_rows(matching: dict[str, str],
     (kEntranceRemapMax, 512 as of P2)."""
     return sum(1 for a, b in matching.items()
                if vanilla_matching.get(a) != b)
+
+
+# ---------------------------------------------------------------------------
+# P3e — row compiler (matching -> Switch-bound remap rows)
+# ---------------------------------------------------------------------------
+
+def _subarea_interior_stage_map(graph: PortGraph) -> dict[str, str]:
+    """subarea display name -> its interior stage, derived from any ingest
+    INTERIOR mouth of that subarea (every door of one subarea shares the same
+    interior `.stage`, so any one suffices). Every subarea contributing a
+    pooled OVERWORLD mouth is guaranteed at least one ingest INTERIOR mouth
+    too (the one-way-ENTRY subarea rule in build_port_graph), so this always
+    resolves for a mouth's own subarea."""
+    return {m.subarea: m.stage for m in graph.mouths.values()
+            if m.side == INTERIOR}
+
+
+def compile_port_remaps(matching: dict[str, str], graph: PortGraph) -> list[dict]:
+    """Resolve a P3c port matching into Switch-bound remap rows (P3e), the
+    per-mouth sibling of entrance_logic.compile_stage_remaps (coupled mode).
+
+    One row per mouth whose assignment deviates from `graph.vanilla_matching`
+    — same semantics as estimate_remap_rows, so
+    `len(compile_port_remaps(m, g)) == estimate_remap_rows(m, g.vanilla_matching)`
+    always holds. Vanilla-assigned mouths (including the roll's designated
+    fixed point) emit nothing.
+
+    For mouth A matched to B (matching[A] == B, arrival target = B's own
+    stage + entry_id marker):
+
+      * A is INTERIOR (an exit): `{"kind": "exit", "from": A.stage,
+        "from_id": A.entry_id, "to_stage": B.stage, "to_id": B.entry_id}` —
+        P2's compound exit key, exact-match tier.
+      * A is OVERWORLD (a door): `{"kind": "entry", "from": <A's own
+        subarea's interior stage — the vanilla dest when walking through A
+        unmodified>, "from_id": A.entry_id, "to_stage": B.stage,
+        "to_id": B.entry_id}`. `from_id` on an entry row is new for P3e —
+        needed because two doors of the SAME subarea can now point at
+        DIFFERENT partners, so `lookupEntranceRemap`'s entry tier must
+        disambiguate by the transition's own id (see ApState.cpp).
+
+    `to_stage`/`to_id` come straight from B's own Mouth fields regardless of
+    B's side — walking into either mouth of a matched pair lands you at the
+    OTHER mouth's own marker, symmetric by construction (the mouth model).
+    `ZONE_STAGE_ALIAS` (data-driven, empty until Devon's preview-walk
+    confirms it's needed — see that constant's docstring) is applied to any
+    stage that comes from an OVERWORLD mouth's own per-door `.stage` field
+    (i.e. `to_stage`/`to_id` when the target is an OVERWORLD mouth) — the one
+    schema-v2 field never exercised by the already-validated coupled shuffle.
+
+    A mouth id in `matching` that doesn't resolve against `graph.mouths`
+    (client-side data drift between the slot_data matching and the local
+    bundled entrance_stages.json) drops that row AND its reciprocal — never
+    one end alone — logged loudly.
+
+    Deterministically sorted. Raises RuntimeError if the row count exceeds
+    the table budget (ROW_TABLE_CAP - ROW_HEADROOM) — the roller already
+    asserts this at generation time (port_matching.roll_port_matching); this
+    re-assert catches a client-side data drift (stale bundled
+    entrance_stages.json) that could inflate/shrink the row set independent
+    of the roll.
+    """
+    subarea_stage = _subarea_interior_stage_map(graph)
+    rows: list[dict] = []
+    dropped = 0
+    for mouth_id, target_id in matching.items():
+        if graph.vanilla_matching.get(mouth_id) == target_id:
+            continue
+        mouth = graph.mouths.get(mouth_id)
+        target = graph.mouths.get(target_id)
+        if mouth is None or target is None:
+            dropped += 1
+            continue
+
+        to_stage = target.stage
+        to_id = target.entry_id
+        if target.side == OVERWORLD:
+            to_stage = ZONE_STAGE_ALIAS.get(to_stage, to_stage)
+
+        if mouth.side == INTERIOR:
+            rows.append({
+                "kind": "exit",
+                "from": mouth.stage,
+                "from_id": mouth.entry_id,
+                "to_stage": to_stage,
+                "to_id": to_id,
+            })
+        else:
+            from_stage = subarea_stage.get(mouth.subarea)
+            if not from_stage:
+                logger.warning(
+                    "compile_port_remaps: mouth %s's subarea '%s' has no "
+                    "resolvable interior stage — dropping row (and its "
+                    "reciprocal)", mouth_id, mouth.subarea)
+                dropped += 1
+                continue
+            rows.append({
+                "kind": "entry",
+                "from": from_stage,
+                "from_id": mouth.entry_id,
+                "to_stage": to_stage,
+                "to_id": to_id,
+            })
+
+    if dropped:
+        logger.warning(
+            "compile_port_remaps: dropped %d unresolvable mouth row(s) — "
+            "client/server entrance_stages.json data drift?", dropped)
+
+    rows.sort(key=lambda r: (
+        r["kind"], r["from"], r.get("from_id", ""), r["to_stage"], r["to_id"]))
+
+    budget = ROW_TABLE_CAP - ROW_HEADROOM
+    if len(rows) > budget:
+        raise RuntimeError(
+            f"compile_port_remaps: {len(rows)} rewrite rows exceeds the "
+            f"{budget} budget (kEntranceRemapMax {ROW_TABLE_CAP} - "
+            f"{ROW_HEADROOM} headroom)")
+    return rows

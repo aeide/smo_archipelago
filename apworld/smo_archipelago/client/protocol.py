@@ -683,39 +683,52 @@ ENTRANCE_MAP_CHUNK = 48
 class EntranceMapMsg:
     """Bridge -> Switch: resolved entrance-shuffle remap table (chunked).
 
-    The apworld resolves slot_data["entrance_map"] (a {door_subarea:
-    interior_subarea} bijection of AP display names) into stage-level quads via
-    data/entrance_stages.json BEFORE sending, so the Switch does a flat stage
-    lookup + ChangeStageInfo rewrite without needing the subarea-name table.
+    Shared by BOTH entrance-shuffle modes: coupled (`entrance_shuffle=simple`)
+    resolves slot_data["entrance_map"] (a {door_subarea: interior_subarea}
+    bijection of AP display names) via entrance_logic.compile_stage_remaps;
+    decoupled (`entrance_shuffle=decoupled`, P3e) resolves
+    slot_data["port_matching"] (a {mouth_id: mouth_id} involution over
+    port_graph mouths) via port_graph.compile_port_remaps. Exactly one of the
+    two slot_data keys is ever present for a seed (see
+    SwitchServer.push_entrance_map, which picks whichever mode is
+    configured); both compilers emit the SAME row shape below, so the Switch
+    doesn't need to know which mode produced a given table.
 
     Each entry: {"kind": <"entry"|"exit">, "from": <match-key stage>,
-    "to_stage": <rewrite dest stage>, "to_id": <rewrite arrival id>}, plus for
-    EXIT rows an optional "from_id" (P2): the exit port's own entry_id (SMO's
-    mChangeStageId at exit time), disambiguating a multi-exit stage's physical
-    exit ports so each CAN route to a different destination (coupled mode
-    today still routes every port of one interior to the same origin door —
-    see compile_stage_remaps). Absent "from_id" is a wildcard: matches any
-    exit of that `from` stage — the pre-P2 shape, kept for back-compat and for
-    interiors compile_stage_remaps can't enumerate ports for. ENTRY rows never
-    carry from_id (dest-keyed only).
+    "to_stage": <rewrite dest stage>, "to_id": <rewrite arrival id>}, plus an
+    optional "from_id": the transition's own entry_id (SMO's mChangeStageId
+    at transition-fire time), disambiguating multiple physical transitions
+    that share one `from` stage so each CAN route to a different destination.
+    Absent "from_id" is a wildcard: matches any transition of that `from`
+    stage. On EXIT rows this is P2 (a multi-exit stage's physical exit
+    ports — coupled mode still routes every port of one interior to the same
+    origin door, so its exit rows always carry a real port id, but the
+    wildcard fallback exists for interiors compile_stage_remaps can't
+    enumerate ports for). On ENTRY rows this is P3e (decoupled mode's rows
+    always carry the door's own entry_id, since a port matching can route two
+    doors of the same subarea to different partners; coupled mode's entry
+    rows keep shipping no from_id and hit the wildcard tier unchanged).
 
     ENTRY rows match the inbound dest stage (you walk through a door); EXIT
     rows match the CURRENT stage (you leave a shuffled interior — the return
-    target is precomputed because a coupled bijection's exit is deterministic).
-    A row with no "kind" is treated as an entry by older Switch builds. When
-    SMO fires GameDataFile::changeNextStage, the EntranceShuffleHook looks up
-    the dest as an entry key first, then an EXIT row matching (current stage,
+    target is precomputed, since both a coupled bijection's exit AND a
+    decoupled port matching's exit are pure functions of the roll, resolved
+    ahead of time here rather than tracked at runtime). A row with no "kind"
+    is treated as an entry by older Switch builds. When SMO fires
+    GameDataFile::changeNextStage, the EntranceShuffleHook looks up an ENTRY
+    row matching (dest, transition id) exactly, then an ENTRY row matching
+    just dest (wildcard), then an EXIT row matching (current stage,
     transition id) exactly, then an EXIT row matching just the current stage
-    with an empty from_id (wildcard), and rewrites the destination to
-    (to_stage, to_id).
+    (wildcard), and rewrites the destination to (to_stage, to_id).
 
     FULL-OVERWRITE, possibly chunked: the first chunk carries reset=True to
     clear the Switch table; follow-up chunks merge by (from, from_id, kind)
-    (the bijection can exceed the 8 KiB line cap at ~119 doors, so
+    (the row set can exceed the 8 KiB line cap at ~119-290 rows, so
     push_entrance_map splits at ENTRANCE_MAP_CHUNK). An empty reset=True
     message reverts to vanilla (entrance_shuffle off / no-shuffle seed).
 
-    Sent on AP Connected (slot_data["entrance_map"]) and on every HELLO replay.
+    Sent on AP Connected (slot_data["entrance_map"] or ["port_matching"]) and
+    on every HELLO replay.
     """
     t: str = "entrance_map"
     entries: list[dict] = field(default_factory=list)  # [{"from","to_stage","to_id"}]

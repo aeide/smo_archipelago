@@ -76,6 +76,7 @@ class _StubSwitch:
         self.kingdom_gates_calls: list[dict[str, int]] = []
         self.push_kingdom_gates_calls: int = 0
         self.entrance_map_calls: list[dict[str, str]] = []
+        self.port_matching_calls: list[dict[str, str]] = []
         self.push_entrance_map_calls: int = 0
 
     async def send_item(self, item: ItemMsg) -> None:
@@ -137,6 +138,9 @@ class _StubSwitch:
 
     def set_entrance_map(self, m: dict[str, str]) -> None:
         self.entrance_map_calls.append({k: str(v) for k, v in m.items()})
+
+    def set_port_matching(self, m: dict[str, str]) -> None:
+        self.port_matching_calls.append({k: str(v) for k, v in m.items()})
 
     async def push_entrance_map(self) -> None:
         self.push_entrance_map_calls += 1

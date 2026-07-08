@@ -118,6 +118,13 @@ class BridgeState:
         # Empty dict = vanilla (entrance_shuffle off or seed without shuffle).
         self.entrance_map: dict[str, str] = {}
         self._entrance_map_configured: bool = False
+        # P3e decoupled entrance shuffle: {mouth_id: mouth_id} involution (AP
+        # port_graph mouth ids). Populated from slot_data["port_matching"] on
+        # AP Connected. Mutually exclusive with entrance_map — a seed ships
+        # exactly one of the two (or neither, off mode); push_entrance_map
+        # picks whichever is configured.
+        self.port_matching: dict[str, str] = {}
+        self._port_matching_configured: bool = False
 
     # ---------- AP <-> internal ----------
 
@@ -407,6 +414,20 @@ class BridgeState:
     def is_entrance_map_configured(self) -> bool:
         with self._lock:
             return self._entrance_map_configured
+
+    def set_port_matching(self, m: dict[str, str]) -> None:
+        """Store the P3e decoupled port matching from slot_data."""
+        with self._lock:
+            self.port_matching = {str(k): str(v) for k, v in (m or {}).items()}
+            self._port_matching_configured = True
+
+    def get_port_matching(self) -> dict[str, str]:
+        with self._lock:
+            return dict(self.port_matching)
+
+    def is_port_matching_configured(self) -> bool:
+        with self._lock:
+            return self._port_matching_configured
 
     def set_shine_palette(self, entries: dict[int, int]) -> None:
         """Replace the (shine_uid -> palette) table with the given entries.

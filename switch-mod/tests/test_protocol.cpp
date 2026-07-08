@@ -889,8 +889,9 @@ TEST(decode_ability_state_enforce_false) {
 // P7/P2 — entrance_map wire message (compound exit key) --------------------
 
 TEST(decode_entrance_map_entry_row_from_id_absent) {
-    // ENTRY rows never carry from_id on the wire; absence parses to the empty
-    // wildcard sentinel (entry rows don't consult it — dest-keyed only).
+    // Coupled-shuffle ENTRY rows don't carry from_id on the wire; absence
+    // parses to the empty wildcard sentinel — the back-compat tier every
+    // pre-P3e entry row hits (see lookupEntranceRemap's second tier).
     DecodedMsg m;
     EXPECT(decodeFrom(
         R"({"t":"entrance_map","reset":true,"entries":[)"
@@ -900,6 +901,47 @@ TEST(decode_entrance_map_entry_row_from_id_absent) {
     EXPECT(!m.entrance_map.entries[0].is_exit);
     EXPECT_EQ_S(m.entrance_map.entries[0].from, "PushBlockExStage");
     EXPECT_EQ_S(m.entrance_map.entries[0].from_id, "");
+}
+
+TEST(decode_entrance_map_entry_row_from_id_present) {
+    // P3e — port-matching ENTRY rows carry the compound key too: from_id
+    // disambiguates which of a multi-door subarea's doors fired, since each
+    // door can now route to a DIFFERENT partner (unlike coupled mode, where
+    // every door of a subarea shares one bijection target).
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"entrance_map","reset":true,"entries":[)"
+        R"({"kind":"entry","from":"CapWorldHomeStage","from_id":"PushBlockExStageEnt",)"
+        R"("to_stage":"PoisonWaveExStage","to_id":"PoisonWaveExEnt"}]})",
+        m));
+    EXPECT_EQ_I(m.entrance_map.entry_count, 1u);
+    EXPECT(!m.entrance_map.entries[0].is_exit);
+    EXPECT_EQ_S(m.entrance_map.entries[0].from, "CapWorldHomeStage");
+    EXPECT_EQ_S(m.entrance_map.entries[0].from_id, "PushBlockExStageEnt");
+    EXPECT_EQ_S(m.entrance_map.entries[0].to_stage, "PoisonWaveExStage");
+    EXPECT_EQ_S(m.entrance_map.entries[0].to_id, "PoisonWaveExEnt");
+}
+
+TEST(decode_entrance_map_two_entry_rows_same_from_different_from_id) {
+    // Two doors of one subarea (P3e port matching) routed to different
+    // partners compile to two entry rows sharing `from` (the subarea's
+    // shared vanilla-dest interior stage) but keyed apart by from_id — the
+    // exact compound key lookupEntranceRemap's entry tier now matches on.
+    DecodedMsg m;
+    EXPECT(decodeFrom(
+        R"({"t":"entrance_map","reset":true,"entries":[)"
+        R"({"kind":"entry","from":"CapWorldHomeStage","from_id":"PushBlockExStageEnt",)"
+        R"("to_stage":"PoisonWaveExStage","to_id":"PoisonWaveExEnt"},)"
+        R"({"kind":"entry","from":"CapWorldHomeStage","from_id":"PushBlockExStageEntDokan",)"
+        R"("to_stage":"SandWorldHomeStage","to_id":"pipe"}]})",
+        m));
+    EXPECT_EQ_I(m.entrance_map.entry_count, 2u);
+    EXPECT_EQ_S(m.entrance_map.entries[0].from, "CapWorldHomeStage");
+    EXPECT_EQ_S(m.entrance_map.entries[1].from, "CapWorldHomeStage");
+    EXPECT_EQ_S(m.entrance_map.entries[0].from_id, "PushBlockExStageEnt");
+    EXPECT_EQ_S(m.entrance_map.entries[1].from_id, "PushBlockExStageEntDokan");
+    EXPECT_EQ_S(m.entrance_map.entries[0].to_stage, "PoisonWaveExStage");
+    EXPECT_EQ_S(m.entrance_map.entries[1].to_stage, "SandWorldHomeStage");
 }
 
 TEST(decode_entrance_map_exit_row_from_id_present) {
