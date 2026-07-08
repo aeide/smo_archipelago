@@ -29,6 +29,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace smoap::game {
 
 struct OrderGateDecision {
@@ -94,5 +96,13 @@ struct DetourExitGateDecision {
 // when exit_kingdom_short is not a detour exit or the kingdom table can't resolve
 // the siblings.
 DetourExitGateDecision evaluateDetourExitGate(const char* exit_kingdom_short);
+
+// Per-kingdom DEPOSITED effective-moon count (the save's PayShineNum for the
+// kingdom, via the M6 PaySnapshot symbol plumbing). 0 when the symbol/holder
+// isn't ready. This is the same "have I paid the Odyssey" read the launch
+// check consumes — exported for UnlockShineNumHook's chain-return takeoff
+// allowance ("open the gate while chain-reached AND the rolled leave-gate is
+// unpaid").
+int depositedEffectiveMoons(std::uint8_t bit);
 
 }  // namespace smoap::game

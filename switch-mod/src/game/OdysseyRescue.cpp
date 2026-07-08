@@ -548,4 +548,48 @@ void forceCascadeAlreadyVisited(void* gameDataFile, const char* tag) {
     }
 }
 
+// ---- P4 decoupled — chain-arrival normalization (see hpp) -----------------
+
+void forceAlreadyVisitedWorld(void* gameDataFile, int world_id, const char* tag) {
+    if (!gameDataFile || !g_fns.setAlreadyGoWorld || world_id < 0) return;
+    // GameDataFile::mGameProgressData @ 0x6a8 (OdysseyHeaders GameDataFile.h) —
+    // same read forceCascadeAlreadyVisited uses.
+    void* progress = *reinterpret_cast<void**>(
+        reinterpret_cast<std::uint8_t*>(gameDataFile) + 0x6a8);
+    if (!progress) return;
+    g_fns.setAlreadyGoWorld(progress, world_id);
+    static int s_log = 0;
+    if (s_log < 20) {
+        ++s_log;
+        SMOAP_LOG_INFO("[chain-arrival] %s setAlreadyGoWorld(worldId=%d) -> "
+                       "parked flight arrival, not buried first-visit demo #%d",
+                       tag ? tag : "?", world_id, s_log);
+    }
+}
+
+bool isWorldAlreadyGo(int world_id) {
+    if (!g_fns.isAlreadyGoWorld || world_id < 0) return false;
+    void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
+        std::memory_order_relaxed);
+    if (!gdh) return false;
+    GameDataHolderAccessor acc{gdh};
+    return g_fns.isAlreadyGoWorld(acc, world_id);
+}
+
+void forceUnlockWorld(int world_id, const char* tag) {
+    if (!g_fns.unlockWorld || world_id < 0) return;
+    void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
+        std::memory_order_relaxed);
+    if (!gdh) return;
+    GameDataHolderWriter wr{gdh};
+    g_fns.unlockWorld(wr, world_id);
+    static int s_log = 0;
+    if (s_log < 20) {
+        ++s_log;
+        SMOAP_LOG_INFO("[chain-arrival] %s unlockWorld(worldId=%d) -> world map "
+                       "offers it as a return-flight destination #%d",
+                       tag ? tag : "?", world_id, s_log);
+    }
+}
+
 }  // namespace smoap::game

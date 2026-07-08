@@ -19,13 +19,13 @@ from ..Helpers import is_location_enabled, is_option_enabled, get_option_value
 from Options import OptionError
 from .Options import EntranceShuffle, Goal
 
-# P3d readiness flag: the decoupled region wiring below is implemented and
-# test-exercised, but the mode stays generation-BLOCKED for players until P3e
-# ships the slot_data/wire path — a decoupled seed today would be logically
-# shuffled but physically vanilla on the Switch. Tests flip this module
-# attribute to exercise the full wiring; YAMLs cannot reach it. Flip to True
-# (and delete this comment) when P3e lands.
-PORT_SHUFFLE_SHIPPABLE = False
+# Decoupled-mode readiness flag — FLIPPED TRUE 2026-07-08 (the P3e slot_data +
+# client + Switch wire path shipped and was live-validated; see
+# docs/plan-decoupled-entrances.md "P4 findings"). Retained as a KILL SWITCH:
+# setting it back to False re-blocks decoupled generation for players via the
+# OptionError guard below without touching any other wiring (the test suite's
+# module-attribute flips keep working either way).
+PORT_SHUFFLE_SHIPPABLE = True
 
 # calling logging.info("message") anywhere below in this file will output the message to both console and log file
 import logging
@@ -144,25 +144,24 @@ def _entrance_shuffle_mode(multiworld: MultiWorld, player: int) -> int:
 
 
 def _raise_if_decoupled_entrance_shuffle(multiworld: MultiWorld, player: int) -> None:
-    """Fail generation loudly if entrance_shuffle=decoupled is selected.
+    """Fail generation loudly if entrance_shuffle=decoupled is selected while
+    the mode is kill-switched off.
 
-    The generation logic for decoupled (P3d) exists below, but the wire path
-    (P3e slot_data + client + Switch rows) does not — a decoupled seed would
-    be logically shuffled but physically vanilla in-game. Gated on the
-    PORT_SHUFFLE_SHIPPABLE module flag (False until P3e) so the test suite
-    can exercise the wiring without opening the option to YAMLs. Called from
-    the earliest hook that consults the option (before_create_regions) so a
-    decoupled seed never silently falls back to the coupled `simple`
-    bijection (which would happily roll a bijection and ship a
+    Decoupled SHIPPED 2026-07-08 (PORT_SHUFFLE_SHIPPABLE = True above), so
+    this guard is normally inert. It stays wired so flipping the flag back
+    to False re-blocks the mode for players in one line — and a re-blocked
+    decoupled seed must fail HERE (the earliest hook that consults the
+    option, before_create_regions), never silently fall back to the coupled
+    `simple` bijection (which would happily roll a bijection and ship a
     working-looking, but wrong-mode, entrance_map)."""
     if PORT_SHUFFLE_SHIPPABLE:
         return
     if _entrance_shuffle_mode(multiworld, player) == EntranceShuffle.option_decoupled:
         raise OptionError(
-            "entrance_shuffle: 'decoupled' is reserved for a future release "
-            "(P3's full port-graph shuffle) and is not implemented yet. Use "
-            "'simple' for the current coupled entrance shuffle, or 'off' to "
-            "disable entrance shuffling."
+            "entrance_shuffle: 'decoupled' is disabled in this build (the "
+            "PORT_SHUFFLE_SHIPPABLE kill switch is off). Use 'simple' for "
+            "the coupled entrance shuffle, or 'off' to disable entrance "
+            "shuffling."
         )
 
 

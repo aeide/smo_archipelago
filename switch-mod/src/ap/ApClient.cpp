@@ -756,8 +756,8 @@ void ApClient::pumpOnce() {
     ApState::ArrivalEvent av;
     while (st.outbound_arrivals.peek(av)) {
         Status s;
-        s.kingdom = av.kingdom;
-        s.stage_name = av.stage_name;
+        copyFixedField(s.kingdom, av.kingdom);
+        copyCheckField(s.stage_name, av.stage_name);
         encodeStatus(line, s);
         if (sockSend(socket_fd_, line.data(), line.size()).ret < 0) return;
         SMOAP_LOG_INFO("[pump] arrival status kingdom=%s stage=%s",

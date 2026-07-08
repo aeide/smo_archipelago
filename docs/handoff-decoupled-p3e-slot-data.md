@@ -68,6 +68,14 @@ Live re-run: `test_entrance_shuffle_option_modes.py`,
 `test_rearrival_reachability.py`, `test_p3e_port_matching_wire.py` all green
 against the reinstalled zip.
 
+**⚠ Post-handoff bug fix (2026-07-07):** Devon's first live decoupled walk hit
+`[entrance] applied 0 remap entries (reset=1)` — every door vanilla. The
+Connected handler sets BOTH mirrors every connect (absent key → `{}`, still
+"configured"), and `push_entrance_map` picked coupled on configured-ness
+alone, shadowing the decoupled branch. Fixed in `switch_server.py` (prefer
+configured AND non-empty) + 2 regression tests; see plan doc §3e item 7.
+Client-only: reinstall zip + restart SMOClient, no Switch rebuild/re-seed.
+
 ## Devon's checklist (before flipping PORT_SHUFFLE_SHIPPABLE)
 
 **Not done this session (explicitly out of scope per the work order):** the

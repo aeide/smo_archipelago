@@ -108,11 +108,15 @@ constexpr DetourPair kDetourPairs[] = {
      "Seaside", "SeaWorldHomeStage",  10},
 };
 
+}  // namespace
+
 // Per-kingdom DEPOSITED effective-moon count, read live from the save via the
 // by-world getPayShineNum the M6 PaySnapshot path already resolves
 // (ApState::get_pay_shine_num_fn). Reading game state means it survives save
 // reloads, unlike any Switch-side accumulator. Returns 0 when the symbol/holder
-// isn't ready yet.
+// isn't ready yet. Exported (2026-07-08) so UnlockShineNumHook's chain-return
+// takeoff allowance can test "rolled leave-gate unpaid" with the same read
+// the detour-exit gate uses.
 int depositedEffectiveMoons(std::uint8_t bit) {
     if (bit >= 17) return 0;
     auto& s = smoap::ap::ApState::instance();
@@ -128,6 +132,8 @@ int depositedEffectiveMoons(std::uint8_t bit) {
     const int n = fn(GameDataHolderAccessor{holder}, world_id);
     return n < 0 ? 0 : n;
 }
+
+namespace {
 
 // Per-kingdom LIFETIME-received effective moons (Multi-Moon=3, Power-Moon=1).
 // = outstanding (ApState::ap_moons_kingdom — the SPENDABLE balance that drops to

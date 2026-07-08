@@ -63,6 +63,14 @@ void installPayShineSnapshotSymbol();
 // scripts/extract_shine_map.py.
 const char* kingdomShortFromHomeStage(const char* home_stage);
 
+// Inverse of kingdomShortFromHomeStage — apworld kingdom short name ("Wooded")
+// to SMO HomeStage name ("ForestWorldHomeStage"). Returns nullptr for unknown
+// names; Ruined resolves to "AttackWorldHomeStage" (the flight-subsystem name,
+// not the BossRaidWorldHomeStage ShineList alias). Used by the chain-return
+// flight bounce (WorldMapSelectHook) to build the substitute flight target
+// from a stored kingdom bit.
+const char* homeStageForKingdomShort(const char* kingdom_short);
+
 // Map a SMO internal worldId (0..16) to the apworld kingdom short name.
 // Composes kingdomBitForWorldId + kingdomForBit so the Sea↔Snow swap
 // documented on kingdomBitForWorldId is honored — direct indexing into

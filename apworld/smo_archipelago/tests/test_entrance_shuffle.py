@@ -32,22 +32,27 @@ def _entrance_stages() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# P3d readiness flag (source-scan — hooks/World.py imports AP and can't be
+# Readiness flag (source-scan — hooks/World.py imports AP and can't be
 # imported loose, same technique as test_port_graph's __init__.py cross-check)
 # ---------------------------------------------------------------------------
 
-def test_port_shuffle_readiness_flag_defaults_off():
-    """PORT_SHUFFLE_SHIPPABLE must stay False (and stay consulted by the
-    decoupled OptionError guard) until P3e ships the wire path — a decoupled
-    seed today would be logically shuffled but physically vanilla in-game."""
+def test_port_shuffle_readiness_flag_shipped():
+    """PORT_SHUFFLE_SHIPPABLE flipped True 2026-07-08 (P3e wire path shipped
+    + live-validated). The flag must stay PRESENT and consulted by the
+    decoupled OptionError guard — it's the one-line kill switch that
+    re-blocks decoupled generation for players. If you intentionally
+    kill-switch the mode, update this test alongside (assert False) so the
+    suite documents the block."""
     src = (APWORLD_ROOT / "hooks" / "World.py").read_text(encoding="utf-8")
-    assert "PORT_SHUFFLE_SHIPPABLE = False" in src, (
-        "PORT_SHUFFLE_SHIPPABLE flipped or removed — decoupled must stay "
-        "generation-blocked for players until P3e ships slot_data/client/"
-        "Switch plumbing")
+    assert "PORT_SHUFFLE_SHIPPABLE = True" in src, (
+        "PORT_SHUFFLE_SHIPPABLE is no longer True — decoupled is "
+        "kill-switched or the flag was removed. If deliberate, update this "
+        "test to document the block; otherwise restore the flip "
+        "(shipped 2026-07-08).")
     assert "if PORT_SHUFFLE_SHIPPABLE:" in src, (
         "the decoupled OptionError guard no longer consults "
-        "PORT_SHUFFLE_SHIPPABLE — tests can't exercise the wiring")
+        "PORT_SHUFFLE_SHIPPABLE — the kill switch is disconnected and "
+        "flipping the flag would no longer re-block the mode")
 
 
 # ---------------------------------------------------------------------------

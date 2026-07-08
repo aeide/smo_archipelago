@@ -1031,8 +1031,12 @@ class SMOContext(CommonContext):
                 )
                 # P3e decoupled entrance shuffle: mouth-level port matching.
                 # Mutually exclusive with entrance_map (a seed ships at most
-                # one of the two keys) — push_entrance_map picks whichever
-                # mirror is configured.
+                # one of the two keys). BOTH mirrors are deliberately
+                # reassigned every Connected (absent key -> {}) so reconnects
+                # across seeds clear stale tables; push_entrance_map picks
+                # the mirror that is configured AND NON-EMPTY (checking
+                # configured alone let this always-set empty entrance_map
+                # shadow the decoupled branch — 2026-07-07 0-row bug).
                 raw_port_matching = slot_data.get("port_matching") or {}
                 self.switch.set_port_matching(
                     {str(k): str(v) for k, v in raw_port_matching.items()}

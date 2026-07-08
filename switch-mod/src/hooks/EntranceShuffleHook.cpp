@@ -216,8 +216,9 @@ char* mutableCstrAt(ChangeStageInfo* info, std::size_t off) {
 // P0 spike rows: verify BOTH strings fit before writing EITHER (never leave a
 // torn rewrite — right stage / stale entrance id), then overwrite
 // ChangeStageInfo's stage/id cstrs in place. `tag` names the caller for the
-// APPLIED/FAILED log lines (e.g. "remap", "p0-spike").
-void applyEntranceMutation(const ChangeStageInfo* info, const char* dest,
+// APPLIED/FAILED log lines (e.g. "remap", "p0-spike"). Returns true iff the
+// rewrite was applied (callers gate follow-up field edits on it).
+bool applyEntranceMutation(const ChangeStageInfo* info, const char* dest,
                            const char* cur, const char* to_stage,
                            const char* to_id, const char* tag) {
     auto* mut       = const_cast<ChangeStageInfo*>(info);
@@ -230,7 +231,7 @@ void applyEntranceMutation(const ChangeStageInfo* info, const char* dest,
         SMOAP_LOG_WARN("[entrance:%s-FAILED] dest='%s' cur='%s' -> stage='%s' "
                        "id='%s' (buffer guard tripped) — left vanilla",
                        tag, dest, cur, to_stage, to_id);
-        return;
+        return false;
     }
     char old_id[smoap::ap::kCheckFieldCap];
     std::strncpy(old_id, readCstrAt(info, kOffChangeStageIdCstr),
@@ -240,12 +241,46 @@ void applyEntranceMutation(const ChangeStageInfo* info, const char* dest,
     std::memcpy(dst_id, to_id, id_len + 1);
     SMOAP_LOG_INFO("[entrance:%s-APPLIED] dest='%s'/'%s' cur='%s' -> stage='%s' id='%s'",
                    tag, dest, old_id, cur, to_stage, to_id);
+    return true;
 }
 
-void processEntranceRemap(const ChangeStageInfo* info) {
-    if (!info) return;
+// P4 crash fix (2026-07-08, [docs/handoff-p4-cascade-reentry-crash.md]):
+// door-ENTRY ChangeStageInfos carry an explicit scenario=1 (correct for the
+// vanilla subarea they were built for). When the remap redirects that commit
+// to an overworld HomeStage, the stale 1 becomes the scenario-jump load input
+// for a whole KINGDOM — and whenever the kingdom's live scenario is beyond 1
+// (Broode beaten, moon rock open) the mismatched load pulls an inconsistent,
+// oversized placement set and exhausts stage-load memory. Repro'd both ways:
+// sead::FrameHeap abort on FileLoadThread (2026-07-07) and a NULL operator-new
+// in the mod heap (2026-07-08); Devon's matrix pinned it to live-scenario!=1
+// (R1 pre-Broode clean, R1/R3 post-Broode crash, R2 flight clean — flight
+// recomputes the scenario). Fix: rewrite the scenario to -1, ChangeStageInfo's
+// ctor default meaning "unspecified" — the engine then resolves the kingdom's
+// live scenario exactly like every clean pipe-exit / P0-spike commit did.
+// Scoped to remapped commits whose FINAL target is an overworld HomeStage;
+// interior targets keep their scenario (Ex stages genuinely run scenario 1).
+// The broode-respawn / cap-return overrides run AFTER this in the hook body
+// and still force their scenarios when their own gates fire (cap-return's -1
+// info-read path is designed for exactly this shape).
+void neutralizeScenarioForOverworldTarget(const ChangeStageInfo* info,
+                                          const char* to_stage) {
+    if (!smoap::game::kingdomShortFromHomeStage(to_stage)) return;
+    auto* scp = reinterpret_cast<std::int32_t*>(
+        reinterpret_cast<std::uint8_t*>(const_cast<ChangeStageInfo*>(info))
+        + kOffScenarioNo);
+    if (*scp == -1) return;
+    SMOAP_LOG_INFO("[entrance:remap-scenario] stale explicit scenario %d -> -1 "
+                   "(engine recomputes live scenario for '%s')", *scp, to_stage);
+    *scp = -1;
+}
+
+// Returns true iff a table row was APPLIED (the ChangeStageInfo was rewritten).
+// The hook body uses this to run chain-arrival bookkeeping on remapped
+// overworld commits only — never on vanilla transitions.
+bool processEntranceRemap(const ChangeStageInfo* info) {
+    if (!info) return false;
     const char* dest = readCstrAt(info, kOffChangeStageNameCstr);
-    if (!dest || dest[0] == '\0' || std::strcmp(dest, "(null)") == 0) return;
+    if (!dest || dest[0] == '\0' || std::strcmp(dest, "(null)") == 0) return false;
     // getCurrentStageName — the EXIT key. We're leaving `cur`; an exit row keyed
     // on it rewrites the forward "exit pipe" dest to the origin door's overworld.
     const char* cur = currentStageName();
@@ -259,7 +294,7 @@ void processEntranceRemap(const ChangeStageInfo* info) {
     // don't remap a reload. (cur may be a sentinel like "(unresolved)" when
     // getCurrentStageName didn't resolve — that never equals a real dest, so the
     // guard is inert and we fall back to an entry-only lookup below.)
-    if (cur && std::strcmp(dest, cur) == 0) return;
+    if (cur && std::strcmp(dest, cur) == 0) return false;
 
     if constexpr (kP0DecoupledSpike) {
         const int scenario =
@@ -276,7 +311,7 @@ void processEntranceRemap(const ChangeStageInfo* info) {
                            dest, cur, scenario);
             applyEntranceMutation(info, dest, cur, "LavaWorldHomeStage", "shop",
                                  "p0-spike");
-            return;
+            return false;
         }
         // Row 2 — the return edge: walking into the Luncheon shop from this
         // chained port arrives back inside Push Block Peril, making it a true
@@ -287,7 +322,7 @@ void processEntranceRemap(const ChangeStageInfo* info) {
                            dest, cur, scenario);
             applyEntranceMutation(info, dest, cur, "PushBlockExStage",
                                  "PushBlockExStageEnt", "p0-spike");
-            return;
+            return false;
         }
     }
 
@@ -295,16 +330,91 @@ void processEntranceRemap(const ChangeStageInfo* info) {
     char to_id[smoap::ap::kCheckFieldCap];
     if (!smoap::ap::ApState::instance().lookupEntranceRemap(dest, cur, transition_id,
                                                              to_stage, to_id))
-        return;
+        return false;
 
     if constexpr (!kEntranceRemapApply) {
         SMOAP_LOG_INFO("[entrance:remap-preview] dest='%s' cur='%s' -> stage='%s' "
                        "id='%s' (NOT YET APPLIED — kEntranceRemapApply is false)",
                        dest, cur, to_stage, to_id);
-        return;
+        return false;
     }
 
-    applyEntranceMutation(info, dest, cur, to_stage, to_id, "remap");
+    if (!applyEntranceMutation(info, dest, cur, to_stage, to_id, "remap"))
+        return false;
+    neutralizeScenarioForOverworldTarget(info, to_stage);
+    return true;
+}
+
+// ── P4 decoupled — chain-arrival bookkeeping + normalization ────────────────
+//
+// Runs on every REMAPPED commit whose FINAL target is an overworld HomeStage
+// (a "chain arrival"). Two jobs, both pre-orig so the stage load reads them:
+//
+// 1. Bookkeeping for the chain-return flight scope (Devon ruling 2026-07-07:
+//    from a chain-reached kingdom the Odyssey may fly to ALREADY-VISITED
+//    kingdoms only): mark the destination chain-reached + visited, record the
+//    chain ORIGIN (the kingdom Mario was last standing in — for interiors
+//    that's still the kingdom containing them, via last_arrival_kingdom's
+//    HomeStage-only updates), and mark the origin visited too (Mario is
+//    demonstrably there; flight commits are the only other writers and the
+//    starting kingdom never gets one).
+//
+// 2. Arrival normalization — the generalized Cascade treatment (Devon,
+//    2026-07-08): setAlreadyGoWorld (parked flight landing instead of the
+//    buried/one-time first-visit arrival flow) + forceAcquireOdyssey (ship
+//    present + boardable; P0 Luncheon chain arrival had exist=0) +
+//    unlockWorld (the world map lists this kingdom as a return-flight
+//    destination later). Only fires when the save hasn't already recorded a
+//    visit. Lost/Ruined are EXEMPT from normalization (their grounded-ship
+//    states are story-managed: the Lost softlock sweep and the pinned Ruined
+//    Multi-Moon respectively) but still get the bookkeeping.
+//
+// ⚠ Watch item for the in-game matrix: unlockWorld on a FUTURE story kingdom
+// is adjacent to the mUnlockWorldNum-overshoot risk documented on the removed
+// Ruined backtrack path (post-boss autopilot skipping Bowser). This call is
+// the Lost-sweep-safe shape (unlock the world being arrived in), but verify
+// the autopilot after chaining into a late kingdom.
+void processChainArrival(GameDataFile* self, const char* dest,
+                         const char* dest_kingdom) {
+    if (!dest || !dest_kingdom) return;
+    auto& st = smoap::ap::ApState::instance();
+
+    const std::uint8_t dest_bit = smoap::game::kingdomBitFor(dest_kingdom);
+    if (dest_bit >= 17) return;
+
+    // Origin = the kingdom Mario was last standing in (frame-thread field,
+    // updated only on HomeStage arrivals, so a chain fired from inside a
+    // subarea still resolves to the subarea's parent kingdom).
+    const std::uint8_t origin_bit =
+        st.last_arrival_kingdom[0]
+            ? smoap::game::kingdomBitFor(st.last_arrival_kingdom)
+            : 0xff;
+
+    st.markKingdomBitChainReached(dest_bit);
+    st.markKingdomBitVisited(dest_bit);
+    if (origin_bit < 17) {
+        st.markKingdomBitVisited(origin_bit);
+        st.chain_origin_bit[dest_bit].store(origin_bit, std::memory_order_relaxed);
+    }
+
+    const bool exempt =
+        std::strcmp(dest, "ClashWorldHomeStage") == 0 ||     // Lost
+        std::strcmp(dest, "AttackWorldHomeStage") == 0 ||    // Ruined
+        std::strcmp(dest, "BossRaidWorldHomeStage") == 0;    // Ruined (alias)
+
+    const int world_id = smoap::game::worldIdFromKingdomShort(dest_kingdom);
+    const bool already_go = smoap::game::isWorldAlreadyGo(world_id);
+
+    SMOAP_LOG_INFO("[chain-arrival] dest=%s kingdom=%s bit=%u origin_bit=%u "
+                   "worldId=%d alreadyGo=%d exempt=%d",
+                   dest, dest_kingdom, dest_bit, origin_bit, world_id,
+                   already_go ? 1 : 0, exempt ? 1 : 0);
+
+    if (exempt || already_go || world_id < 0) return;
+
+    smoap::game::forceAlreadyVisitedWorld(self, world_id, "chain-arrival");
+    smoap::game::forceAcquireOdyssey("chain-arrival");
+    smoap::game::forceUnlockWorld(world_id, "chain-arrival");
 }
 
 // ── Free-detour: "both siblings before the exit" gate ───────────────────────
@@ -444,7 +554,7 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
         [](GameDataFile* self, const ChangeStageInfo* info,
            std::int32_t raceType) -> void {
             logChangeStageInfo("file", info);
-            processEntranceRemap(info);
+            const bool remapped = processEntranceRemap(info);
             processDetourExitGate(info);
             processCascadeOdysseyDivert(info);
             // Overworld-arrival signal for the PC tracker. processEntranceRemap
@@ -455,6 +565,10 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
             if (info) {
                 const char* dest = readCstrAt(info, kOffChangeStageNameCstr);
                 const char* kingdom = smoap::game::kingdomShortFromHomeStage(dest);
+                // Chain-arrival bookkeeping + normalization MUST run before
+                // reportArrival — it reads last_arrival_kingdom as the chain
+                // ORIGIN, and reportArrival overwrites that with the dest.
+                if (remapped && kingdom) processChainArrival(self, dest, kingdom);
                 if (kingdom) smoap::ap::reportArrival(dest, kingdom);
                 // Cascade/Broode respawn (PRIMARY): force the arrival scenario in
                 // the ChangeStageInfo BEFORE orig consumes it, so the engine loads

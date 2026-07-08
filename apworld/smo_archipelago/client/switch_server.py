@@ -784,9 +784,15 @@ class SwitchServer:
         """Compile rows from whichever entrance-shuffle mode is configured
         and ship them to the Switch as the shared `entrance_map` wire message.
 
-        Exactly one of entrance_map (coupled) / port_matching (decoupled) is
-        ever configured for a seed — before_fill_slot_data ships at most one
-        key, so at most one of the two state mirrors gets set. Coupled
+        A seed ships at most ONE of the two slot_data keys, but context.py's
+        Connected handler reassigns BOTH state mirrors on every connect (the
+        absent mode's mirror is set to {}) so a reconnect across seeds always
+        clears stale tables. Selection therefore prefers the mirror that is
+        configured AND non-empty — checking `is_*_configured()` alone would
+        let the always-configured empty coupled mirror shadow the decoupled
+        branch (the 2026-07-07 "applied 0 remap entries" bug: a decoupled
+        seed pushed a bare reset and every door stayed vanilla). Coupled
+        still wins the defensive both-non-empty case. Coupled
         resolves via entrance_logic.compile_stage_remaps (the AP-name
         bijection {door_subarea: interior_subarea}); decoupled resolves via
         port_graph.compile_port_remaps (the mouth-level involution), first
@@ -805,10 +811,14 @@ class SwitchServer:
         No-op when neither mode has been configured (HELLO before AP
         Connected — the context handler re-pushes once slot_data lands).
         """
-        if self._state.is_entrance_map_configured():
+        entrance_cfg = self._state.is_entrance_map_configured()
+        port_cfg = self._state.is_port_matching_configured()
+        if entrance_cfg and self._state.get_entrance_map():
             rows = self._compile_coupled_rows()
-        elif self._state.is_port_matching_configured():
+        elif port_cfg and self._state.get_port_matching():
             rows = self._compile_decoupled_rows()
+        elif entrance_cfg or port_cfg:
+            rows = []  # configured-but-empty (off seed) -> reset to vanilla
         else:
             return
         from .protocol import ENTRANCE_MAP_CHUNK

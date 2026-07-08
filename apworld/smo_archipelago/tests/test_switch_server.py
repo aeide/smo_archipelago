@@ -1914,6 +1914,68 @@ async def test_push_entrance_map_prefers_coupled_when_both_configured():
     assert decoupled_calls == []
 
 
+@pytest.mark.asyncio
+async def test_push_entrance_map_empty_coupled_mirror_does_not_shadow_decoupled():
+    """Regression (2026-07-07 'applied 0 remap entries' bug): context.py's
+    Connected handler reassigns BOTH mirrors every connect — a decoupled seed
+    sets entrance_map to {} (still marks it configured) alongside the real
+    port_matching. Selection must prefer the non-empty mirror, not the first
+    configured one; the old configured-only check compiled the empty coupled
+    bijection and shipped a bare reset, so every door stayed vanilla in-game."""
+    state = BridgeState()
+    sw = SwitchServer("127.0.0.1", 0, state,
+                      on_check=lambda _msg: None,
+                      on_goal=lambda: None)
+    sent: list = []
+
+    async def fake_send(msg):
+        sent.append(msg)
+
+    coupled_calls: list[int] = []
+    decoupled_calls: list[int] = []
+    sw._send = fake_send  # type: ignore[assignment]
+    sw._compile_coupled_rows = lambda: (coupled_calls.append(1) or [])  # type: ignore[method-assign]
+    sw._compile_decoupled_rows = lambda: (decoupled_calls.append(1) or  # type: ignore[method-assign]
+                                          [{"kind": "exit", "from": "X", "from_id": "x1",
+                                            "to_stage": "Y", "to_id": "y1"}])
+
+    # Exactly the state shape the Connected handler produces for a
+    # decoupled seed: entrance_map key absent -> set_entrance_map({}).
+    sw.set_entrance_map({})
+    sw.set_port_matching({"doorA@overworld": "doorB@interior"})
+    await sw.push_entrance_map()
+
+    assert decoupled_calls == [1]
+    assert coupled_calls == []
+    assert len(sent) == 1
+    assert sent[0].entries[0]["from_id"] == "x1"
+
+
+@pytest.mark.asyncio
+async def test_push_entrance_map_both_mirrors_empty_sends_vanilla_reset():
+    """The off-seed Connected shape (both keys absent -> both mirrors set to
+    {}): still send the single reset=True clear so a Switch that previously
+    held a shuffle table reverts to vanilla."""
+    state = BridgeState()
+    sw = SwitchServer("127.0.0.1", 0, state,
+                      on_check=lambda _msg: None,
+                      on_goal=lambda: None)
+    sent: list = []
+
+    async def fake_send(msg):
+        sent.append(msg)
+
+    sw._send = fake_send  # type: ignore[assignment]
+
+    sw.set_entrance_map({})
+    sw.set_port_matching({})
+    await sw.push_entrance_map()
+
+    assert len(sent) == 1
+    assert sent[0].entries == []
+    assert sent[0].reset is True
+
+
 def test_bridge_state_port_matching_mirror_roundtrip():
     """Pure BridgeState mirror behavior (no SwitchServer/asyncio needed) —
     the P3e sibling of the existing entrance_map mirror."""

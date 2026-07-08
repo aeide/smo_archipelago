@@ -602,6 +602,39 @@ public:
         visited_kingdoms.fetch_or(1u << bit, std::memory_order_relaxed);
     }
 
+    // ---- P4 decoupled — chain-return flight (Devon ruling 2026-07-07) ------
+    //
+    // Kingdoms reached through a REMAPPED overworld arrival (a port chain), as
+    // opposed to an official Odyssey flight. Same bit indexing / session-only
+    // semantics as visited_kingdoms. Set by EntranceShuffleHook's remap commit;
+    // consumed by UnlockShineNumHook (open the takeoff gate while the rolled
+    // leave-gate is unpaid) and WorldMapSelectHook (bounce not-yet-visited
+    // flight picks back to the chain origin).
+    std::atomic<std::uint32_t> chain_reached_kingdoms{0};
+
+    bool isKingdomBitChainReached(int bit) const {
+        if (bit < 0 || bit >= 17) return false;
+        return (chain_reached_kingdoms.load(std::memory_order_relaxed) >> bit) & 1u;
+    }
+
+    void markKingdomBitChainReached(int bit) {
+        if (bit < 0 || bit >= 17) return;
+        chain_reached_kingdoms.fetch_or(1u << bit, std::memory_order_relaxed);
+    }
+
+    // Per-kingdom chain ORIGIN — the kingdom Mario was last standing in when
+    // the chain arrival committed (kingdomBitFor(last_arrival_kingdom) at the
+    // remap seam). 0xff = unknown; the flight bounce falls back to Cap.
+    // Written and read on the frame thread; atomics for ApState hygiene only.
+    // Initialized to 0xff in the ctor (array NSDMI can't express the fill).
+    std::atomic<std::uint8_t> chain_origin_bit[17];
+
+    // The kingdom bit the chain-return takeoff allowance is CURRENTLY active
+    // for, refreshed on every current-world findUnlockShineNum read (the same
+    // read the launch check consumes, so the flight-commit bounce and the
+    // launch decision can never disagree). 0xff = no allowance active.
+    std::atomic<std::uint8_t> chain_allowance_bit{0xff};
+
     // M6 phase B — GameDataHolder pointer cache.
     //
     // DrawMainHook reads HakoniwaSequence::mGameDataHolder (offset 0xB8, a
@@ -950,6 +983,10 @@ private:
         // kingdom_gate[] defaults to -1 ("vanilla") — array NSDMI can't
         // express a non-zero fill, so it happens here.
         resetKingdomGates();
+        // chain_origin_bit[] defaults to 0xff ("unknown origin") — same
+        // array-NSDMI limitation as kingdom_gate[].
+        for (auto& b : chain_origin_bit)
+            b.store(0xff, std::memory_order_relaxed);
     }
 
     // Drain inbound_kill_pending; called from applyOnFrame.

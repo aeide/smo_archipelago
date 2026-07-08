@@ -9,12 +9,14 @@
 #include "hk/types.h"
 
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
 #include "../ap/ApState.hpp"
 #include "../game/KingdomOrderGate.hpp"
 #include "../game/KingdomUnlock.hpp"
 #include "../game/OdysseyRescue.hpp"
+#include "../ui/CappyMessenger.hpp"
 #include "../util/Log.hpp"
 #include "HookSymbols.hpp"
 
@@ -142,6 +144,62 @@ HkTrampoline<bool, GameDataHolderWriter, const char*> tryChangeDemoWarpHook =
         // (playtest 2026-06-25, iteration 2 leaked to Cloud). The gate now lives
         // at the universal GameDataFile::changeNextStage commit, where Cloud
         // provably resolves — see processDetourExitGate in EntranceShuffleHook.cpp.
+
+        // P4 decoupled — chain-return VISITED-ONLY bounce (Devon ruling
+        // 2026-07-07/08). When the chain-return takeoff allowance is active
+        // (UnlockShineNumHook zeroed the gate because the departing kingdom is
+        // chain-reached with its rolled leave-gate unpaid — chain_allowance_bit
+        // holds that kingdom's bit), the open globe also exposes NOT-YET-VISITED
+        // kingdoms. The ruling allows flying to already-visited kingdoms ONLY,
+        // so substitute any un-visited pick with the chain ORIGIN (falling back
+        // to Cap, always reachable) — substitution is the proven primitive at
+        // this seam (same mechanism as the order-gate BACKSTOP above; the
+        // decomp shows tryChangeNextStageWithDemoWorldWarp commits
+        // unconditionally, so a refusal-by-return-false has no vanilla path).
+        // "Visited" = the session bit (flight commits + chain arrivals) OR the
+        // save's isAlreadyGoWorld (official visits predating this session;
+        // chain arrivals force it too, so post-normalization both agree).
+        if (kGateEnabled && final_stage) {
+            auto& st = smoap::ap::ApState::instance();
+            const std::uint8_t allow_bit =
+                st.chain_allowance_bit.load(std::memory_order_relaxed);
+            const char* tgt_kingdom =
+                smoap::game::kingdomShortFromHomeStage(final_stage);
+            if (allow_bit < 17 && tgt_kingdom) {
+                const std::uint8_t tgt_bit = smoap::game::kingdomBitFor(tgt_kingdom);
+                const int tgt_world = smoap::game::worldIdFromKingdomShort(tgt_kingdom);
+                const bool allowed =
+                    tgt_bit == allow_bit ||  // flying "to" the kingdom we're in
+                    (tgt_bit < 17 && st.isKingdomBitVisited(tgt_bit)) ||
+                    smoap::game::isWorldAlreadyGo(tgt_world);
+                if (!allowed) {
+                    const std::uint8_t origin_bit =
+                        st.chain_origin_bit[allow_bit].load(std::memory_order_relaxed);
+                    const char* origin_kingdom =
+                        origin_bit < 17 ? smoap::game::kingdomForBit(origin_bit)
+                                        : nullptr;
+                    const char* bounce_stage = origin_kingdom
+                        ? smoap::game::homeStageForKingdomShort(origin_kingdom)
+                        : nullptr;
+                    if (!bounce_stage) {
+                        origin_kingdom = "Cap";
+                        bounce_stage   = "CapWorldHomeStage";
+                    }
+                    SMOAP_LOG_WARN("[chain-return] BOUNCE un-visited pick "
+                                   "stage='%s' (%s) -> '%s' (%s) [allowance "
+                                   "bit=%u origin bit=%u]",
+                                   final_stage, tgt_kingdom, bounce_stage,
+                                   origin_kingdom, allow_bit, origin_bit);
+                    char bubble[64];
+                    std::snprintf(bubble, sizeof(bubble),
+                                  "Can't chart a course there yet! Back to %s!",
+                                  origin_kingdom);
+                    smoap::ui::CappyMessenger::instance().enqueueSystem(bubble);
+                    final_stage = bounce_stage;
+                }
+            }
+        }
+
         markVisitedFromStage("tryChange.Demo", final_stage);
 
         const bool cascadeBound = final_stage &&

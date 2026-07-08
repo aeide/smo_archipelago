@@ -97,4 +97,30 @@ void forceUnlockCascadeDestination(const char* tag);
 // Idempotent and self-disabling if its symbols didn't resolve.
 void forceCascadeAlreadyVisited(void* gameDataFile, const char* tag);
 
+// ---- P4 decoupled — chain-arrival normalization (generalized Cascade
+// treatment, Devon 2026-07-08) --------------------------------------------
+
+// Generalized forceCascadeAlreadyVisited: mark ANY world already-visited
+// (GameProgressData::setAlreadyGoWorld) before a chain-arrival commit so the
+// engine runs the parked flight landing instead of the buried first-visit
+// demo. Same +0x6a8 GameProgressData read, same idempotence. world_id is the
+// SMO internal id (worldIdFromKingdomShort). No-op for invalid ids / missing
+// symbols.
+void forceAlreadyVisitedWorld(void* gameDataFile, int world_id, const char* tag);
+
+// Read helper for the chain-return flight bounce: has the save officially
+// recorded Mario as having traveled to world_id (GameDataFunction::
+// isAlreadyGoWorld)? Returns false when unresolved / holder not cached —
+// callers treat that as "not visited" (conservative toward bouncing).
+bool isWorldAlreadyGo(int world_id);
+
+// Generalized forceUnlockCascadeDestination: unlockWorld(world_id) so the
+// Odyssey world map lists a chain-reached kingdom as a return-flight
+// destination. Same idempotence (unlockWorld only inserts). ⚠ Pre-unlocking a
+// FUTURE story kingdom is the mUnlockWorldNum-overshoot risk documented on
+// the removed Ruined backtrack path — this is only ever called for the
+// kingdom Mario is ARRIVING IN (the Lost-sweep-safe shape), but watch the
+// post-boss autopilot in the chain-arrival test matrix regardless.
+void forceUnlockWorld(int world_id, const char* tag);
+
 }  // namespace smoap::game

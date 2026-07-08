@@ -97,10 +97,10 @@ void encodeStatus(LineBuffer& line, const Status& s) {
     Encoder e{line};
     e.beginObject()
         .key("t").value("status");
-    if (!s.kingdom.empty())     e.key("kingdom").value(s.kingdom);
+    if (s.kingdom[0])           e.key("kingdom").value(s.kingdom);
     if (s.scenario >= 0)        e.key("scenario").value(s.scenario);
     if (s.moons_collected >= 0) e.key("moons_collected").value(s.moons_collected);
-    if (!s.stage_name.empty())  e.key("stage_name").value(s.stage_name);
+    if (s.stage_name[0])        e.key("stage_name").value(s.stage_name);
     e.endObject();
     line.append('\n');
 }

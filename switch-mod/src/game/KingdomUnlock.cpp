@@ -112,6 +112,17 @@ const char* kingdomShortFromHomeStage(const char* home_stage) {
     return nullptr;
 }
 
+const char* homeStageForKingdomShort(const char* kingdom_short) {
+    if (!kingdom_short || !*kingdom_short) return nullptr;
+    // First match wins — for Ruined that's "AttackWorldHomeStage", the name
+    // the flight/world-map subsystems use (BossRaidWorldHomeStage is the
+    // ShineList alias; both rows map back to "Ruined" in the forward table).
+    for (const auto& row : kHomeStageToKingdom) {
+        if (std::strcmp(kingdom_short, row.kingdom_short) == 0) return row.home_stage;
+    }
+    return nullptr;
+}
+
 const char* kingdomShortFromWorldId(int world_id) {
     const std::uint8_t bit = kingdomBitForWorldId(world_id);
     if (bit == 0xff) return nullptr;

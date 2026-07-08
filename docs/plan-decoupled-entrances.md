@@ -548,6 +548,27 @@ regressions); live re-run of `test_entrance_shuffle_option_modes.py`,
    This is Devon's explicit call per the P3e work order, gated on the zone
    preview-walk (item 4) at minimum. See the handoff doc's updated status for
    the full checklist.
+7. **Bug found in Devon's first live walk (2026-07-07, FIXED same day): the
+   empty coupled mirror shadowed the decoupled push.** Devon's first
+   decoupled seed produced `[entrance] applied 0 remap entries (reset=1)` on
+   HELLO and every door walked vanilla. Root cause: `context.py`'s Connected
+   handler reassigns BOTH state mirrors every connect (absent slot_data key →
+   `set_entrance_map({})`, which still marks the mirror *configured* — that
+   reassign-both behavior is deliberate, it's what clears stale tables on a
+   reconnect across seeds), but `push_entrance_map` selected a compiler on
+   `is_*_configured()` alone, coupled first — so the always-configured empty
+   coupled mirror won, compiled 0 rows, and sent a bare reset; the decoupled
+   branch was unreachable through the real Connected path. The P3e
+   mode-selection tests missed it because they set one mirror at a time
+   directly, never the Connected handler's set-both shape. Fix
+   (`switch_server.py`): prefer the mirror that is configured AND non-empty
+   (coupled still wins the defensive both-non-empty case); both-empty sends
+   the vanilla-reverting reset unchanged; neither stays a no-op. Two new
+   regression tests in `test_switch_server.py` (the exact decoupled Connected
+   shape `set_entrance_map({})` + non-empty `set_port_matching`, and the
+   both-empty off-seed clear). Client-only fix: re-run `install_apworld.py` +
+   restart SMOClient; no Switch rebuild, no re-generation (the seed's
+   slot_data was always correct — the matching just never left the client).
 
 ### 3f. Mushroom check promotion (design D9)
 `_apply_junk_only_rules` exempts Mushroom-category locations iff decoupled;
@@ -605,6 +626,108 @@ reinstalled zip. `PORT_SHUFFLE_SHIPPABLE` untouched (still `False`).
 
 ## Phase 4 — Validation
 
+### P4 findings (2026-07-07, Devon's first live decoupled walk)
+
+After the §3e item-7 client fix, the first real decoupled walk (seed
+11314520684955636324) produced:
+
+1. **PASS — interior-target chains + involution symmetry + entry `from_id`
+   exact tier.** Cap "Frog Pond" door → Rumbling Floor Cave (a SEASIDE
+   subarea — cross-kingdom into an interior) landed correctly, and walking
+   back out returned Mario to the Cap door. First live validation of the
+   entry-exact lookup tier.
+2. **FINDING — chain into a NEXT-STORY-KINGDOM overworld triggers the
+   engine's arrival flow, marker ignored.** Cap "Push Block Peril" door →
+   "Gusty Bridges" door mouth (`WaterfallWorldHomeStage`/`WindBlowExStart`):
+   the remap row applied byte-correct, but Devon had just cleared Cap Tower,
+   so Cascade was the game's next story destination, unvisited — the engine
+   flagged the commit `isForwardWorldWarpDemo=1` and ran the kingdom-arrival
+   flow (splash + arrival spawn, "as if completed Cap via the wire"; the
+   cascade-arrival hook suppressed the cutscene, not the framing). Control
+   case: the P0 spike's Cap→Luncheon landing (NOT the next kingdom) had
+   `fwdWarpDemo=0` and honored the `'shop'` marker exactly. Two suspects,
+   not yet separated: (a) the first-visit/next-world warp-demo
+   classification (one-time per kingdom), and (b) door-ENTRY ChangeStageInfos
+   carry explicit `scenario=1` (pipe EXITS carry `-1` — the spike's clean
+   landing was an exit), and broode-respawn forces scenario 1 into
+   pre-Broode Cascade regardless. Retest below distinguishes them.
+   **Related risk to test in the matrix:** a scenario=1 entry-mouth commit
+   into a kingdom with real story progress could drag its scenario DOWN
+   (the cap-return hook exists because low-scenario commits were a real
+   problem) — walk a chain into a progressed kingdom and verify scenario.
+3. **Devon design rulings (2026-07-07, supersede open questions above):**
+   (a) **Free matching stays** — any mouth ↔ any mouth. The PBP-door →
+   Gusty-Bridges-door overworld hop is working as designed; doors are NOT
+   constrained to land in interiors. No `roll_port_matching` change.
+   (b) **Chain-return flight is REQUIRED scope (new)** — from a
+   chain-reached kingdom, the Odyssey/world map MUST allow flying back to
+   any kingdom Mario has ALREADY VISITED (officially or via chain), and
+   ONLY those (e.g. Cap → chain → Cascade → chain → Luncheon: may fly to
+   Cap or Cascade, nothing forward). First live data: chain-reached
+   pre-Broode Cascade (forced scenario 1) has the ship present
+   (freeship-lifted, `exist=1 activate=1 launch=1`) but boarding-to-warp
+   did not function — suspected vanilla story gating (Odyssey inactive
+   until the arrival Multi-Moon). Two distinct halves to solve:
+   (i) ship EXISTS but local story state blocks boarding (Cascade case) —
+   needs a decomp read of the world-map/boarding gate before picking a
+   hook; (ii) ship DOESN'T SPAWN at all in a chain-reached kingdom (P0
+   Luncheon case, `exist=0`) — heavier, P5-approach-B-adjacent territory.
+   Must also verify chain arrivals set the M7 visited bit (the
+   only-visited-kingdoms restriction rides the existing kingdom-order-gate
+   machinery + BACKSTOP). Devon's in-progress test (AP-granting Cascade
+   moons) will tell us whether the Cascade block is moon-count or
+   story-MM gated.
+4. **FINDING — scenario-gated target markers fall back to default spawn
+   (P3b prediction confirmed in-game).** Devon's second PBP-door entry
+   (Cascade already visited) landed at Cascade's DEFAULT spawn (the
+   Odyssey), not `WindBlowExStart`: Gusty Bridges is
+   `{CascadeDeparture()}`-gated (`subarea_scenario_gates.json`), so in
+   pre-departure scenario 1 the door actor and its placement marker don't
+   exist — the engine's missing-marker fallback is the default spawn.
+   NOT a logic bug (the 3d wiring already gates the mouth's outgoing edge
+   on the same scenario fragments, and arrival-credit only claims "reached
+   the kingdom", which physically holds). Two real costs: (a) cosmetic —
+   chain arrivals at scenario-gated mouths land at the kingdom default
+   spawn until the story advances there; (b) the RETRACE guarantee fails
+   while the arrival door doesn't exist — the ruling-3(b) chain-return
+   flight scope is therefore load-bearing (it's the guaranteed exit from
+   a chain-reached kingdom whose doors are scenario-gated), not a
+   fidelity nicety. Open sub-questions: whether the 2nd entry skipped the
+   arrival framing (would confirm the warp-demo flow is one-time per
+   unvisited next kingdom), and whether the Odyssey launched after Devon
+   AP-granted Cascade moons (would pin the boarding block to the
+   moon-count launch gate, making chain-return-flight half (i) cheap).
+5. **BLOCKER (RESOLVED 2026-07-08 — see the banner in
+   [handoff-p4-cascade-reentry-crash.md](handoff-p4-cascade-reentry-crash.md)
+   for the full diagnosis; fix awaiting Devon's rebuild+retest) —
+   FrameHeap abort re-entering Cascade post-moon-rock.** After
+   opening Cascade's moon rock, re-entering the remapped PBP door (the same
+   commit that had loaded cleanly three times pre-moon-rock) aborted in
+   `sead::FrameHeap::tryAlloc` on `FileLoadThread` mid
+   `ParallelSZSDecompressor`/`ResourceMgr::tryLoad`/`ArchiveEntry::load` —
+   a frame-heap allocation failure loading stage resources. Full stack,
+   ranked hypotheses (door-path HomeStage load heap headroom / forced
+   scenario-1 × moon-rock actor set / session heap fragmentation), Devon's
+   repro matrix, and the next-session work order:
+   [handoff-p4-cascade-reentry-crash.md](handoff-p4-cascade-reentry-crash.md).
+   Note the retrace edge (Gusty Bridges → PBP door mouth in Cap) validated
+   clean immediately before the crash.
+6. **(SUPERSEDED 2026-07-08 — Devon's repro matrix + the crash-log
+   symbolization answered this: the arrival flow is one-time per unvisited
+   next kingdom — the second PBP entry skipped the splash — and the
+   persistent cost WAS the explicit `scenario=1`, now neutralized to `-1` on
+   remapped overworld commits. Kept for the record.)**
+   **Retest that separates the suspects (Devon):** with Cascade now visited,
+   (i) walk Gusty Bridges door → should land at the PBP door mouth in Cap
+   (retrace edge, both kingdoms visited — expect clean); (ii) re-enter the
+   PBP door → if it now lands cleanly AT `WindBlowExStart` (no arrival
+   flow), the cost is a one-time first-chain-arrival-per-unvisited-next-
+   kingdom quirk (document, likely acceptable); if it STILL runs the
+   arrival flow, the cause is persistent (scenario=1 explicit is the prime
+   suspect) and needs a Switch-side fix (candidate: force scenario -1 on
+   remapped commits targeting overworld mouths — decomp read of
+   `isForwardWorldWarpDemo`/arrival-spawn selection first, per CLAUDE.md).
+
 - pytest additions → `python scripts/install_apworld.py` → `Generate.py`
   (BOTH on Windows — the regen-loop and stale-shell rules in CLAUDE.md apply).
 - Row-count assertion vs table cap at generate time.
@@ -613,6 +736,71 @@ reinstalled zip. `PORT_SHUFFLE_SHIPPABLE` untouched (still `False`).
   each for an early and a late kingdom. Reuse the `kEntranceRemapApply=false`
   preview mode for a log-only dry run before the applied walk.
 - **Model: Sonnet 5** for test writing; Devon in-game.
+
+### P4 session 2026-07-08 — crash resolved, chain-return flight shipped, flag flipped
+
+**Crash:** root-caused (stale explicit `scenario=1` on remapped overworld
+commits → mixed oversized placement load → memory blowout; two victims: game
+FrameHeap 07-07, mod heap 07-08) and fixed — scenario neutralization in
+`EntranceShuffleHook` + allocation-free fixed-buffer `Status` in the pump.
+Full write-up: the banner in
+[handoff-p4-cascade-reentry-crash.md](handoff-p4-cascade-reentry-crash.md).
+
+**Chain-return flight (finding 3b) IMPLEMENTED — switch-mod, awaiting the
+same rebuild.** Devon's answers pinned the boarding block to the moon-count
+launch gate (Odyssey flew after AP-granting moons), making half (i) the
+proven free-detour lever. Design (Devon picked "open globe + bounce forward
+picks"):
+
+- `ApState`: `chain_reached_kingdoms` bitmask + per-kingdom
+  `chain_origin_bit[]` + `chain_allowance_bit` (the takeoff read publishes
+  which kingdom's allowance is live, so launch and bounce can't disagree).
+- `EntranceShuffleHook::processChainArrival` (remapped overworld commits
+  only, pre-orig, BEFORE reportArrival so `last_arrival_kingdom` still holds
+  the origin): marks dest chain-reached + dest/origin session-visited,
+  records the origin, and — generalizing the validated Cascade treatment,
+  half (ii) — `setAlreadyGoWorld` (parked landing, no first-visit flow) +
+  `forceAcquireOdyssey` (P0 Luncheon `exist=0` case) + `unlockWorld` (world
+  map lists it as a return destination later). Lost/Ruined exempt from the
+  normalization (story-managed ship states), bookkeeping still applies.
+- `UnlockShineNumHook` (current-world read): chain-reached AND rolled gate
+  unpaid (`depositedEffectiveMoons < gate`, exported from KingdomOrderGate)
+  → return 0 (proven free-detour lever) + publish the allowance bit. Reverts
+  to honest values once paid. Accepted cosmetic: gauge reads 0/"full" while
+  active.
+- `WorldMapSelectHook` (Layer-2 flight commit): while the allowance is
+  active, an un-visited pick (session bit OR save `isAlreadyGoWorld`) is
+  SUBSTITUTED to the chain origin (fallback Cap) with a Cappy bubble —
+  substitution is the proven primitive at this seam (decomp:
+  `tryChangeNextStageWithDemoWorldWarp` commits unconditionally).
+
+**Watch items for Devon's build+walk (one build covers everything):**
+
+1. R1-Broode-defeated retest → expect `[entrance:remap-scenario] … 1 -> -1`
+   + clean load at `WindBlowExStart`. Still crashing ⇒ P5 approach B.
+2. Chain into an unvisited kingdom → `[chain-arrival]` log, parked ship,
+   no splash; board → globe opens at 0; pick an unvisited kingdom → bounce
+   + bubble; pick a visited one → normal flight.
+3. **unlockWorld-on-chain-arrival autopilot check** (adjacent to the old
+   mUnlockWorldNum-overshoot bug): after chaining into a LATE kingdom,
+   verify the post-boss autopilot still routes normally.
+4. Free-detour kingdoms chain-reached: allowance intentionally does NOT
+   stack (their gate is already 0; detour-exit gate still enforces the
+   sibling rule). Special1/2 unlock reads `findUnlockShineNum` too — a
+   game-cleared save with an active allowance could prematurely satisfy
+   `checkEnableUnlockWorldSpecial1/2`; post-game edge, log-watch only.
+5. Still open from the P3e checklist (unchanged): Lake town-zone
+   `cur=`/`dest=` log check (`ZONE_STAGE_ALIAS` stays empty until a walk
+   shows a zone name), walk 3 (coupled `simple`-seed regression), Mysterious
+   Clouds → PBP interior → both exits diverging (P2 multi-exit proof).
+6. Rest of the P4 matrix: save/load mid-chain, moon pipes, early+late
+   chain-reached kingdoms, scenario-drag-down check on a progressed kingdom
+   (should now be moot per the neutralization — verify).
+
+**PORT_SHUFFLE_SHIPPABLE flipped for real** (kill-switch comment, OptionError
+text, `EntranceShuffle` docstring, and the readiness test — now
+`test_port_shuffle_readiness_flag_shipped` — all updated; targeted pytest
+green, full suite on Windows pending).
 
 ## Phase 5 (optional) — Approach B: literal Odyssey-arrival landings
 

@@ -111,11 +111,17 @@ struct Check {
     int seq = 0;
 };
 
+// Fixed buffers, NOT std::string: encoded on the socket worker's pump, which
+// must never allocate. "WaterfallWorldHomeStage" (23 chars) exceeds libc++'s
+// 22-char SSO, and a mod-heap operator-new returning NULL mid-stage-load took
+// the worker down with a memcpy(NULL,...) on 2026-07-08 (see
+// docs/handoff-p4-cascade-reentry-crash.md). Matches the wire-format
+// fixed-buffer idiom used by every other outbound struct here.
 struct Status {
-    std::string kingdom;
+    char kingdom[32] = {};
     int scenario = -1;
     int moons_collected = -1;
-    std::string stage_name;  // M4: raw stage at the time of the scenario flip
+    char stage_name[kCheckFieldCap] = {};  // M4: raw stage at the time of the scenario flip
 };
 
 struct Goal {};

@@ -240,10 +240,17 @@ class EntranceShuffle(Choice):
         bijection is stored in slot_data as `entrance_map` and sent to the
         Switch mod at connect time so it can remap door loads in real time.
 
-    decoupled: the future full port-graph shuffle (each physical door/pipe
-        matched independently, not paired with its own return trip) — NOT YET
-        IMPLEMENTED. Selecting it fails generation loudly with an error
-        rather than silently falling back to `simple`.
+    decoupled: the full port-graph shuffle (shipped 2026-07-08) — every
+        physical door/pipe mouth is matched independently rather than paired
+        with its own return trip (walking into A comes out of B, but walking
+        back into B need not return to A), interiors can chain into foreign
+        kingdoms' overworlds, and each exit of a multi-exit subarea can lead
+        somewhere different. Mushroom Kingdom checks are promoted into logic
+        (Dark/Darker Side stay post-goal). Reaching a kingdom through a
+        chain counts as arrival; the Odyssey in a chain-reached kingdom may
+        fly back to ALREADY-VISITED kingdoms only until that kingdom's leave
+        gate is paid. The matching ships in slot_data as `port_matching` and
+        rides the same live Switch remap as `simple`.
 
     Existing YAMLs using the old boolean form (`entrance_shuffle: true` /
     `false`) keep working unchanged: `true` aliases to `simple`, `false`

@@ -20,6 +20,7 @@
 #include "hk/types.h"
 
 #include "../ap/ApState.hpp"
+#include "../game/KingdomOrderGate.hpp"  // depositedEffectiveMoons (chain-return)
 #include "../game/KingdomUnlock.hpp"
 #include "../util/Log.hpp"
 #include "HookSymbols.hpp"
@@ -119,6 +120,33 @@ HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
         if (isFreeDetourBit(bit)) {
             logSubstitution("findUnlockShineNum[free-detour]", bit, orig, 0);
             return 0;
+        }
+        // P4 decoupled — chain-return takeoff allowance (Devon ruling
+        // 2026-07-07/08): in a kingdom reached via a port chain whose rolled
+        // leave-gate is still UNPAID, open the takeoff (return 0, the proven
+        // free-detour lever) so the player can fly back out. The "visited
+        // kingdoms only" half of the ruling is enforced downstream at the
+        // Layer-2 flight commit (WorldMapSelectHook's chain-return bounce),
+        // which reads the chain_allowance_bit flag set here — the same read
+        // the launch check consumes, so the two can never disagree. Once the
+        // gate is paid (deposited >= threshold) everything reverts to the
+        // honest rolled/vanilla behavior, gauge included. Trade-off while
+        // active: the in-kingdom takeoff gauge reads 0/"full" (same accepted
+        // cosmetic as the free-detour kingdoms).
+        {
+            auto& st = smoap::ap::ApState::instance();
+            if (bit < 17 && st.isKingdomBitChainReached(bit)) {
+                const int rolled = rolledGateForBit(bit);
+                const int gate = rolled >= 0 ? rolled : orig;
+                const int paid = smoap::game::depositedEffectiveMoons(bit);
+                if (paid < gate) {
+                    st.chain_allowance_bit.store(bit, std::memory_order_relaxed);
+                    logSubstitution("findUnlockShineNum[chain-return]", bit,
+                                    orig, 0);
+                    return 0;
+                }
+            }
+            st.chain_allowance_bit.store(0xff, std::memory_order_relaxed);
         }
         // NOTE: Cascade is NOT special-cased here anymore. The "beat Broode to
         // leave" escape used to zero Cascade's current-world gate (and the member
