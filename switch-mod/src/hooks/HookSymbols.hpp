@@ -760,6 +760,103 @@ inline constexpr const char* kGameDataHolderFindUnlockShineNum =
 inline constexpr const char* kGameDataHolderFindUnlockShineNumNonConst =
     "_ZN14GameDataHolder18findUnlockShineNumEPbi";
 
+// P5 chain-return hardening (docs/plan-p5-cross-world-loads.md §2). All four
+// resolved via hk::ro::lookupSymbol (soft-degrade; NOT in the sail .sym DB so
+// an inlined/absent symbol can't abort module init).
+//
+// GameDataFunction::isUnlockedWorld(GameDataHolderAccessor, s32) — the RAW
+// per-world unlock read (decomp: accessor->getGameDataFile()->
+// isUnlockedWorld(world_id), bottoming out in the derived
+// GameProgressData::mIsUnlockWorld[]). Combined with isAlreadyGoWorld it
+// derives the save-backed "chain-reached-only" marker:
+// alreadyGo(w) && !unlocked(w). Same free-fn family as isAlreadyGoWorld
+// (which resolves + fires in-game), but presence in dynsym is UNVERIFIED —
+// the chain-only derivation fails CLOSED (treats unresolved as "not
+// chain-only") so legit kingdoms can never be misclassified.
+// "isUnlockedWorld"=15.
+inline constexpr const char* kGameDataFunctionIsUnlockedWorld =
+    "_ZN16GameDataFunction15isUnlockedWorldE22GameDataHolderAccessori";
+// GameProgressData::isUnlockWorld(s32) const — the bottom worker (reads
+// mIsUnlockWorld[idx]); fallback for the free fn above, reached via
+// game_data_file_cache + mGameProgressData @ +0x6a8. Tiny getter — high
+// inlining risk as a HOOK target, but we only CALL it. "isUnlockWorld"=13.
+inline constexpr const char* kGameProgressDataIsUnlockWorld =
+    "_ZNK16GameProgressData13isUnlockWorldEi";
+// §1.6 read-only spike loggers: which next-world read does the sequence
+// consume around a door commit, and what does it resolve for subarea targets?
+// calcNextWorldId = tryFindWorldIndexByMainStageName(getNextStageName())
+// (decomp GameDataFunction.cpp:1686) — returns -1 for ANY subarea target,
+// the decomp-confirmed mechanism of the Swinging Along the High-Rises crash.
+// "calcNextWorldId"=15, "getNextWorldId"=14.
+inline constexpr const char* kGameDataFunctionCalcNextWorldId =
+    "_ZN16GameDataFunction15calcNextWorldIdE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionGetNextWorldId =
+    "_ZN16GameDataFunction14getNextWorldIdE22GameDataHolderAccessor";
+
+// ── P5 §1.5 cross-world load fix (B1 demo-warp routing + B2 loader pre-arm) ──
+// All CALLED or soft-hooked via hk::ro::lookupSymbol (NOT in the sail DB).
+// Every one verified HIT in the retail 1.0.0 dynsym via
+// scripts/check_nso_symbols.py on 2026-07-09.
+//
+// WorldList::tryFindWorldIndexByStageName(const char*) const — the NON-main
+// variant (decomp WorldList.h) that resolves ANY stage, subareas included,
+// via each world's stageNames list. This is how the mod maps a remap row's
+// dest stage to a world id WITHOUT a wire-format change (the main-stage
+// variant the engine uses at calcNextWorldId returns -1 for subareas — the
+// confirmed P5 crash mechanism). WorldList* comes from the cached
+// GameDataHolder's inline getWorldList() (OdysseyHeaders layout).
+// "WorldList"=9, "tryFindWorldIndexByStageName"=28.
+inline constexpr const char* kWorldListTryFindWorldIndexByStageName =
+    "_ZNK9WorldList28tryFindWorldIndexByStageNameEPKc";
+// WorldResourceLoader — owned by HakoniwaSequence (mResourceLoader @ 0x208,
+// OdysseyHeaders layout sums exactly to the 0x418 static_assert with
+// mCurrentScene at the in-game-verified 0xB0). request... destroys the old
+// per-world resident set and starts the async reload (decomp
+// WorldResourceLoader.cpp, read verbatim 2026-07-09); it self-guards: boot
+// dual-heap alive / load in progress / same world already resident all
+// return false without touching anything.
+// "WorldResourceLoader"=19, "requestLoadWorldHomeStageResource"=33,
+// "isEndLoadWorldResource"=22, "getLoadWorldId"=14.
+inline constexpr const char* kWorldResourceLoaderRequestLoadWorldHomeStageResource =
+    "_ZN19WorldResourceLoader33requestLoadWorldHomeStageResourceEii";
+inline constexpr const char* kWorldResourceLoaderIsEndLoadWorldResource =
+    "_ZNK19WorldResourceLoader22isEndLoadWorldResourceEv";
+inline constexpr const char* kWorldResourceLoaderGetLoadWorldId =
+    "_ZNK19WorldResourceLoader14getLoadWorldIdEv";
+// §7.2 re-triage probes (2026-07-11): the 2026-07-10 Swinging walk's
+// [p5-worldreq] ledger showed NO engine re-request between our pre-arm and
+// the ExpHeap abort — so if residency is being clobbered it must be one of
+// the two writers the HomeStage-request ledger can't see:
+// tryDestroyWorldResource (standalone destroy; frees the resident heap and
+// sets mLoadWorldId=-1 — decomp WorldResourceLoader.cpp) and the plain
+// requestLoadWorldResource(s32) second load entry. Both get ledger
+// trampolines. "tryDestroyWorldResource"=23, "requestLoadWorldResource"=24.
+inline constexpr const char* kWorldResourceLoaderTryDestroyWorldResource =
+    "_ZN19WorldResourceLoader23tryDestroyWorldResourceEv";
+inline constexpr const char* kWorldResourceLoaderRequestLoadWorldResource =
+    "_ZN19WorldResourceLoader24requestLoadWorldResourceEi";
+// HakoniwaSequence seams for firing the pre-arm AFTER the old scene is dead
+// (destroySceneHeap post-orig; the request's internal tryDestroyWorldResource
+// frees the resident set the live scene still references, so commit-time is
+// too early) with exeLoadStage's first tick as the fallback trigger.
+// "HakoniwaSequence"=16, "destroySceneHeap"=16, "exeLoadStage"=12.
+inline constexpr const char* kHakoniwaSequenceDestroySceneHeap =
+    "_ZN16HakoniwaSequence16destroySceneHeapEb";
+inline constexpr const char* kHakoniwaSequenceExeLoadStage =
+    "_ZN16HakoniwaSequence12exeLoadStageEv";
+// GameDataFile::getScenarioNo(s32 worldId) const — the pre-arm's scenario
+// argument (per-world live scenario; wrong values only cost scenario-variant
+// resources, never the world resident set). "GameDataFile"=12,
+// "getScenarioNo"=13.
+inline constexpr const char* kGameDataFileGetScenarioNoByWorldId =
+    "_ZNK12GameDataFile13getScenarioNoEi";
+// GameDataFunction::getNextStageName — the pending commit's target, read at
+// exeLoadStage time for the UNIVERSAL cross-world backstop (covers paths the
+// commit-side arm can't see, e.g. a returnPrevStage pop to the entry-origin
+// world after a pre-arm swapped residency). "getNextStageName"=16.
+inline constexpr const char* kGameDataFunctionGetNextStageName =
+    "_ZN16GameDataFunction16getNextStageNameE22GameDataHolderAccessor";
+
 // Odyssey "board -> Cap" divert (Devon's no-flight-map escape hatch, Cascade-only).
 // The Odyssey takeoff/world-map flow lives on ShineTowerRocket (src/MapObj/
 // ShineTowerRocket.h). Two nerve states lead INTO the world-map UI:

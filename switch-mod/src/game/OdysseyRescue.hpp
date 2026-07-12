@@ -114,13 +114,69 @@ void forceAlreadyVisitedWorld(void* gameDataFile, int world_id, const char* tag)
 // callers treat that as "not visited" (conservative toward bouncing).
 bool isWorldAlreadyGo(int world_id);
 
-// Generalized forceUnlockCascadeDestination: unlockWorld(world_id) so the
-// Odyssey world map lists a chain-reached kingdom as a return-flight
-// destination. Same idempotence (unlockWorld only inserts). ⚠ Pre-unlocking a
-// FUTURE story kingdom is the mUnlockWorldNum-overshoot risk documented on
-// the removed Ruined backtrack path — this is only ever called for the
-// kingdom Mario is ARRIVING IN (the Lost-sweep-safe shape), but watch the
-// post-boss autopilot in the chain-arrival test matrix regardless.
-void forceUnlockWorld(int world_id, const char* tag);
+// REMOVED (P4 finding 12, Devon ruling 2026-07-08): forceUnlockWorld(world_id)
+// — the chain-arrival unlockWorld call. Decomp-confirmed
+// (GameProgressData::unlockNextWorld) that unlockWorld on a late kingdom
+// monotonically unlocks EVERY earlier kingdom on the globe (mUnlockWorldNum
+// counter, written to the save) and raises mHomeLevel. Chain kingdoms are
+// listed via the RAM-only listing force below instead; never re-add an
+// unlockWorld call on the chain path. (The Lost sweep's unlockWorld of the
+// CURRENT world remains — that shape can't overshoot.)
+
+// P5 chain-return hardening (docs/plan-p5-cross-world-loads.md §2.1) --------
+
+// RAW per-world unlock read (GameDataFunction::isUnlockedWorld free fn,
+// GameProgressData::isUnlockWorld member fallback via game_data_file_cache).
+// out_ok is set false when NEITHER read is available (symbols unresolved /
+// caches cold) — callers must fail closed on that. NOTE: this reads the
+// mIsUnlockWorld RAM array that tickChainKingdomListing FORCES for chain
+// kingdoms, so a forced world reads unlocked here — prefer isWorldUnlockedHonest
+// for the chain-only derivation.
+bool isWorldUnlockedRaw(int world_id, bool* out_ok);
+
+// HONEST per-world unlock read (P5 T-C, §9.3): isWorldUnlockedRaw with OUR own
+// listing forces subtracted (ApState::chain_unlock_forced_bits). Returns false
+// for a world whose mIsUnlockWorld entry we set purely to place a boardable
+// ship — so the exist-fix (RAM force) and the chain-only marker are no longer
+// mutually exclusive. A world we never forced reads exactly its raw value, so a
+// legitimately unlocked kingdom can NEVER be flipped to chain-only (regression
+// guard, 2026-07-09 Cascade lesson). This is the read the chain-only derivation
+// uses; the raw variant remains for callers wanting the literal RAM state.
+bool isWorldUnlockedHonest(int world_id, bool* out_ok);
+
+// Save-derived "chain-reached-only" marker: isAlreadyGoWorld(w) &&
+// !isWorldUnlockedRaw(w). Both inputs are save-backed, so this survives
+// save/quit/reload, is independent of gate payment, and self-clears when the
+// kingdom is later unlocked legitimately (story progression). Returns false
+// (fail closed) when the unlock read is unavailable. NOTE: on a save already
+// polluted by the removed unlockWorld overshoot this reads false for chain
+// kingdoms (they're unlocked there) — session bits cover until re-seed.
+bool isKingdomChainReachedOnlySave(int world_id);
+
+// Per-frame (caller-throttled) listing force: for every chain-reached-only
+// world, set GameProgressData::mIsUnlockWorld[w] = true so the globe lists it
+// as a return-flight destination. RAM-only (updateList rebuilds the array and
+// write() never serializes it), clobber-proof by re-assertion — same pattern
+// as the costume-door OpenKeySwitch force. Needs game_data_file_cache; cold
+// cache = no-op (before the first stage transition of a session, when no
+// chain kingdom can need listing anyway).
+void tickChainKingdomListing();
+
+// COMBINED "chain-reached-only" read for the allowance + bounce sites
+// (2026-07-09 walk fix). The old form ORed the session chain bit with the
+// save-derived marker, but the session bit is set by ANY remapped overworld
+// commit — including one into a kingdom the player already legitimately
+// unlocked (first live case: a chain door back into flight-visited Cascade
+// zeroed its takeoff gate, `[chain-launch] ... orig=5 -> 0`). A legitimately
+// UNLOCKED kingdom must never count as chain-only, whatever the session bit
+// says: unlocked ⇒ the honest gate + free story-forward travel apply.
+//
+//   chain-only := (session bit || isAlreadyGoWorld) && !isWorldUnlockedRaw
+//
+// When the unlock read is unavailable (out_ok false) this degrades to the
+// session bit alone (the save-derived arm keeps its documented fail-closed
+// shape). `bit` is the kingdom bit, `world_id` the SMO world id — pass both
+// (callers already have them; keeps this free of the bit<->id tables).
+bool isKingdomChainReachedOnly(int bit, int world_id);
 
 }  // namespace smoap::game

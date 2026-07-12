@@ -194,6 +194,13 @@ ROW_HEADROOM = 32
 # HomeStage instead is the fix; the entrance marker id resolves within the
 # composite stage load. The remaining extracted zone roots (SkyWorldCastleZone
 # was one of ~6; see plan doc §3e item 4) stay out until a walk lands on them.
+#
+# CONFIRMED 2026-07-08 (Devon's A3 walk, log jizo-check.txt): the match-key
+# side needs NO aliasing. Standing inside SkyWorldCastleZone and firing the
+# jizo01 door, `getCurrentStageName` reported `cur='SkyWorldHomeStage'` — the
+# engine reports the parent HomeStage for zone-hosted transitions, never the
+# zone name. So `cur`-keyed exit rows and `dest`-keyed entry rows both match
+# on HomeStage names as shipped; ZONE_STAGE_ALIAS remains rewrite-target-only.
 ZONE_STAGE_ALIAS: dict[str, str] = {
     "SkyWorldCastleZone": "SkyWorldHomeStage",
 }
@@ -349,6 +356,82 @@ def build_port_graph(
 
     return PortGraph(mouths=mouths, vanilla_matching=vanilla,
                      dropped_doors=dropped)
+
+
+# ---------------------------------------------------------------------------
+# One-way courses (Devon ruling 2026-07-08)
+# ---------------------------------------------------------------------------
+# "Subareas with a separate entrance and exit are often intended to move from
+# the entrance to the exit and not the other way around — for logic purposes,
+# assume you CANNOT reach the entrance door to a subarea from its exit door."
+#
+# Encoding. An INTERIOR mouth is ENTRY-CAPABLE when the same physical door is
+# also a walkable entrance from the overworld — i.e. a pooled OVERWORLD mouth
+# of the same subarea shares its `entry_id` (the pair-shared ChangeStageId).
+# Matching on entry_id, not door_port_id, deliberately covers the zone-split
+# doors (P3c discovery 3): their two halves carry different port_ids but the
+# SAME ChangeStageId because they are one physical door recorded twice — a
+# two-way room, not a course. Genuinely separate exits (Jaxi Driving's
+# `run00return`/`arijigoku2` vs its `aaa` entry) share nothing and stay
+# exit-only.
+#
+# Arriving INSIDE a subarea at an exit-only mouth therefore reaches (a) that
+# subarea's exit-only mouths (the far end of the course — where multi-exit
+# stages cluster their exit pipes) and (b) nothing else: not the entrance
+# door, and NOT the member moons (the course flows entrance -> exit; granting
+# moons from a far-end arrival would over-promise reachability the player
+# does not have — under-promising only tightens fill, over-promising strands
+# required checks in the real world). The P3d wiring realizes this as a
+# second "<name> Interior (far side)" region per affected subarea with a free
+# one-way edge full-interior -> far-side (completing the course reaches the
+# far end) — see hooks/World.py.
+#
+# A subarea whose pooled interior mouths are ALL exit-only (a "one-way
+# course") can then never feed its full interior through the matching — the
+# only way in is its own vanilla entrance. roll_port_matching PINS such a
+# subarea's pooled overworld mouths as fixed points (vanilla passthrough, the
+# same credit shape the zone-split lone mouths use), keeping the member moons
+# in logic; the exit mouths keep shuffling.
+
+def entry_capable_interior_mouths(graph: PortGraph) -> frozenset[str]:
+    """mouth_ids of pooled INTERIOR mouths whose door is also a walkable
+    entrance (see the one-way-course note above)."""
+    ow_ids_by_sub: dict[str, set[str]] = {}
+    for m in graph.mouths.values():
+        if m.side == OVERWORLD:
+            ow_ids_by_sub.setdefault(m.subarea, set()).add(m.entry_id)
+    return frozenset(
+        m.mouth_id for m in graph.mouths.values()
+        if m.side == INTERIOR
+        and m.entry_id in ow_ids_by_sub.get(m.subarea, ()))
+
+
+def one_way_course_subareas(graph: PortGraph) -> frozenset[str]:
+    """Subareas with pooled interior mouths, NONE of them entry-capable —
+    their full interior is unreachable through any shuffled matching and
+    depends on the vanilla entrance staying pinned."""
+    capable = entry_capable_interior_mouths(graph)
+    has_interior: set[str] = set()
+    has_capable: set[str] = set()
+    for m in graph.mouths.values():
+        if m.side != INTERIOR:
+            continue
+        has_interior.add(m.subarea)
+        if m.mouth_id in capable:
+            has_capable.add(m.subarea)
+    return frozenset(has_interior - has_capable)
+
+
+def pinned_one_way_entry_mouths(graph: PortGraph) -> frozenset[str]:
+    """The overworld mouths roll_port_matching must fix vanilla: every pooled
+    OVERWORLD mouth of a one-way-course subarea. By shape these are all lone
+    (their door's interior side is not ingest — an ingest sibling would make
+    the subarea entry-capable), so the fixed point is the true vanilla
+    passthrough / zero-row shape."""
+    courses = one_way_course_subareas(graph)
+    return frozenset(
+        m.mouth_id for m in graph.mouths.values()
+        if m.side == OVERWORLD and m.subarea in courses)
 
 
 # ---------------------------------------------------------------------------

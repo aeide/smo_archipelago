@@ -116,6 +116,11 @@ void reconcileCaptureDictionary();
 // Lost Kingdom softlock fix — see game/OdysseyRescue.hpp.
 void installOdysseyRescueSymbols();
 void runOdysseySoftlockSweep();
+// P5 cross-world load fix (B2 pre-arm) — see game/CrossWorldLoad.hpp.
+void installCrossWorldLoadHooks();
+void cacheHakoniwaSequence(const void* sequence);
+// P5 §8 residency watch (Swinging re-triage) — see game/CrossWorldLoad.hpp.
+void tickResidencyWatch();
 }  // namespace smoap::game
 
 // Forward-declare nn::socket::Initialize so the GameSystem::init hook can
@@ -261,6 +266,8 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
             auto& st = smoap::ap::ApState::instance();
             st.scene_cache.store(scene_holder, std::memory_order_relaxed);
             st.game_data_holder_cache.store(gdh, std::memory_order_relaxed);
+            // P5: the WorldResourceLoader (B2 pre-arm) lives on the sequence.
+            smoap::game::cacheHakoniwaSequence(self);
         }
 
         smoap::ap::ApState::instance().applyOnFrame();
@@ -278,6 +285,7 @@ HkTrampoline<void, const HakoniwaSequence*> drawMainHook =
             if (++s_softlockTick >= 60) {
                 s_softlockTick = 0;
                 smoap::game::runOdysseySoftlockSweep();
+                smoap::game::tickResidencyWatch();  // [p5-reswatch], logs on change
             }
         }
         smoap::hooks::tickWorldTravelPeach();  // self-throttled (~1s)
@@ -321,6 +329,9 @@ extern "C" void hkMain() {
 
     SMOAP_LOG_INFO("resolving OdysseyRescue symbols (Lost softlock fix)");
     smoap::game::installOdysseyRescueSymbols();
+
+    SMOAP_LOG_INFO("resolving CrossWorldLoad symbols (P5 B2 pre-arm)");
+    smoap::game::installCrossWorldLoadHooks();
 
     // All hooks re-enabled now that the worker->Cappy cross-thread crash is
     // fixed via the inbound_system_bubbles SPSC ring drained by drawMain.

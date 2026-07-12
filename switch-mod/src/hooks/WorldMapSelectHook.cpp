@@ -32,8 +32,25 @@ bool cascadeMultiMoonCollected();
 namespace {
 
 struct GameDataHolderWriter { void* mData; };
+struct GameDataHolderAccessor { void* mData; };
 
 constexpr bool kGateEnabled = true;
+
+// Resolve the kingdom Mario is CURRENTLY standing in (the departing kingdom
+// at a flight commit) — same plumbing as UnlockShineNumHook's
+// resolveCurrentKingdomBit. 0xff when the holder/symbol isn't ready.
+using GetCurrentWorldIdNoDevelopFn = int (*)(GameDataHolderAccessor);
+std::uint8_t resolveDepartingKingdomBit(int* out_world_id) {
+    if (out_world_id) *out_world_id = -1;
+    auto& s = smoap::ap::ApState::instance();
+    void* holder = s.game_data_holder_cache.load(std::memory_order_relaxed);
+    if (!holder || !s.get_current_world_id_fn) return 0xff;
+    auto fn = reinterpret_cast<GetCurrentWorldIdNoDevelopFn>(
+        s.get_current_world_id_fn);
+    const int world_id = fn(GameDataHolderAccessor{holder});
+    if (out_world_id) *out_world_id = world_id;
+    return smoap::game::kingdomBitForWorldId(world_id);
+}
 
 // First-visit forward-warp cutscene suppression (2026-06-29). Cap is forced into
 // its return layout (CapReturnScenarioHook) so a free-travel player can fly out
@@ -126,10 +143,24 @@ HkTrampoline<int, const void*, int> calcNextLockedSceneHook =
 
 HkTrampoline<bool, GameDataHolderWriter, const char*> tryChangeDemoWarpHook =
     hk::hook::trampoline([](GameDataHolderWriter writer, const char* stage) -> bool {
+        // P5 §1.5-B1: EntranceShuffleHook re-routes remapped cross-world
+        // OVERWORLD commits through this wrapper (the proven native world-swap
+        // path — flights into Metro are consistently clean). That synthetic
+        // call must not be re-gated: the order-gate BACKSTOP and the
+        // chain-return bounce below would redirect the very chain arrival
+        // that raised them. One-shot flag, set right before the call.
+        const bool synthetic_chain_warp =
+            smoap::ap::ApState::instance().chain_demo_warp_pending.exchange(
+                false, std::memory_order_relaxed);
+        if (synthetic_chain_warp) {
+            SMOAP_LOG_INFO("[wmap.tryChange.Demo] synthetic chain warp to '%s' "
+                           "(backstop + bounce skipped)",
+                           stage ? stage : "(null)");
+        }
         const char* final_stage = stage;
         const char* kingdom = stage ? smoap::game::kingdomShortFromHomeStage(stage)
                                      : nullptr;
-        if (kGateEnabled && kingdom) {
+        if (kGateEnabled && kingdom && !synthetic_chain_warp) {
             const auto decision = smoap::game::evaluateOrderGateForKingdom(kingdom);
             if (decision.blocked && decision.required_stage) {
                 SMOAP_LOG_WARN("[wmap.tryChange.Demo] BACKSTOP substituting "
@@ -145,36 +176,52 @@ HkTrampoline<bool, GameDataHolderWriter, const char*> tryChangeDemoWarpHook =
         // at the universal GameDataFile::changeNextStage commit, where Cloud
         // provably resolves — see processDetourExitGate in EntranceShuffleHook.cpp.
 
-        // P4 decoupled — chain-return VISITED-ONLY bounce (Devon ruling
-        // 2026-07-07/08). When the chain-return takeoff allowance is active
-        // (UnlockShineNumHook zeroed the gate because the departing kingdom is
-        // chain-reached with its rolled leave-gate unpaid — chain_allowance_bit
-        // holds that kingdom's bit), the open globe also exposes NOT-YET-VISITED
-        // kingdoms. The ruling allows flying to already-visited kingdoms ONLY,
-        // so substitute any un-visited pick with the chain ORIGIN (falling back
-        // to Cap, always reachable) — substitution is the proven primitive at
-        // this seam (same mechanism as the order-gate BACKSTOP above; the
-        // decomp shows tryChangeNextStageWithDemoWorldWarp commits
-        // unconditionally, so a refusal-by-return-false has no vanilla path).
+        // P4/P5 decoupled — chain-return VISITED-ONLY bounce (Devon rulings
+        // 2026-07-07/08). From a chain-reached kingdom, flights may go to
+        // already-visited kingdoms ONLY — substitute any un-visited pick with
+        // the chain ORIGIN (falling back to Cap, always reachable) —
+        // substitution is the proven primitive at this seam (same mechanism as
+        // the order-gate BACKSTOP above; the decomp shows
+        // tryChangeNextStageWithDemoWorldWarp commits unconditionally, so a
+        // refusal-by-return-false has no vanilla path).
+        //
+        // P5 finding-13 fix: the condition is the DEPARTING kingdom being
+        // chain-reached (session bit OR the save-derived chain-only marker,
+        // alreadyGo && !unlocked — persists across save/load and across gate
+        // PAYMENT), no longer the chain_allowance_bit — which payment clears
+        // by design, and which let the post-payment story `firstNext` flight
+        // commit to an out-of-logic kingdom unbounced. Paying never
+        // legitimizes story-forward travel (Devon ruling); the kingdom stops
+        // bouncing only when it is later reached legitimately (story unlock
+        // clears the save-derived marker... and the session bit dies with the
+        // session).
+        //
         // "Visited" = the session bit (flight commits + chain arrivals) OR the
         // save's isAlreadyGoWorld (official visits predating this session;
         // chain arrivals force it too, so post-normalization both agree).
-        if (kGateEnabled && final_stage) {
+        if (kGateEnabled && final_stage && !synthetic_chain_warp) {
             auto& st = smoap::ap::ApState::instance();
-            const std::uint8_t allow_bit =
-                st.chain_allowance_bit.load(std::memory_order_relaxed);
+            int depart_world = -1;
+            const std::uint8_t depart_bit =
+                resolveDepartingKingdomBit(&depart_world);
+            // Combined chain-only marker (2026-07-09 fix): a legitimately
+            // UNLOCKED departing kingdom never bounces, whatever the session
+            // chain bit says — see OdysseyRescue::isKingdomChainReachedOnly.
+            const bool depart_chain_only =
+                depart_bit < 17 &&
+                smoap::game::isKingdomChainReachedOnly(depart_bit, depart_world);
             const char* tgt_kingdom =
                 smoap::game::kingdomShortFromHomeStage(final_stage);
-            if (allow_bit < 17 && tgt_kingdom) {
+            if (depart_chain_only && tgt_kingdom) {
                 const std::uint8_t tgt_bit = smoap::game::kingdomBitFor(tgt_kingdom);
                 const int tgt_world = smoap::game::worldIdFromKingdomShort(tgt_kingdom);
                 const bool allowed =
-                    tgt_bit == allow_bit ||  // flying "to" the kingdom we're in
+                    tgt_bit == depart_bit ||  // flying "to" the kingdom we're in
                     (tgt_bit < 17 && st.isKingdomBitVisited(tgt_bit)) ||
                     smoap::game::isWorldAlreadyGo(tgt_world);
                 if (!allowed) {
                     const std::uint8_t origin_bit =
-                        st.chain_origin_bit[allow_bit].load(std::memory_order_relaxed);
+                        st.chain_origin_bit[depart_bit].load(std::memory_order_relaxed);
                     const char* origin_kingdom =
                         origin_bit < 17 ? smoap::game::kingdomForBit(origin_bit)
                                         : nullptr;
@@ -182,14 +229,16 @@ HkTrampoline<bool, GameDataHolderWriter, const char*> tryChangeDemoWarpHook =
                         ? smoap::game::homeStageForKingdomShort(origin_kingdom)
                         : nullptr;
                     if (!bounce_stage) {
+                        // Session origin unknown (e.g. after save/quit/reload —
+                        // chain_origin_bit is session-only): Cap is always safe.
                         origin_kingdom = "Cap";
                         bounce_stage   = "CapWorldHomeStage";
                     }
                     SMOAP_LOG_WARN("[chain-return] BOUNCE un-visited pick "
-                                   "stage='%s' (%s) -> '%s' (%s) [allowance "
+                                   "stage='%s' (%s) -> '%s' (%s) [depart "
                                    "bit=%u origin bit=%u]",
                                    final_stage, tgt_kingdom, bounce_stage,
-                                   origin_kingdom, allow_bit, origin_bit);
+                                   origin_kingdom, depart_bit, origin_bit);
                     char bubble[64];
                     std::snprintf(bubble, sizeof(bubble),
                                   "Can't chart a course there yet! Back to %s!",

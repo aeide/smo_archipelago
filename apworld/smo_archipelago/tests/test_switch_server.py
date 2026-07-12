@@ -393,6 +393,69 @@ async def test_same_host_reconnect_takes_over_stale_writer():
 
 
 @pytest.mark.asyncio
+async def test_same_id_reconnect_keeps_active_and_gets_replay():
+    """A same-device reconnect must KEEP active status and receive the full
+    post-HELLO replay — never a KickMsg.
+
+    Regression (observed in-game 2026-07-08, W5 walk): stopping Ryujinx
+    emulation kills the guest without a prompt FIN, so the fresh boot's
+    HELLO arrives while the dead connection is still registered as active.
+    The registration swap replaces the dict entry, the old handler's finally
+    skips its unregister (identity check), and `_active_device_id` never
+    clears — pre-fix the new connection fell into the "inactive" branch:
+    hello_ack + kick, NO replay. In-game that meant no ability_state (the
+    ability gates enforced an empty table — every move locked) and no
+    entrance_map (doors silently reverted to vanilla).
+    """
+    state = BridgeState()
+
+    async def on_check(_): ...
+    async def on_goal(): ...
+
+    sw = SwitchServer("127.0.0.1", 0, state, on_check, on_goal)
+    server = await asyncio.start_server(sw._handle_client, "127.0.0.1", 0)
+    sw._server = server
+    port = server.sockets[0].getsockname()[1]
+
+    r1, w1 = await asyncio.open_connection("127.0.0.1", port)
+    try:
+        w1.write(protocol.encode(HelloMsg(device_id="mario")))
+        await w1.drain()
+        await _drain_messages(r1, n=3, timeout=2.0)
+        assert sw.get_active_device_id() == "mario"
+
+        # Same-id reconnect while the old connection is still registered —
+        # exactly the state the no-FIN death leaves behind.
+        r2, w2 = await asyncio.open_connection("127.0.0.1", port)
+        try:
+            w2.write(protocol.encode(HelloMsg(device_id="mario")))
+            await w2.drain()
+            msgs = await _drain_messages(r2, n=3, timeout=2.0)
+            kinds = [m["t"] for m in msgs]
+            assert kinds[0] == "hello_ack", msgs
+            assert "kick" not in kinds, (
+                "same-id reconnect was parked inactive: %r" % kinds
+            )
+            # checked_replay is the unconditional part of the post-HELLO
+            # replay — its presence proves the replay ran for this conn.
+            assert "checked_replay" in kinds, kinds
+            assert sw.get_active_device_id() == "mario"
+        finally:
+            w2.close()
+            try:
+                await w2.wait_closed()
+            except Exception:
+                pass
+    finally:
+        w1.close()
+        try:
+            await w1.wait_closed()
+        except Exception:
+            pass
+        await sw.stop()
+
+
+@pytest.mark.asyncio
 async def test_second_switch_accepted_as_inactive():
     """A second Switch connection is now ACCEPTED (no busy rejection).
 

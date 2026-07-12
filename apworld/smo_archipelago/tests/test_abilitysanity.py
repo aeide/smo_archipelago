@@ -115,7 +115,10 @@ def test_drop_ability_wired_into_before_create_items_filler():
 # `requires` strings still demand ability tokens. Without compensating,
 # every ability-gated location (including progression anchors) becomes
 # permanently unreachable and fill collapses with FillError. The fix
-# precollects each Ability item at its full items.json copy count.
+# precollects each Ability item at its UNLOCK count (chain length for
+# progressives, 1 otherwise) -- enough to satisfy every `requires` token
+# without precollecting the pool-only clone copies (which would mint
+# spurious dup-coin grants on every boot; see the sanity-OFF coin bug).
 
 def test_precollect_ability_helper_defined():
     src = _hooks_src("World.py")
@@ -145,6 +148,11 @@ def test_precollect_ability_helper_gated_on_option_and_uses_full_count():
     assert '"count"' in body, (
         "_precollect_ability_items_if_disabled must read copy counts from "
         "items.json, not hardcode them"
+    )
+    assert "unlock_count(" in body, (
+        "_precollect_ability_items_if_disabled must cap the precollect at the "
+        "UNLOCK count (min(count, unlock_count(name))) so pool-only clone "
+        "copies are not precollected into spurious dup-coin grants"
     )
     assert '_names_in_item_category(world, "Ability")' in body
 

@@ -43,6 +43,7 @@
 
 #include "../ap/ApFrameBridge.hpp"
 #include "../ap/ApState.hpp"
+#include "../game/CrossWorldLoad.hpp"
 #include "../game/KingdomOrderGate.hpp"
 #include "../game/KingdomUnlock.hpp"
 #include "../game/OdysseyRescue.hpp"
@@ -130,6 +131,34 @@ inline constexpr const char* kCapHomeStage       = "CapWorldHomeStage";
 using GetCurrentStageNameFn = const char* (*)(GameDataHolderAccessor);
 GetCurrentStageNameFn s_getCurrentStageName = nullptr;
 
+// P5 §1.5-B1 — the bare-stage-name Odyssey-flight commit we CALL for remapped
+// cross-world OVERWORLD targets (the native world-swap path; see
+// routeRemappedCrossWorld). The looked-up address is patched by our own
+// WorldMapSelectHook trampoline, so the call flows through it first — the
+// chain_demo_warp_pending handshake keeps that trampoline's backstop/bounce
+// out of the way. Resolved at install; nullptr degrades B1 to the B2 pre-arm.
+using TryChangeDemoWarpFn = bool (*)(GameDataHolderWriter, const char*);
+TryChangeDemoWarpFn s_tryChangeDemoWarp = nullptr;
+
+// P5 §6.4 (Devon ruling): the Lost/Ruined normalization exemption is
+// LIFTED. Lost lifts fully (its guard is the sweep's unlock skip, T2).
+// Ruined stays story-managed ONLY pre-dragon: the Lord-of-Lightning
+// fight must arm (the pinned progression Multi-Moon is earned there)
+// and its vanilla completion repairs the ship — the in-game escape.
+// Post-dragon (quest-recomputed scenario >= 2) chain arrivals normalize
+// like everyone else. Scenario read unavailable (-1) => story-managed
+// (fail toward vanilla behavior). Shared by processChainArrival +
+// routeRemappedCrossWorld.
+bool chainArrivalStoryManaged(const char* dest) {
+    const bool ruined =
+        std::strcmp(dest, "AttackWorldHomeStage") == 0 ||
+        std::strcmp(dest, "BossRaidWorldHomeStage") == 0;
+    if (!ruined) return false;
+    const int w  = smoap::game::worldIdFromKingdomShort("Ruined");
+    const int sc = smoap::game::scenarioNoForWorld(w);
+    return sc < 2;
+}
+
 const char* readCstrAt(const ChangeStageInfo* info, std::size_t off) {
     const auto* base = reinterpret_cast<const std::uint8_t*>(info);
     const char* p = *reinterpret_cast<const char* const*>(base + off);
@@ -188,6 +217,25 @@ void logChangeStageInfo(const char* tag, const ChangeStageInfo* info) {
 // across doors/pipes/multi-exit subareas/moon pipes (2026-06-19); the dest==cur
 // guard skips moon-rock same-stage reloads.
 static constexpr bool kEntranceRemapApply = true;
+
+// ── B1 Odyssey-flight routing for cross-world OVERWORLD door hops (default OFF) ─
+//
+// Devon ruling 2026-07-12: the Odyssey flight cinematic must play ONLY when the
+// player picks a kingdom on the in-cabin world-map (kingdom select) — NEVER on a
+// door / subarea exit, even one that crosses into another kingdom. B1 (the
+// tryChangeNextStageWithDemoWorldWarp reroute in routeRemappedCrossWorld) played
+// that cinematic on cross-world OVERWORLD-target hops (e.g. a subarea exit landing
+// on ForestWorldHomeStage flew into Wooded) AND dropped the marker id, so Mario
+// landed at the Odyssey instead of the paired mouth.
+//
+// With this false, cross-world overworld targets take the SAME plain-commit +
+// pre-arm + hold path as cross-world INTERIOR targets already did (the Luncheon
+// 'GabuzouClockEx' exit in the 2026-07-11 walk: no flight, landed at the paired
+// mouth, Odyssey parked by processChainArrival's forceAcquireOdyssey). Unblocked
+// now that the T-A clobber fix (§10) makes plain cross-world commits crash-safe
+// under pre-arm+hold — the §5.2 / §7.4 "ditch the B1 cinematic" change. Flip back
+// to true to restore the flight-on-door-hop behavior.
+static constexpr bool kB1DemoWarpCrossWorld = false;
 
 // ── P0 decoupled-entrance-randomizer gate spike (approach A) ────────────────
 // Hardcoded two-row test: does a subarea exit chained into a FOREIGN kingdom's
@@ -362,18 +410,23 @@ bool processEntranceRemap(const ChangeStageInfo* info) {
 // 2. Arrival normalization — the generalized Cascade treatment (Devon,
 //    2026-07-08): setAlreadyGoWorld (parked flight landing instead of the
 //    buried/one-time first-visit arrival flow) + forceAcquireOdyssey (ship
-//    present + boardable; P0 Luncheon chain arrival had exist=0) +
-//    unlockWorld (the world map lists this kingdom as a return-flight
-//    destination later). Only fires when the save hasn't already recorded a
-//    visit. Lost/Ruined are EXEMPT from normalization (their grounded-ship
-//    states are story-managed: the Lost softlock sweep and the pinned Ruined
-//    Multi-Moon respectively) but still get the bookkeeping.
+//    present + boardable; P0 Luncheon chain arrival had exist=0). Only fires
+//    when the save hasn't already recorded a visit. P5 §6.4 (Devon ruling,
+//    execution task T3): the Lost/Ruined normalization exemption is LIFTED.
+//    Lost normalizes fully — its story guard is T2 (the softlock sweep
+//    repairs the ship but never unlocks a chain-reached-only Lost). Ruined
+//    stays story-managed ONLY pre-dragon (chainArrivalStoryManaged reads its
+//    live scenario) so the Lord-of-Lightning fight still arms; post-dragon
+//    Ruined chain arrivals normalize like everyone else.
 //
-// ⚠ Watch item for the in-game matrix: unlockWorld on a FUTURE story kingdom
-// is adjacent to the mUnlockWorldNum-overshoot risk documented on the removed
-// Ruined backtrack path (post-boss autopilot skipping Bowser). This call is
-// the Lost-sweep-safe shape (unlock the world being arrived in), but verify
-// the autopilot after chaining into a late kingdom.
+// unlockWorld was REMOVED from this path (P4 finding 12, Devon ruling
+// 2026-07-08): the watch item fired — decomp-confirmed that
+// GameProgressData::unlockNextWorld is a monotonic SAVED counter, so
+// unlocking a late chain kingdom permanently unlocked every earlier kingdom
+// on the globe (and raised mHomeLevel). Globe listing for chain kingdoms is
+// now the RAM-only force in OdysseyRescue::tickChainKingdomListing, and the
+// "chain-reached-only" marker is save-derived (alreadyGo && !unlocked) — see
+// docs/plan-p5-cross-world-loads.md §2.
 void processChainArrival(GameDataFile* self, const char* dest,
                          const char* dest_kingdom) {
     if (!dest || !dest_kingdom) return;
@@ -390,31 +443,86 @@ void processChainArrival(GameDataFile* self, const char* dest,
             ? smoap::game::kingdomBitFor(st.last_arrival_kingdom)
             : 0xff;
 
-    st.markKingdomBitChainReached(dest_bit);
+    const int world_id = smoap::game::worldIdFromKingdomShort(dest_kingdom);
+
+    // 2026-07-09 walk fix: a chain door into a kingdom the player already
+    // LEGITIMATELY unlocked must not brand it chain-reached — the session bit
+    // fed the allowance + bounce and zeroed flight-visited Cascade's takeoff
+    // gate ([chain-launch] ... orig=5 -> 0). Read-side has the same guard
+    // (OdysseyRescue::isKingdomChainReachedOnly), this keeps ApState truthful.
+    bool unlock_known = false;
+    // Honest read (P5 T-C): if a prior tick force-listed this world, the raw
+    // array reads unlocked — use the honest read so a re-entered chain kingdom
+    // is still marked chain-reached (else its takeoff gate wouldn't zero).
+    const bool legit_unlocked =
+        smoap::game::isWorldUnlockedHonest(world_id, &unlock_known) && unlock_known;
+    if (!legit_unlocked) st.markKingdomBitChainReached(dest_bit);
     st.markKingdomBitVisited(dest_bit);
     if (origin_bit < 17) {
         st.markKingdomBitVisited(origin_bit);
         st.chain_origin_bit[dest_bit].store(origin_bit, std::memory_order_relaxed);
     }
 
-    const bool exempt =
-        std::strcmp(dest, "ClashWorldHomeStage") == 0 ||     // Lost
-        std::strcmp(dest, "AttackWorldHomeStage") == 0 ||    // Ruined
-        std::strcmp(dest, "BossRaidWorldHomeStage") == 0;    // Ruined (alias)
-
-    const int world_id = smoap::game::worldIdFromKingdomShort(dest_kingdom);
+    const bool exempt = chainArrivalStoryManaged(dest);
     const bool already_go = smoap::game::isWorldAlreadyGo(world_id);
 
     SMOAP_LOG_INFO("[chain-arrival] dest=%s kingdom=%s bit=%u origin_bit=%u "
-                   "worldId=%d alreadyGo=%d exempt=%d",
+                   "worldId=%d alreadyGo=%d unlocked=%d storyManaged=%d",
                    dest, dest_kingdom, dest_bit, origin_bit, world_id,
-                   already_go ? 1 : 0, exempt ? 1 : 0);
+                   already_go ? 1 : 0, legit_unlocked ? 1 : 0, exempt ? 1 : 0);
 
     if (exempt || already_go || world_id < 0) return;
 
     smoap::game::forceAlreadyVisitedWorld(self, world_id, "chain-arrival");
     smoap::game::forceAcquireOdyssey("chain-arrival");
-    smoap::game::forceUnlockWorld(world_id, "chain-arrival");
+}
+
+// ── P5 §1.5 — cross-world routing for REMAPPED commits (B1 + B2 dispatch) ───
+//
+// Called only when processEntranceRemap APPLIED a row. Compares the FINAL
+// target's world (WorldList::tryFindWorldIndexByStageName — resolves subareas
+// too) against the currently RESIDENT world (the loader's, not GameDataFile's
+// bookkeeping — residency is what the crash class depends on):
+//
+//   same world / unresolvable  → plain commit, untouched (vanilla shape).
+//   cross, overworld, !exempt  → B1: re-route through
+//       tryChangeNextStageWithDemoWorldWarp (the proven native swap path —
+//       flights into Metro are consistently clean; §1.4). Returns true and
+//       the caller SKIPS orig — the demo warp owns the commit. Accepted
+//       costs (P5 doc): the marker id is lost (player lands at the Odyssey)
+//       and the flight cinematic plays even for a door hop. Known probe
+//       risks: demo-warp from inside a subarea, while airborne/captured.
+//   cross, interior OR exempt  → B2: plain commit + arm the pre-load
+//       (CrossWorldLoad fires it once the old scene is dead).
+//
+// Returns true iff the demo warp took the commit (caller must skip orig).
+bool routeRemappedCrossWorld(const char* dest, const char* dest_kingdom) {
+    const int dest_world = smoap::game::resolveWorldIdForStage(dest);
+    const int resident   = smoap::game::residentWorldId();
+    if (dest_world < 0 || resident < 0 || dest_world == resident) return false;
+
+    const bool overworld = dest_kingdom != nullptr;
+    if (kB1DemoWarpCrossWorld &&
+        overworld && !chainArrivalStoryManaged(dest) && s_tryChangeDemoWarp) {
+        void* holder = smoap::ap::ApState::instance().game_data_holder_cache.load(
+            std::memory_order_relaxed);
+        if (holder) {
+            SMOAP_LOG_INFO("[p5-b1] cross-world overworld commit '%s' "
+                           "(world %d, resident %d) -> demo warp (native "
+                           "world swap; marker id dropped)",
+                           dest, dest_world, resident);
+            smoap::ap::ApState::instance().chain_demo_warp_pending.store(
+                true, std::memory_order_relaxed);
+            if (s_tryChangeDemoWarp(GameDataHolderWriter{holder}, dest))
+                return true;
+            smoap::ap::ApState::instance().chain_demo_warp_pending.store(
+                false, std::memory_order_relaxed);
+            SMOAP_LOG_WARN("[p5-b1] demo warp REFUSED for '%s' — plain commit "
+                           "+ pre-arm instead", dest);
+        }
+    }
+    smoap::game::armCrossWorldPreload(dest_world, dest);
+    return false;
 }
 
 // ── Free-detour: "both siblings before the exit" gate ───────────────────────
@@ -553,6 +661,10 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
     fileChangeNextStageHook = hk::hook::trampoline(
         [](GameDataFile* self, const ChangeStageInfo* info,
            std::int32_t raceType) -> void {
+            // P5: refresh the GameDataFile* cache (consumed by the drawMain
+            // pump's chain-kingdom listing force — see ApState field docs).
+            smoap::ap::ApState::instance().game_data_file_cache.store(
+                self, std::memory_order_relaxed);
             logChangeStageInfo("file", info);
             const bool remapped = processEntranceRemap(info);
             processDetourExitGate(info);
@@ -570,6 +682,14 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                 // ORIGIN, and reportArrival overwrites that with the dest.
                 if (remapped && kingdom) processChainArrival(self, dest, kingdom);
                 if (kingdom) smoap::ap::reportArrival(dest, kingdom);
+                // P5 §1.5 — cross-world routing for remapped commits. B1
+                // (demo-warp) returns true and OWNS the commit: skip orig and
+                // every info-based override below (the abandoned info is
+                // never consumed; the demo's own internal :file commit
+                // re-enters this hook un-remapped and runs them normally).
+                // B2 arms the pre-load and falls through to the plain orig.
+                if (remapped && routeRemappedCrossWorld(dest, kingdom))
+                    return;
                 // Cascade/Broode respawn (PRIMARY): force the arrival scenario in
                 // the ChangeStageInfo BEFORE orig consumes it, so the engine loads
                 // Cascade directly in Broode's scenario (the scenario-jump input
@@ -706,10 +826,70 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
 // The separate exit path (no ChangeStageInfo).
 HkTrampoline<void, GameDataFile*> returnPrevStageHook =
     hk::hook::trampoline([](GameDataFile* self) -> void {
+        smoap::ap::ApState::instance().game_data_file_cache.store(
+            self, std::memory_order_relaxed);
         SMOAP_LOG_INFO("[entrance:return] returnPrevStage cur='%s'",
                        currentStageName());
         returnPrevStageHook.orig(self);
     });
+
+// ── P5 §1.6 read-only spike: which next-world read does the sequence consume?
+//
+// docs/plan-p5-cross-world-loads.md §1.3: GameDataFunction::calcNextWorldId =
+// tryFindWorldIndexByMainStageName(getNextStageName()) resolves -1 for ANY
+// subarea target — the decomp-confirmed mechanism of the foreign-world
+// interior crash (Swinging Along the High-Rises). These two loggers tell the
+// next walk (a) whether the engine reads either function out-of-line around a
+// door commit, and (b) what it resolves per target class (door / flight /
+// subarea). Soft installAtPtr (same pattern as MoonRockHook) — an inlined /
+// absent symbol logs a miss and the walk falls back to lever 2 of §1.5-B2.
+// Rate-limited on value change; these can fire per-frame.
+HkTrampoline<int, GameDataHolderAccessor> calcNextWorldIdSpike =
+    hk::hook::trampoline([](GameDataHolderAccessor acc) -> int {
+        const int r = calcNextWorldIdSpike.orig(acc);
+        static int s_last = -100;
+        if (r != s_last) {
+            s_last = r;
+            SMOAP_LOG_INFO("[p5-nextworld] calcNextWorldId -> %d (cur='%s')",
+                           r, currentStageName());
+        }
+        return r;
+    });
+
+HkTrampoline<int, GameDataHolderAccessor> getNextWorldIdSpike =
+    hk::hook::trampoline([](GameDataHolderAccessor acc) -> int {
+        const int r = getNextWorldIdSpike.orig(acc);
+        static int s_last = -100;
+        if (r != s_last) {
+            s_last = r;
+            SMOAP_LOG_INFO("[p5-nextworld] getNextWorldId -> %d (cur='%s')",
+                           r, currentStageName());
+        }
+        return r;
+    });
+
+void installNextWorldIdSpike() {
+    const ptr calcAddr =
+        hk::ro::lookupSymbol(smoap::sym::kGameDataFunctionCalcNextWorldId);
+    if (calcAddr) {
+        calcNextWorldIdSpike.installAtPtr(calcAddr);
+        SMOAP_LOG_INFO("[p5-nextworld] calcNextWorldId spike @ 0x%lx",
+                       static_cast<unsigned long>(calcAddr));
+    } else {
+        SMOAP_LOG_WARN("[p5-nextworld] calcNextWorldId lookup FAILED "
+                       "(inlined/absent — §1.5-B2 lever 1 needs another read)");
+    }
+    const ptr getAddr =
+        hk::ro::lookupSymbol(smoap::sym::kGameDataFunctionGetNextWorldId);
+    if (getAddr) {
+        getNextWorldIdSpike.installAtPtr(getAddr);
+        SMOAP_LOG_INFO("[p5-nextworld] getNextWorldId spike @ 0x%lx",
+                       static_cast<unsigned long>(getAddr));
+    } else {
+        SMOAP_LOG_WARN("[p5-nextworld] getNextWorldId lookup FAILED "
+                       "(inlined/absent)");
+    }
+}
 
 }  // namespace
 
@@ -760,6 +940,24 @@ void installEntranceShuffleHook() {
         "_ZN12GameDataFile15changeNextStageEPK15ChangeStageInfoi">();
     returnPrevStageHook.installAtSym<
         "_ZN12GameDataFile15returnPrevStageEv">();
+
+    // P5 §1.6 next-world read spike (soft; see installNextWorldIdSpike).
+    installNextWorldIdSpike();
+
+    // P5 §1.5-B1 — resolve the demo-warp commit we CALL for remapped
+    // cross-world overworld targets (soft; a miss degrades B1 to the B2
+    // pre-arm, which covers every cross-world commit on its own).
+    const ptr dwAddr = hk::ro::lookupSymbol(
+        smoap::sym::kGameDataFunctionTryChangeNextStageWithDemoWorldWarp);
+    if (dwAddr) {
+        s_tryChangeDemoWarp = reinterpret_cast<TryChangeDemoWarpFn>(dwAddr);
+        SMOAP_LOG_INFO("[p5-b1] tryChangeNextStageWithDemoWorldWarp @ 0x%lx",
+                       static_cast<unsigned long>(dwAddr));
+    } else {
+        SMOAP_LOG_WARN("[p5-b1] tryChangeNextStageWithDemoWorldWarp lookup "
+                       "FAILED — B1 disabled, B2 pre-arm covers all "
+                       "cross-world commits");
+    }
 }
 
 }  // namespace smoap::hooks

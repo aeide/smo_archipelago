@@ -62,6 +62,8 @@
 #include "hk/types.h"
 
 #include "HookSymbols.hpp"
+#include "../game/KingdomUnlock.hpp"
+#include "../game/OdysseyRescue.hpp"
 #include "../util/Log.hpp"
 
 #include <cstring>
@@ -113,6 +115,17 @@ int capArrivalScenarioOverride(const void* gameDataFile, int incomingScenario,
     if (!kCapReturnApply) return -1;
     if (std::strcmp(destStageName, kCapHomeStage) != 0) return -1;
 
+    // Vanilla-prologue guard (P5 doc §6.5): never force the return layout
+    // while the Cap prologue is still in progress. isWorldAlreadyGo(Cascade)
+    // is save-backed — true on the cap-peace bootstrap save (the prologue
+    // story-drop sets it) and on any vanilla save after the first flight to
+    // Cascade; false only mid-prologue. Degraded read (getter unresolved)
+    // returns false => floor off; acceptable — the same getter backs the whole
+    // chain-return machinery and has resolved on every logged boot.
+    if (!smoap::game::isWorldAlreadyGo(
+            smoap::game::worldIdFromKingdomShort("Cascade")))
+        return -1;
+
     // Effective scenario the load would otherwise use: the explicit info value if
     // present (>= 0), else Cap's stored scenario (info -1 = "compute from quest
     // state"). If we can't read the stored value, fall back to the info value so
@@ -149,7 +162,9 @@ void installCapReturnScenarioHook() {
     // ChangeStageInfo.mScenarioNo before orig — the scenario-jump load input).
     SMOAP_LOG_INFO("[cap-return] armed (force ChangeStageInfo.scenario UP to %d on "
                    "commits into %s whose effective scenario is below it; "
-                   "moon-rock scenario left untouched; apply=%d getScenarioNo=%d)",
+                   "moon-rock scenario left untouched; gated on Cascade "
+                   "isWorldAlreadyGo so a vanilla Cap prologue is never forced "
+                   "(P5 doc §6.5); apply=%d getScenarioNo=%d)",
                    kCapReturnScenario, kCapHomeStage, kCapReturnApply ? 1 : 0,
                    s_getScenarioNo != nullptr ? 1 : 0);
 }

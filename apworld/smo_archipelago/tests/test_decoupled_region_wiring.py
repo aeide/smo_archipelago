@@ -173,13 +173,51 @@ for seed in (1, 11, 22):
         if e.connected_region is not None
         and e.connected_region.name.endswith(" Arrival"))
 
+    # One-way far side (Devon 2026-07-08): every pair edge FROM an exit-only
+    # interior mouth must source from its subarea's far-side region, the
+    # reverse direction must land THERE (not in the full interior), the free
+    # course edge full->far must exist for every far region, and no edge may
+    # go far->full (the one-way rule itself).
+    from worlds.meatballs.port_graph import entry_capable_interior_mouths
+    capable = entry_capable_interior_mouths(graph)
+    far_regions = {r.name for r in mw.get_regions(p)
+                   if r.name.endswith(" Interior (far side)")}
+    far_misrouted = far_backflow = far_missing_course = 0
+    for a_id, b_id in matching.items():
+        if a_id == b_id:
+            continue
+        a = graph.mouths[a_id]
+        if a.side != INTERIOR or a_id in capable:
+            continue
+        want = f"{a.subarea} Interior (far side)"
+        e_out = ents.get(f"{a_id} => {b_id}")
+        e_in = ents.get(f"{b_id} => {a_id}")
+        if e_out is None or e_out.parent_region.name != want:
+            far_misrouted += 1
+        if e_in is None or e_in.connected_region.name != want:
+            far_misrouted += 1
+    for fr in far_regions:
+        full = fr[: -len(" (far side)")]
+        try:
+            ce = mw.get_entrance(f"{full} -> {fr}", p)
+            if ce.parent_region.name != full or not ce.access_rule(empty):
+                far_missing_course += 1
+        except Exception:
+            far_missing_course += 1
+        far_reg = mw.get_region(fr, p)
+        for e in far_reg.exits:
+            if e.connected_region is not None and e.connected_region.name == full:
+                far_backflow += 1
+
     print(f"RESULT seed={seed} pooled={len(pooled)} unreachable={len(unreachable)} "
           f"fp_ow={fp_ow} fp_int={fp_int} credit_ok={credit_ok} fp_bad={fp_bad} "
           f"missing_dir={missing_dir} overblocked={overblocked} "
           f"rocket_edges={rocket_edges} rocket_blocked={rocket_blocked} "
           f"rocket_god={rocket_god} has_rocket={has_rocket} "
           f"arrivals={len(arrivals)} flight_ok={flight_ok} back_ok={back_ok} "
-          f"unclobbered={unclobbered_kingdom_exits} chain_in={chain_into_arrival}")
+          f"unclobbered={unclobbered_kingdom_exits} chain_in={chain_into_arrival} "
+          f"far_regions={len(far_regions)} far_misrouted={far_misrouted} "
+          f"far_backflow={far_backflow} far_missing_course={far_missing_course}")
     if unreachable:
         print("UNREACHABLE " + "|".join(unreachable))
 """
@@ -304,6 +342,25 @@ def test_kingdom_arrival_channel_and_flight_gates_unchanged(wiring_results):
         assert int(r["chain_in"]) > 0, (
             f"seed {r['seed']}: no matched edge lands in an Arrival region — "
             f"the chain channel into kingdoms is missing")
+
+
+def test_one_way_far_side_wiring(wiring_results):
+    """One-way course rule (Devon 2026-07-08): exit-only interior mouths must
+    route through their subarea's 'Interior (far side)' region — outbound pair
+    edges source from it, inbound pair edges land in it, the free full->far
+    course edge exists, and nothing flows far->full."""
+    for r in wiring_results:
+        assert int(r["far_misrouted"]) == 0, (
+            f"seed {r['seed']}: {r['far_misrouted']} pair edge(s) of exit-only "
+            f"interior mouths wired to the full interior instead of the "
+            f"far-side region")
+        assert int(r["far_backflow"]) == 0, (
+            f"seed {r['seed']}: {r['far_backflow']} far->full edge(s) — the "
+            f"one-way rule (cannot reach a course's entrance from its exit) "
+            f"is violated in the region graph")
+        assert int(r["far_missing_course"]) == 0, (
+            f"seed {r['seed']}: {r['far_missing_course']} far-side region(s) "
+            f"missing the free full->far course traversal edge")
 
 
 def test_same_seed_same_wiring():

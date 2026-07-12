@@ -435,3 +435,98 @@ def test_real_pool_row_compiler_matches_estimate_across_seeds():
         rows = compile_port_remaps(matching, graph)
         assert len(rows) == estimate_remap_rows(matching, graph.vanilla_matching)
         assert len(rows) <= ROW_TABLE_CAP - ROW_HEADROOM
+
+
+# ---------------------------------------------------------------------------
+# One-way courses (Devon ruling 2026-07-08 — see port_graph's one-way note)
+# ---------------------------------------------------------------------------
+
+def _one_way_imports():
+    from port_graph import (
+        entry_capable_interior_mouths,
+        one_way_course_subareas,
+        pinned_one_way_entry_mouths,
+    )
+    return (entry_capable_interior_mouths, one_way_course_subareas,
+            pinned_one_way_entry_mouths)
+
+
+def test_entry_capability_real_pool_spot_checks(graph):
+    """Ice Cave's arijigoku1/arijigoku2 pipes carry both roles => their
+    interior mouths are entry-capable; Jaxi Driving's run00return is
+    exit-only => not entry-capable (arriving at the finish mesa cannot
+    retrace the course)."""
+    entry_capable, _, _ = _one_way_imports()
+    capable = entry_capable(graph)
+    by_id = graph.mouths
+
+    def interior_of(port_suffix):
+        hits = [m for m in by_id.values()
+                if m.side == INTERIOR and m.door_port_id.endswith(port_suffix)]
+        return hits[0] if hits else None
+
+    two_way = interior_of("#arijigoku1")
+    if two_way is not None:
+        assert two_way.mouth_id in capable
+    far = interior_of("#run00return")
+    if far is not None:
+        assert far.mouth_id not in capable
+    dual = interior_of("#run00")
+    if dual is not None:
+        assert dual.mouth_id in capable
+
+
+def test_zone_split_doors_count_as_entry_capable():
+    """A zone-split door (two port_ids, SAME entry_id — one physical door
+    recorded twice) must read entry-capable: it is a two-way room, not a
+    course. A genuinely separate exit (different entry_id) must not."""
+    entry_capable, one_way, pinned = _one_way_imports()
+    mouths: dict[str, Mouth] = {}
+    vanilla: dict[str, str] = {}
+    # Zone-split room: overworld half lives in the zone, interior half's
+    # port records the parent stage — different port_ids, same entry_id.
+    ow = Mouth(door_port_id="TestZone#RoomDoor", side=OVERWORLD,
+               stage="TestZone", entry_id="RoomDoor",
+               subarea="Split Room", kingdom="Test Kingdom", ingest=True)
+    inn = Mouth(door_port_id="TestWorldHomeStage#RoomDoor", side=INTERIOR,
+                stage="RoomExStage", entry_id="RoomDoor",
+                subarea="Split Room", kingdom="Test Kingdom", ingest=True)
+    # One-way course: entry door and exit pipe share nothing.
+    c_ow = Mouth(door_port_id="TestWorldHomeStage#courseIn", side=OVERWORLD,
+                 stage="TestWorldHomeStage", entry_id="courseIn",
+                 subarea="Course", kingdom="Test Kingdom", ingest=True)
+    c_in = Mouth(door_port_id="TestWorldHomeStage#courseOut", side=INTERIOR,
+                 stage="CourseExStage", entry_id="courseOut",
+                 subarea="Course", kingdom="Test Kingdom", ingest=True)
+    for m in (ow, inn, c_ow, c_in):
+        mouths[m.mouth_id] = m
+        vanilla[m.mouth_id] = m.mouth_id
+    g = PortGraph(mouths=mouths, vanilla_matching=vanilla, dropped_doors=[])
+
+    capable = entry_capable(g)
+    assert inn.mouth_id in capable          # zone-split room: two-way
+    assert c_in.mouth_id not in capable     # course exit: far side
+
+    courses = one_way(g)
+    assert courses == frozenset({"Course"})
+    assert pinned(g) == frozenset({c_ow.mouth_id})
+
+
+def test_one_way_courses_have_no_capable_interior(graph, festival_graph):
+    """Definitional invariant on the real pool, both goal shapes: every
+    detected course has >=1 pooled interior mouth and ZERO entry-capable
+    ones, and every pinned mouth is a lone overworld entrance of a course."""
+    entry_capable, one_way, pinned = _one_way_imports()
+    for g in (graph, festival_graph):
+        capable = entry_capable(g)
+        courses = one_way(g)
+        for sub in courses:
+            interiors = [m for m in g.mouths.values()
+                         if m.side == INTERIOR and m.subarea == sub]
+            assert interiors, f"course '{sub}' has no pooled interior mouths"
+            assert not any(m.mouth_id in capable for m in interiors)
+        for mid in pinned(g):
+            m = g.mouths[mid]
+            assert m.side == OVERWORLD and m.subarea in courses
+            assert g.vanilla_matching.get(mid) == mid, (
+                f"pinned mouth {mid} is not the lone vanilla self-map shape")

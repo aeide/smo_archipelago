@@ -379,3 +379,47 @@ def test_every_pooled_subarea_has_interior_ingest(graph):
         assert m.subarea in subareas_with_interior, (
             f"subarea '{m.subarea}' has pooled mouths but no interior "
             f"ingest mouth (via {m.mouth_id})")
+
+
+# ---------------------------------------------------------------------------
+# One-way-course pinning (Devon ruling 2026-07-08)
+# ---------------------------------------------------------------------------
+
+def one_way_course_graph() -> PortGraph:
+    """Adversarial-style pool + a one-way course: entry door (lone overworld,
+    'aaa' shape) + exit pipe (lone interior, different entry_id). The roller
+    must pin the entry vanilla and keep the exit shuffleable."""
+    g = adversarial_graph()
+    ow = _mouth("TestWorldHomeStage#courseIn", OVERWORLD,
+                "TestWorldHomeStage", "Course")
+    inn = _mouth("TestWorldHomeStage#courseOut", INTERIOR,
+                 "CourseExStage", "Course")
+    g.mouths[ow.mouth_id] = ow
+    g.mouths[inn.mouth_id] = inn
+    g.vanilla_matching[ow.mouth_id] = ow.mouth_id    # lone halves
+    g.vanilla_matching[inn.mouth_id] = inn.mouth_id
+    return g
+
+
+def test_one_way_entry_pinned_and_exit_shuffles():
+    from port_graph import pinned_one_way_entry_mouths
+    g = one_way_course_graph()
+    pins = pinned_one_way_entry_mouths(g)
+    assert pins == {"TestWorldHomeStage#courseIn@overworld"}
+    for seed in range(40):
+        m = roll_port_matching(g, Random(seed))
+        for pin in pins:
+            assert m[pin] == pin, f"seed {seed}: pinned entry was re-matched"
+        # The course's exit mouth stays in the involution (self or partner —
+        # never dropped), and the roll's own postconditions (involution,
+        # no O-O, connectivity, budget) all passed by construction.
+        assert "TestWorldHomeStage#courseOut@interior" in m
+
+
+def test_real_pool_pins_stay_fixed(graph):
+    from port_graph import pinned_one_way_entry_mouths
+    pins = pinned_one_way_entry_mouths(graph)
+    for seed in (1, 11, 22, 33):
+        m = roll_port_matching(graph, Random(seed))
+        for pin in pins:
+            assert m[pin] == pin

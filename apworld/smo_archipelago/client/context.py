@@ -580,6 +580,14 @@ class SMOContext(CommonContext):
             len(totals), {k: v for k, v in sorted(out.items()) if v},
         )
         await self._push_outstanding_to_switch()
+        # A PaySnapshot means the Switch is on a save file (holder present), so
+        # applyCoinGrant will apply. Re-push coin_grant now — idempotent on the
+        # Switch, but this is what lets push_coin_grant PERSIST the per-save
+        # baseline (its compute_outstanding() gate is now satisfied). Without
+        # this, a PaySnapshot arriving AFTER the HELLO-replay push would leave
+        # the baseline unpersisted → coins re-applied next boot.
+        if self.switch is not None:
+            await self.switch.push_coin_grant()
 
     async def _process_received_items(self, args: dict) -> None:
         """Handle a ReceivedItems packet. Two jobs:

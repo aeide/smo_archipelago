@@ -216,6 +216,19 @@ void ApState::applyCoinGrant() {
     // addCoin must be resolvable. If either is missing we log once and bail;
     // the next-frame retry will succeed after the scene loads.
     const int total = pending_coin_grant_total.load(std::memory_order_relaxed);
+    // Seed the high-water mark from the client-persisted baseline (coins
+    // already in THIS save). coins_applied resets to 0 on every game boot but
+    // SMO persists coins, so without this the whole `total` would re-apply on
+    // each boot and double the coins (Devon 2026-07-12). max() keeps it
+    // monotonic — a stale/low baseline never lowers what we've applied this
+    // session, and once we've applied past the baseline it's a no-op.
+    const int baseline = pending_coin_baseline.load(std::memory_order_relaxed);
+    if (baseline > coins_applied) {
+        SMOAP_LOG_INFO("[p1-coins] seeding coins_applied %d -> %d from save "
+                       "baseline (skip re-grant of coins already in the save)",
+                       coins_applied, baseline);
+        coins_applied = baseline;
+    }
     if (total <= coins_applied) return;
 
     void* holder = game_data_holder_cache.load(std::memory_order_relaxed);

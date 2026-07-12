@@ -22,6 +22,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
+from . import coin_state
 from . import protocol
 from .protocol import (
     AbilityStateMsg,
@@ -619,6 +620,15 @@ class SwitchServer:
         and only calls addCoin(total - coins_applied). Sending the same total
         twice is always a no-op on the Switch side.
 
+        Cross-boot idempotency: the Switch's high-water mark resets to 0 on
+        every game boot while SMO PERSISTS coins, so we also ship `baseline`
+        (coin_state — coins already confirmed applied to THIS save) and the
+        Switch seeds coins_applied from it. Without this the whole `total`
+        re-applied every boot, doubling coins. The baseline is advanced to
+        `total` only once the Switch is confirmed on a save file (a
+        PaySnapshot has arrived — compute_outstanding() non-None), at which
+        point applyCoinGrant applies within a frame and the save holds `total`.
+
         Called from:
           - _run_post_hello_replay (HELLO replay, after push_kingdom_gates)
           - context.py after a Cap moon OR a duplicate capture/ability arrives
@@ -626,7 +636,16 @@ class SwitchServer:
         total = self._state.compute_total_coin_grant()
         if total == 0:
             return
-        await self._send(CoinGrant(total=total))
+        seed, slot = self._state.seed, self._state.slot
+        baseline = coin_state.load_applied(seed, slot)
+        await self._send(CoinGrant(total=total, baseline=baseline))
+        # Advance the persisted baseline only when the Switch is on a save file
+        # (PaySnapshot received) — the grant is then reliably applied+saved, so
+        # `total` is what the save now holds. Never persist while the Switch is
+        # on the title screen (applyCoinGrant defers there): that would strand
+        # coins as "already applied" and lose them.
+        if total > baseline and self._state.compute_outstanding() is not None:
+            coin_state.save_applied(seed, slot, total)
 
     async def push_ability_state(self) -> None:
         """Send the authoritative per-ability count table to the active Switch.
@@ -1106,9 +1125,22 @@ class SwitchServer:
                 pass
             return
 
-        # Active-slot decision.
-        is_first = self._active_device_id is None
-        if is_first:
+        # Active-slot decision. A same-id reconnect must KEEP active status:
+        # when the active Switch's socket dies without a prompt FIN (Ryujinx
+        # emulation stop, hard crash, Wi-Fi drop) the replacement HELLO can
+        # arrive BEFORE the old handler's read observes EOF. The registration
+        # above already swapped the dict entry to this conn, so the old
+        # handler's finally skips its unregister (identity check) and
+        # `_active_device_id` never clears — without the equality test below
+        # the fresh boot would be parked "inactive" and silently miss the
+        # whole post-HELLO replay (no ability_state -> gates enforce an empty
+        # table, no entrance_map -> doors revert to vanilla; observed in-game
+        # 2026-07-08, W5 walk).
+        take_active = (
+            self._active_device_id is None
+            or self._active_device_id == effective_id
+        )
+        if take_active:
             self._active_device_id = effective_id
             self._state.set_active_switch(effective_id)
             self._state.set_switch_conn("connecting")

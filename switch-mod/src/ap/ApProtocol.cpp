@@ -597,8 +597,9 @@ bool parseMoonLabel(Reader& r, MoonLabel& out) {
 bool parseCoinGrant(Reader& r, CoinGrant& out) {
     std::string_view key;
     while (r.nextField(key)) {
-        if (key == "total") { if (!readIntoInt(r, out.total)) return false; }
-        else                { return false; }
+        if      (key == "total")    { if (!readIntoInt(r, out.total))    return false; }
+        else if (key == "baseline") { if (!readIntoInt(r, out.baseline)) return false; }
+        else                        { return false; }
     }
     return true;
 }

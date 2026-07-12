@@ -4,7 +4,12 @@
 
 #include <cstring>
 
+#include <hk/hook/Trampoline.h>
 #include <hk/ro/RoUtil.h>
+
+// OdysseyHeaders — GameDataHolder::getGameDataFile() is an inline header
+// getter returning mPlayingFile, the LIVE save file (see liveGameDataFile).
+#include "game/System/GameDataHolder.h"
 
 #include "../ap/ApState.hpp"
 #include "../hooks/HookSymbols.hpp"
@@ -36,6 +41,9 @@ using IsAlreadyGoWorldFn          = bool        (*)(GameDataHolderAccessor, int)
 // First-arrival parked-pose fix: GameProgressData::setAlreadyGoWorld(s32) is a
 // MEMBER (implicit this = GameProgressData*); the Itanium ABI passes this in x0.
 using SetAlreadyGoWorldFn         = void        (*)(void* /*GameProgressData*/, int);
+// P5 chain-return hardening — raw per-world unlock reads.
+using IsUnlockedWorldFn           = bool        (*)(GameDataHolderAccessor, int);
+using ProgressIsUnlockWorldFn     = bool        (*)(const void* /*GameProgressData*/, int);
 
 struct ResolvedFns {
     IsCrashHomeFn               isCrashHome               = nullptr;
@@ -62,6 +70,9 @@ struct ResolvedFns {
     // First-arrival parked-pose fix (forceCascadeAlreadyVisited) — WRITE.
     SetAlreadyGoWorldFn         setAlreadyGoWorld         = nullptr;
     GetWorldIndexFn             getWorldIndexWaterfall    = nullptr;
+    // P5 chain-return hardening — RAW unlock reads (see hpp / plan-p5 doc).
+    IsUnlockedWorldFn           isUnlockedWorld           = nullptr;  // free fn
+    ProgressIsUnlockWorldFn     progressIsUnlockWorld     = nullptr;  // member
 };
 
 // Cascade free-travel rescue (2026-06-29): DISABLED after in-game test. The
@@ -98,6 +109,31 @@ bool resolveOne(Fn& slot, const char* mangled, const char* tag) {
 
 }  // namespace
 
+// P5 T-C (§9.3): clear our listing-force forced-bits mask whenever the engine
+// (or our own code) legitimately unlocks a world. unlockWorld is the monotonic
+// mUnlockWorldNum counter loop (GameProgressData decomp) — a call for world w'
+// unlocks w' and every earlier kingdom, and mIsUnlockWorld is rebuilt from the
+// counter. We clear ALL forced bits post-orig and let the next
+// tickChainKingdomListing re-force any world that is STILL chain-reached-only
+// (its honest unlock read stays false because the counter never covered it) —
+// self-healing, no story-order table, and a world that just became legitimately
+// unlocked is NOT re-forced (its raw array entry is now true from the rebuild
+// and its forced bit is clear, so isWorldUnlockedHonest reads true). Patching
+// the shared entry means our own g_fns.unlockWorld calls (Lost sweep, Cascade
+// destination) also land here and recurse harmlessly through orig.
+HkTrampoline<void, GameDataHolderWriter, int> unlockWorldClearHook =
+    hk::hook::trampoline([](GameDataHolderWriter wr, int world) -> void {
+        unlockWorldClearHook.orig(wr, world);
+        smoap::ap::ApState::instance().clearAllKingdomUnlockForced();
+        static int s_log = 0;
+        if (s_log < 20) {
+            ++s_log;
+            SMOAP_LOG_INFO("[chain-listing] unlockWorld(%d) -> cleared all "
+                           "chain-unlock forced bits (re-forced next tick for "
+                           "worlds still chain-only) #%d", world, s_log);
+        }
+    });
+
 void installOdysseyRescueSymbols() {
     bool ok = true;
     ok &= resolveOne(g_fns.isCrashHome,
@@ -106,6 +142,23 @@ void installOdysseyRescueSymbols() {
         smoap::sym::kGameDataFunctionRepairHome, "repairHome");
     ok &= resolveOne(g_fns.unlockWorld,
         smoap::sym::kGameDataFunctionUnlockWorld, "unlockWorld");
+    // P5 T-C: patch the same unlockWorld entry to clear our forced-bits mask on
+    // a legit unlock (soft — a miss only disables the self-heal, forced bits
+    // then persist until re-seed, which is the pre-T-C behavior for the affected
+    // gate). Uses the already-resolved address; installs regardless of the
+    // resolveOne fold above so a partial repair path never disables the clear.
+    {
+        const ptr uwAddr =
+            hk::ro::lookupSymbol(smoap::sym::kGameDataFunctionUnlockWorld);
+        if (uwAddr) {
+            unlockWorldClearHook.installAtPtr(uwAddr);
+            SMOAP_LOG_INFO("[chain-listing] unlockWorld forced-bit clear @ 0x%lx",
+                           static_cast<unsigned long>(uwAddr));
+        } else {
+            SMOAP_LOG_WARN("[chain-listing] unlockWorld lookup FAILED — forced-"
+                           "bit self-heal disabled");
+        }
+    }
     ok &= resolveOne(g_fns.getWorldIndexClash,
         smoap::sym::kGameDataFunctionGetWorldIndexClash, "getWorldIndexClash");
     ok &= resolveOne(g_fns.getCurrentStageName,
@@ -178,6 +231,138 @@ void installOdysseyRescueSymbols() {
         smoap::sym::kGameProgressDataSetAlreadyGoWorld, "setAlreadyGoWorld");
     resolveOne(g_fns.getWorldIndexWaterfall,
         smoap::sym::kGameDataFunctionGetWorldIndexWaterfall, "getWorldIndexWaterfall");
+
+    // P5 chain-return hardening — raw unlock reads. Each resolves
+    // independently; isWorldUnlockedRaw prefers the free fn (accessor-based,
+    // no file-cache dependency) and falls back to the member. Both missing =
+    // the chain-only derivation fails closed (session bits still work).
+    resolveOne(g_fns.isUnlockedWorld,
+        smoap::sym::kGameDataFunctionIsUnlockedWorld, "isUnlockedWorld");
+    resolveOne(g_fns.progressIsUnlockWorld,
+        smoap::sym::kGameProgressDataIsUnlockWorld, "GameProgressData::isUnlockWorld");
+}
+
+namespace {
+
+// The LIVE GameDataFile*. Prefer the holder's mPlayingFile (inline
+// OdysseyHeaders getter) over the SaveLoadHook cache: at boot,
+// GameDataFile::initializeData fires across ALL five save-slot instances, so
+// last-write-wins leaves game_data_file_cache pointing at whichever slot
+// initialized last — an EMPTY file whose GameProgressData arrays may not even
+// be allocated. That held tickChainKingdomListing dead for the first ~53 s of
+// the 2026-07-10 stranded-Wooded boot (first [chain-listing] line only after
+// the first door commit re-cached the real file via EntranceShuffleHook),
+// which in turn kept isExistHome derived false at scene init — the strand.
+void* liveGameDataFile() {
+    auto& st = smoap::ap::ApState::instance();
+    void* holder = st.game_data_holder_cache.load(std::memory_order_relaxed);
+    if (holder) {
+        if (void* file = static_cast<GameDataHolder*>(holder)->getGameDataFile())
+            return file;
+    }
+    return st.game_data_file_cache.load(std::memory_order_relaxed);
+}
+
+// GameDataFile::mGameProgressData @ 0x6a8 (OdysseyHeaders GameDataFile.h) —
+// the same read forceCascadeAlreadyVisited documents. nullptr when both the
+// holder cache and the GameDataFile cache are cold.
+void* progressDataFromFileCache() {
+    void* file = liveGameDataFile();
+    if (!file) return nullptr;
+    return *reinterpret_cast<void**>(
+        reinterpret_cast<std::uint8_t*>(file) + 0x6a8);
+}
+
+}  // namespace
+
+bool isWorldUnlockedRaw(int world_id, bool* out_ok) {
+    if (out_ok) *out_ok = false;
+    if (world_id < 0) return false;
+    if (g_fns.isUnlockedWorld) {
+        void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
+            std::memory_order_relaxed);
+        if (gdh) {
+            if (out_ok) *out_ok = true;
+            return g_fns.isUnlockedWorld(GameDataHolderAccessor{gdh}, world_id);
+        }
+    }
+    if (g_fns.progressIsUnlockWorld) {
+        if (void* progress = progressDataFromFileCache()) {
+            if (out_ok) *out_ok = true;
+            return g_fns.progressIsUnlockWorld(progress, world_id);
+        }
+    }
+    return false;
+}
+
+bool isWorldUnlockedHonest(int world_id, bool* out_ok) {
+    const bool raw = isWorldUnlockedRaw(world_id, out_ok);
+    // Subtract OUR own listing forces: a world whose mIsUnlockWorld entry we set
+    // purely to make isExistHome derive a boardable ship is NOT legitimately
+    // unlocked (P5 T-C, §9.3). Forced bits are only ever set for chain-reached-
+    // only worlds, so a kingdom we never forced reads its raw value unchanged.
+    if (world_id >= 0 &&
+        smoap::ap::ApState::instance().isKingdomUnlockForced(world_id))
+        return false;
+    return raw;
+}
+
+bool isKingdomChainReachedOnlySave(int world_id) {
+    if (world_id < 0) return false;
+    if (!isWorldAlreadyGo(world_id)) return false;
+    bool ok = false;
+    const bool unlocked = isWorldUnlockedHonest(world_id, &ok);
+    // Fail CLOSED when the unlock read is unavailable: without it we cannot
+    // distinguish a legit visited kingdom from a chain-only one, and claiming
+    // chain-only for a legit kingdom would wrongly zero its takeoff gate and
+    // bounce its flights. Session bits (chain_reached_kingdoms) still cover
+    // the current session in that case.
+    if (!ok) return false;
+    return !unlocked;
+}
+
+bool isKingdomChainReachedOnly(int bit, int world_id) {
+    auto& st = smoap::ap::ApState::instance();
+    const bool session = st.isKingdomBitChainReached(bit);
+    if (!session && !isWorldAlreadyGo(world_id)) return false;
+    bool ok = false;
+    const bool unlocked = isWorldUnlockedHonest(world_id, &ok);
+    // Unlock read unavailable: the save-derived arm keeps its fail-closed
+    // shape (see isKingdomChainReachedOnlySave), the session arm keeps its
+    // pre-fix behavior — the session bit is still the best available signal.
+    if (!ok) return session;
+    // A legitimately UNLOCKED kingdom is never chain-only, whatever the
+    // session bit says (2026-07-09 walk: a chain door back into
+    // flight-visited Cascade must not zero its gate or arm the bounce).
+    return !unlocked;
+}
+
+void tickChainKingdomListing() {
+    // Needs the raw mIsUnlockWorld array — reached only via the file cache.
+    void* progress = progressDataFromFileCache();
+    if (!progress) return;
+    bool* unlock_arr = *reinterpret_cast<bool**>(
+        reinterpret_cast<std::uint8_t*>(progress) + 0x20);  // mIsUnlockWorld
+    if (!unlock_arr) return;
+
+    for (int w = 0; w <= 16; ++w) {
+        if (!isKingdomChainReachedOnlySave(w)) continue;
+        // Record that THIS world's unlock bit is our force, not a legit unlock,
+        // so isWorldUnlockedHonest subtracts it (T-C). Set unconditionally —
+        // idempotent, and it must be set even when unlock_arr[w] is already true
+        // from a prior tick's force (the `continue` below skips the array write
+        // but the forced bit must persist until a real unlockWorld clears it).
+        smoap::ap::ApState::instance().markKingdomUnlockForced(w);
+        if (unlock_arr[w]) continue;  // already listed (or updateList raced us)
+        unlock_arr[w] = true;
+        static int s_log = 0;
+        if (s_log < 40) {
+            ++s_log;
+            SMOAP_LOG_INFO("[chain-listing] force mIsUnlockWorld[%d]=true "
+                           "(chain-reached-only; RAM-only, re-asserted after "
+                           "any updateList) #%d", w, s_log);
+        }
+    }
 }
 
 void forceAcquireOdyssey(const char* tag) {
@@ -331,6 +516,11 @@ void logWorldWarpDemoDiag(GameDataHolderAccessor acc) {
 }  // namespace
 
 void runOdysseySoftlockSweep() {
+    // P5 chain-return: keep chain-reached-only kingdoms listed on the globe.
+    // Independent of the Lost-repair readiness below (needs only the file
+    // cache + the raw unlock read); rides this sweep's ~1s throttle.
+    tickChainKingdomListing();
+
     if (!g_ready) return;
     void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
         std::memory_order_relaxed);
@@ -344,6 +534,44 @@ void runOdysseySoftlockSweep() {
     logOdysseyHomeStateDiag(acc);
     // First-visit / world-warp-demo spike (read-only; see logWorldWarpDemoDiag).
     logWorldWarpDemoDiag(acc);
+
+    // --- P5 strand-watch (root-caused 2026-07-11; supersedes the 07-10
+    // "strand rescue") ---
+    // isExistHome is NOT a stored flag. Decomp GameDataFunction.cpp:
+    //   isExistHome = isGameClear || (isActivateHome && isUnlockedCurrentWorld)
+    // so "owned ship missing here" simply means the CURRENT kingdom is not
+    // unlocked — exactly the chain-reached-only state finding 12's honest
+    // counter creates. activateHome/launchHome can never flip it: the
+    // 2026-07-10 stranded-Wooded log shows ~50 activateHome calls with exist
+    // pinned at 0, until the chain-listing force set mIsUnlockWorld[3] at the
+    // first door commit and exist DERIVED to 1 the same tick.
+    //
+    // The actual fix is tickChainKingdomListing (runs first in this sweep):
+    // with liveGameDataFile() it works from the first pump tick after boot,
+    // and the exeLoadStage-tick assert (CrossWorldLoad) covers scene-init
+    // placement on every load path. This branch is therefore a WATCHDOG
+    // only: exist=0 persisting in an overworld with an owned, uncrashed ship
+    // means the force is NOT covering this kingdom (e.g. alreadyGo lost, or
+    // updateList clobbering faster than we re-assert) → escalate with the
+    // fields below.
+    if (g_diag_ready) {
+        const char* stage   = g_fns.getCurrentStageName(acc);
+        const char* kingdom = stage ? kingdomShortFromHomeStage(stage) : nullptr;
+        if (kingdom && g_fns.isActivateHome(acc) && !g_fns.isExistHome(acc) &&
+            !g_fns.isCrashHome(acc)) {
+            static int s_strand_log = 0;
+            if ((s_strand_log++ % 30) == 0) {  // ~30 s at the 1 Hz sweep
+                const int w = worldIdFromKingdomShort(kingdom);
+                SMOAP_LOG_WARN(
+                    "[odyssey-strand-watch] %s: ship owned but isExistHome=0 "
+                    "(derived: kingdom locked here) worldId=%d alreadyGo=%d "
+                    "chainOnlySave=%d — chain-listing force not covering this "
+                    "kingdom #%d",
+                    kingdom, w, isWorldAlreadyGo(w),
+                    isKingdomChainReachedOnlySave(w), s_strand_log);
+            }
+        }
+    }
 
     // --- Cascade first-arrival: lift the Odyssey out of the rocks ---
     // On the story-drop into Cascade (entrance id='start') the arrival init
@@ -436,11 +664,19 @@ void runOdysseySoftlockSweep() {
     static int s_lost_log = 0;
 
     // --- Lost Kingdom ---
-    // Wrecked Odyssey state in Lost: force repair + unlock so a player who
-    // rushed in with an unswept upstream can backtrack to Wooded and collect
-    // the moons that gate this kingdom. unlockWorld(getWorldIndexClash())
-    // unlocks the world Mario is already in (Lost), so it doesn't perturb the
-    // post-kingdom autopilot the way pre-unlocking the *next* world would.
+    // Wrecked Odyssey state in Lost: force repair so a player who rushed in
+    // with an unswept upstream can backtrack to Wooded and collect the moons
+    // that gate this kingdom. unlockWorld(getWorldIndexClash()) is GATED
+    // (P5 doc §6.2, execution task T2): per the GameProgressData decomp,
+    // unlockWorld is the monotonic mUnlockWorldNum counter loop — unlocking
+    // Lost necessarily unlocks every earlier kingdom too, and PERSISTS to the
+    // save. A chain-reached-only Lost (reached via a shuffled entrance, not
+    // story order) triggered exactly that: Devon's globe showed
+    // Cap...Lost unlocked with Sand/Lake/Wooded/Cloud never legitimately
+    // visited, and it stuck across save/quit. Skip the unlock for that case;
+    // departure is governed by the allowance + visited-only bounce
+    // (OdysseyRescue::isKingdomChainReachedOnly). Legit story arrivals have
+    // Lost already unlocked, so the unlock call there is a harmless no-op.
     //
     // Ruined Kingdom is deliberately NOT handled here. Ruined grounds the
     // Odyssey via the Lord of Lightning's boss-attack state, which vanilla
@@ -454,12 +690,24 @@ void runOdysseySoftlockSweep() {
     if (g_fns.isCrashHome(acc)) {
         const char* stage = g_fns.getCurrentStageName(acc);
         if (stage && std::strcmp(stage, "ClashWorldHomeStage") == 0) {
-            if ((s_lost_log++ % 600) == 0) {
-                SMOAP_LOG_INFO(
-                    "OdysseyRescue: Lost crashHome → repair + unlock");
-            }
             g_fns.repairHome(wr);
-            g_fns.unlockWorld(wr, g_fns.getWorldIndexClash());
+            const int clashWorld = g_fns.getWorldIndexClash();
+            const int clashBit   = smoap::game::kingdomBitFor("Lost");
+            if (isKingdomChainReachedOnly(clashBit, clashWorld)) {
+                // Chain-reached-only Lost: departure is governed by the
+                // allowance + visited-only bounce; unlocking here is the
+                // prefix-overshoot bug (P5 doc §6.2).
+                if ((s_lost_log++ % 600) == 0) {
+                    SMOAP_LOG_INFO("OdysseyRescue: Lost crashHome → repair "
+                                   "(unlock SKIPPED, chain-reached-only)");
+                }
+            } else {
+                if ((s_lost_log++ % 600) == 0) {
+                    SMOAP_LOG_INFO(
+                        "OdysseyRescue: Lost crashHome → repair + unlock");
+                }
+                g_fns.unlockWorld(wr, clashWorld);
+            }
         } else {
             // Crashed home outside Lost: a stray mid-cinematic crash — repair
             // so the player isn't stranded.
@@ -576,20 +824,8 @@ bool isWorldAlreadyGo(int world_id) {
     return g_fns.isAlreadyGoWorld(acc, world_id);
 }
 
-void forceUnlockWorld(int world_id, const char* tag) {
-    if (!g_fns.unlockWorld || world_id < 0) return;
-    void* gdh = smoap::ap::ApState::instance().game_data_holder_cache.load(
-        std::memory_order_relaxed);
-    if (!gdh) return;
-    GameDataHolderWriter wr{gdh};
-    g_fns.unlockWorld(wr, world_id);
-    static int s_log = 0;
-    if (s_log < 20) {
-        ++s_log;
-        SMOAP_LOG_INFO("[chain-arrival] %s unlockWorld(worldId=%d) -> world map "
-                       "offers it as a return-flight destination #%d",
-                       tag ? tag : "?", world_id, s_log);
-    }
-}
+// forceUnlockWorld(world_id, tag) REMOVED here (P4 finding 12, Devon ruling
+// 2026-07-08) — see the tombstone in OdysseyRescue.hpp. Chain kingdoms are
+// listed by tickChainKingdomListing above instead.
 
 }  // namespace smoap::game

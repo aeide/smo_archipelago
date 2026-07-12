@@ -81,9 +81,15 @@ pool_has_ability = any(
 # constructor -- no explicit .collect() calls needed if the fix precollected
 # correctly.
 state = CollectionState(mw)
+# Deepest level each progressive token is demanded at by any compiled
+# `requires` string (Crouch:3, Ground Pound:2, Jump:2 as of 2026-07-11).
+# The precollect gives each ability its UNLOCK count (chain length), which
+# equals or exceeds these -- Ground Pound's count-3 clone copy is NOT
+# precollected (no `requires` demands level 3), so asserting :3 here would be
+# testing the removed clone, not real reachability.
 deepest_tokens = {
     "Progressive Crouch": 3,
-    "Progressive Ground Pound": 3,
+    "Progressive Ground Pound": 2,
     "Progressive Jump": 2,
 }
 satisfied = {name: state.has(name, p, count) for name, count in deepest_tokens.items()}
@@ -120,5 +126,5 @@ def test_abilitysanity_off_precollects_deepest_progressive_tokens():
         "pool (precollect is in addition to the drop, not instead of it)"
     )
     assert int(r["crouch"]) == 1, "Progressive Crouch:3 not satisfied by precollect"
-    assert int(r["ground_pound"]) == 1, "Progressive Ground Pound:3 not satisfied by precollect"
+    assert int(r["ground_pound"]) == 1, "Progressive Ground Pound:2 not satisfied by precollect"
     assert int(r["jump"]) == 1, "Progressive Jump:2 not satisfied by precollect"

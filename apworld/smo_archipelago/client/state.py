@@ -11,6 +11,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
+from .abilities import unlock_count
 from .protocol import ItemRef
 
 
@@ -306,22 +307,25 @@ class BridgeState:
         """Lifetime coin total to push to the Switch (P1 + P3 duplicate->coins).
 
           = Cap Kingdom moons * 100
-          + each DUPLICATE capture received (count - 1) * 100
-          + each DUPLICATE ability received (count - 1) * 100
+          + each CLONE capture received (count - unlock_count) * 100
+          + each CLONE ability received (count - unlock_count) * 100
 
-        The first copy of a capture/ability unlocks it; every further copy
-        (the "clone" items added in P3) converts to 100 coins. Counting
-        duplicates from lifetime receipts keeps this idempotent under the
-        Switch's `coins_applied` high-water mark across HELLO replays, exactly
-        like the Cap-moon total. push_coin_grant uses THIS (superset of
-        compute_cap_coin_total).
+        A capture/ability's first ``unlock_count`` copies each unlock something
+        (a capture; a progressive chain level — Progressive Crouch's 3 copies
+        are Crouch/Roll/Roll Boost, NOT 2 duplicates). Only copies beyond that
+        are "clone" items that convert to 100 coins. Using ``unlock_count``
+        (abilities.py) rather than a flat ``count - 1`` is what stops legit
+        progressive levels from minting coins. Counting from lifetime receipts
+        keeps this idempotent under the Switch's `coins_applied` high-water mark
+        across HELLO replays, exactly like the Cap-moon total. push_coin_grant
+        uses THIS (superset of compute_cap_coin_total).
         """
         with self._lock:
             total = max(0, self.moons_received_by_kingdom.get("Cap", 0)) * 100
-            for c in self.captures_received_count.values():
-                total += max(0, c - 1) * 100
-            for c in self.abilities_received.values():
-                total += max(0, c - 1) * 100
+            for cap, c in self.captures_received_count.items():
+                total += max(0, c - unlock_count(cap)) * 100
+            for name, c in self.abilities_received.items():
+                total += max(0, c - unlock_count(name)) * 100
             return total
 
     def get_ability_counts(self) -> dict[str, int]:

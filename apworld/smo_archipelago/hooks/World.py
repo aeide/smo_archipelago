@@ -13,6 +13,14 @@ from ..Data import game_table, item_table, location_table, region_table
 # These helper methods allow you to determine if an option has been set, or what its value is, for any player in the multiworld
 from ..Helpers import is_location_enabled, is_option_enabled, get_option_value
 
+# unlock_count(name) = copies of a capture/ability that each unlock something
+# (chain length for progressives, 1 otherwise). Used by the sanity-OFF
+# precollect to give exactly the useful copies and skip the pool-only "clone"
+# copies — precollecting clones would mint spurious duplicate->coin grants
+# every boot. abilities.py is a pure data module (no Kivy / no network import),
+# so importing it at generation time on a headless host is safe.
+from ..client.abilities import unlock_count
+
 # entrance_shuffle is a 3-value Choice (off/simple/decoupled) as of P2 — see
 # _entrance_shuffle_mode below. OptionError is AP's standard "fail generation
 # loudly with a player-facing message" exception (Options.OptionError).
@@ -453,7 +461,13 @@ def _wire_decoupled_entrances(world: World, multiworld: MultiWorld, player: int)
     alone (P3c: zone-split doors put a HomeStage in an interior mouth's
     port_id, and placement zones like LakeWorldTownZone are kingdom-map
     stages with no suffix convention):
-      * interior mouth -> its subarea's "<name> Interior" region;
+      * interior mouth, entry-capable (its door is also a walkable entrance —
+        port_graph.entry_capable_interior_mouths, entry_id-matched so
+        zone-split doors count) -> its subarea's "<name> Interior" region;
+      * interior mouth, exit-only -> the subarea's "<name> Interior (far
+        side)" region (one-way course rule, Devon 2026-07-08: arriving at an
+        exit door cannot reach the entrance door or the member moons; a free
+        one-way edge full-interior -> far-side models course completion);
       * overworld mouth in a pooled subarea's interior stage (nested door)
         -> that parent subarea's interior region;
       * any other overworld mouth (HomeStage, placement zone, vanilla-kept
@@ -465,7 +479,10 @@ def _wire_decoupled_entrances(world: World, multiworld: MultiWorld, player: int)
         return
 
     from ..entrance_logic import load_data_json
-    from ..port_graph import INTERIOR, OVERWORLD, make_mouth_access_rule
+    from ..port_graph import (
+        INTERIOR, OVERWORLD, entry_capable_interior_mouths,
+        make_mouth_access_rule,
+    )
 
     graph = world._port_graph
     subareas: dict = world._entrance_subareas
@@ -553,9 +570,41 @@ def _wire_decoupled_entrances(world: World, multiworld: MultiWorld, player: int)
         arrival_regions[kingdom] = reg
         return reg
 
+    # One-way courses (Devon ruling 2026-07-08, port_graph's one-way-course
+    # note): an interior mouth whose door is NOT also a walkable entrance is
+    # the far end of a directed course — arriving there cannot traverse the
+    # course backwards to the entrance door or the member moons. Such mouths
+    # live in a per-subarea "<name> Interior (far side)" region: it holds the
+    # exit-only mouths' outbound edges ONLY, and a free ONE-WAY edge from the
+    # full interior feeds it (completing the course from the entrance reaches
+    # the far end). Moons and entry-capable doors stay in the full interior.
+    entry_capable = entry_capable_interior_mouths(graph)
+    far_regions: dict[str, Region] = {}
+
+    def _far_side_region(sub_name: str) -> Region | None:
+        reg = far_regions.get(sub_name)
+        if reg is not None:
+            return reg
+        full = interior_regions.get(sub_name)
+        if full is None:
+            return None
+        reg = Region(f"{sub_name} Interior (far side)", player, multiworld)
+        multiworld.regions.append(reg)
+        # Free one-way edge: playing the course from the entrance reaches the
+        # far end. Never the reverse — that's the whole point.
+        through = Entrance(
+            player, f"{sub_name} Interior -> {sub_name} Interior (far side)",
+            full)
+        through.connect(reg)
+        full.exits.append(through)
+        far_regions[sub_name] = reg
+        return reg
+
     def _mouth_region(m) -> Region | None:
         if m.side == INTERIOR:
-            return interior_regions.get(m.subarea)
+            if m.mouth_id in entry_capable:
+                return interior_regions.get(m.subarea)
+            return _far_side_region(m.subarea)
         parent_sub = interior_stage_to_sub.get(m.stage)
         if parent_sub is not None:
             return interior_regions.get(parent_sub)
@@ -612,8 +661,9 @@ def _wire_decoupled_entrances(world: World, multiworld: MultiWorld, player: int)
     world._port_arrival_regions = sorted(arrival_regions)
     logging.info(
         "entrance_shuffle: decoupled wiring — %d pair(s) wired both ways, "
-        "%d vanilla credit edge(s), %d kingdom Arrival region(s) (player %d)",
-        wired, credited, len(arrival_regions), player)
+        "%d vanilla credit edge(s), %d kingdom Arrival region(s), "
+        "%d far-side region(s) (player %d)",
+        wired, credited, len(arrival_regions), len(far_regions), player)
 
 
 def _apply_entrance_shuffle_door_rules(
@@ -887,24 +937,66 @@ def _drop_ability_items_if_disabled(item_pool: list, world: World, multiworld: M
 
 
 def _precollect_ability_items_if_disabled(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> None:
-    """abilitysanity OFF: precollect every Ability item at its full copy count.
+    """abilitysanity OFF: precollect each Ability item at its UNLOCK count.
 
     _drop_ability_items_if_disabled removes all Ability-category items from
     the pool, but the compiled moon/door/victory `requires` strings still
     demand ability tokens (e.g. `|Progressive Ground Pound:1|`) — with zero
     such items ever existing, every location gated behind one becomes
-    permanently unreachable and fill collapses (FillError). Precollecting
-    each ability at full count satisfies those tokens in CollectionState
-    while the pool drop keeps the item/location counts unchanged; the
-    Switch-side gate is separately opened via ability_state `enforce=False`.
-    See docs/handoff-abilitysanity-precollect-fix.md.
+    permanently unreachable and fill collapses (FillError). Precollecting each
+    ability at its UNLOCK count (chain length for progressives, 1 for
+    single-grant) satisfies those tokens in CollectionState: the max level any
+    `requires` demands equals the chain length, so the pool-only "clone" copies
+    beyond that (e.g. Progressive Ground Pound's 3rd, Wall Slide's 2nd) are
+    never needed for logic. Precollecting them anyway would mint spurious
+    duplicate->coin grants on every boot (compute_total_coin_grant) — the
+    sanity-OFF coin bug this avoids. The Switch-side gate is separately opened
+    via ability_state `enforce=False`. See docs/handoff-abilitysanity-precollect-fix.md.
     """
     if is_option_enabled(multiworld, player, "abilitysanity"):
         return
     name_to_item = world.item_name_to_item
     for name in _names_in_item_category(world, "Ability"):
         count = int(name_to_item.get(name, {}).get("count", 1))
-        for _ in range(count):
+        for _ in range(min(count, unlock_count(name))):
+            multiworld.push_precollected(world.create_item(name))
+
+
+def _drop_capture_items_if_disabled(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> None:
+    """capturesanity OFF: remove every `Capture`-category item from the pool.
+
+    Mirrors _drop_ability_items_if_disabled. capturesanity OFF previously only
+    dropped capture LOCATIONS (before_is_location_enabled) — the capture ITEMS
+    still rode the pool, so a moon could hold e.g. Jizo with capturesanity off
+    (P5 doc §6.5, execution task T4). Dropping by name keeps item IDs stable.
+    """
+    if is_option_enabled(multiworld, player, "capturesanity"):
+        return
+    name_to_item = world.item_name_to_item
+    item_pool[:] = [
+        it for it in item_pool
+        if "Capture" not in name_to_item.get(it.name, {}).get("category", [])
+    ]
+
+
+def _precollect_capture_items_if_disabled(item_pool: list, world: World, multiworld: MultiWorld, player: int) -> None:
+    """capturesanity OFF: precollect each Capture item at its UNLOCK count (1).
+
+    Mirrors _precollect_ability_items_if_disabled. A capture unlocks on its
+    first copy, so unlock_count is 1 for every capture — the extra pool copies
+    some captures carry (e.g. Bullet Bill / Sherm / Parabones ×2) exist only to
+    fill capturesanity locations and must NOT be precollected here: doing so
+    minted a spurious duplicate->coin grant on every boot (the sanity-OFF coin
+    bug). _precollect_starting_captures (before_create_items_starting) already
+    precollected the 3 fixed starters + 1 random capture, so those are
+    subtracted — bringing every Capture name to exactly one precollected copy.
+    """
+    if is_option_enabled(multiworld, player, "capturesanity"):
+        return
+    already = [it.name for it in multiworld.precollected_items[player]]
+    for name in _names_in_item_category(world, "Capture"):
+        target = unlock_count(name)  # 1 for every capture
+        for _ in range(max(0, target - already.count(name))):
             multiworld.push_precollected(world.create_item(name))
 
 
@@ -1029,6 +1121,11 @@ def before_create_items_filler(item_pool: list, world: World, multiworld: MultiW
     # gated behind an ability becomes unreachable and fill collapses.
     _drop_ability_items_if_disabled(item_pool, world, multiworld, player)
     _precollect_ability_items_if_disabled(item_pool, world, multiworld, player)
+    # capturesanity OFF: same drop+precollect mirror for the Capture category
+    # (P5 doc §6.5, execution task T4) — capturesanity previously dropped
+    # capture LOCATIONS only, leaving capture ITEMS ridable in the pool.
+    _drop_capture_items_if_disabled(item_pool, world, multiworld, player)
+    _precollect_capture_items_if_disabled(item_pool, world, multiworld, player)
     # Apply the per-kingdom moon-count caps before adjust_filler_items runs
     # in create_items: the trim leaves locations > items, which then triggers
     # adjust_filler_items' top-up branch (filler / traps). Runs before

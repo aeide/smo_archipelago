@@ -50,6 +50,26 @@ def moves_owned(item_name: str, count: int) -> list[str]:
     return chain[:count]
 
 
+def unlock_count(item_name: str) -> int:
+    """Number of copies of `item_name` that each unlock something new.
+
+    For a progressive item this is its chain length (Progressive Crouch = 3,
+    Progressive Ground Pound = 2, Progressive Jump = 2, Wall Slide = 1); for
+    any other (single-grant) ability or capture it is 1. Copies BEYOND this
+    are duplicate "clone" copies that unlock nothing:
+
+      * with abilitysanity/capturesanity ON they ride the pool and convert to
+        coins (see state.compute_total_coin_grant);
+      * with sanity OFF the category is precollected instead, and the clones
+        must NOT be precollected — they'd mint spurious duplicate-coins on
+        every boot (see hooks/World.py _precollect_*_if_disabled).
+
+    Captures are never in PROGRESSIVE_MOVES, so this returns 1 for them too.
+    """
+    chain = PROGRESSIVE_MOVES.get(item_name)
+    return len(chain) if chain else 1
+
+
 def newly_unlocked_move(item_name: str, new_count: int) -> str | None:
     """The move unlocked when an item's count rises TO `new_count`.
 

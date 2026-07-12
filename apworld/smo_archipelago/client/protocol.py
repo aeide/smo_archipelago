@@ -626,9 +626,20 @@ class CoinGrant:
     Sent on every HELLO replay (_run_post_hello_replay -> push_coin_grant)
     and immediately whenever `compute_cap_coin_total` rises (i.e. a new Cap
     Kingdom Power Moon item arrives from AP).
+
+    `baseline` is how many of those `total` coins the client has already
+    confirmed applied to THIS save (persisted per seed+slot in
+    coin_state.py). SMO persists coins in its save, but the Switch's
+    `coins_applied` high-water mark is in-memory and resets to 0 on every
+    game boot — so without the baseline the Switch would re-apply the whole
+    `total` on top of what the save already holds, doubling coins every boot.
+    On receipt the Switch seeds `coins_applied = max(coins_applied, baseline)`
+    before applying `total - coins_applied`, so coins are granted exactly
+    once across reboots.
     """
     t: str = "coin_grant"
     total: int = 0
+    baseline: int = 0
 
 
 @dataclass

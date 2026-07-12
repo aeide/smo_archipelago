@@ -22,6 +22,7 @@
 #include "../ap/ApState.hpp"
 #include "../game/KingdomOrderGate.hpp"  // depositedEffectiveMoons (chain-return)
 #include "../game/KingdomUnlock.hpp"
+#include "../game/OdysseyRescue.hpp"     // isKingdomChainReachedOnlySave (P5)
 #include "../util/Log.hpp"
 #include "HookSymbols.hpp"
 
@@ -83,6 +84,26 @@ bool isFreeDetourBit(std::uint8_t bit) {
                         bit == s_snow || bit == s_seaside);
 }
 
+// P4/P5 chain-return takeoff allowance: active for `bit` when that kingdom is
+// chain-reached-ONLY — the combined marker in OdysseyRescue::
+// isKingdomChainReachedOnly: (session bit OR save-derived alreadyGo) AND NOT
+// legitimately unlocked (2026-07-09 walk fix: the raw session-bit OR zeroed
+// flight-visited Cascade's gate after a chain door led back into it; an
+// unlocked kingdom must keep its honest gate) — AND its rolled leave-gate is
+// still unpaid. Payment reverts the GAUGE to honest but does NOT clear
+// chain-reached-ness (Devon ruling 2026-07-08: paying never legitimizes
+// story-forward travel; the flight bounce keys on the persistent marker, not
+// on this allowance).
+bool chainAllowanceActive(std::uint8_t bit, int vanilla_gate) {
+    if (bit >= 17) return false;
+    const bool chain = smoap::game::isKingdomChainReachedOnly(
+        bit, smoap::game::worldIdFromKingdomShort(smoap::game::kingdomForBit(bit)));
+    if (!chain) return false;
+    const int rolled = rolledGateForBit(bit);
+    const int gate = rolled >= 0 ? rolled : vanilla_gate;
+    return smoap::game::depositedEffectiveMoons(bit) < gate;
+}
+
 void logSubstitution(const char* which, std::uint8_t bit, int orig, int rolled) {
     // Rate-limit: only log on change — these reads fire per-frame while the
     // world map / launch UI is open.
@@ -135,16 +156,11 @@ HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
         // cosmetic as the free-detour kingdoms).
         {
             auto& st = smoap::ap::ApState::instance();
-            if (bit < 17 && st.isKingdomBitChainReached(bit)) {
-                const int rolled = rolledGateForBit(bit);
-                const int gate = rolled >= 0 ? rolled : orig;
-                const int paid = smoap::game::depositedEffectiveMoons(bit);
-                if (paid < gate) {
-                    st.chain_allowance_bit.store(bit, std::memory_order_relaxed);
-                    logSubstitution("findUnlockShineNum[chain-return]", bit,
-                                    orig, 0);
-                    return 0;
-                }
+            if (chainAllowanceActive(bit, orig)) {
+                st.chain_allowance_bit.store(bit, std::memory_order_relaxed);
+                logSubstitution("findUnlockShineNum[chain-return]", bit,
+                                orig, 0);
+                return 0;
             }
             st.chain_allowance_bit.store(0xff, std::memory_order_relaxed);
         }
@@ -183,6 +199,69 @@ HkTrampoline<int, bool*, GameDataHolderAccessor, int> unlockShineNumByWorldIdHoo
         return rolled;
     });
 
+// ── P5 finding 11 — the story-launch predicate seam (chain-reached kingdoms) ──
+//
+// A chain-reached post-peace kingdom's "chase Bowser" story launch refuses
+// until the rolled gate is paid, even though the gauge (the free current-world
+// findUnlockShineNum above) reads 0 under the allowance — so the launch
+// consults a read we don't hook. The launch state machine (ShineTowerRocket
+// exeNoStart*/receiveEvent nerves) is undecompiled; the best out-of-line
+// candidate is the SHARED member worker GameDataHolder::findUnlockShineNum
+// (bool*, s32) const, which both free wrappers bottom out in and which FIRED
+// in the 2026-06-29 Cascade rounds (it did NOT open the in-cabin globe gate
+// there — the story launch is a DIFFERENT site, which is exactly what this
+// hook's logging decides on the next walk; see
+// docs/plan-p5-cross-world-loads.md §2.5).
+//
+// Behavior: under an active chain-return allowance for the CURRENT world,
+// return 0 for reads of that world; all other reads pass through. The two
+// free-fn hooks above call orig -> THIS trampoline fires nested; under the
+// allowance orig()==0 either way for the current world, and the by-world hook
+// still substitutes the rolled value afterwards, so globe labels stay honest.
+// Logging is scoped to current-world reads and rate-limited on change.
+HkTrampoline<int, void*, bool*, int> holderFindUnlockShineNumHook =
+    hk::hook::trampoline([](void* self, bool* is_count_total,
+                            int world_id) -> int {
+        const int orig = holderFindUnlockShineNumHook.orig(
+            self, is_count_total, world_id);
+        const std::uint8_t bit = smoap::game::kingdomBitForWorldId(world_id);
+        const std::uint8_t cur = resolveCurrentKingdomBit();
+        if (bit >= 17 || bit != cur) return orig;  // current-world reads only
+        const bool allow = chainAllowanceActive(bit, orig);
+        static std::uint8_t s_last_bit = 0xff;
+        static int s_last_ret = -2;
+        const int ret = allow ? 0 : orig;
+        if ((bit != s_last_bit || ret != s_last_ret)) {
+            static int s_log = 0;
+            if (s_log < 80) {
+                ++s_log;
+                SMOAP_LOG_INFO("[chain-launch] member findUnlockShineNum "
+                               "worldId=%d (%s) orig=%d -> %d%s #%d",
+                               world_id, smoap::game::kingdomForBit(bit), orig,
+                               ret, allow ? " (allowance ZERO)" : "", s_log);
+            }
+            s_last_bit = bit;
+            s_last_ret = ret;
+        }
+        return ret;
+    });
+
+void installHolderFindUnlockShineNumHook() {
+    ptr addr = hk::ro::lookupSymbol(smoap::sym::kGameDataHolderFindUnlockShineNum);
+    if (addr == 0)
+        addr = hk::ro::lookupSymbol(
+            smoap::sym::kGameDataHolderFindUnlockShineNumNonConst);
+    if (addr == 0) {
+        SMOAP_LOG_WARN("[chain-launch] GameDataHolder::findUnlockShineNum "
+                       "lookup FAILED — story-launch allowance seam disabled "
+                       "(S&Q remains the escape hatch)");
+        return;
+    }
+    holderFindUnlockShineNumHook.installAtPtr(addr);
+    SMOAP_LOG_INFO("[chain-launch] member findUnlockShineNum hook @ 0x%lx",
+                   static_cast<unsigned long>(addr));
+}
+
 // NOTE: the Cascade "force the takeoff gate open" hooks (isUnlockedNextWorld +
 // the shared member worker GameDataHolder::findUnlockShineNum) were REMOVED
 // 2026-06-29. They were the round 1-3 attempts to let the player fly out of
@@ -200,6 +279,8 @@ void installUnlockShineNumHook() {
                    "GameDataFunction::findUnlockShineNum");
     unlockShineNumHook.installAtSym<
         "_ZN16GameDataFunction18findUnlockShineNumEPb22GameDataHolderAccessor">();
+    // P5 finding 11 — member-worker seam (soft install; see the hook's header).
+    installHolderFindUnlockShineNumHook();
 }
 
 void installUnlockShineNumByWorldIdHook() {

@@ -104,6 +104,7 @@ try:  # package import (bundled .apworld / generation)
         ROW_TABLE_CAP,
         estimate_remap_rows,
         is_involution,
+        pinned_one_way_entry_mouths,
     )
 except ImportError:  # loose import (test suite, sys.path = package dir)
     from port_graph import (  # type: ignore
@@ -114,6 +115,7 @@ except ImportError:  # loose import (test suite, sys.path = package dir)
         ROW_TABLE_CAP,
         estimate_remap_rows,
         is_involution,
+        pinned_one_way_entry_mouths,
     )
 
 logger = logging.getLogger(__name__)
@@ -241,6 +243,25 @@ def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
         return matching
 
     unmatched = set(graph.mouths)
+
+    # One-way-course pinning (Devon ruling 2026-07-08, see port_graph's
+    # one-way-course note): a subarea whose pooled interior mouths are all
+    # exit-only can never feed its FULL interior (member moons) through the
+    # matching — arriving at an exit mouth cannot traverse the course
+    # backwards. Pin its entrance doors vanilla (fixed points = zero rewrite
+    # rows) so the moons stay reachable; the exit mouths keep shuffling. All
+    # pins are lone overworld mouths (shape argument in port_graph), so each
+    # is the true vanilla-credit fixed point and only INCREASES the interior
+    # slack the topology constraint needs.
+    pinned = sorted(pinned_one_way_entry_mouths(graph) & unmatched)
+    for m in pinned:
+        matching[m] = m
+        unmatched.discard(m)
+    if pinned:
+        logger.info(
+            "port_matching: pinned %d one-way-course entrance mouth(s) "
+            "vanilla: %s", len(pinned), pinned)
+
     fixed_point: str | None = None
     if len(unmatched) % 2 == 1:
         fixed_point = _reserve_fixed_point(graph, unmatched, rng)
@@ -254,6 +275,28 @@ def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
 
     nodes = stage_nodes(graph)
     connected = set(root_stages(graph))
+
+    # Pin vanilla-credit: a pinned entrance walks into its course's interior
+    # stage (the same directed overworld→interior edge unconnected_stages
+    # credits), so phase 1 must count that stage connected once the pin's own
+    # stage is — otherwise the course's exit-only mouth looks like the stage's
+    # last hope and e.g. reserving it as the parity fixed point strands the
+    # stage spuriously. Closure form because a pin can itself sit in a
+    # not-yet-connected stage (nested course entrance).
+    sub_stage = _subarea_interior_stage(graph)
+    pin_credit = [(graph.mouths[m].stage, sub_stage[graph.mouths[m].subarea])
+                  for m in pinned if graph.mouths[m].subarea in sub_stage]
+
+    def _apply_pin_credit() -> None:
+        changed = True
+        while changed:
+            changed = False
+            for src, dst in pin_credit:
+                if src in connected and dst not in connected:
+                    connected.add(dst)
+                    changed = True
+
+    _apply_pin_credit()
 
     # Phase 1 — frontier growing: every pairing lands one new stage. The
     # connecting mouth `b` (in a not-yet-connected stage) is picked first;
@@ -303,6 +346,7 @@ def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
         unmatched.discard(a)
         unmatched.discard(b)
         connected.add(graph.mouths[b].stage)
+        _apply_pin_credit()
 
     # Phase 2 — everything is connected; pair the rest uniformly under the
     # constraint: every remaining overworld mouth takes an interior partner

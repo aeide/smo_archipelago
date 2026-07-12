@@ -29,6 +29,7 @@ achievable with the effort noted," not "scheduled."
 | Odyssey always present + boardable in any visited overworld | [future-feasibility-odyssey-always-available.md](future-feasibility-odyssey-always-available.md) | **85%** | Low–Med |
 | Relocate a save to Cap Kingdom in its peace state (Odyssey landed) | [future-feasibility-save-relocate-to-peace-kingdom.md](future-feasibility-save-relocate-to-peace-kingdom.md) | ✅ **COMPLETE** (2026-06-28) | — |
 | Decoupled / chained entrance randomizer (full any-to-any) | [future-feasibility-decoupled-entrance-randomizer.md](future-feasibility-decoupled-entrance-randomizer.md) | **65%** | Very High |
+| Forced world peace on chain arrival + synthetic story-moon "peace pedestals" | [future-feasibility-chain-peace-synthetic-story-moons.md](future-feasibility-chain-peace-synthetic-story-moons.md) | peace **~85%** / pedestal t1 **~90%** / t2 **~55%** | Low–Med / Low / Med–High |
 
 ---
 
@@ -408,3 +409,29 @@ gates, and moon-pipe gating all assume). Recommend a one-build spike first — h
 single exit→foreign-door-mouth row and confirm in-game that Mario lands in another kingdom's
 overworld in a usable state; that binary result gates the whole feature. Full write-up:
 [future-feasibility-decoupled-entrance-randomizer.md](future-feasibility-decoupled-entrance-randomizer.md).
+
+---
+
+## Forced world peace on chain arrival + synthetic story-moon "peace pedestals"
+
+**Peace ~85% (Low–Med) · pedestal tier 1 ~90% (Low) · tier 2 ~55% (Med–High).
+Idea-gathering only (2026-07-09); gated behind P5.** Layered on the decoupled
+randomizer: any chain (non-Odyssey) arrival forces the destination kingdom's
+**world-peace scenario for that load only** — killing the P4 finding-4 class
+(scenario-gated arrival mouths falling back to default spawn, broken retrace)
+and exposing maximum content — while legitimate flights load the true scenario,
+so the story plays through normally. **Nothing persists**: scenario is
+recomputed from quest state on every non-forced load, so "revert on first
+legitimate arrival" is free and no story moon can ever strand. The lever is the
+proven ChangeStageInfo explicit-scenario field (the stale-scenario-1 mechanism,
+pointed up); per-kingdom peace numbers come free at runtime from
+`WorldListEntry` (`clearMainScenario`/`moonRockScenario`/`endingScenario`,
+decomp-confirmed). Decomp crux (read 2026-07-09): got-shine flags are NOT
+separable from story progress — quests are invalidated at placement when their
+linked shine is got, and invalidation calls `setMainScenarioNo` — so the
+"synthetic Broode Multi-Moon" must be a **save-untouched AP trigger** (tier 1:
+coordinate trigger + wire-side location check; tier 2: runtime-spawned Shine
+actor with the save write suppressed at MoonGetHook), never a `setGotShine`
+grant. Caveat: moon-rock content is save-flag-gated, not scenario-gated —
+forced peace probably does NOT spawn moon pipes (probe listed). Full write-up:
+[future-feasibility-chain-peace-synthetic-story-moons.md](future-feasibility-chain-peace-synthetic-story-moons.md).

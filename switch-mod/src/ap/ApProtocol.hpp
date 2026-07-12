@@ -517,8 +517,16 @@ struct ShopLabels {
 // addCoin(total - coins_applied) so replaying the same total is a no-op --
 // same idempotent pattern as OutstandingMsg (M6 phase D).
 // Multi-Moons count as 3 in the lifetime balance (300 coins).
+//
+// `baseline` (2026-07-12): how many of those `total` coins are ALREADY in
+// this SMO save. `coins_applied` is in-memory and resets to 0 on every game
+// boot, but SMO PERSISTS coins — so without the baseline the whole `total`
+// re-applied each boot, doubling coins. The client persists the confirmed-
+// applied total per (seed, slot) (client/coin_state.py) and ships it here;
+// applyCoinGrant seeds coins_applied = max(coins_applied, baseline).
 struct CoinGrant {
     int total = 0;
+    int baseline = 0;
 };
 
 // P3 — Bridge -> Switch ability tracking (full-overwrite snapshot).

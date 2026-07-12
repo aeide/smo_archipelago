@@ -622,6 +622,36 @@ public:
         chain_reached_kingdoms.fetch_or(1u << bit, std::memory_order_relaxed);
     }
 
+    // P5 T-C (docs/plan-p5-cross-world-loads.md §9.3): worlds whose
+    // GameProgressData::mIsUnlockWorld[w] RAM entry WE forced true in
+    // OdysseyRescue::tickChainKingdomListing (needed so isExistHome derives a
+    // boardable ship in a chain-reached-only locked kingdom, §8.1). That force
+    // also poisons the engine's own unlock read: isWorldUnlockedRaw reads the
+    // same array, so a forced world reads "legitimately unlocked" and the
+    // chain-only derivation (allowance zeroing / visited-only bounce / Lost
+    // guard) is neutered. Indexed by world id (0..16). Set by the listing
+    // force; SUBTRACTED in isWorldUnlockedHonest so our own forces don't count
+    // as legit unlocks; cleared wholesale by the GameDataFunction::unlockWorld
+    // trampoline (a legit story unlock) and re-forced next tick for any world
+    // still chain-only — self-healing, no story-order table.
+    std::atomic<std::uint32_t> chain_unlock_forced_bits{0};
+
+    bool isKingdomUnlockForced(int world_id) const {
+        if (world_id < 0 || world_id >= 17) return false;
+        return (chain_unlock_forced_bits.load(std::memory_order_relaxed) >>
+                world_id) & 1u;
+    }
+
+    void markKingdomUnlockForced(int world_id) {
+        if (world_id < 0 || world_id >= 17) return;
+        chain_unlock_forced_bits.fetch_or(1u << world_id,
+                                          std::memory_order_relaxed);
+    }
+
+    void clearAllKingdomUnlockForced() {
+        chain_unlock_forced_bits.store(0, std::memory_order_relaxed);
+    }
+
     // Per-kingdom chain ORIGIN — the kingdom Mario was last standing in when
     // the chain arrival committed (kingdomBitFor(last_arrival_kingdom) at the
     // remap seam). 0xff = unknown; the flight bounce falls back to Cap.
@@ -634,6 +664,17 @@ public:
     // read the launch check consumes, so the flight-commit bounce and the
     // launch decision can never disagree). 0xff = no allowance active.
     std::atomic<std::uint8_t> chain_allowance_bit{0xff};
+
+    // P5 §1.5-B1 — one-shot handshake for the SYNTHETIC demo warp. Set by
+    // EntranceShuffleHook immediately before it re-routes a remapped
+    // cross-world overworld commit through
+    // GameDataFunction::tryChangeNextStageWithDemoWorldWarp (whose address is
+    // patched by our own WorldMapSelectHook trampoline, so the call lands
+    // there first); consumed (exchange false) at the top of that trampoline
+    // so the order-gate BACKSTOP and the chain-return visited-only bounce
+    // never redirect the chain arrival that created them. Frame-thread only;
+    // atomic for ApState hygiene.
+    std::atomic<bool> chain_demo_warp_pending{false};
 
     // M6 phase B — GameDataHolder pointer cache.
     //
@@ -648,6 +689,17 @@ public:
     // visibility guarantee — matches the player_hp_cache pattern above.
     // Stored as void* to avoid leaking the game header here.
     std::atomic<void*> game_data_holder_cache{nullptr};
+
+    // P5 chain-return hardening — GameDataFile* cache (the PLAYING file).
+    // Refreshed by every GameDataFile hook that receives `this`:
+    // changeNextStage + returnPrevStage (EntranceShuffleHook) and
+    // initializeData (SaveLoadHook — fires on every save load, so a reload
+    // can never leave this dangling on a stale file object). Consumed by
+    // OdysseyRescue's chain-kingdom listing force, which reads
+    // GameDataFile::mGameProgressData @ +0x6a8 off it from the drawMain pump
+    // (see docs/plan-p5-cross-world-loads.md §2.3). Same thread + atomic
+    // hygiene as game_data_holder_cache above.
+    std::atomic<void*> game_data_file_cache{nullptr};
 
     // AP-classification moon color (M-color milestone).
     // Indexed by SMO ShineInfo::shineId (s32). 0xFF = "no override; let the
@@ -827,9 +879,14 @@ public:
     // thread reads it in applyCoinGrant() and calls addCoin(delta).
     //
     // pending_coin_grant_total: written by worker, read by frame thread.
+    // pending_coin_baseline: coins already applied to this save (client-
+    //   persisted per seed+slot). Written by worker; applyCoinGrant seeds
+    //   coins_applied = max(coins_applied, baseline) so a game reboot (which
+    //   zeroes coins_applied) does not re-apply coins the save already holds.
     // coins_applied: high-water mark, frame thread only (no atomic needed).
     // add_coin_fn: lazily resolved via hk::ro::lookupSymbol on first use.
     std::atomic<int> pending_coin_grant_total{0};
+    std::atomic<int> pending_coin_baseline{0};
     int coins_applied = 0;
     void* add_coin_fn = nullptr;
 

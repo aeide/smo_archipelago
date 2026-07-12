@@ -98,6 +98,10 @@ HkTrampoline<void, GameDataFile*> saveLoadHook =
                        self);
 
         auto& st = smoap::ap::ApState::instance();
+        // P5: refresh the GameDataFile* cache on every save load so the
+        // drawMain pump's chain-kingdom listing force never derefs a file
+        // pointer from a previous save session (see ApState field docs).
+        st.game_data_file_cache.store(self, std::memory_order_relaxed);
         st.save_load_passthrough.store(true, std::memory_order_release);
         saveLoadHook.orig(self);
         st.save_load_passthrough.store(false, std::memory_order_release);

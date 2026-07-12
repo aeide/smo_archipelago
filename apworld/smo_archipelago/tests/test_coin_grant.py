@@ -65,6 +65,16 @@ def test_coin_grant_total_field():
         "CoinGrant must have total: int = 0 field"
 
 
+def test_coin_grant_baseline_field():
+    src = _src("protocol.py")
+    m = re.search(r"class CoinGrant.*?(?=\nclass |\Z)", src, re.DOTALL)
+    assert m
+    assert "baseline: int = 0" in m.group(0), (
+        "CoinGrant must carry baseline: int = 0 (coins already applied to the "
+        "save) so the Switch doesn't re-apply the full total on every boot"
+    )
+
+
 def test_coin_grant_before_serialization_helpers():
     src = _src("protocol.py")
     coin_idx = src.find("class CoinGrant")
@@ -147,6 +157,23 @@ def test_push_coin_grant_sends_coin_grant_msg():
         "push_coin_grant must construct and send a CoinGrant message"
 
 
+def test_push_coin_grant_ships_and_persists_baseline():
+    body = _fn_body(_src("switch_server.py"), "push_coin_grant")
+    assert "coin_state.load_applied(" in body, (
+        "push_coin_grant must load the persisted per-save baseline and ship it "
+        "so the Switch doesn't re-apply coins already in the save every boot"
+    )
+    assert "baseline=" in body, "CoinGrant must be sent with baseline="
+    assert "coin_state.save_applied(" in body, (
+        "push_coin_grant must advance the persisted baseline once applied"
+    )
+    assert "compute_outstanding()" in body, (
+        "baseline advance must be gated on the Switch being on a save file "
+        "(compute_outstanding() non-None) so title-screen pushes don't strand "
+        "coins as already-applied"
+    )
+
+
 def test_push_coin_grant_no_ops_on_zero():
     body = _fn_body(_src("switch_server.py"), "push_coin_grant")
     assert "== 0" in body or "not total" in body, \
@@ -206,3 +233,60 @@ def test_context_cap_flag_inside_moon_branch():
     after = src[moon_match.start(): moon_match.end() + 200]
     assert "coin_relevant_this_batch" in after, \
         "coin_relevant_this_batch must be set inside the moon-kind branch (Cap)"
+
+
+# 5. Runtime arithmetic (client/state.py importable — no Archipelago deps)
+#
+# The source-parse tests above don't exercise the math. These pin down the
+# clone-vs-unlock distinction that fixes the 2026-07-11 coin bugs: a
+# progressive chain level is NOT a coin-minting duplicate; only copies BEYOND
+# the chain length (or beyond copy 1 for single-grant items) are.
+
+from client.state import BridgeState  # noqa: E402
+
+
+def _grant():
+    return BridgeState()
+
+
+def test_progressive_at_chain_length_mints_no_coins():
+    bs = _grant()
+    # Full chains, no clones: Crouch=3 (Crouch/Roll/Roll Boost), Jump=2.
+    bs.abilities_received = {"Progressive Crouch": 3, "Progressive Jump": 2}
+    assert bs.compute_total_coin_grant() == 0
+
+
+def test_progressive_clone_beyond_chain_mints_one_coin():
+    bs = _grant()
+    # Ground Pound chain length 2 (Ground Pound, Dive); the 3rd copy is a clone.
+    bs.abilities_received = {"Progressive Ground Pound": 3}
+    assert bs.compute_total_coin_grant() == 100
+
+
+def test_wall_slide_clone_mints_one_coin():
+    bs = _grant()
+    # Wall Slide is progressive with chain length 1; 2nd copy is a clone.
+    bs.abilities_received = {"Wall Slide": 2}
+    assert bs.compute_total_coin_grant() == 100
+
+
+def test_single_grant_ability_duplicate_mints_coins():
+    bs = _grant()
+    bs.abilities_received = {"Spin Throw": 1, "Cap Bounce": 3}
+    # Spin Throw: 1 copy = unlock, 0 coins. Cap Bounce: 3 copies, 2 clones.
+    assert bs.compute_total_coin_grant() == 200
+
+
+def test_capture_first_copy_no_coin_duplicate_mints_coin():
+    bs = _grant()
+    bs.captures_received_count = {"Frog": 1, "Bullet Bill": 2}
+    # Frog: unlock only. Bullet Bill: 1 clone.
+    assert bs.compute_total_coin_grant() == 100
+
+
+def test_cap_moons_and_clones_combine():
+    bs = _grant()
+    bs.moons_received_by_kingdom = {"Cap": 4}  # 4 effective moons -> 400
+    bs.captures_received_count = {"Sherm": 2}  # 1 clone -> 100
+    bs.abilities_received = {"Progressive Crouch": 3}  # full chain -> 0
+    assert bs.compute_total_coin_grant() == 500

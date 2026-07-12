@@ -1076,12 +1076,19 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
         // P1 — Cap Kingdom coin grant. Store the cumulative lifetime total;
         // applyCoinGrant() on the frame thread applies the delta via addCoin.
         // total=0 is a no-op (bridge never sends it when 0).
+        //
+        // `baseline` = coins already applied to THIS save (persisted client-
+        // side per seed+slot). Stored too so applyCoinGrant can seed its boot-
+        // reset high-water mark from it — otherwise the whole total re-applies
+        // every game boot (SMO persists coins; coins_applied does not).
         const int total = m.coin_grant.total;
         if (total > 0) {
+            ApState::instance().pending_coin_baseline.store(
+                m.coin_grant.baseline, std::memory_order_relaxed);
             ApState::instance().pending_coin_grant_total.store(
                 total, std::memory_order_relaxed);
-            SMOAP_LOG_INFO("[p1-coins] coin_grant total=%d queued for frame thread",
-                           total);
+            SMOAP_LOG_INFO("[p1-coins] coin_grant total=%d baseline=%d queued "
+                           "for frame thread", total, m.coin_grant.baseline);
         }
     } else if (eq(m.t, "ability_state")) {
         // P3 — full-overwrite ability tracking snapshot. ApState compares the

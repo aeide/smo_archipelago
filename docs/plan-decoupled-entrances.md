@@ -1000,13 +1000,280 @@ walk 3 (coupled `simple` regression), PBP both-exits-diverge (half done —
 entry validated, exit is finding 10), save/load mid-chain, scenario
 drag-down verify on a progressed kingdom.
 
-## Phase 5 (optional) — Approach B: literal Odyssey-arrival landings
+### P4 session 2026-07-08 (third) — retest triage, rulings applied, P5 opened
 
-Route overworld landings through the `tryChangeNextStageWithDemoWorldWarp` seam
-so the kingdom loads via the engine's own arrival code (Odyssey parked, correct
-scenario). Only if approach A's landing feel isn't good enough after Phase 4.
-- **Model: Opus 4.8.** Hooks adjacent to the KingdomOrderGate BACKSTOP; needs
-  decomp reads (READ THE DECOMP BEFORE PICKING A CHOKEPOINT).
+Devon's retest walk (A1–A5, B1–B2) plus rulings; everything below is
+implemented-but-unbuilt switch-mod work unless marked otherwise.
+
+**Walk results triaged:**
+
+- **A1 (finding 10) — PBP exit crash reproduces COLD** (fresh boot, log
+  `PBP-cold-crash.txt`): escalation trigger met. **P5 is now open**, with a
+  full design doc: [plan-p5-cross-world-loads.md](plan-p5-cross-world-loads.md)
+  (decomp reads done; fix options B1 demo-warp routing / B2 next-world-id
+  levers designed, NOT coded — the doc is the gate).
+- **A2 — PBP second-exit retrace: PASS.** Both PBP exits diverge correctly.
+- **A3 — zone match keys: PASS, closed with NO change.** Devon fired `jizo01`
+  from inside SkyWorldCastleZone and the log shows
+  `cur='SkyWorldHomeStage'` — `getCurrentStageName` reports the parent
+  HomeStage for zone-hosted transitions, never the zone. Match keys need no
+  aliasing; `ZONE_STAGE_ALIAS` stays rewrite-target-only as shipped
+  (confirmation recorded in port_graph.py's alias docstring).
+- **A4 — Cascade story state intact: PASS.**
+- **A5 — S&Q inside a chain-reached kingdom: PASS** (respawn at parked
+  Odyssey, boardable). This validated the save-derived direction for the
+  finding-13 marker (see below).
+- **B1 — no-O↔O seed: CLEAN** (4 overworld doors all led to interiors).
+- **B2 — coupled `simple` regression: PASS.**
+- **NEW crash — "Swinging Along the High-Rises" entry crashes every time**
+  (log `metro-swinging-crash.txt`): SAME P5 class, interior-target variant —
+  Cap pipe → `PoleGrabCeilExStage` (a Metro subarea), `sead::ExpHeap` abort
+  ~10 s after arrival while streaming. Decomp-confirmed mechanism for the
+  whole class: `GameDataFunction::calcNextWorldId` resolves the target by
+  `tryFindWorldIndexByMainStageName(getNextStageName())`, which returns
+  **-1 for any subarea target** — the vanilla invariant "a subarea belongs
+  to the current world" is broken by the remap, so no world-resource swap
+  happens and the destination world's assets stream into scene heaps sized
+  for the origin world. Full mechanism: P5 doc §1.2–§1.4.
+
+**Devon's rulings (recorded, all applied):** paying a chain-reached
+kingdom's rolled gate NEVER legitimizes story-forward travel; finding 12 =
+stop calling `unlockWorld`, find a listing-only seam; globe should list
+only visited kingdoms.
+
+**Findings 11–13 implemented (switch-mod, UNBUILT — Devon's build loop):**
+
+- **Finding 12:** `forceUnlockWorld` call REMOVED from `processChainArrival`
+  (EntranceShuffleHook.cpp; the OdysseyRescue body is now a tombstone).
+  `setAlreadyGoWorld` + Odyssey rescue stay. On a FRESH save this alone
+  satisfies "globe = visited ∪ story-next" (vanilla semantics).
+- **Finding 13 (the core):** the chain-reached-only marker is now
+  **save-derived** — `isAlreadyGoWorld(w) && !isUnlockWorld(w)`
+  (`OdysseyRescue::isKingdomChainReachedOnlySave`, fail-closed). It costs
+  zero wire surface, survives S&Q (per A5), is payment-independent (per the
+  ruling), and self-clears when the kingdom is later unlocked legitimately.
+  The WorldMapSelect bounce now keys on the DEPARTING kingdom being
+  chain-only (session bit OR save-derived), not on `chain_allowance_bit` —
+  paying the gate no longer disables visited-only enforcement. Allowed
+  picks: departing kingdom itself, session-visited, or `isWorldAlreadyGo`.
+  Bounce target: session `chain_origin_bit`, Cap fallback post-S&Q.
+- **Finding 13 companion:** `UnlockShineNumHook`'s allowance logic is
+  factored into `chainAllowanceActive(bit, vanilla_gate)` reading the same
+  save-derived marker, so the takeoff allowance also survives S&Q.
+- **Finding 12b (listing force):** `tickChainKingdomListing()` re-asserts
+  `mIsUnlockWorld[w] = true` (RAM array via the new
+  `ApState::game_data_file_cache` → GameProgressData @ +0x6a8 → bool* @
+  +0x20) every sweep for chain-only worlds — costume-door OpenKeySwitch
+  pattern, additive-only, never persisted (the array is derived state,
+  never serialized — decomp-confirmed).
+- **Finding 11 (story launch ignores allowance):** the launch predicate
+  lives in undecompiled ShineTowerRocket nerves; best out-of-line seam =
+  member worker `GameDataHolder::findUnlockShineNum(bool*, s32) const`,
+  hooked SOFT (lookupSymbol, const then non-const mangling) with
+  `[chain-launch]` logging + a scoped zero under `chainAllowanceActive`.
+  The next walk decides whether the seam is real (P5 doc §2.5).
+- **§1.6 instrumentation:** `calcNextWorldId`/`getNextWorldId` log spikes
+  (`[p5-nextworld]`) ship with the build so walk data picks the B2 lever.
+
+**One-way subarea rule (apworld, SHIPPED + installed this session):** per
+Devon's note ("assume you CANNOT reach the entrance door of a subarea from
+its exit door"), `port_graph.py` gained entry-capability: an interior mouth
+is entry-capable iff a pooled OVERWORLD mouth of the same subarea shares its
+`entry_id` (distinguishes zone-split rooms, which stay two-way, from genuine
+one-way courses). Exit-only interior mouths now wire into a
+`"<sub> Interior (far side)"` region (free one-way full→far edge; no moons,
+no entrance doors, no far→full backflow), and one-way-course subareas (no
+entry-capable interior mouth) get their entrance doors PINNED vanilla in
+`roll_port_matching` so member moons stay in logic (pins are lone overworld
+mouths — zero rewrite rows, slack-positive). Phase-1 connectivity credits
+pins via a closure (pin's vanilla walk connects the course stage), matching
+`unconnected_stages`' vanilla-passthrough credit. Real-pool spot check:
+Jaxi's `run00` is dual-role (full interior), `run00return` exit-only (far
+side). Tests: +3 in test_port_graph.py, +2 in test_port_matching.py, far_*
+invariants in the region-wiring probe. **Suite: 1012 passed / 98 skipped**
+via `.venv`; `install_apworld.py` re-run (so the next Generate sees it —
+**this needs a RE-SEED**, and a FRESH save file restores full finding-13
+marker semantics on the already-overshot save).
+
+**Walk matrix for Devon's next build** (duplicated in P5 doc §3): (1)
+Swinging entry — read `[p5-nextworld]` values (crash expected to persist);
+(2) PBP cold exit — same, FrameHeap variant; (3) chain → pay gate → story
+launch: does `[chain-launch]` fire at refusal, and is the firstNext flight
+bounced; (4) chain, leave, open globe elsewhere: chain kingdom listed
+(`[chain-listing]`), over-unlocked kingdoms absent (fresh save only); (5)
+A5 repeat on a fresh save: allowance + bounce both survive S&Q.
+
+### P4/P5 session 2026-07-08 (fourth, late) — walk VOID (stale binary);
+### client reconnect-race bug found + fixed
+
+Devon walked the matrix, but timestamp + log forensics show the deployed
+subsdk9 was built at **9:45 AM — three hours BEFORE the findings 11–13 /
+spike edits landed on disk (12:40–12:44 PM)**. Proof, from the walk logs
+(`E:\Ryubin\Logs\metro-swing-complete-log.txt`,
+`w3-chain-paygate-storylaunch.txt`, `Ryujinx_..._23-25-26.log`):
+no `[chain-launch]` install line (success OR lookup-FAILED — the code logs
+one unconditionally), no `[p5-nextworld]` spike install lines (same), and
+the boot still logs `chain-arrival unlockWorld(worldId=9)` — the exact call
+removed by finding 12. **W3–W5 therefore observed the OLD code and are
+void as fix verdicts**; the finding-11 seam question (member
+findUnlockShineNum inlined or not) is UNANSWERED, not answered-negative.
+
+Real results that DO stand:
+- **W1 — Swinging entry crashed again** (`sead::ExpHeap::tryAlloc` abort in
+  `ParallelSZSDecompressor::tryDecompFromDevice`, ~12 s after the
+  `remap-APPLIED` commit Cap pipe → `PoleGrabCeilExStage`): the P5
+  interior-target class reproduces on the new seed. No `[p5-nextworld]`
+  data (spikes absent), so the **B1/B2 lever decision stays gated on the
+  re-walk**.
+- **One-way courses behave as intended in-game** — first in-game
+  validation of the far-side/pin rule shipped 2026-07-08.
+- **W5's "lost all abilities" was a REAL client bug** (pre-existing, not
+  this branch): a same-device reconnect race in
+  `client/switch_server.py::_handle_client`. When the active Switch dies
+  without a prompt FIN (Ryujinx emulation stop), the fresh boot's HELLO
+  arrives while the dead conn is still registered; the registration swap
+  replaces the dict entry, the old handler's finally skips its unregister
+  (identity check), `_active_device_id` never clears, and the active-slot
+  decision (`is None` only) parked the NEW boot "inactive": hello_ack +
+  `KickMsg` (the mod logs `unknown message t=kick`) and **no post-HELLO
+  replay** — no `ability_state` (gates enforce an empty table → every move
+  locked, even with abilitysanity off), no `entrance_map` (**doors silently
+  vanilla that boot** — walk-data poison), no kingdom_gates, no capture
+  replay. FIXED: same-id reconnect now keeps active status and gets the
+  full replay; regression test
+  `test_same_id_reconnect_keeps_active_and_gets_replay` (suite **1013
+  passed / 98 skipped**); `install_apworld.py` re-run — client-only, **NO
+  re-seed needed**. Walk hygiene rule: if doors ever behave vanilla,
+  check the log for `unknown message t=kick` after hello_ack.
+- **The walk save is polluted again**: the stale build's
+  `unlockWorld(worldId=9)` at the Snow chain arrival overshot
+  `mUnlockWorldNum` on the fresh save, so W4's "over-unlocked kingdoms
+  absent" and the §2.1 save-derived marker need **another fresh save** on
+  the rebuilt mod (seed can stay).
+
+Switch mod **rebuilt + redeployed this session** (BRIDGE_HOST
+192.168.4.100, tables re-synced). Walk matrix unchanged — re-run all five,
+with two clarifications: (a) W5's "respawn at the parked Odyssey inside
+the chain kingdom" is the DESIGNED behavior (A5 pass); the bounce governs
+globe *picks*, not the respawn point. (b) This seed has
+`randomize_kingdom_gates` OFF (`applied 0 rolled gates`) and Snow/Seaside
+are free-detour kingdoms whose current-world takeoff is always forced 0 —
+for a clean W3/W4 signal, chain into a NON-detour kingdom
+(`chainAllowanceActive` handles vanilla gates via orig).
+
+### P5 session 2026-07-09 (fifth) — walk REAL this time; lever decided;
+### B1 + B2 implemented and BUILT (unwalked)
+
+R0 verified before any triage (binary 07-09 9:40 postdated all fix
+sources; install lines present in every log; no `t=kick` — the client
+reconnect fix held in-game). Everything below is recorded in full in the
+P5 doc §5; headline results:
+
+- **Lever decision (from real spike data): lever 1 DEAD.** The
+  `[p5-nextworld]` spikes fired only on the flight path and stayed silent
+  around every door commit — nothing reads a stored next-world id on the
+  plain changeNextStage path. Shipped instead: **B1** (remapped
+  cross-world non-exempt OVERWORLD targets re-route through
+  `tryChangeNextStageWithDemoWorldWarp`; `chain_demo_warp_pending`
+  handshake keeps our own backstop/bounce off the synthetic call) and
+  **B2 lever 2** (new `game/CrossWorldLoad.{hpp,cpp}`: one-shot
+  world-resource pre-arm fired at `destroySceneHeap`/`exeLoadStage`, plus
+  a universal exeLoadStage backstop comparing `getNextStageName`'s world
+  vs the loader's resident world — covers :return pops). Subarea→world
+  resolution via `WorldList::tryFindWorldIndexByStageName` — NO wire
+  change, NO reseed. All 8 new symbols dynsym-verified
+  (`scripts/check_nso_symbols.py`); build 100/100 at 07-09 10:38, staged
+  to build/sd — **Ryujinx copy + walk are Devon's**.
+- **W2–W5 triage:** the "no Odyssey / stranded" results in Ruined (W2)
+  and Lost (W3/W4) are the DESIGNED normalization exemption working
+  (`exempt=1` in the logs), not fix failures — but they blocked the
+  W3/W4 signals entirely. **Open Devon decision:** accept S&Q as the
+  Lost/Ruined chain escape, lift the exemption, or pool-exclude their
+  door mouths (reseed). Walkable non-exempt W3 route on this seed:
+  Cap "Precision Rolling" door → 8-Bit Chasm Lifts → 'Lift2DExit' →
+  **Sand** (gate 16). Finding-11's seam verdict still pending that walk.
+- **New bug found + fixed (walk finding): session chain bit poisoned
+  legitimately-unlocked kingdoms.** A chain door back into flight-visited
+  Cascade zeroed its takeoff gate (`orig=5 -> 0 (allowance ZERO)`).
+  Fix: `OdysseyRescue::isKingdomChainReachedOnly` (= (session ∥
+  alreadyGo) ∧ ¬unlocked) now backs the allowance AND the bounce, and
+  `processChainArrival` skips the session mark for unlocked destinations
+  (`[chain-arrival]` log gained `unlocked=`).
+- The "missing" Cap→Cascade bounce was correct behavior: the cap-peace
+  bootstrap save has Cascade `alreadyGo=1` from the prologue story-drop.
+- No fresh save needed for the next walk (finding-12 code was live; no
+  overshoot). Next-walk matrix: P5 doc §5.4 (install-line check first).
+
+### P5 session 2026-07-09 (sixth) — §5.4 walk triaged; B2 concurrency is
+### the crash, hold seam decided; execution handoff authored
+
+Full record: **P5 doc §6**. Headlines:
+
+- **R0 nuance:** the 3 new logs were real (install lines present); the
+  notes-3/4 log (`chain-to-lost-then-luncheon.txt`) ran the OLD 9:40
+  binary — triaged as old-binary evidence (the implicated code is
+  unchanged in the new build, so the bugs are live).
+- **Items 1/2 FAILED, new crash class:** both foreign-interior entries
+  crashed in `nn::g3d`/`agl::g3d` ResFile setup on `al::InitializeThread`
+  — the pre-arm fired ONLY via the exeLoadStage fallback
+  (destroySceneHeap is never called on door transitions) and the
+  concurrent world+stage loads race on the same archives. Fix decided:
+  **hold exeLoadStage pre-orig until `isEndLoadWorldResource()`**
+  (SleepThread poll, 30 s fail-open timeout); exeLoadStage is
+  undecompiled so no seam inside its step logic is viable — blocking
+  inside our existing trampoline is step-counter-transparent. B1 remains
+  unwalked (entries crash before exits); Devon ruled B1 UX acceptable.
+- **Notes 3/4 root cause: the Lost softlock sweep's `unlockWorld`** —
+  the last surviving unlockWorld caller; it prefix-unlocked through Lost
+  and PERSISTED (Devon's save now polluted → fresh save next walk). The
+  §2.3 listing bool-force is confirmed dead (map list derives from the
+  counter; Luncheon stayed unlisted despite the force). Interim ruling:
+  chain kingdoms not flyable-back from the globe; listing = future
+  StageSceneStateWorldMap disasm task.
+- **Devon rulings:** B1 UX acceptable; **Lost/Ruined exemption LIFTED
+  with story guards** — Lost fully (sweep repairs but never unlocks for
+  chain-reached-only), Ruined conditionally (normalize/B1 only when
+  `getScenarioNo(Ruined) >= 2` i.e. dragon beaten; pre-dragon stays
+  story-managed so the fight arms and the pinned MM stays earnable).
+- **Note 1 (start_at_cap_peace=false broken):** the Cap return-scenario
+  floor is unconditional; gate it on `isWorldAlreadyGo(Cascade)` (true on
+  the bootstrap save and post-prologue vanilla saves, false mid-prologue).
+  No wire change.
+- **Note 2 (Jizo in pool with capturesanity off):** capture items lack
+  the abilitysanity drop+precollect mirror — add it (apworld only, needs
+  install_apworld + reseed).
+- **Deliverable: [handoff-prompt-p5-execution.md](handoff-prompt-p5-execution.md)**
+  — fully-specified execution tasks T1–T5 + doc/memory updates (model:
+  Sonnet; zero open design questions). Devon builds + walks the P5 doc
+  §6.6 matrix on a fresh save.
+- **T1–T5 IMPLEMENTED (execution session)**: exeLoadStage hold (T1),
+  Lost-sweep unlock guard (T2), Lost/Ruined exemption lifted with story
+  guards (T3), capturesanity drop+precollect mirror + 2 new test files (T4),
+  Cap-return floor gated on Cascade alreadyGo (T5). Full detail: P5 doc §6.7.
+  Suite 1021/99 green (+9 new tests, zero regressions); install_apworld
+  re-run. Build + walk + reseed + fresh save are Devon's.
+
+## Phase 5 — cross-world stage loads (OPENED 2026-07-08)
+
+Was "optional approach B"; the cold PBP repro + the deterministic Swinging
+crash promoted it. Full design (crash mechanism, fix options B1/B2,
+instrumentation, findings 11–13 hardening):
+**[plan-p5-cross-world-loads.md](plan-p5-cross-world-loads.md)**.
+**2026-07-09: B1 + B2-lever-2 IMPLEMENTED + BUILT (see the fifth-session
+block above; walk pending — P5 doc §5).**
+- **Model: Opus 4.8+.** Decomp reads for the demo-warp commit path and
+  loader arming are already in the doc; B1/B2 are design-gated on the next
+  walk's `[p5-nextworld]` data.
+
+## Related future idea (recon only, post-P5)
+
+**Forced world peace on chain arrivals + synthetic story-moon "peace
+pedestals"** — per-load peace forcing (never persisted) to fix the finding-4
+scenario-gated-mouth fallback and maximize chain-visit content, plus
+save-untouched AP triggers for story-MM checks during peace visits. Decomp
+reads done 2026-07-09 (quest/scenario coupling, WorldList peace-scenario
+fields, Shine spawn path); NOT scheduled, Devon review pending. Full recon:
+[v3-feasibility/future-feasibility-chain-peace-synthetic-story-moons.md](v3-feasibility/future-feasibility-chain-peace-synthetic-story-moons.md).
 
 ---
 
