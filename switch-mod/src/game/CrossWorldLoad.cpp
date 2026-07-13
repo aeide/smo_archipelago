@@ -99,20 +99,39 @@ WorldResourceLoader* resolveLoader() {
 // the cause is the boot dual-heap (or the never-absent WorldList byml).
 // Replicate the vanilla flight seam: tryDestroyWorldResource(), re-request.
 // Safe here because both call sites run in the load phase with the old scene
-// dead — exactly where vanilla does it. Destinations INSIDE the boot pair
-// stay exempt: Cap(0)/Cascade(1) are what the dual-heap serves, a refused
-// request for them needs no load at all (the validated Cascade->Cap divert
-// runs on this state), and tearing it down mid-prologue would only force a
-// pointless reload.
+// dead — exactly where vanilla does it.
+//
+// EXEMPTION — HEALTHY dual-heap ONLY (2026-07-13, cap-crash.txt): the dual-
+// heap build calls requestLoadWorldResourceCommon(0), so its canonical
+// mLoadWorldId is 0 (Cap). While it is intact, BOTH boot-pair worlds
+// (Cap=0, Cascade=1) are served from mCapWorldHeap/mWaterfallWorldHeap, so a
+// HomeStage request for either refuses on the `if (mWaterfallWorldHeap)
+// return false` guard yet needs NO load — tearing it down would only force a
+// pointless reload (this is the validated Cascade->Cap divert, which runs
+// with resident==0). But the chain topology never hits the vanilla first-
+// flight teardown, so the dual-heap gets ORPHANED, and once the engine's
+// plain requestLoadWorldResource moves mLoadWorldId OFF Cap (resident != 0)
+// while the waterfall heap is still set, the dual-heap is STALE: the boot-
+// pair dest is no longer reliably resident, the HomeStage guard refuses
+// forever, and the engine's next plain request loads the dest onto the stale
+// heaps -> ExpHeap abort (cap-crash.txt: Cascade->Cap divert, dest=Cap(0),
+// resident=1). So exempt ONLY resident==0 with a boot-pair dest; every other
+// refusal (foreign world, OR stale boot pair with resident != 0) must tear
+// down. `resident != world` already covers the redundant resident==0 &&
+// dest==Cap(0) case, so the exemption's live effect is exactly "keep the
+// healthy dual-heap serving Cascade" (resident==0, dest==Cascade(1)).
 inline constexpr int kBootPairMaxWorldId = 1;  // Cap=0, Waterfall/Cascade=1
+inline constexpr int kDualHeapResidentId = 0;  // dual-heap canonical mLoadWorldId (Cap)
 
 bool requestWorldLoad(WorldResourceLoader* loader, int world, int scenario,
                       const char* tag) {
     bool ok = s_requestLoadWorldHomeStage(loader, world, scenario);
-    if (!ok && world > kBootPairMaxWorldId && s_tryDestroyWorldResource &&
-        s_isEndLoadWorldResource && s_isEndLoadWorldResource(loader)) {
+    if (!ok && s_tryDestroyWorldResource && s_isEndLoadWorldResource &&
+        s_isEndLoadWorldResource(loader)) {
         const int resident = s_getLoadWorldId ? s_getLoadWorldId(loader) : -100;
-        if (resident != world) {
+        const bool healthyDualHeap =
+            resident == kDualHeapResidentId && world <= kBootPairMaxWorldId;
+        if (resident != world && !healthyDualHeap) {
             s_tryDestroyWorldResource(loader);
             ok = s_requestLoadWorldHomeStage(loader, world, scenario);
             SMOAP_LOG_INFO("[p5-prearm] %s boot dual-heap TEARDOWN "
