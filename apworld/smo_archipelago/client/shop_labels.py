@@ -24,8 +24,19 @@ from __future__ import annotations
 # apworld/smo_archipelago/data/locations.json. The kingdoms with shops, in
 # in-game traversal order:
 #   Cap, Cascade, Sand, Lake, Wooded, Lost, Metro, Snow, Seaside,
-#   Luncheon, Bowser's.
-# (Cloud, Ruined, Moon, Dark Side, Darker Side, Mushroom — no shops.)
+#   Luncheon, Bowser's, Mushroom, Moon.
+# (Cloud, Ruined, Dark Side, Darker Side — no shops.)
+#
+# CORRECTED 2026-07-13: this comment previously claimed Mushroom and Moon
+# had no shops. Both DO — locations.json has "Mushroom: Shopping Near
+# Peach's Castle" and "Moon: Shopping in Honeylune Ridge" — they were simply
+# never added to the table below, so those two slots silently never got a
+# label override (harmless fallthrough to vanilla text, not the Lost/Cap
+# mismatch bug, but a real coverage gap). Added below from the same
+# stage-prefix convention as the rest of the table (PeachWorldShopStage,
+# MoonWorldShopRoom — confirmed via a generated shine_table.h snapshot) —
+# still UNVERIFIED against a real [shop-discovery] log like the other
+# non-Cap entries.
 #
 # Shape: {AP location name: (file_name, key)}.
 #
@@ -55,6 +66,8 @@ SHOP_LOCATION_TO_FILEKEY: dict[str, tuple[str, str]] = {
     "Seaside: Shopping in Bubblaine":        ("ItemMoon", "MoonSea"),
     "Luncheon: Shopping in Mount Volbono":   ("ItemMoon", "MoonLava"),
     "Bowser's: Shopping at Bowser's Castle": ("ItemMoon", "MoonSky"),
+    "Mushroom: Shopping Near Peach's Castle": ("ItemMoon", "MoonPeach"),
+    "Moon: Shopping in Honeylune Ridge":      ("ItemMoon", "MoonMoon"),
 }
 
 

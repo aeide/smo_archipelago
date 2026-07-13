@@ -894,6 +894,30 @@ class SMOContext(CommonContext):
                 )
             self._populate_datapackage_from_self()
             self.state.set_ap_conn("ready")
+            # Scout-cache invalidation (load-bearing, shop-label bug fix
+            # 2026-07-13). `_derive_and_push_shop_labels()` below (and the
+            # capturesanity/talkatoo pushes before it) reads `scout_cache`
+            # synchronously; the cache is only re-warmed later in this same
+            # handler (the `request_scout` call further down), so any
+            # entries left over from a PRIOR connection are stale at the
+            # moment of this first read. Location ids are stable across
+            # reconnects/reseeds (same location-name set), but the ITEM at
+            # each id is per-seed — a stale entry silently survives a
+            # same-slot reconnect (harmless, same seed) but is actively
+            # wrong after a reconnect to a freshly generated seed under the
+            # same slot name (routine in this project's regen loop).
+            # Observed live: a Crazy Cap shop slot displayed a stale
+            # pre-reseed item's label while the purchase actually reported
+            # (and granted) the current seed's real item at that location —
+            # label and grant disagreed because they read two different
+            # sources (stale scout_cache vs. live shine_map resolution).
+            # Clearing unconditionally on every Connected is safe: a cache
+            # miss degrades gracefully to "no label yet" (already-handled
+            # path — see `_derive_and_push_shop_labels`'s docstring), which
+            # self-heals within one LocationScouts round-trip. A stale HIT
+            # does not self-heal until the next LocationInfo batch arrives,
+            # which is the actual bug.
+            self.scout_cache.clear()
             # Slot-change reset (load-bearing). When SMOClient stays
             # running but reconnects to a DIFFERENT slot — user typed a
             # new slot name into the Connections tab, or pointed at a
