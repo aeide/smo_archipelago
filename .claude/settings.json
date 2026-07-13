@@ -484,7 +484,11 @@
       "Bash(/e/smo_archipelago/.venv/Scripts/python.exe -m pytest /e/smo_archipelago/apworld/smo_archipelago/tests/test_shop_labels.py /e/smo_archipelago/apworld/smo_archipelago/tests/test_slot_change_reset.py /e/smo_archipelago/apworld/smo_archipelago/tests/test_scout_cache.py /e/smo_archipelago/apworld/smo_archipelago/tests/test_confirm_snapshot.py /e/smo_archipelago/apworld/smo_archipelago/tests/test_state_reconciliation.py -q -p no:cacheprovider)",
       "Bash(/e/smo_archipelago/.venv/Scripts/python.exe -m pytest /e/smo_archipelago/apworld/smo_archipelago/tests -q -p no:cacheprovider)",
       "Bash(/e/smo_archipelago/.venv/Scripts/python.exe -m pytest /e/smo_archipelago/apworld/smo_archipelago/tests/test_smoap_file.py -q -p no:cacheprovider)",
-      "PowerShell($b = \\(gh api repos/MonsterDruide1/OdysseyDecomp --jq '.default_branch'\\); \"branch=$b\"; gh api \"repos/MonsterDruide1/OdysseyDecomp/git/trees/$b`?recursive=1\" --jq '.tree[].path' | Select-String -Pattern 'GameDataFunction\\\\.cpp')"
+      "PowerShell($b = \\(gh api repos/MonsterDruide1/OdysseyDecomp --jq '.default_branch'\\); \"branch=$b\"; gh api \"repos/MonsterDruide1/OdysseyDecomp/git/trees/$b`?recursive=1\" --jq '.tree[].path' | Select-String -Pattern 'GameDataFunction\\\\.cpp')",
+      "Bash(curl -sfL \"https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/git/trees/master?recursive=1\" -o tree.json)",
+      "PowerShell(E:\\\\smo_archipelago\\\\.venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests\\\\test_port_graph.py apworld\\\\smo_archipelago\\\\tests\\\\test_port_matching.py -q --basetemp=\"$env:TEMP\\\\smoap-pytest-zonealias\" 2>&1 | Select-Object -Last 12)",
+      "PowerShell(E:\\\\smo_archipelago\\\\.venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests -q -k \"entrance or decoupled or port\" --basetemp=\"$env:TEMP\\\\smoap-pytest-zonealias2\" -p no:cacheprovider 2>&1 | Select-Object -Last 6)",
+      "PowerShell(E:\\\\smo_archipelago\\\\.venv\\\\Scripts\\\\python.exe -m pytest apworld\\\\smo_archipelago\\\\tests -q -k \"entrance or decoupled or port\" --basetemp=\"$env:TEMP\\\\smoap-pytest-zonealias3\" -p no:cacheprovider 2>&1 | Select-Object -Last 3; E:\\\\smo_archipelago\\\\.venv\\\\Scripts\\\\python.exe scripts\\\\install_apworld.py 2>&1 | Select-Object -Last 2)"
     ],
     "additionalDirectories": [
       "\\tmp\\dbg",

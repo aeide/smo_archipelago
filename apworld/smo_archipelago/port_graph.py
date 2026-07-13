@@ -201,8 +201,54 @@ ROW_HEADROOM = 32
 # engine reports the parent HomeStage for zone-hosted transitions, never the
 # zone name. So `cur`-keyed exit rows and `dest`-keyed entry rows both match
 # on HomeStage names as shipped; ZONE_STAGE_ALIAS remains rewrite-target-only.
+#
+# CONFIRMED 2026-07-13 (Devon's walk, docs/testing-logs/2026-07-13/): two more
+# zone roots reached the wire and reproduced the Sky signature byte-for-byte —
+# `LakeWorldTownZone` (lake-unloaded.txt: standalone zone load, only the
+# zone's own placement present, `[p5-reswatch] resident=4 engineCurWorld=2`
+# because GameDataFile::startStage resolves mCurrentWorldId by MAIN stage
+# name only, chain-arrival/scenario bookkeeping skipped for the same reason)
+# and `SeaWorldWallCaveWestZone` (cascade-unloaded-after-leaving-taxi.txt,
+# 'taxi' remap, `resident=8 engineCurWorld=1`). With the failure mode
+# three-times confirmed and the parent-HomeStage rewrite validated in-game
+# (Sky: the entry marker resolves inside the composite stage load — zone
+# placements, including their ChangeStageId markers, are part of the parent
+# scene), the remaining Sea placement-zone roots are aliased pre-emptively:
+# they are structurally identical zones of the SAME SeaWorldHomeStage one of
+# today's failures hit. `LavaBonus1Zone` (Luncheon Slots) and
+# `MoonWorldWeddingRoomZone` (Wedding Room) stay OUT — they are subarea
+# INTERIOR stages the vanilla game itself loads standalone, and the alias
+# path only rewrites OVERWORLD-mouth targets anyway.
+# EXHAUSTIVENESS AUDIT 2026-07-13: the complete universe of possible rewrite
+# targets is (door-mouth stages ∪ subarea interior stages) from
+# entrance_stages.json. Classifying every non-HomeStage member: everything
+# NOT listed below appears as a vanilla transition `dest` somewhere in the
+# extraction — i.e. the vanilla game itself loads it standalone
+# (ForestWorldWoods*Stage, SnowWorld{Town,Shop,Lobby000,Costume}Stage,
+# SandWorldUnderground00*Stage, MoonWorld{Koopa2,WeddingRoom2}Stage,
+# TestOkamoto027Stage) — so it needs no alias. No zone name appears as a
+# vanilla dest anywhere, independently confirming vanilla never
+# standalone-loads these zones. The six PeachWorldPicture*Stage entries are
+# the same never-vanilla-loaded class but are currently INERT: their
+# subareas (the 6 Mushroom re-fight arenas, exits=[]) have all doors dropped
+# from the pool by build_port_graph's zero-interior-ingest rule, so the
+# mouths can't be matched today. Kept as defense-in-depth — if a future pool
+# rule re-admits them, the alias is already correct (the picture markers
+# live in PeachWorldHomeStage's composite).
 ZONE_STAGE_ALIAS: dict[str, str] = {
     "SkyWorldCastleZone": "SkyWorldHomeStage",
+    "LakeWorldTownZone": "LakeWorldHomeStage",
+    "SeaWorldWallCaveWestZone": "SeaWorldHomeStage",
+    "SeaWorldLavaZone": "SeaWorldHomeStage",
+    "SeaWorldLighthouseZone": "SeaWorldHomeStage",
+    "SeaWorldSphinxQuizZone": "SeaWorldHomeStage",
+    # Pool-excluded today (see audit note above) — inert defense-in-depth:
+    "PeachWorldPictureBossForestStage": "PeachWorldHomeStage",
+    "PeachWorldPictureBossKnuckleStage": "PeachWorldHomeStage",
+    "PeachWorldPictureBossMagmaStage": "PeachWorldHomeStage",
+    "PeachWorldPictureBossRaidStage": "PeachWorldHomeStage",
+    "PeachWorldPictureGiantWanderBossStage": "PeachWorldHomeStage",
+    "PeachWorldPictureMofumofuStage": "PeachWorldHomeStage",
 }
 
 
