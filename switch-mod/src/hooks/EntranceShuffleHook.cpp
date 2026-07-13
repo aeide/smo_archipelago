@@ -454,6 +454,15 @@ bool processEntranceRemap(const ChangeStageInfo* info) {
 //    live scenario) so the Lord-of-Lightning fight still arms; post-dragon
 //    Ruined chain arrivals normalize like everyone else.
 //
+//    2026-07-13 strand fix: the two normalization steps are now SPLIT. The
+//    setAlreadyGoWorld mark runs for story-managed kingdoms too — it is what
+//    feeds OdysseyRescue::tickChainKingdomListing (its gate reads
+//    isWorldAlreadyGo), and that force is the ONLY thing that makes a locked
+//    chain kingdom's isExistHome derive true so the Odyssey spawns at all.
+//    Withholding it stranded a chain arrival into Ruined with no ship. Only
+//    forceAcquireOdyssey stays withheld for the story-managed case, so the ship
+//    exists but stays boss-grounded until the dragon is beaten.
+//
 // unlockWorld was REMOVED from this path (P4 finding 12, Devon ruling
 // 2026-07-08): the watch item fired — decomp-confirmed that
 // GameProgressData::unlockNextWorld is a monotonic SAVED counter, so
@@ -506,9 +515,40 @@ void processChainArrival(GameDataFile* self, const char* dest,
                    dest, dest_kingdom, dest_bit, origin_bit, world_id,
                    already_go ? 1 : 0, legit_unlocked ? 1 : 0, exempt ? 1 : 0);
 
-    if (exempt || already_go || world_id < 0) return;
+    if (world_id < 0 || already_go) return;
 
+    // Mark the destination already-visited. Two effects, both needed even for a
+    // STORY-MANAGED kingdom: (1) the engine runs the parked flight arrival
+    // instead of the buried first-visit demo; (2) — the load-bearing one —
+    // OdysseyRescue::tickChainKingdomListing (drawMain pump + every exeLoadStage
+    // tick) forces mIsUnlockWorld[dest]=true for every chain-reached-only world,
+    // and its isKingdomChainReachedOnlySave gate keys on isWorldAlreadyGo. Without
+    // this mark a locked chain kingdom is never listed, so isExistHome — DERIVED
+    // as isGameClear || (isActivateHome && isUnlockedCurrentWorld) — stays false
+    // and the Odyssey never spawns. That is the 2026-07-13 Ruined strand: the
+    // story-managed early-return used to fire BEFORE this mark, so Ruined arrived
+    // with alreadyGo=0, the chain-listing force skipped it, and the player was
+    // stranded with no ship ([odyssey-strand-watch] "force not covering this
+    // kingdom"). Marking it here makes the ship EXIST — grounded by the Lord of
+    // Lightning boss-actor state, exactly the vanilla Ruined state (vanilla Ruined
+    // IS unlocked, because you flew there, so it has the same isExistHome=true +
+    // boss-grounded ship). The mark is save-backed, so a save/quit/reload inside
+    // Ruined stays covered by tickChainKingdomListing on the direct load too.
     smoap::game::forceAlreadyVisitedWorld(self, world_id, "chain-arrival");
+
+    // Story-managed chain kingdoms (Ruined pre-dragon; chainArrivalStoryManaged
+    // reads its live scenario < 2) STOP here. We deliberately withhold
+    // forceAcquireOdyssey so NOTHING lifts the boss grounding: the ship exists but
+    // stays pinned by the Lord of Lightning until the player beats the dragon and
+    // earns the pinned progression Multi-Moon — the vanilla in-game escape (which
+    // then repairs/un-grounds the ship). No unlockWorld or scenario write happens
+    // on this path (mIsUnlockWorld is the RAM-only listing force, subtracted by
+    // isWorldUnlockedHonest via markKingdomUnlockForced), so the dragon fight still
+    // arms and no earlier kingdom is unlocked (P4 finding 12 / no counter
+    // overshoot). Post-dragon (scenario >= 2) Ruined is no longer story-managed and
+    // falls through to the full normalization below like every other kingdom.
+    if (exempt) return;
+
     smoap::game::forceAcquireOdyssey("chain-arrival");
 }
 
