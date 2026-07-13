@@ -1,0 +1,195 @@
+00:24:53.765 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [moon_label] applying text='Got Bowser Statue!' on pane 'TxtScenario' (layout=0x213f233c68)
+
+00:24:57.045 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [entrance:try] stage='' id='' isReturn=0 scenario=-1 cur='CapAppearExStage'
+
+00:25:07.611 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport: 
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: stage_in_out_event 
+ Report: {
+    "stage_name": 3693920292,
+    "x": 1248.927734375,
+    "y": -1249.97705078125,
+    "z": 3435.551513671875,
+    "in_out_type": 2,
+    "play_time": 183556,
+    "across_play_time": 415427,
+    "save_data_id": 1783863202,
+    "app_version": 1
+}
+
+00:25:10.144 |S| HLE.OsThread.47 ServiceAm SetScreenShotImageOrientation: Stubbed. {screenShotImageOrientation: 0}
+00:25:10.144 |S| HLE.OsThread.47 ServiceAm SetScreenShotImageOrientation: Stubbed. {screenShotImageOrientation: 0}
+00:25:10.209 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [cappy] scene changed last=0x213358a050 new=0 ??? resetting settle gates
+
+00:25:10.225 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [cappy] scene changed last=0 new=0x213358a050 ??? resetting settle gates
+
+00:25:10.308 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport: 
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: cloth_change_event 
+ Report: {
+    "category": 1,
+    "item_name": 74113764,
+    "play_time": 183671,
+    "across_play_time": 415542,
+    "save_data_id": 1783863202,
+    "app_version": 1
+}
+
+00:25:10.310 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport: 
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: cloth_change_event 
+ Report: {
+    "category": 0,
+    "item_name": 74113764,
+    "play_time": 183671,
+    "across_play_time": 415542,
+    "save_data_id": 1783863202,
+    "app_version": 1
+}
+
+00:25:11.622 |I| Ptc.DiskWriter Ptc Save: Saved Profiling Info (size: 130041 bytes, profiled functions: 27970).
+00:25:13.176 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport: 
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: stage_in_out_event 
+ Report: {
+    "stage_name": 3693920292,
+    "x": -900,
+    "y": 1850,
+    "z": -16900,
+    "in_out_type": 0,
+    "play_time": 183671,
+    "across_play_time": 415542,
+    "save_data_id": 1783863202,
+    "app_version": 1
+}
+
+00:25:13.196 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-worldreq] request(plain) REDIRECTED stale=2 -> 1 (resident_was=1, stage_world=1) -> LOAD STARTED #20
+
+00:25:13.431 |W| HLE.OsThread.4 ServiceNv Wait: GPU processing thread is too slow, waiting on CPU...
+00:25:41.622 |I| Ptc.DiskWriter Ptc Save: Saved Profiling Info (size: 130050 bytes, profiled functions: 27973).
+00:26:11.623 |I| Ptc.DiskWriter Ptc Save: Saved Profiling Info (size: 130064 bytes, profiled functions: 27973).
+00:26:14.477 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [entrance:try] stage='WaterfallWorldHomeStage' id='CapAppearExEnt' isReturn=0 scenario=-1 cur='CapAppearExStage'
+
+00:26:14.477 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [entrance:file] stage='WaterfallWorldHomeStage' id='CapAppearExEnt' isReturn=0 scenario=-1 cur='CapAppearExStage'
+
+00:26:14.477 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [entrance:remap-APPLIED] dest='LakeWorldTownZone'/'CapAppearExEnt' cur='CapAppearExStage' -> stage='LakeWorldTownZone' id='CapTrampolineB'
+
+00:26:14.477 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-prearm] ARMED world=4 dest='LakeWorldTownZone' (resident=1) ??? fires at the next destroySceneHeap/exeLoadStage
+
+00:26:14.478 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport: 
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: stage_in_out_event 
+ Report: {
+    "stage_name": 3693920292,
+    "x": 1200,
+    "y": -150,
+    "z": 7000,
+    "in_out_type": 1,
+    "play_time": 187320,
+    "across_play_time": 419191,
+    "save_data_id": 1783863202,
+    "app_version": 1
+}
+
+00:26:15.111 |S| HLE.OsThread.47 ServiceAm SetScreenShotImageOrientation: Stubbed. {screenShotImageOrientation: 0}
+00:26:15.111 |S| HLE.OsThread.47 ServiceAm SetScreenShotImageOrientation: Stubbed. {screenShotImageOrientation: 0}
+00:26:15.192 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [cappy] scene changed last=0x213358a050 new=0 ??? resetting settle gates
+
+00:26:15.247 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-worldreq] DESTROY resident_was=1 -> -1 #14
+
+00:26:15.247 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-worldreq] request world=4 scenario=1 (resident_was=1) -> LOAD STARTED #33
+
+00:26:15.247 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-prearm] fire@exeLoadStage world=4 scenario=1 dest='LakeWorldTownZone' resident_was=1 -> LOAD STARTED
+
+00:26:16.977 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-hold] exeLoadStage held 1730 ms for world 4 -> done
+
+00:26:16.977 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-worldreq] request world=4 scenario=1 (resident_was=4) -> refused/no-op #34
+
+00:26:16.978 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [cappy] scene changed last=0 new=0x213358a050 ??? resetting settle gates
+
+00:26:17.097 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport: 
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: cloth_change_event 
+ Report: {
+    "category": 1,
+    "item_name": 74113764,
+    "play_time": 187321,
+    "across_play_time": 419192,
+    "save_data_id": 1783863202,
+    "app_version": 1
+}
+
+00:26:17.099 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport: 
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: cloth_change_event 
+ Report: {
+    "category": 0,
+    "item_name": 74113764,
+    "play_time": 187321,
+    "across_play_time": 419192,
+    "save_data_id": 1783863202,
+    "app_version": 1
+}
+
+00:26:17.607 |W| HLE.GuestThread.234 KernelSvc OutputDebugString: [smoap inf] [costume-door] seam DoorWarp::initAfterPlacement fired (door=0x213dc00970, shuffle=1)
+
+00:26:17.607 |W| HLE.GuestThread.234 KernelSvc OutputDebugString: [smoap inf] [costume-door] seam DoorWarp::initAfterPlacement fired (door=0x213dc035b0, shuffle=1)
+
+00:26:17.607 |W| HLE.GuestThread.234 KernelSvc OutputDebugString: [smoap inf] [costume-door] seam DoorWarpStageChange::initAfterPlacement fired (door=0x213dc34d10, shuffle=1)
+
+00:26:17.609 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [costume-door] force-on OpenKeySwitch (door=0x213dc00970, valid=1, ok=1)
+
+00:26:17.692 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport: 
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: stage_in_out_event 
+ Report: {
+    "stage_name": 2567263649,
+    "x": -2644.04833984375,
+    "y": 1749.470458984375,
+    "z": -4143.048828125,
+    "in_out_type": 0,
+    "play_time": 187321,
+    "across_play_time": 419192,
+    "save_data_id": 1783863202,
+    "app_version": 1
+}
+
+00:26:17.724 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-worldreq] request(plain) REDIRECTED stale=2 -> 4 (resident_was=4, stage_world=4) -> LOAD STARTED #21
+
+00:26:17.950 |W| HLE.OsThread.4 ServiceNv Wait: GPU processing thread is too slow, waiting on CPU...
+00:26:18.285 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-reswatch] resident=4 engineCurWorld=2 #16
+
+00:26:41.622 |I| Ptc.DiskWriter Ptc Save: Saved Profiling Info (size: 131292 bytes, profiled functions: 28245).
+00:27:11.622 |I| Ptc.DiskWriter Ptc Save: Saved Profiling Info (size: 131397 bytes, profiled functions: 28267).

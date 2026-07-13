@@ -82,6 +82,7 @@
 // (the [broode-respawn] field-timeline logs below will reveal that).
 
 #include "../ap/shine_lookup.hpp"
+#include "../game/CrossWorldLoad.hpp"  // resolveWorldIdForStage (external-origin gate)
 #include "../game/MoonApply.hpp"
 #include "../util/Log.hpp"
 
@@ -107,17 +108,40 @@ inline constexpr int kBroodeScenario = 1;
 // non-Cascade load would mis-place that kingdom).
 inline constexpr const char* kCascadeHomeStage = "WaterfallWorldHomeStage";
 
-// The Odyssey cabin interior. A flight arrival into a kingdom is a commit whose
-// CURRENT stage is this cabin (you board -> enter the cabin -> pick a destination
-// on the globe -> the flight commits changeNextStage from HomeShipInsideStage to
-// the kingdom's home stage). We force the Broode scenario ONLY on that
-// Odyssey-flight arrival — NOT when returning from a Cascade subarea (cur is a
-// WaterfallWorld sub-stage) or arriving any other way. Re-forcing on every
-// subarea pop-out re-injected scenario 1 and respawned Broode over and over
-// (Devon, 2026-07-05). Restricting to the cabin origin keeps the live scenario on
-// every non-flight arrival, so Broode only reappears on a genuine fly-in while her
-// Multi-Moon is still uncollected.
+// The Odyssey cabin interior — one of the recognized EXTERNAL origins below.
 inline constexpr const char* kOdysseyInsideStage = "HomeShipInsideStage";
+
+// ── Which arrivals get the Broode force (2026-07-13 rescope) ────────────────
+//
+// Original 2026-07-05 scope was "cur == the cabin" — at that time every flight
+// was a B1 door-hop committed FROM HomeShipInsideStage, so the cabin test meant
+// "any flight". When B1 was retired (2026-07-12, kingdom-select flights only)
+// the cabin stopped being on ANY flight path, the force went dead, and a
+// cap_peace_start first fly-in loaded Cascade at the engine's recomputed
+// scenario 4 (peace, no Broode; forced launchHome/upHomeLevel satisfy the
+// global "Odyssey launched" progress signal the recompute reads, which in
+// vanilla implies Broode beaten). Quest state was still scenario 1, so
+// collecting "Our First Power Moon" ran the scenario-1 main-get demo against
+// the peace placement -> StageTalkDemoNpcCap null deref
+// (docs/testing-logs/2026-07-13/cascade-crash.txt).
+//
+// New scope: force on any commit whose ORIGIN is outside Cascade's world —
+// kingdom-select flights (cur = the origin kingdom's stage), chain arrivals /
+// shuffled doors and taxis (cur = a foreign subarea), and the cabin (legacy).
+// Cascade-INTERNAL transitions (multi-exit subarea pop-outs, moon-rock
+// same-stage scenario reloads) keep the live scenario — that preserves both
+// Devon's 2026-07-05 "no Broode respawn on subarea pop-out" ruling and the
+// "never force while a moon-rock scenario is active" invariant. An unresolvable
+// origin world (-1, and not the cabin) fails toward NOT forcing.
+// The genuine prologue story drop (entrance id 'start') is excluded at the
+// call site in EntranceShuffleHook so fresh-save behavior is untouched.
+bool isExternalCascadeOrigin(const char* curStageName) {
+    if (curStageName == nullptr) return false;
+    if (std::strcmp(curStageName, kOdysseyInsideStage) == 0) return true;
+    const int curWorld = smoap::game::resolveWorldIdForStage(curStageName);
+    const int cascadeWorld = smoap::game::resolveWorldIdForStage(kCascadeHomeStage);
+    return curWorld >= 0 && cascadeWorld >= 0 && curWorld != cascadeWorld;
+}
 
 // GameDataFile::mScenarioNoPlacement byte offset (see header block: anchored to
 // the end of the 0xb68-byte struct, second-to-last s32).
@@ -182,10 +206,10 @@ void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName
                                    const char* curStageName, const char* tag) {
     if (gameDataFile == nullptr || destStageName == nullptr) return;
     if (std::strcmp(destStageName, kCascadeHomeStage) != 0) return;
-    // ONLY on an Odyssey-flight arrival (cur == the cabin). A subarea return or
-    // any other arrival must keep Cascade's live scenario — see kOdysseyInsideStage.
-    if (curStageName == nullptr ||
-        std::strcmp(curStageName, kOdysseyInsideStage) != 0) return;
+    // ONLY when the origin is outside Cascade's world (flight / chain arrival /
+    // cabin). Cascade-internal transitions keep the live scenario — see
+    // isExternalCascadeOrigin.
+    if (!isExternalCascadeOrigin(curStageName)) return;
 
     // Can't resolve the Multi-Moon's (stage, obj)? Fail SAFE: do not force.
     if (s_multiMoonStage == nullptr || s_multiMoonObj == nullptr) return;
@@ -229,10 +253,11 @@ void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName
         *p = kBroodeScenario;
 }
 
-// Returns kBroodeScenario when committing an ODYSSEY-FLIGHT arrival (cur == the
-// cabin, kOdysseyInsideStage) INTO Cascade's home stage with the Multi-Moon still
-// uncollected (else -1 = "don't force"). Subarea returns and any non-flight
-// arrival return -1 so Cascade keeps its live scenario. The caller
+// Returns kBroodeScenario when committing an EXTERNAL arrival (origin outside
+// Cascade's world: flight / chain arrival / cabin — see isExternalCascadeOrigin)
+// INTO Cascade's home stage with the Multi-Moon still uncollected (else -1 =
+// "don't force"). Cascade-internal transitions return -1 so Cascade keeps its
+// live scenario. The caller
 // writes this into the ChangeStageInfo's scenario field (mScenarioNo) BEFORE
 // changeNextStage's orig, so the engine loads Cascade directly in Broode's
 // scenario. This is the documented scenario-jump input (what moon rocks use) and
@@ -245,12 +270,13 @@ int cascadeArrivalScenarioOverride(void* gameDataFile, const char* destStageName
     if (gameDataFile == nullptr || destStageName == nullptr) return -1;
     if (std::strcmp(destStageName, kCascadeHomeStage) != 0) return -1;
     if (!kCascadeRespawnApply) return -1;
-    // ONLY force on an Odyssey-flight arrival (cur == the cabin). Returning from a
-    // Cascade subarea (cur is a WaterfallWorld sub-stage) or arriving any other
-    // way keeps the live scenario — no more repeated Broode respawns on subarea
-    // pop-out (Devon, 2026-07-05). See kOdysseyInsideStage.
-    if (curStageName == nullptr ||
-        std::strcmp(curStageName, kOdysseyInsideStage) != 0) return -1;
+    // ONLY force when the origin is outside Cascade's world: kingdom-select
+    // flights, chain arrivals (shuffled doors / taxis), and the cabin. A
+    // Cascade-internal transition (subarea pop-out, moon-rock same-stage
+    // reload) keeps the live scenario — no repeated Broode respawns on subarea
+    // pop-out (Devon, 2026-07-05) and no clobbering an active moon-rock
+    // scenario. See isExternalCascadeOrigin (2026-07-13 rescope).
+    if (!isExternalCascadeOrigin(curStageName)) return -1;
     // Fail SAFE if we can't verify collection — never force forever. Only force
     // when the Multi-Moon is DEFINITIVELY uncollected (probe == 0).
     if (!multiMoonDefinitelyUncollected()) return -1;

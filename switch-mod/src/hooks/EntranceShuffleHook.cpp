@@ -70,8 +70,11 @@ void forceCascadePlacementScenario(void* gameDataFile, const char* destStageName
 // Cascade's home stage with her Multi-Moon uncollected, else -1. We write it into
 // the ChangeStageInfo scenario field BEFORE orig — the engine's scenario-jump
 // load input, which actually drives the load (the GameDataFile field write did not).
-// Fires ONLY on an Odyssey-flight arrival (curStageName == the cabin); subarea
-// returns and other arrivals get -1 so Cascade keeps its live scenario.
+// Fires on any arrival whose ORIGIN is outside Cascade's world (kingdom-select
+// flights, chain arrivals, the cabin — 2026-07-13 rescope after the B1
+// retirement killed the old cabin-only trigger); Cascade-internal transitions
+// get -1 so Cascade keeps its live scenario. The genuine prologue story drop
+// (id 'start') is excluded at the call site below.
 int cascadeArrivalScenarioOverride(void* gameDataFile, const char* destStageName,
                                    const char* curStageName);
 
@@ -912,10 +915,23 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                 // moon rocks use). The post-orig GameDataFile field write below
                 // fired but did NOT take (the load recomputes it), so this drives
                 // the load instead. dest is the FINAL (post-remap) target.
-                // currentStageName() = the stage we're leaving. The Broode force
-                // only fires when it's the Odyssey cabin (a flight arrival); a
-                // Cascade subarea return keeps the live scenario (Devon, 2026-07-05).
-                const int sc =
+                // currentStageName() = the stage we're leaving. The force fires on
+                // any EXTERNAL-origin arrival (flight / chain arrival / cabin —
+                // 2026-07-13 rescope, see CascadeBroodeRespawnHook); a Cascade
+                // subarea return keeps the live scenario (Devon, 2026-07-05).
+                // The genuine prologue story drop (id 'start') stays vanilla:
+                // on non-cap-peace seeds its scenario is legitimately 1, and on
+                // cap_peace_start seeds the peace'd drop with a boardable ship is
+                // the intended divert flow. (With 'start' excluded here the H2
+                // id rewrite below is unreachable on current flows — every
+                // prologue visits Cascade, so post-prologue arrivals never carry
+                // 'start'. Kept in case a future bootstrap skips the prologue.)
+                const char* arrivalId = readCstrAt(info, kOffChangeStageIdCstr);
+                const bool cascadeStoryDrop =
+                    dest && arrivalId &&
+                    std::strcmp(arrivalId, kCascadeStoryArrivalId) == 0 &&
+                    std::strcmp(dest, kCascadeHomeStage) == 0;
+                const int sc = cascadeStoryDrop ? -1 :
                     cascadeArrivalScenarioOverride(self, dest, currentStageName());
                 if (sc >= 0) {
                     auto* mut = const_cast<ChangeStageInfo*>(info);
@@ -1054,11 +1070,20 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
             // Belt-and-braces: also re-assert the GameDataFile placement field
             // post-orig. It did NOT take alone (kept so the logs show both paths;
             // if the ChangeStageInfo write above succeeds this is redundant).
-            // Same Odyssey-cabin origin gate as the pre-orig force.
-            if (info)
-                forceCascadePlacementScenario(
-                    self, readCstrAt(info, kOffChangeStageNameCstr),
-                    originStage, "changeNextStage");
+            // Same external-origin gate + story-drop exclusion as the pre-orig
+            // force (the id is only H2-rewritten when the force fired, which the
+            // story-drop exclusion prevents — so re-reading it here is stable).
+            if (info) {
+                const char* postDest = readCstrAt(info, kOffChangeStageNameCstr);
+                const char* postId   = readCstrAt(info, kOffChangeStageIdCstr);
+                const bool postStoryDrop =
+                    postDest && postId &&
+                    std::strcmp(postId, kCascadeStoryArrivalId) == 0 &&
+                    std::strcmp(postDest, kCascadeHomeStage) == 0;
+                if (!postStoryDrop)
+                    forceCascadePlacementScenario(self, postDest, originStage,
+                                                  "changeNextStage");
+            }
         });
 
 // [entrance:return] — GameDataFile::returnPrevStage(). Member function, no args.
