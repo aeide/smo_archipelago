@@ -106,9 +106,9 @@ def test_moves_owned_clone_levels_add_no_move():
 
 
 def test_moves_owned_single_grant_is_item_name():
-    assert moves_owned("Ledge Grab", 1) == ["Ledge Grab"]
+    assert moves_owned("Cap Bounce", 1) == ["Cap Bounce"]
     # A clone of a single-grant ability adds no move.
-    assert moves_owned("Ledge Grab", 2) == ["Ledge Grab"]
+    assert moves_owned("Cap Bounce", 2) == ["Cap Bounce"]
     assert moves_owned("Climb", 0) == []
     assert moves_owned("", 1) == []
 
@@ -142,6 +142,22 @@ def test_progressive_table_matches_item_counts():
         assert counts[item_name] >= len(moves), (
             f"{item_name} count {counts[item_name]} < chain length {len(moves)}"
         )
+
+
+def test_ledge_grab_is_not_a_pool_item():
+    # Ledge Grab was removed as a distinct pool item — it's not a real
+    # in-game ability. The move is auto-granted with Wall Slide, and moons
+    # that need it require |Wall Slide| in logic instead. Guards against it
+    # ever reappearing in items.json (playtest regression 2026-07-13).
+    import json
+    from pathlib import Path
+    data = json.loads(
+        (Path(__file__).resolve().parents[1] / "data" / "items.json")
+        .read_text(encoding="utf-8")
+    )
+    items = data["items"] if isinstance(data, dict) and "items" in data else data
+    names = {it["name"] for it in items}
+    assert "Ledge Grab" not in names
 
 
 def test_cpp_ability_move_table_mirrors_python():

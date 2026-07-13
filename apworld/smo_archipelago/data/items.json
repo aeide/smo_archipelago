@@ -677,14 +677,6 @@
     "progression": true
   },
   {
-    "name": "Ledge Grab",
-    "category": [
-      "Ability"
-    ],
-    "count": 1,
-    "progression": true
-  },
-  {
     "name": "Climb",
     "category": [
       "Ability"

@@ -1187,14 +1187,16 @@ def _demote_mobility_only_abilities(item_pool: list) -> None:
         is pure mobility; only basic Crouch (level 1) gates a moon, so the 1st
         copy stays progression and the 2nd/3rd demote.
       * Spin Throw — never strictly required for any check.
-      * Ledge Grab — no longer a real ability (folded into Wall Slide); pending
-        full removal as a check, demote so it never constrains the fill.
 
     NOT touched (gate progression in-game and/or via entrance-shuffled moons):
     Progressive Ground Pound (Dive), Progressive Jump (height routes), Yoshi
     (shuffled Mushroom moons), Bowser / Spark pylon (region-gating captures).
+
+    (Ledge Grab was removed as a pool item entirely — it was never a real
+    in-game ability; the move is auto-granted with Wall Slide, and the 3
+    pole moons that need it require |Wall Slide| in logic instead.)
     """
-    DEMOTE_ALL = {"Spin Throw", "Ledge Grab"}
+    DEMOTE_ALL = {"Spin Throw"}
     KEEP_FIRST = {"Progressive Crouch": 1}  # name -> # of progression copies kept
     kept: dict[str, int] = {}
     for it in item_pool:
