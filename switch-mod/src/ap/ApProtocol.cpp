@@ -462,6 +462,22 @@ bool parseKingdomGates(Reader& r, KingdomGates& out) {
     return true;
 }
 
+bool parseCapPeaceStart(Reader& r, CapPeaceStart& out) {
+    // Single-flag message: {"t":"cap_peace_start","enabled":bool}. Unknown
+    // fields hard-reject (same contract as every other parser here — the
+    // bridge and this parser ship together).
+    out.enabled = false;
+    std::string_view key;
+    while (r.nextField(key)) {
+        if (key == "enabled") {
+            if (!r.nextBool(out.enabled)) return false;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool parseEntranceMap(Reader& r, EntranceMap& out) {
     // P7 — full-overwrite (possibly chunked) entrance remap. `reset` (bool) and
     // `entries` (array of {from, to_stage, to_id, kind, from_id}) may arrive in
@@ -668,6 +684,7 @@ bool decode(const char* data, std::size_t len, DecodedMsg& out) {
     else if (eqStr(out.t, "shine_scouts"))   ok = parseShineScouts(r, out.shine_scouts);
     else if (eqStr(out.t, "outstanding"))    ok = parseOutstanding(r, out.outstanding);
     else if (eqStr(out.t, "kingdom_gates"))  ok = parseKingdomGates(r, out.kingdom_gates);
+    else if (eqStr(out.t, "cap_peace_start")) ok = parseCapPeaceStart(r, out.cap_peace_start);
     else if (eqStr(out.t, "talkatoo_pool"))  ok = parseTalkatooPool(r, out.talkatoo_pool);
     else if (eqStr(out.t, "shop_labels"))    ok = parseShopLabels(r, out.shop_labels);
     else if (eqStr(out.t, "coin_grant"))     ok = parseCoinGrant(r, out.coin_grant);

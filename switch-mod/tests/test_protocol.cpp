@@ -733,6 +733,29 @@ TEST(decode_kingdom_gates_unknown_field_rejected) {
         m));
 }
 
+// start_at_cap_peace — cap_peace_start wire message --------------------------
+
+TEST(decode_cap_peace_start_enabled) {
+    DecodedMsg m;
+    EXPECT(decodeFrom(R"({"t":"cap_peace_start","enabled":true})", m));
+    EXPECT_EQ_S(m.t, "cap_peace_start");
+    EXPECT(m.cap_peace_start.enabled);
+}
+
+TEST(decode_cap_peace_start_disabled) {
+    // enabled=false is meaningful (full-overwrite: restores the
+    // vanilla-prologue guard after a seed swap).
+    DecodedMsg m;
+    EXPECT(decodeFrom(R"({"t":"cap_peace_start","enabled":false})", m));
+    EXPECT(!m.cap_peace_start.enabled);
+}
+
+TEST(decode_cap_peace_start_unknown_field_rejected) {
+    DecodedMsg m;
+    EXPECT(!decodeFrom(
+        R"({"t":"cap_peace_start","enabled":true,"bogus":1})", m));
+}
+
 TEST(decode_outstanding_caps_at_max_entries) {
     // Build a synthetic message with kMaxEntries + 2 entries; decoder must
     // accept up to the cap and silently drop the rest (no error, partial OK).

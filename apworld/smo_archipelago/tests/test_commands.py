@@ -75,6 +75,8 @@ class _StubSwitch:
         self.push_shop_label_calls: int = 0
         self.kingdom_gates_calls: list[dict[str, int]] = []
         self.push_kingdom_gates_calls: int = 0
+        self.cap_peace_start_calls: list[bool] = []
+        self.push_cap_peace_start_calls: int = 0
         self.entrance_map_calls: list[dict[str, str]] = []
         self.port_matching_calls: list[dict[str, str]] = []
         self.push_entrance_map_calls: int = 0
@@ -135,6 +137,14 @@ class _StubSwitch:
 
     async def push_kingdom_gates(self) -> None:
         self.push_kingdom_gates_calls += 1
+
+    def set_cap_peace_start(self, enabled: bool) -> None:
+        # start_at_cap_peace: Connected stashes the slot flag (False is
+        # meaningful — it restores the Switch's vanilla-prologue guard).
+        self.cap_peace_start_calls.append(bool(enabled))
+
+    async def push_cap_peace_start(self) -> None:
+        self.push_cap_peace_start_calls += 1
 
     def set_entrance_map(self, m: dict[str, str]) -> None:
         self.entrance_map_calls.append({k: str(v) for k, v in m.items()})
@@ -399,6 +409,54 @@ async def test_connected_handler_clears_kingdom_gates_when_absent():
 
     assert sw.kingdom_gates_calls == [{}]
     assert sw.push_kingdom_gates_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_connected_handler_pushes_cap_peace_start_flag():
+    """slot_data["start_at_cap_peace"] (auto-shipped by fill_slot_data) is
+    forwarded to the Switch so it re-arms the fresh-save Cap-peace
+    bootstrap (tower-exit peace floor + pre-Broode Odyssey->Cap divert)."""
+    ctx = SMOContext(
+        server_address=None, password=None,
+        state=BridgeState(),
+        datapackage=DataPackage(),
+        shine_map=ShineMap(),
+        capture_map=CaptureMap(),
+    )
+    ctx.auth = "Mario"
+    sw = _StubSwitch()
+    ctx.switch = sw  # type: ignore[assignment]
+
+    await ctx._handle_ap_package("Connected", {
+        "slot_data": {"capturesanity": 0, "start_at_cap_peace": 1},
+    })
+
+    assert sw.cap_peace_start_calls == [True]
+    assert sw.push_cap_peace_start_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_connected_handler_clears_cap_peace_start_when_absent():
+    """A seed WITHOUT start_at_cap_peace must actively ship False, so a
+    reconnect after a cap-peace session restores the Switch's
+    vanilla-prologue guard."""
+    ctx = SMOContext(
+        server_address=None, password=None,
+        state=BridgeState(),
+        datapackage=DataPackage(),
+        shine_map=ShineMap(),
+        capture_map=CaptureMap(),
+    )
+    ctx.auth = "Mario"
+    sw = _StubSwitch()
+    ctx.switch = sw  # type: ignore[assignment]
+
+    await ctx._handle_ap_package("Connected", {
+        "slot_data": {"capturesanity": 0},
+    })
+
+    assert sw.cap_peace_start_calls == [False]
+    assert sw.push_cap_peace_start_calls == 1
 
 
 @pytest.mark.asyncio

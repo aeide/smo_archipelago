@@ -1032,6 +1032,16 @@ class SMOContext(CommonContext):
                     str(k): int(v) for k, v in raw_gates.items()
                 })
                 await self.switch.push_kingdom_gates()
+                # start_at_cap_peace: ship the slot flag so the Switch
+                # re-enables the fresh-save Cap-peace bootstrap (tower-exit
+                # peace floor + pre-Broode Odyssey->Cap door divert).
+                # fill_slot_data auto-ships every option, so the key is
+                # present on any seed generated since the option existed;
+                # absent/0 -> False restores the vanilla-prologue guard.
+                self.switch.set_cap_peace_start(
+                    bool(slot_data.get("start_at_cap_peace", 0))
+                )
+                await self.switch.push_cap_peace_start()
                 # P7 entrance shuffle: bijection from slot_data to the Switch.
                 raw_entrance_map = slot_data.get("entrance_map") or {}
                 self.switch.set_entrance_map(

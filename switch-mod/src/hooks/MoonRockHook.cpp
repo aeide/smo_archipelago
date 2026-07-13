@@ -63,6 +63,13 @@ class LiveActor;
 
 namespace smoap::hooks {
 
+// Defined in CascadeBroodeRespawnHook.cpp — true once Cascade's Madame Broode
+// Multi-Moon is collected (Broode beaten). Pure save-state read via the HintInfo
+// collection probe, matched by (stage, obj) — scenario-INDEPENDENT and stable
+// across every reload path (unlike isClearWorldMainScenario, which reads stale on
+// a subarea returnPrevStage pop). Used by the Cascade-specific moon-rock gate.
+bool cascadeMultiMoonCollected();
+
 namespace {
 
 // Cap-peace-from-start experiment: OFF (2026-06-11 verdict). Forcing Cap's
@@ -77,6 +84,9 @@ namespace {
 inline constexpr bool kCapPeaceFromStart = false;
 // SMO world id 0 = Cap (kKingdoms[0], identity-mapped in kWorldIdToBit).
 inline constexpr int kCapWorldId = 0;
+// SMO world id 1 = Cascade (Waterfall; kKingdoms[1], identity-mapped). The moon-
+// rock clear gate is relaxed for Cascade only — see the Broode note in the hook.
+inline constexpr int kCascadeWorldId = 1;
 
 // === Auto-start "World Traveling Peach" (Devon 2026-06-20) =================
 // The "Peach in the X Kingdom" moons require the post-game traveling-Peach
@@ -196,7 +206,23 @@ HkTrampoline<bool, const al::LiveActor*> moonRockEnableHook =
         }
 
         // Gate 1: kingdom story must be complete (world peace).
-        if (!s_isClearWorldMainScenario(ctx.gdf, ctx.world_id)) return false;
+        //
+        // Cascade carve-out (Devon 2026-07-12): after beating Broode, Cascade's
+        // isClearWorldMainScenario reads STALE until a full changeNextStage load
+        // recomputes the world scenario. A subarea exit is a returnPrevStage POP
+        // that restores the forced Broode scenario-1 state, so the flag stays
+        // false and the rock stayed dormant — it only woke after a whole kingdom
+        // leave+return (fly to Cap and back). Broode's Multi-Moon collection is a
+        // scenario-independent, reload-stable "Cascade story beaten" signal, so
+        // accept it as satisfying the clear gate. The ensuing rock scenario-jump
+        // skips no content — Broode is Cascade's only boss and she's already down;
+        // and gate 2 below still routes the reloaded rock through the vanilla
+        // wreckage/openMoonRock branch. Cascade-only so no other kingdom (whose
+        // peace gate already works in-game) is affected.
+        const bool story_clear =
+            s_isClearWorldMainScenario(ctx.gdf, ctx.world_id) ||
+            (ctx.world_id == kCascadeWorldId && cascadeMultiMoonCollected());
+        if (!story_clear) return false;
 
         // Gate 2: never force while the moon-rock scenario is active — the
         // reloaded rock must run the vanilla wreckage/openMoonRock branch.

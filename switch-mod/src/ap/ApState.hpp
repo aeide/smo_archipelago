@@ -480,6 +480,17 @@ public:
             g.store(-1, std::memory_order_relaxed);
     }
 
+    // start_at_cap_peace slot flag (cap_peace_start wire msg, full-overwrite
+    // on AP Connected + every HELLO replay). When true the fresh-save
+    // Cap-peace bootstrap is re-armed: CapReturnScenarioHook bypasses its
+    // vanilla-prologue guard (exiting Top Hat Tower floors Cap to the peace
+    // layout + parks the Odyssey + unlocks Cascade), and EntranceShuffleHook's
+    // Odyssey->Cap door divert fires even pre-Broode so a 0-check player can
+    // leave Cascade. Boot default false = vanilla prologue (fail-safe for
+    // option-off players and for play before the bridge connects). Worker
+    // thread writes on receipt; frame-thread hooks read.
+    std::atomic<bool> cap_peace_start{false};
+
     // ---- P7 entrance shuffle remap table -----------------------------------
     //
     // Bridge ships an `entrance_map` message (full-overwrite, possibly chunked)
@@ -675,6 +686,35 @@ public:
     // never redirect the chain arrival that created them. Frame-thread only;
     // atomic for ApState hygiene.
     std::atomic<bool> chain_demo_warp_pending{false};
+
+    // First-visit door-arrival warp-demo suppression (2026-07-12, door-arrival-
+    // first-visit-demo). A REMAPPED (shuffled-door) first arrival into a kingdom
+    // trips the game's first-visit forward-world-warp arrival flow: it plays the
+    // Odyssey warp-in and spawns Mario AT THE ODYSSEY, overriding the paired door
+    // entrance id — Devon's Cascade->Metro shop->Sand report. The gate is the
+    // STORED GameDataFile::isFirstTimeNextWorld() flag (decomp: isForwardWorldWarpDemo
+    // is only forward/backward DIRECTION; the first-visit signal on a plain door
+    // commit is isFirstTimeNextWorld), which setAlreadyGoWorld does NOT touch — so
+    // the existing chain-arrival normalization couldn't suppress it. Fix: arm this
+    // window at the remapped first-arrival commit (dest overworld HomeStage, not
+    // yet isAlreadyGoWorld), and the isFirstTimeNextWorld read-hook returns false
+    // while armed so the arrival takes the normal door-entrance path. Reversible
+    // (no save write) and NOT the mIsPlayDemoWorldWarp mid-load clear (avoids the
+    // 2026-07-05 crash hazard). Scoped to shuffled-door arrivals ONLY: a legit
+    // Odyssey world-map flight is a demo-warp commit (not remapped), never arms,
+    // so its intended first-visit intro + Odyssey spawn is untouched.
+    //   *_world = the destination world id (armed marker); -1 = disarmed.
+    //   *_until_ms = wallclock backstop; the read-hook honors the window only
+    //                while nowMs() < this.
+    //   *_saw_true = latch: the read-hook only self-disarms once it has observed
+    //                the game's own isFirstTimeNextWorld go TRUE (during the
+    //                arrival) and then FALSE (arrival consumed it). Without the
+    //                latch a stray pre-arrival read of a not-yet-set flag (false)
+    //                would disarm prematurely — the flag can be set AFTER our
+    //                commit-time arm, during the world load. Reset at each arm.
+    std::atomic<int>          first_visit_warp_suppress_world{-1};
+    std::atomic<std::int64_t> first_visit_warp_suppress_until_ms{0};
+    std::atomic<bool>         first_visit_warp_saw_true{false};
 
     // M6 phase B — GameDataHolder pointer cache.
     //

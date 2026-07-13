@@ -437,6 +437,19 @@ struct KingdomGates {
     std::size_t entry_count = 0;
 };
 
+// start_at_cap_peace — bridge -> Switch slot-option flag. Sent on AP
+// Connected and re-shipped on every HELLO replay. When enabled, the
+// fresh-save Cap-peace bootstrap is re-armed: CapReturnScenarioHook's
+// vanilla-prologue guard (isWorldAlreadyGo(Cascade), P5 T5) is bypassed so
+// exiting Top Hat Tower mid-prologue floors Cap to its peace layout, and
+// EntranceShuffleHook's Odyssey->Cap door divert fires even pre-Broode so
+// a 0-check player can leave Cascade. enabled=false is meaningful (full
+// overwrite): it restores the guard after a seed swap. Boot default is
+// false, so option-off players are never affected pre-connect.
+struct CapPeaceStart {
+    bool enabled = false;
+};
+
 // Talkatoo% mode — one TalkatooPool message per kingdom. Bridge sends N
 // messages (one per kingdom) on HELLO replay when slot_data has
 // talkatoo_mode=true, plus a single disable message (enabled=false) when
@@ -653,6 +666,7 @@ struct DecodedMsg {
     ShineScouts shine_scouts{};
     Outstanding outstanding{};
     KingdomGates kingdom_gates{};
+    CapPeaceStart cap_peace_start{};
     TalkatooPool talkatoo_pool{};
     ShopLabels shop_labels{};
     CoinGrant coin_grant{};

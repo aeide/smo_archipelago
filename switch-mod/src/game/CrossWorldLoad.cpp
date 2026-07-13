@@ -34,6 +34,7 @@ using GetLoadWorldIdFn               = s32  (*)(const WorldResourceLoader*);
 using GetScenarioNoByWorldIdFn       = s32  (*)(const void* /*GameDataFile*/, s32);
 using GetCurrentWorldIdFn            = int  (*)(GameDataHolderAccessor);
 using GetNextStageNameFn             = const char* (*)(GameDataHolderAccessor);
+using TryDestroyWorldResourceFn      = void (*)(WorldResourceLoader*);
 
 TryFindWorldIndexByStageNameFn s_tryFindWorldIndexByStageName = nullptr;
 RequestLoadWorldHomeStageFn    s_requestLoadWorldHomeStage    = nullptr;
@@ -42,6 +43,7 @@ GetLoadWorldIdFn               s_getLoadWorldId               = nullptr;
 GetScenarioNoByWorldIdFn       s_getScenarioNoByWorldId       = nullptr;
 GetNextStageNameFn             s_getNextStageName             = nullptr;
 GetNextStageNameFn             s_getCurrentStageName          = nullptr;  // T-A
+TryDestroyWorldResourceFn      s_tryDestroyWorldResource      = nullptr;  // §11
 
 // HakoniwaSequence* — cached by drawMainHook every frame (and refreshed by
 // the two trampolines below, which receive it as `this`). Frame-thread only;
@@ -72,6 +74,55 @@ WorldResourceLoader* resolveLoader() {
         s_sequence.load(std::memory_order_relaxed));
     if (!seq) return nullptr;
     return seq->mResourceLoader;
+}
+
+// ── P5 §11: boot dual-heap teardown (2026-07-12 Sand crash) ─────────────────
+//
+// A session that BOOTS into the Cap prologue creates the twin resident set —
+// requestLoadWorldHomeStageResource(0, 1) takes its special branch and builds
+// mCapWorldHeap + mWaterfallWorldHeap so the whole prologue (Cap AND Cascade)
+// runs without world loads (decomp WorldResourceLoader.cpp, read 2026-07-12).
+// While mWaterfallWorldHeap exists the HomeStage request variant HARD-REFUSES
+// on its first line — and the only vanilla teardown is the FIRST FLIGHT's
+// world-change seam calling tryDestroyWorldResource() before its request. The
+// chain topology never crosses that seam (door hops, the prologue crash
+// cutscene, and the Odyssey->Cap divert are all changeNextStage commits), so
+// on a start_at_cap_peace fresh-save session the dual-heap lived forever:
+// Devon's Cascade -> City shop -> Sand walk had the pre-arm AND the per-tick
+// backstop refused for 4.5 s, Sand's scene began init with the boot pair
+// still resident, the engine's PLAIN request (no waterfall guard) then
+// started the world load mid-scene-init, and the SZS decompressor aborted in
+// ExpHeap::tryAlloc (sand-crash.txt).
+//
+// Fix: when a HomeStage request refuses at our seams and the eliminable
+// guards don't explain it — no load in flight, a DIFFERENT world resident —
+// the cause is the boot dual-heap (or the never-absent WorldList byml).
+// Replicate the vanilla flight seam: tryDestroyWorldResource(), re-request.
+// Safe here because both call sites run in the load phase with the old scene
+// dead — exactly where vanilla does it. Destinations INSIDE the boot pair
+// stay exempt: Cap(0)/Cascade(1) are what the dual-heap serves, a refused
+// request for them needs no load at all (the validated Cascade->Cap divert
+// runs on this state), and tearing it down mid-prologue would only force a
+// pointless reload.
+inline constexpr int kBootPairMaxWorldId = 1;  // Cap=0, Waterfall/Cascade=1
+
+bool requestWorldLoad(WorldResourceLoader* loader, int world, int scenario,
+                      const char* tag) {
+    bool ok = s_requestLoadWorldHomeStage(loader, world, scenario);
+    if (!ok && world > kBootPairMaxWorldId && s_tryDestroyWorldResource &&
+        s_isEndLoadWorldResource && s_isEndLoadWorldResource(loader)) {
+        const int resident = s_getLoadWorldId ? s_getLoadWorldId(loader) : -100;
+        if (resident != world) {
+            s_tryDestroyWorldResource(loader);
+            ok = s_requestLoadWorldHomeStage(loader, world, scenario);
+            SMOAP_LOG_INFO("[p5-prearm] %s boot dual-heap TEARDOWN "
+                           "(resident_was=%d) -> re-request world=%d "
+                           "scenario=%d -> %s",
+                           tag, resident, world, scenario,
+                           ok ? "LOAD STARTED" : "STILL REFUSED");
+        }
+    }
+    return ok;
 }
 
 // Fire the armed pre-load, if any. `trigger` names the seam for the log.
@@ -109,8 +160,9 @@ void firePendingPreload(const char* trigger) {
     // world already resident / WorldList byml missing all return false
     // without touching anything. On true it destroys the old resident set
     // (safe here: the old scene is already dead at both trigger seams) and
-    // starts the async reload on the loader's own thread.
-    const bool ok = s_requestLoadWorldHomeStage(loader, world, scenario);
+    // starts the async reload on the loader's own thread. The §11 wrapper
+    // clears the boot dual-heap refusal (vanilla first-flight teardown).
+    const bool ok = requestWorldLoad(loader, world, scenario, trigger);
     SMOAP_LOG_INFO("[p5-prearm] fire@%s world=%d scenario=%d dest='%s' "
                    "resident_was=%d -> %s",
                    trigger, world, scenario, s_pending_stage, resident,
@@ -165,7 +217,7 @@ void universalCrossWorldCheck() {
             if (sc >= 1) scenario = sc;
         }
     }
-    const bool ok = s_requestLoadWorldHomeStage(loader, next_world, scenario);
+    const bool ok = requestWorldLoad(loader, next_world, scenario, "backstop");
     // Rate-limit: this runs per load tick — only log transitions. A refusal
     // right after a successful start is the loader's own in-progress guard,
     // not a failure.
@@ -222,6 +274,18 @@ HkTrampoline<void, HakoniwaSequence*> exeLoadStageHook =
         // set at commit, unlocked never) has mIsUnlockWorld[dest]=true when
         // placement runs — the 1 Hz drawMain pump alone can lose that race.
         tickChainKingdomListing();
+        // start_at_cap_peace bootstrap (2026-07-12): the ship-acquire
+        // (activateHome + upHomeLevel + launchHome) normally fires only at the
+        // changeNextStage commits into Cap/Cascade — a DIRECT load (save
+        // sitting in Cascade, save/quit/reload) skips that seam entirely, so
+        // the scene inits with the ship buried + deactivated, the boarding
+        // door dead, and the Odyssey->Cap divert unreachable. Re-assert the
+        // acquired save-state pre-orig on every load tick so placement reads
+        // it (same reasoning as the listing re-assert above). True no-op once
+        // the Odyssey is legitimately owned; gated on the seed's option.
+        if (smoap::ap::ApState::instance().cap_peace_start.load(
+                std::memory_order_relaxed))
+            forceAcquireOdyssey("cap-peace-load");
         holdForWorldLoad();
         exeLoadStageHook.orig(self);
     });
@@ -381,6 +445,11 @@ void installCrossWorldLoadHooks() {
     resolveOne(s_getCurrentStageName,
                smoap::sym::kGameDataFunctionGetCurrentStageName,
                "GameDataFunction::getCurrentStageName");  // T-A redirect
+    // §11 teardown — same entry the destroy probe patches, so our own calls
+    // land in the [p5-worldreq] DESTROY ledger too (wanted).
+    resolveOne(s_tryDestroyWorldResource,
+               smoap::sym::kWorldResourceLoaderTryDestroyWorldResource,
+               "WorldResourceLoader::tryDestroyWorldResource");
 
     // §7 probe: patch the request entry so every caller (ours included —
     // s_requestLoadWorldHomeStage points at the same, now-patched, entry and

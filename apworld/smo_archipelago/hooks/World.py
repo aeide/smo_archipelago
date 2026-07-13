@@ -1428,6 +1428,114 @@ def _relax_full_accessibility(world: World, multiworld: MultiWorld, player: int)
         "accessibility (see _relax_full_accessibility).", player)
 
 
+# Regions.json pseudo-regions exempt from the decoupled flight-economy predicate.
+# Pokino hangs off Bowser's and holds only the Pokio capture check
+# ({YamlDisabled(capturesanity)} or |Pokio|); a chain visitor standing in
+# Bowser's overworld with |Pokio| can physically do it, so gating it on
+# flight_reach(Bowser's) would over-restrict the intended chain widening.
+# See docs/handoff-decoupled-flight-economy-fix.md.
+FLIGHT_ECONOMY_EXEMPT = frozenset({"Pokino"})
+
+
+def _apply_decoupled_flight_economy(
+    world: World, multiworld: MultiWorld, player: int
+) -> None:
+    """D1 erratum fix (decoupled entrance shuffle ONLY): chain arrival must never
+    discount the cumulative flight moon economy.
+
+    Background: the Manual engine gates a region's OUTGOING entrances (the egress
+    off-by-one — see docs/handoff-region-gating-egress.md), so each inter-kingdom
+    flight edge K -> J carries only K's OWN single-hop {KingdomMoons} gate. The
+    cumulative ~124-moon cost normally emerges ONLY from reach() having to
+    traverse the whole regions.json chain. Under decoupled, the free
+    "K Arrival -> K" presence edge lets on-foot chain arrival grant the K region
+    directly, so reach() no longer has to fly the chain — collapsing
+    reach(Moon Kingdom) to ~one kingdom's gate and producing ~8-sphere seeds with
+    mass-stranded progression (docs/handoff-decoupled-flight-economy-fix.md).
+
+    Fix: AND onto every inter-kingdom flight edge K -> J a flight_reach(K)
+    predicate meaning "the player could have FLOWN to K", computed over the
+    regions.json connects_to DAG ONLY (chain / Arrival / interior edges are
+    excluded by construction — they never connect two regions.json regions) as an
+    OR-over-parents recursion mirroring reach() semantics. requires_ok routes each
+    region's own `requires` through evaluate_full_requires, the same evaluator the
+    core set_rules clobber uses (so {KingdomMoons} + rolled-gate handling matches
+    byte-for-byte); empty-requires nodes (Cascade, Very Early Luncheon, Mushroom,
+    Dark/Darker) evaluate free. add_rule (AND) — NOT set_rule — so the core egress
+    rule survives as a conjunct.
+
+    Decoupled-only: no-op unless entrance_shuffle == decoupled, so off/simple keep
+    the untouched single-hop flight edges (guard:
+    test_simple_mode_grows_no_decoupled_machinery). The DAG is a tree rooted at the
+    starting region, so flight_reach is linear (~19 nodes) — no memo needed.
+    """
+    if _entrance_shuffle_mode(multiworld, player) != EntranceShuffle.option_decoupled:
+        return
+
+    from ..Regions import regionMap
+    from ..Locations import ROOT_REGION
+    from ..entrance_logic import evaluate_full_requires
+    from worlds.generic.Rules import add_rule
+
+    # Start of the flight DAG (the free starting overworld — Cascade).
+    start = next((name for name, area in regionMap.items()
+                  if isinstance(area, dict) and area.get("starting")), None)
+
+    # parents[J] = [P, ...] for every regions.json edge P -> J (connects_to).
+    # Forks are in children (Sand -> {Lake, Wooded}; Night Metro -> {Cloud,
+    # Metro}; Metro -> {Snow, Seaside}), so each real kingdom has exactly one
+    # parent and the recursion below never re-expands a node.
+    parents: dict[str, list[str]] = {}
+    for p_name, area in regionMap.items():
+        if not isinstance(area, dict):
+            continue
+        for child in area.get("connects_to", None) or ():
+            if child in regionMap:
+                parents.setdefault(child, []).append(p_name)
+
+    def requires_ok(state, name: str) -> bool:
+        """Does `state` satisfy region `name`'s own requires — the EXACT gate the
+        core set_rules clobber evaluates for that region's outgoing edges. Routed
+        through evaluate_full_requires so {KingdomMoons}/rolled-gate handling
+        matches the core; list-form requires (only empty lists appear) are free."""
+        area = regionMap.get(name)
+        req = area.get("requires", "") if isinstance(area, dict) else ""
+        if not isinstance(req, str):
+            return True
+        return evaluate_full_requires(state, req, world, multiworld, player)
+
+    def flight_reach(state, name: str) -> bool:
+        if name == start:
+            return True
+        return any(flight_reach(state, par) and requires_ok(state, par)
+                   for par in parents.get(name, ()))
+
+    applied = 0
+    for k_name in regionMap:
+        if k_name == ROOT_REGION:
+            continue  # the pseudo-root's edge into the free start is not a flight edge
+        try:
+            region_obj = multiworld.get_region(k_name, player)
+        except Exception:
+            continue
+        for ent in list(region_obj.exits):
+            dest_region = ent.connected_region
+            if dest_region is None:
+                continue
+            dest = dest_region.name
+            # Only regions.json -> regions.json edges are flight edges. This
+            # naturally skips "K -> K Arrival" (dest not in regionMap) and the
+            # exempted Pokino pseudo-region.
+            if dest not in regionMap or dest in FLIGHT_ECONOMY_EXEMPT:
+                continue
+            add_rule(ent, lambda state, k=k_name: flight_reach(state, k))
+            applied += 1
+
+    logging.info(
+        "entrance_shuffle: decoupled flight-economy predicate applied to %d "
+        "inter-kingdom flight edge(s) (D1 erratum, player %d)", applied, player)
+
+
 # Called after rules for accessing regions and locations are created, in case you want to see or modify that information.
 def after_set_rules(world: World, multiworld: MultiWorld, player: int):
     _relax_full_accessibility(world, multiworld, player)
@@ -1460,12 +1568,22 @@ def after_set_rules(world: World, multiworld: MultiWorld, player: int):
         # but NO door pass: every decoupled port entrance is sourced from a
         # region the Manual core set_rules never touches (interior / Arrival
         # regions aren't in regions.json), so the wiring-time rules survive
-        # un-clobbered. The one decoupled entrance that IS clobbered — each
-        # kingdom's "{K} -> {K} Arrival" flight edge — WANTS its clobbered
-        # rule (the kingdom's own requires = honest flight arrival; see
-        # _wire_decoupled_entrances).
+        # un-clobbered. Each kingdom's "{K} -> {K} Arrival" flight-verification
+        # edge KEEPS its clobbered rule (the kingdom's own requires = honest
+        # flight arrival; see _wire_decoupled_entrances).
+        #
+        # BUT the inter-kingdom flight edges (regions.json connects_to) must NOT
+        # keep only their clobbered single-hop gate: under decoupled the free
+        # "K Arrival -> K" presence edge lets on-foot chain arrival grant K, so
+        # reach() stops accumulating the flight chain and reach(Moon) collapses
+        # to ~one kingdom's gate (the D1 erratum — audited
+        # docs/handoff-decoupled-flight-economy-fix.md). _apply_decoupled_flight
+        # _economy ANDs a recursive flight_reach(source) predicate back onto every
+        # such edge to restore the cumulative economy. MUST run last so it stacks
+        # on the location/scenario re-gates above (add_rule, never set_rule).
         _apply_entrance_shuffle_location_rules(world, multiworld, player)
         _apply_subarea_scenario_gates(world, multiworld, player)
+        _apply_decoupled_flight_economy(world, multiworld, player)
     if is_option_enabled(multiworld, player, "start_at_cap_peace"):
         _apply_start_at_cap_peace_rules(world, multiworld, player)
     # Must run last so it wins over the access rules set in set_rules.

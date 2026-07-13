@@ -62,6 +62,7 @@
 #include "hk/types.h"
 
 #include "HookSymbols.hpp"
+#include "../ap/ApState.hpp"
 #include "../game/KingdomUnlock.hpp"
 #include "../game/OdysseyRescue.hpp"
 #include "../util/Log.hpp"
@@ -122,7 +123,16 @@ int capArrivalScenarioOverride(const void* gameDataFile, int incomingScenario,
     // Cascade; false only mid-prologue. Degraded read (getter unresolved)
     // returns false => floor off; acceptable — the same getter backs the whole
     // chain-return machinery and has resolved on every logged boot.
-    if (!smoap::game::isWorldAlreadyGo(
+    //
+    // start_at_cap_peace BYPASS: when the seed shipped the option (wire
+    // cap_peace_start, ApState boot-default false), the mid-prologue force is
+    // exactly the point — exiting Top Hat Tower floors Cap to the peace
+    // layout so a fresh save can bootstrap itself into the sphere-0 Cap-peace
+    // start (the caller also parks the Odyssey + unlocks Cascade on this
+    // branch). The guard only protects vanilla/option-off prologues.
+    if (!smoap::ap::ApState::instance().cap_peace_start.load(
+            std::memory_order_relaxed) &&
+        !smoap::game::isWorldAlreadyGo(
             smoap::game::worldIdFromKingdomShort("Cascade")))
         return -1;
 
@@ -164,7 +174,9 @@ void installCapReturnScenarioHook() {
                    "commits into %s whose effective scenario is below it; "
                    "moon-rock scenario left untouched; gated on Cascade "
                    "isWorldAlreadyGo so a vanilla Cap prologue is never forced "
-                   "(P5 doc §6.5); apply=%d getScenarioNo=%d)",
+                   "(P5 doc §6.5) UNLESS the seed ships start_at_cap_peace "
+                   "(wire cap_peace_start — fresh-save bootstrap); "
+                   "apply=%d getScenarioNo=%d)",
                    kCapReturnScenario, kCapHomeStage, kCapReturnApply ? 1 : 0,
                    s_getScenarioNo != nullptr ? 1 : 0);
 }

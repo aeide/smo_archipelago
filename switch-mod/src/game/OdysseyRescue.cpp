@@ -573,6 +573,20 @@ void runOdysseySoftlockSweep() {
         }
     }
 
+    // --- start_at_cap_peace: per-sweep ship-acquire re-assert (2026-07-12) ---
+    // On an option-ON seed the Odyssey is owned from the start by definition,
+    // but the commit-time forceAcquireOdyssey only covers TRANSITIONS — a save
+    // already sitting in Cascade (loaded directly, no changeNextStage) reads
+    // activate=0/level=0 and the ship stays buried with a dead boarding door.
+    // Re-assert here at the 1 Hz sweep so the save-state flips as soon as the
+    // wire flag lands (the load-seam force in CrossWorldLoad covers placement
+    // on the NEXT load; the freeship level branch below lifts the pose live
+    // once activate reads true). forceAcquireOdyssey early-outs once owned,
+    // so this logs once and goes silent.
+    if (smoap::ap::ApState::instance().cap_peace_start.load(
+            std::memory_order_relaxed))
+        forceAcquireOdyssey("cap-peace-sweep");
+
     // --- Cascade first-arrival: lift the Odyssey out of the rocks ---
     // On the story-drop into Cascade (entrance id='start') the arrival init
     // resets the home LEVEL to 0 AFTER forceAcquireOdyssey's pre-load write, so

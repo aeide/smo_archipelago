@@ -12,11 +12,16 @@ hooks/World.py) and assert the wired region graph's invariants:
   * fixed points wire no entrance EXCEPT the lone-overworld vanilla credit;
   * kingdoms gain Arrival regions (chain channel) whose flight-verification
     edge carries the Manual core's fullRegionCheck (the honest flight-arrival
-    predicate), while every regions.json flight edge stays clobber-owned
-    (i.e. untouched by the decoupled wiring);
+    predicate), while every inter-kingdom flight edge carries the core rule AND
+    the D1-erratum flight-economy predicate (add_rule combine="and");
+  * flight economy (D1 erratum): the victory region (Moon Kingdom) is reachable
+    ONLY at the full cumulative kingdom-gate cost — unreachable empty, still
+    unreachable with all non-moon progression, and every chain kingdom's moons
+    individually binding (docs/handoff-decoupled-flight-economy-fix.md);
   * same seed => identical wiring (determinism);
-  * simple mode grows NO decoupled machinery (byte-identical-behavior guard —
-    the full suite is the real regression gate).
+  * simple mode grows NO decoupled machinery AND leaves regions.json flight
+    edges untouched (byte-identical-behavior guard — the full suite is the real
+    regression gate).
 
 Gated on SMOAP_LIVE_AP=1 and run via subprocess like the other live tests.
 NOTE: exercises the INSTALLED meatballs.apworld zip — run
@@ -158,15 +163,33 @@ for seed in (1, 11, 22):
             back_ok += 1
     from worlds.meatballs.entrance_logic import load_data_json
     region_names = list(load_data_json("regions.json"))
-    unclobbered_kingdom_exits = 0
+    region_set = set(region_names)
+    # D1 erratum fix (_apply_decoupled_flight_economy): every inter-kingdom
+    # flight edge (regions.json -> non-exempt regions.json) now carries the core
+    # fullRegionCheck AND the flight_reach predicate (add_rule combine="and",
+    # whose wrapper qualname is add_rule.<locals>.<lambda>). The
+    # "K -> K Arrival" flight-verification edges must STILL be the untouched
+    # core fullRegionCheck (Pokino, dest not in regions.json, and Arrival dests
+    # are excluded by construction).
+    EXEMPT = {"Pokino"}
+    flight_edges = flight_edges_econ = 0
+    verif_edges = verif_clobbered = 0
     for rn in region_names:
         try:
             reg = mw.get_region(rn, p)
         except Exception:
             continue
         for e in reg.exits:
-            if getattr(e.access_rule, "__qualname__", "") != "set_rules.<locals>.fullRegionCheck":
-                unclobbered_kingdom_exits += 1
+            dest = e.connected_region.name if e.connected_region is not None else ""
+            qn = getattr(e.access_rule, "__qualname__", "")
+            if dest in region_set and dest not in EXEMPT:
+                flight_edges += 1
+                if qn == "add_rule.<locals>.<lambda>":
+                    flight_edges_econ += 1
+            elif dest.endswith(" Arrival"):
+                verif_edges += 1
+                if qn == "set_rules.<locals>.fullRegionCheck":
+                    verif_clobbered += 1
 
     chain_into_arrival = sum(
         1 for e in port_entrances(mw)
@@ -215,7 +238,9 @@ for seed in (1, 11, 22):
           f"rocket_edges={rocket_edges} rocket_blocked={rocket_blocked} "
           f"rocket_god={rocket_god} has_rocket={has_rocket} "
           f"arrivals={len(arrivals)} flight_ok={flight_ok} back_ok={back_ok} "
-          f"unclobbered={unclobbered_kingdom_exits} chain_in={chain_into_arrival} "
+          f"flight_edges={flight_edges} flight_edges_econ={flight_edges_econ} "
+          f"verif_edges={verif_edges} verif_clobbered={verif_clobbered} "
+          f"chain_in={chain_into_arrival} "
           f"far_regions={len(far_regions)} far_misrouted={far_misrouted} "
           f"far_backflow={far_backflow} far_missing_course={far_missing_course}")
     if unreachable:
@@ -243,8 +268,82 @@ mw, world = build(11, opts={"accessibility": "full", "entrance_shuffle": "simple
 has_port = int(getattr(world, "_port_matching", None) is not None)
 arrival_regions = [r.name for r in mw.get_regions(1) if r.name.endswith(" Arrival")]
 port_edges = len(port_entrances(mw))
+# Byte-identical guard: the decoupled-only flight-economy predicate must never
+# touch a regions.json flight edge under simple — they stay pure fullRegionCheck.
+from worlds.meatballs.entrance_logic import load_data_json
+region_set = set(load_data_json("regions.json"))
+EXEMPT = {"Pokino"}
+flight_touched = 0
+for rn in region_set:
+    try:
+        reg = mw.get_region(rn, 1)
+    except Exception:
+        continue
+    for e in reg.exits:
+        dest = e.connected_region.name if e.connected_region is not None else ""
+        if dest in region_set and dest not in EXEMPT:
+            if getattr(e.access_rule, "__qualname__", "") != "set_rules.<locals>.fullRegionCheck":
+                flight_touched += 1
 print(f"RESULT has_port={has_port} arrival_regions={len(arrival_regions)} "
-      f"port_edges={port_edges}")
+      f"port_edges={port_edges} flight_touched={flight_touched}")
+"""
+
+# Flight-economy invariant (D1 erratum). The behavioral proof that the fix
+# restores the cumulative flight moon economy: the victory region (Moon Kingdom)
+# — which has no Arrival region, so it is reachable ONLY through the honest
+# Bowser's -> Moon flight edge — must cost the full chain of kingdom gates, with
+# EVERY chain kingdom's moons individually binding (no discount).
+_PROBE_ECONOMY = _PRELUDE + r"""
+mw, world = build(1)
+p = 1
+
+def is_moon(it):
+    return it.name.endswith("Kingdom Power Moon") or it.name.endswith("Kingdom Multi-Moon")
+
+# 1) Empty state -> Moon unreachable (the free-chain leak would flip this True).
+empty = CollectionState(mw)
+empty_reach = int(empty.can_reach_region("Moon Kingdom", p))
+
+# 2) ALL non-moon progression (abilities + captures + everything not a kingdom
+#    moon) -> STILL unreachable: moons are the binding constraint.
+nonmoon = CollectionState(mw)
+for it in mw.itempool:
+    if it.player == p and not is_moon(it):
+        nonmoon.collect(it, prevent_sweep=True)
+nonmoon_reach = int(nonmoon.can_reach_region("Moon Kingdom", p))
+
+# 3) Full pool -> reachable (nothing over-blocks the honest flight edge).
+full = CollectionState(mw)
+for it in mw.itempool:
+    if it.player == p:
+        full.collect(it, prevent_sweep=True)
+full_reach = int(full.can_reach_region("Moon Kingdom", p))
+
+# 4) Drop-one-kingdom: for every kingdom whose {KingdomMoons} gate gates
+#    reach(Moon), collecting ALL other progression (incl. every OTHER kingdom's
+#    moons) but omitting THAT kingdom's moons must leave Moon unreachable — each
+#    gate is individually binding, so the economy is never discounted. (Bowser's
+#    is excluded: its egress gate is KingdomMoons(Ruined,3), so Bowser's own
+#    moons do not gate reach(Moon Kingdom); Moon's own Bowser's,8 gate rides the
+#    Moon -> Mushroom edge, not the Bowser's -> Moon arrival.)
+CHAIN = ["Cascade","Sand","Wooded","Lake","Lost","Metro","Snow","Seaside","Luncheon","Ruined"]
+drop_reachable = []
+for k in CHAIN:
+    st = CollectionState(mw)
+    prefix = k + " Kingdom"
+    for it in mw.itempool:
+        if it.player != p:
+            continue
+        if is_moon(it) and it.name.startswith(prefix):
+            continue  # omit this kingdom's moons
+        st.collect(it, prevent_sweep=True)
+    if st.can_reach_region("Moon Kingdom", p):
+        drop_reachable.append(k)
+
+print(f"RESULT empty={empty_reach} nonmoon={nonmoon_reach} full={full_reach} "
+      f"chain={len(CHAIN)} drop_reachable={len(drop_reachable)}")
+if drop_reachable:
+    print("DROP " + "|".join(drop_reachable))
 """
 
 
@@ -322,7 +421,22 @@ def test_fixed_points_wire_only_the_lone_overworld_credit(wiring_results):
         f"fixed points stay covered")
 
 
-def test_kingdom_arrival_channel_and_flight_gates_unchanged(wiring_results):
+def test_kingdom_arrival_channel_and_flight_economy_predicate(wiring_results):
+    """Arrival two-channel shape + the D1 erratum flight-economy predicate.
+
+    Reworked 2026-07-12 (docs/handoff-decoupled-flight-economy-fix.md): the old
+    `unclobbered == 0` assertion (every regions.json exit is untouched
+    fullRegionCheck) was invalidated by design — the fix ANDs a flight_reach
+    predicate onto every inter-kingdom flight edge. The invariant is now:
+
+      * every "K -> K Arrival" flight-verification edge STILL carries the
+        untouched core fullRegionCheck (the honest flight-arrival rule) and its
+        presence edge is free — the chain channel is unchanged;
+      * every inter-kingdom flight edge (regions.json -> non-exempt
+        regions.json) carries BOTH the core rule AND the flight predicate
+        (add_rule combine="and" wrapper) — the core conjunct survives (add_rule,
+        not set_rule) and the predicate is stacked on.
+    """
     for r in wiring_results:
         arrivals = int(r["arrivals"])
         assert arrivals >= 8, (
@@ -335,10 +449,23 @@ def test_kingdom_arrival_channel_and_flight_gates_unchanged(wiring_results):
         assert int(r["back_ok"]) == arrivals, (
             f"seed {r['seed']}: {arrivals - int(r['back_ok'])} 'Arrival -> "
             f"kingdom' presence edge(s) not free")
-        assert int(r["unclobbered"]) == 0, (
-            f"seed {r['seed']}: {r['unclobbered']} exit(s) of regions.json "
-            f"regions carry a non-core rule — the decoupled wiring must never "
-            f"touch flight edges (D1: no discount)")
+        verif = int(r["verif_edges"])
+        assert verif == arrivals, (
+            f"seed {r['seed']}: {verif} flight-verification edges but {arrivals} "
+            f"Arrival regions — expected one 'K -> K Arrival' edge per Arrival")
+        assert int(r["verif_clobbered"]) == verif, (
+            f"seed {r['seed']}: {verif - int(r['verif_clobbered'])} flight-"
+            f"verification edge(s) no longer the untouched core fullRegionCheck "
+            f"— the flight-economy predicate must NOT touch the chain channel")
+        flight = int(r["flight_edges"])
+        assert flight >= 15, (
+            f"seed {r['seed']}: only {flight} inter-kingdom flight edges — the "
+            f"regions.json DAG has ~18 non-exempt connects_to edges")
+        assert int(r["flight_edges_econ"]) == flight, (
+            f"seed {r['seed']}: only {r['flight_edges_econ']}/{flight} inter-"
+            f"kingdom flight edges carry the flight-economy predicate on top of "
+            f"the core rule (D1 erratum: chain arrival must not discount the "
+            f"cumulative flight economy)")
         assert int(r["chain_in"]) > 0, (
             f"seed {r['seed']}: no matched edge lands in an Arrival region — "
             f"the chain channel into kingdoms is missing")
@@ -377,3 +504,37 @@ def test_simple_mode_grows_no_decoupled_machinery():
     assert int(r["has_port"]) == 0, "simple mode set _port_matching"
     assert int(r["arrival_regions"]) == 0, "simple mode created Arrival regions"
     assert int(r["port_edges"]) == 0, "simple mode created port entrances"
+    assert int(r["flight_touched"]) == 0, (
+        f"{r['flight_touched']} regions.json flight edge(s) carry a non-core "
+        f"rule under SIMPLE — the decoupled-only flight-economy predicate leaked "
+        f"outside the decoupled branch (off/simple must be byte-identical)")
+
+
+def test_decoupled_flight_economy_restores_moon_gate():
+    """D1 erratum behavioral invariant (docs/handoff-decoupled-flight-economy-fix.md).
+
+    Before the fix the free 'K Arrival -> K' presence edge let chain arrival
+    grant kingdoms without flying the chain, so reach(Moon Kingdom) collapsed to
+    ~one kingdom's gate — decoupled seeds beat the goal in ~8 spheres. After the
+    fix the victory region costs the full cumulative economy again:
+
+      * empty state -> Moon unreachable (would be True under the leak);
+      * ALL non-moon progression -> still unreachable (moons are binding);
+      * full pool -> reachable (no over-block);
+      * omitting ANY single chain kingdom's moons -> unreachable (every gate is
+        individually binding, so nothing is discounted)."""
+    r = _run_probe(_PROBE_ECONOMY)[0]
+    assert int(r["empty"]) == 0, (
+        "Moon Kingdom reachable with an EMPTY collection state — the free "
+        "Arrival->K chain still discounts the flight economy (fix not applied?)")
+    assert int(r["nonmoon"]) == 0, (
+        "Moon Kingdom reachable with ALL non-moon progression but zero kingdom "
+        "moons — the cumulative {KingdomMoons} economy is not the binding "
+        "constraint on the goal")
+    assert int(r["full"]) == 1, (
+        "Moon Kingdom UNreachable even with the full item pool — the flight-"
+        "economy predicate over-blocks the honest Bowser's->Moon edge")
+    assert int(r["drop_reachable"]) == 0, (
+        f"omitting one chain kingdom's moons still left Moon reachable "
+        f"({r['drop_reachable']}/{r['chain']} kingdom(s)) — that kingdom's gate "
+        f"is being discounted (the flight chain is not fully required)")

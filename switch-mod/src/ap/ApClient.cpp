@@ -1041,6 +1041,18 @@ void ApClient::handleLine(char* line, std::size_t line_len) {
         }
         SMOAP_LOG_INFO("[kingdom-gates] applied %zu rolled gates "
                        "(%zu entries)", applied, kg.entry_count);
+    } else if (eq(m.t, "cap_peace_start")) {
+        // start_at_cap_peace slot flag — full overwrite. enabled=false is
+        // meaningful (restores the vanilla-prologue guard after a seed
+        // swap). Consumed by CapReturnScenarioHook (guard bypass) and
+        // EntranceShuffleHook (pre-Broode Odyssey->Cap door divert).
+        const bool en = m.cap_peace_start.enabled;
+        ApState::instance().cap_peace_start.store(
+            en, std::memory_order_relaxed);
+        SMOAP_LOG_INFO("[cap-peace-start] flag=%d (%s)", en ? 1 : 0,
+                       en ? "fresh-save Cap-peace bootstrap ARMED (tower-exit "
+                            "peace floor + pre-Broode Odyssey->Cap divert)"
+                          : "vanilla prologue guard active");
     } else if (eq(m.t, "talkatoo_pool")) {
         // Talkatoo% mode — bridge ships one message per kingdom on HELLO
         // replay (and again whenever the user toggles mode), or a single

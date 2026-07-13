@@ -587,6 +587,17 @@ launch, watch `[chain-launch]`.
   save after the prologue flight, false DURING a vanilla prologue. No
   wire/slot_data change. Degraded read (alreadyGo unavailable) keeps the
   floor (protects cap-peace runs) and warns.
+  **2026-07-12 addendum:** T5's guard also killed the *fresh-save*
+  Cap-peace bootstrap (option ON, no authored save: tower-exit was the
+  intended peace trigger). Restored option-aware via a new
+  `cap_peace_start` wire msg (slot_data `start_at_cap_peace` — already
+  auto-shipped by fill_slot_data — → SMOContext → SwitchServer stash/push
+  on Connected + HELLO replay → ApState::cap_peace_start, boot-default
+  false). When set, CapReturnScenarioHook bypasses the T5 guard (tower
+  exit floors Cap to peace + parks Odyssey + unlocks Cascade) and
+  processCascadeOdysseyDivert fires even pre-Broode (leave-gate would
+  otherwise strand a 0-check player in Cascade). Option-off/vanilla
+  behavior is byte-identical (flag false ⇒ same code path as T5).
 - **Note 2 (capturesanity off but Jizo in the pool):** abilitysanity OFF
   has the drop+precollect pair (`World.py:910-950`); capturesanity OFF
   only drops LOCATIONS (`before_is_location_enabled`) — the capture
@@ -1203,3 +1214,62 @@ behind `kB1DemoWarpCrossWorld=false` (optional cleanup).
 4. **B1-retired regression**: zero `[p5-b1]` lines anywhere; every
    cross-world hop shows ARMED → `[p5-hold]` → (when the stale plain
    request fires) `REDIRECTED` → clean arrival.
+
+## 13. 2026-07-12 (later same day) — NEW crash instance: BOOT DUAL-HEAP
+## refusal (fresh-save prologue session), teardown fix SHIPPED (built,
+## walk pending)
+
+**The walk (sand-crash.txt):** Cascade → Crazy Cap shop (City interior) →
+exit remapped to Sand (`shop_coin → SandWorldHomeStage/bar1`). Pre-arm ARMED
+(resident=1), then at exeLoadStage: `fire@exeLoadStage world=2 …
+resident_was=1 -> refused (guard)`, backstop also refused, and the per-tick
+`[p5-worldreq] request world=2 scenario=1 (resident_was=1) -> refused/no-op`
+repeated ~50× over 4.5 s. **No `[p5-hold]` line** — so `isEndLoadWorldResource`
+was TRUE the whole time; the refusal was NOT an in-flight load. Sand's scene
+began actor placement (costume-door seams, 00:19:15.8) with Cascade still
+resident; at 00:19:16.1 the engine's PLAIN `request(plain) world=2 → LOAD
+STARTED` ran the world load mid-scene-init and `sead::ExpHeap::tryAlloc`
+aborted inside `ParallelSZSDecompressor` on FileLoadThread.
+
+**Root cause (decomp `Sequence/WorldResourceLoader.cpp`, read verbatim
+2026-07-12):** `requestLoadWorldHomeStageResource`'s FIRST guard is
+`if (mWaterfallWorldHeap) return false;`. That heap exists only in the **boot
+dual-heap** state: a session that boots into the Cap prologue calls
+`requestLoadWorldHomeStageResource(0, 1)`, whose special branch
+(`loadWorldId==0 && scenario==1`) builds `mCapWorldHeap` (0x1F400000,
+forward) + `mWaterfallWorldHeap` (reverse) inside one world-resource heap so
+the whole prologue (Cap AND Cascade) runs with zero world loads. The ONLY
+vanilla teardown is `tryDestroyWorldResource()` — called by the first
+FLIGHT's world-change seam before its own HomeStage request. The plain
+variant `requestLoadWorldResource` has NO waterfall guard (only
+`!isEndLoadWorldResource`), which is why the engine's stale-bookkeeping plain
+request could still start the (fatally late) load.
+
+**Why 8 prior walk sessions never saw it:** heap state is per-SESSION, and
+every prior walk booted a mid-game save (boot request = single-world branch,
+no dual-heap). A `start_at_cap_peace` seed is played from the fresh-save
+prologue in ONE session, and the chain topology replaces every flight with a
+`changeNextStage` commit (prologue crash cutscene, Odyssey→Cap divert, chain
+doors) — the vanilla first-flight teardown seam never runs, so the dual-heap
+lives for the entire session and every HomeStage request refuses forever.
+
+**Fix (CrossWorldLoad.cpp, §11-tagged in code):** both request sites
+(`firePendingPreload`, `universalCrossWorldCheck` backstop) now route through
+`requestWorldLoad()`: on refusal, if the eliminable guards don't explain it
+(`isEndLoadWorldResource()` true AND resident != dest — leaving only the
+waterfall heap or the never-absent WorldList byml), call
+`tryDestroyWorldResource()` (resolved from the same symbol the §8 DESTROY
+probe patches, so our call lands in the ledger) and re-request. This is
+byte-for-byte what the vanilla flight seam does, at seams where the old scene
+is equally dead. **Boot-pair exemption:** destinations Cap(0)/Cascade(1) skip
+the teardown (`kBootPairMaxWorldId`) — the dual-heap serves exactly those two
+worlds, a refused request for them needs no load, and the validated
+Cascade→Cap divert runs on this state.
+
+**Expected log on the retest:** at the first cross-world hop out of the boot
+pair (e.g. Cascade → City shop): `[p5-worldreq] DESTROY resident_was=1 -> -1`
+followed by `[p5-prearm] exeLoadStage boot dual-heap TEARDOWN
+(resident_was=1) -> re-request world=N scenario=S -> LOAD STARTED`, then the
+normal `[p5-hold]` → clean arrival. Subsequent hops are ordinary single-heap
+pre-arms (no further TEARDOWN lines). Built + SD-staged 2026-07-12
+(BRIDGE_HOST placeholder — Devon rebuilds with his LAN IP); walk pending.

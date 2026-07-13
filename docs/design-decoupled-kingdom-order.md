@@ -53,6 +53,32 @@ economy. Keeping flight untouched means `randomize_kingdom_gates`, the
 `kingdom_gates` wire msg, `UnlockShineNumHook`, and the sum-preserved totals
 need ZERO changes under this mode.
 
+### D1 erratum — the "keep flight untouched" implementation discounted the economy (fixed 2026-07-12)
+
+The *intent* above ("chain access neither satisfies nor consumes flight gates")
+is right, but the two-channel *implementation* violated it. Under the Manual
+egress quirk ([handoff-region-gating-egress.md](handoff-region-gating-egress.md))
+each `regions.json` flight edge K → J carries only K's OWN single-hop
+`{KingdomMoons}` gate; the cumulative economy emerges solely from `reach()`
+having to traverse the whole chain. The chain channel's free
+"K Arrival → K" presence edge lets on-foot arrival grant the K region directly,
+so `reach()` stops accumulating the flight chain — and `reach(Moon Kingdom)`
+collapsed from the full ~124-moon cost to ~one kingdom's gate. Decoupled seeds
+generated with ~8-sphere playthroughs and ~200 stranded progression items;
+worse, they were physically unwinnable (logic promised a Bowser's → Moon flight
+the player could never perform without having flown TO Bowser's, per D3).
+
+**Fix (`hooks/World.py::_apply_decoupled_flight_economy`, decoupled-only):** after
+the core `set_rules` clobber, `add_rule` (AND) a recursive `flight_reach(K)`
+predicate — "could have FLOWN to K", computed over `regions.json` `connects_to`
+as an OR-over-parents recursion, exempting Pokino and all "K Arrival"
+destinations — onto every inter-kingdom flight edge. The core single-hop rule
+survives as a conjunct; chain arrival can still WIDEN where you stand and which
+overworld checks open, but a chain-reached K can no longer open K's onward FLIGHT
+edge unless the whole gate chain up to K is genuinely satisfied. `reach(Moon)` is
+restored to the full 124 (or the rolled sum-preserved total). Full audit +
+plan: [handoff-decoupled-flight-economy-fix.md](handoff-decoupled-flight-economy-fix.md).
+
 ## D2 — Switch-side order machinery: no changes
 
 - Strict-order table: already empty; stays empty. Nothing to relax.

@@ -613,6 +613,31 @@ class KingdomGatesMsg:
 
 
 @dataclass
+class CapPeaceStartMsg:
+    """start_at_cap_peace — bridge -> Switch slot-option flag.
+
+    When the seed was generated with start_at_cap_peace=true, the Switch
+    re-enables the fresh-save Cap-peace bootstrap flow that the P5 T5
+    vanilla-prologue guard otherwise suppresses:
+
+      1. exiting Top Hat Tower mid-prologue floors Cap to its return/peace
+         layout (CapReturnScenarioHook's isWorldAlreadyGo(Cascade) guard is
+         bypassed), with the Odyssey force-parked + Cascade unlocked, and
+      2. boarding the Odyssey in Cascade diverts to Cap even PRE-Broode
+         (processCascadeOdysseyDivert's multi-moon gate is bypassed), so a
+         0-check player is never stranded behind Cascade's leave-gate.
+
+    Sent on AP Connected (slot_data["start_at_cap_peace"], auto-shipped by
+    the Manual-derived fill_slot_data) and re-shipped on every HELLO replay.
+    FULL-OVERWRITE: enabled=False is meaningful — it restores the vanilla-
+    prologue guard (option off / reconnect to a different seed). The Switch
+    boots with the flag false, so pre-connect behavior is always vanilla
+    (fail-safe for option-off players)."""
+    t: str = "cap_peace_start"
+    enabled: bool = False
+
+
+@dataclass
 class CoinGrant:
     """Bridge -> Switch: grant coins for Cap Kingdom Power Moons received.
 

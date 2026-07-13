@@ -28,6 +28,7 @@ from .protocol import (
     AbilityStateMsg,
     ActivateMsg,
     ApStateMsg,
+    CapPeaceStartMsg,
     CappyMsg,
     CheckedReplayMsg,
     CoinGrant,
@@ -403,6 +404,14 @@ class SwitchServer:
         # dict, push sends a clear so a seed swap can't leak stale gates).
         self._kingdom_gates_configured: bool = False
         self._kingdom_gates: dict[str, int] = {}
+        # start_at_cap_peace slot flag. Set by SMOContext on AP Connected from
+        # slot_data["start_at_cap_peace"] (auto-shipped by fill_slot_data).
+        # `_cap_peace_start_configured` disambiguates "never set" (HELLO before
+        # AP Connected — push is a no-op, Switch stays at its fail-safe false)
+        # from "deliberately off" (push sends enabled=False so a reconnect to
+        # a non-cap-peace seed restores the vanilla-prologue guard).
+        self._cap_peace_start_configured: bool = False
+        self._cap_peace_start: bool = False
         # Shop label table. Built by SMOContext after AP Connected (via
         # set_shop_labels) by looking up each "<Kingdom>: Shopping in X"
         # location's scouted item through compose_moon_label_for_location.
@@ -775,6 +784,33 @@ class SwitchServer:
             KingdomGateEntry(kingdom=k, gate=v)
             for k, v in self._kingdom_gates.items()
         ]))
+
+    def set_cap_peace_start(self, enabled: bool) -> None:
+        """Stash the start_at_cap_peace slot flag for delivery to the Switch.
+
+        Set by SMOContext on every AP Connected (False is meaningful — it
+        restores the vanilla-prologue guard after a reconnect to a seed
+        without the option). Caller should follow up with
+        push_cap_peace_start() so an already-attached Switch picks the flag
+        up immediately; HELLO replays re-ship it across Switch reconnects.
+        """
+        self._cap_peace_start = bool(enabled)
+        self._cap_peace_start_configured = True
+
+    def get_cap_peace_start(self) -> bool:
+        """Current start_at_cap_peace slot flag (False before AP Connect)."""
+        return bool(getattr(self, "_cap_peace_start", False))
+
+    async def push_cap_peace_start(self) -> None:
+        """Send the stashed start_at_cap_peace flag to the active Switch.
+
+        No-op when set_cap_peace_start has never been called (HELLO before
+        AP Connected — the context handler re-pushes once slot_data lands;
+        until then the Switch keeps its boot-default false = vanilla).
+        """
+        if not getattr(self, "_cap_peace_start_configured", False):
+            return
+        await self._send(CapPeaceStartMsg(enabled=self._cap_peace_start))
 
     def set_entrance_map(self, m: dict[str, str]) -> None:
         """Stash the P7 (coupled) entrance-shuffle bijection for delivery to
@@ -1332,6 +1368,12 @@ class SwitchServer:
         # AP logic. No-op when SMOContext hasn't delivered slot_data yet
         # (the Connected handler re-pushes once it lands).
         await self.push_kingdom_gates()
+
+        # start_at_cap_peace: ship the slot flag so the Switch re-enables the
+        # fresh-save Cap-peace bootstrap (tower-exit peace floor + pre-Broode
+        # Odyssey->Cap door divert). No-op when slot_data hasn't landed yet
+        # (the Switch keeps its fail-safe false = vanilla prologue).
+        await self.push_cap_peace_start()
 
         # P7 entrance shuffle: ship the bijection so the Switch remaps subarea
         # stage transitions. No-op when slot_data hasn't landed yet.

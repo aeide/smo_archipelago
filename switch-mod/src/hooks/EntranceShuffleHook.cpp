@@ -127,6 +127,38 @@ inline constexpr const char* kCascadeFlightArrivalId = "";  // empty = home defa
 inline constexpr const char* kCascadeHomeStage   = "WaterfallWorldHomeStage";
 inline constexpr const char* kOdysseyInsideStage = "HomeShipInsideStage";
 inline constexpr const char* kCapHomeStage       = "CapWorldHomeStage";
+inline constexpr const char* kMetroHomeStage     = "CityWorldHomeStage";
+// New Donk City renders NIGHT during the Mechawiggler fight (main_scenario_no 1,
+// where its Multi-Moon "New Donk City's Pest Problem" is placed); reaching Metro's
+// overworld via a shuffled door / cross-kingdom subarea exit drops you into that
+// night — wrong for a traversal hub. Force the immediately-post-Mechawiggler DAY
+// city (scenario 3, the band-prep day state) on any arrival into CityWorldHomeStage that is NOT an Odyssey
+// flight. Odyssey flights keep Metro's LIVE scenario, so the night Mechawiggler
+// fight + its Multi-Moon stay reachable via the globe (Devon: reserve night for the
+// Odyssey arrival). We deliberately do NOT jump to the festival (main_scenario_no 7)
+// or the post-peace restored city (after_ending 5) — both too late; scenario 2 is a brief post-boss
+// transition with no placed moons, so we use scenario 3 (the band-prep day city). Scenario numbers from shine_map.json main_scenario_no. Same lever as
+// cascade/cap: ChangeStageInfo.mScenarioNo written before orig — a per-arrival LOAD
+// input, NOT a persisted quest advance (Mechawiggler is never skipped; the stored
+// story scenario is untouched, so a later Odyssey arrival is night again).
+inline constexpr int         kMetroDayScenario   = 3;
+
+// Returns kMetroDayScenario when an arrival into Metro's home stage should be forced
+// to the day city (non-flight arrival, and only when RAISING toward day — never
+// lowering a higher explicit scenario such as a moon-rock load at 8). Else -1 = leave
+// the live scenario. curStageName == the Odyssey cabin means a globe flight -> keep
+// night. incomingScenario is the ChangeStageInfo.mScenarioNo (-1/compute or a low
+// night scenario are below kMetroDayScenario and get pulled up).
+int metroDayArrivalScenarioOverride(const char* destStageName,
+                                    const char* curStageName,
+                                    int incomingScenario) {
+    if (destStageName == nullptr) return -1;
+    if (std::strcmp(destStageName, kMetroHomeStage) != 0) return -1;
+    if (curStageName != nullptr &&
+        std::strcmp(curStageName, kOdysseyInsideStage) == 0) return -1;  // flight
+    if (incomingScenario >= kMetroDayScenario) return -1;  // never lower
+    return kMetroDayScenario;
+}
 
 using GetCurrentStageNameFn = const char* (*)(GameDataHolderAccessor);
 GetCurrentStageNameFn s_getCurrentStageName = nullptr;
@@ -627,7 +659,18 @@ void processCascadeOdysseyDivert(const ChangeStageInfo* info) {
     if (!dest || std::strcmp(dest, kOdysseyInsideStage) != 0) return;
     const char* cur = currentStageName();
     if (!cur || std::strcmp(cur, kCascadeHomeStage) != 0) return;
-    if (!cascadeMultiMoonCollected()) return;
+    // Post-Broode for everyone; ALSO pre-Broode when the seed shipped
+    // start_at_cap_peace (wire cap_peace_start). On such a seed the player
+    // reaches Cascade with 0 checks (fly-in from the bootstrapped peace'd
+    // Cap, Broode force keeps scenario 1) and the leave-gate blocks flying
+    // out pre-Broode — the door divert is their only way back to Cap, so it
+    // must not wait for the Multi-Moon. Trade-off unchanged: a diverted
+    // boarding never opens the cabin (one-way Cap shuttle; fly onward from
+    // Cap).
+    if (!cascadeMultiMoonCollected() &&
+        !smoap::ap::ApState::instance().cap_peace_start.load(
+            std::memory_order_relaxed))
+        return;
 
     auto* mut       = const_cast<ChangeStageInfo*>(info);
     char* dst_stage = mutableCstrAt(mut, kOffChangeStageNameCstr);
@@ -644,6 +687,157 @@ void processCascadeOdysseyDivert(const ChangeStageInfo* info) {
                    "(no flight map): %s -> %s (cur=%s)",
                    kOdysseyInsideStage, kCapHomeStage, cur);
 }
+
+// ── First-visit door-arrival warp suppression (door-arrival-first-visit-demo) ─
+//
+// A REMAPPED (shuffled-door) FIRST arrival into a kingdom trips the game's
+// first-visit forward-world-warp arrival flow: the Odyssey warp-in plays and
+// Mario spawns AT THE ODYSSEY, overriding the paired door entrance id (Devon's
+// Cascade->Metro shop->Sand). Decomp (GameDataFunction.cpp): isForwardWorldWarpDemo
+// is only forward/backward DIRECTION (prev_index <= next_index in world-map
+// order); the actual first-visit signal on a plain door commit is the STORED
+// GameDataFile::isFirstTimeNextWorld() flag — which setAlreadyGoWorld does NOT
+// touch, so processChainArrival's normalization never suppressed it (proven:
+// alreadyGo set pre-orig, yet the original first visit still Odyssey-spawned).
+//
+// Fix (M7 "lie to the game", reversible): arm a short window at the remapped
+// first-arrival commit (dest overworld HomeStage, not yet isAlreadyGoWorld), and
+// the read-hook below returns false for isFirstTimeNextWorld while armed so the
+// arrival takes the normal door-entrance path. No save write and NOT the
+// mIsPlayDemoWorldWarp clear — avoids the 2026-07-05 mid-load-desync crash
+// hazard (isFirstTimeNextWorld gates only the arrival PRESENTATION; the world
+// load is driven by our own pre-arm/hold, independent of this flag). Self-disarms
+// the instant the game clears its own first-time flag (orig goes false = arrival
+// consumed it), so exactly ONE arrival is covered; a wallclock backstop matches
+// the load hold timeout in case the flag is never read. Legit Odyssey world-map
+// flights are demo-warp commits (not remapped) and never arm, so their intended
+// first-visit intro + Odyssey spawn is untouched.
+inline constexpr std::int64_t kFirstVisitWarpWindowMs = 30000;  // == kHoldTimeoutMs
+
+// Read-through probe logger for the first-visit warp getters (measurement build,
+// door-arrival-first-visit-demo). While the first-visit window is armed, log each
+// candidate getter's live value the first time it's seen and on every change (per
+// getter, capped). This is the DURING-LOAD read that both other sample points miss:
+// the commit-time logWorldWarpDemoDiagNow fires before the destination scene has
+// set these flags, and the 1 Hz post-arrival sweep fires after the scene init has
+// consumed/reset them — the flags live only inside StageScene::init, between the
+// two. It tells us (a) which flag the arrival reads TRUE, and (b) whether each
+// getter is even called out-of-line during the load (ZERO lines for a getter over
+// a known first-visit arrival = it's inlined at the scene-init consumer, so the
+// free-function hook can't see it → attack the consumer/setter instead). READ-ONLY:
+// never mutates, so it cannot desync the load or corrupt a save.
+void logFirstVisitProbe(const char* name, bool val, int& last, int& count) {
+    auto& st = smoap::ap::ApState::instance();
+    const int armed =
+        st.first_visit_warp_suppress_world.load(std::memory_order_relaxed);
+    if (armed < 0) return;
+    if (smoap::ap::ApState::nowMs() >=
+        st.first_visit_warp_suppress_until_ms.load(std::memory_order_relaxed))
+        return;  // window expired
+    const int v = val ? 1 : 0;
+    if (count > 0 && v == last) return;  // only the first call + value changes
+    last = v;
+    if (count < 40) {
+        ++count;
+        SMOAP_LOG_INFO("[first-visit-probe] %s=%d (armed world=%d) #%d", name, v,
+                       armed, count);
+    }
+}
+
+void armFirstVisitWarpSuppress(int dest_world, const char* dest) {
+    if (dest_world < 0) return;
+    auto& st = smoap::ap::ApState::instance();
+    st.first_visit_warp_saw_true.store(false, std::memory_order_relaxed);
+    st.first_visit_warp_suppress_until_ms.store(
+        smoap::ap::ApState::nowMs() + kFirstVisitWarpWindowMs,
+        std::memory_order_relaxed);
+    st.first_visit_warp_suppress_world.store(dest_world, std::memory_order_relaxed);
+    SMOAP_LOG_INFO("[first-visit-warp] ARMED world=%d dest='%s' (shuffled-door "
+                   "first arrival; isFirstTimeNextWorld -> false until the arrival "
+                   "consumes its flag, %lldms backstop)",
+                   dest_world, dest ? dest : "?",
+                   static_cast<long long>(kFirstVisitWarpWindowMs));
+}
+
+// isFirstTimeNextWorld(GameDataHolderAccessor) — the first-visit gate. Soft
+// install (see installEntranceShuffleHook). While armed + within the window we
+// force it false so the arrival uses the door entrance instead of the Odyssey
+// warp-in; the moment the game's own flag clears (orig false) we disarm so the
+// scope is a single arrival.
+HkTrampoline<bool, GameDataHolderAccessor> isFirstTimeNextWorldHook =
+    hk::hook::trampoline([](GameDataHolderAccessor acc) -> bool {
+        const bool orig = isFirstTimeNextWorldHook.orig(acc);
+        // Measurement: log EVERY call while armed (not just orig==true), so a
+        // Wooded-style "no true->false" can be read as "called-but-false" vs.
+        // "never called out-of-line" (inlined at the consumer).
+        static int s_ftnw_last = -1, s_ftnw_count = 0;
+        logFirstVisitProbe("isFirstTimeNextWorld", orig, s_ftnw_last, s_ftnw_count);
+        auto& st = smoap::ap::ApState::instance();
+        const int armed =
+            st.first_visit_warp_suppress_world.load(std::memory_order_relaxed);
+        if (armed < 0) return orig;
+        const bool expired =
+            smoap::ap::ApState::nowMs() >=
+            st.first_visit_warp_suppress_until_ms.load(std::memory_order_relaxed);
+        if (expired) {
+            st.first_visit_warp_suppress_world.store(-1, std::memory_order_relaxed);
+            if (orig)
+                SMOAP_LOG_WARN("[first-visit-warp] window expired with flag still "
+                               "set (world=%d) — passing through (Odyssey warp-in "
+                               "may play)", armed);
+            return orig;
+        }
+        if (orig) {
+            // Flag is hot: latch it and suppress so the arrival uses the door.
+            st.first_visit_warp_saw_true.store(true, std::memory_order_relaxed);
+            static int s_log = 0;
+            if (s_log < 20) {
+                ++s_log;
+                SMOAP_LOG_INFO("[first-visit-warp] isFirstTimeNextWorld true->false "
+                               "(shuffled-door first arrival world=%d; use door "
+                               "entrance, skip Odyssey warp-in) #%d", armed, s_log);
+            }
+            return false;
+        }
+        // orig == false: only disarm once the flag has been hot THEN cleared
+        // (arrival consumed it). A false read BEFORE the flag was ever set (the
+        // game sets it during the world load, after our commit-time arm) must not
+        // disarm — else the real suppression read never happens. Until then this
+        // is a pass-through no-op (orig is already false).
+        if (st.first_visit_warp_saw_true.load(std::memory_order_relaxed))
+            st.first_visit_warp_suppress_world.store(-1, std::memory_order_relaxed);
+        return orig;
+    });
+
+// Read-through probes for the other three first-visit warp getters (measurement
+// only — no suppression). isFirstTimeNextWorld was ruled out on the Wooded first
+// visit (2026-07-12: ARMED fired but the flag never read true), so one of these —
+// or a spawn path that reads none of them — drives the first-visit Odyssey
+// placement. Soft-installed alongside the suppressor; each logs via
+// logFirstVisitProbe while the first-visit window is armed.
+HkTrampoline<bool, GameDataHolderAccessor> isForwardWorldWarpDemoProbe =
+    hk::hook::trampoline([](GameDataHolderAccessor acc) -> bool {
+        const bool orig = isForwardWorldWarpDemoProbe.orig(acc);
+        static int last = -1, count = 0;
+        logFirstVisitProbe("isForwardWorldWarpDemo", orig, last, count);
+        return orig;
+    });
+
+HkTrampoline<bool, GameDataHolderAccessor> isPlayDemoWorldWarpProbe =
+    hk::hook::trampoline([](GameDataHolderAccessor acc) -> bool {
+        const bool orig = isPlayDemoWorldWarpProbe.orig(acc);
+        static int last = -1, count = 0;
+        logFirstVisitProbe("isPlayDemoWorldWarp", orig, last, count);
+        return orig;
+    });
+
+HkTrampoline<bool, GameDataHolderAccessor> isEnterStageFirstProbe =
+    hk::hook::trampoline([](GameDataHolderAccessor acc) -> bool {
+        const bool orig = isEnterStageFirstProbe.orig(acc);
+        static int last = -1, count = 0;
+        logFirstVisitProbe("isEnterStageFirst", orig, last, count);
+        return orig;
+    });
 
 // [entrance:try] — GameDataFunction::tryChangeNextStage(writer, info). Free
 // function, writer passed by value. The GameDataFunction-path forward transitions.
@@ -677,10 +871,32 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
             if (info) {
                 const char* dest = readCstrAt(info, kOffChangeStageNameCstr);
                 const char* kingdom = smoap::game::kingdomShortFromHomeStage(dest);
+                // Capture the GENUINE first-visit state BEFORE processChainArrival
+                // (its setAlreadyGoWorld write flips isWorldAlreadyGo). A remapped
+                // door arrival into a kingdom Mario has never set foot in is the
+                // one that trips the Odyssey warp-in — see armFirstVisitWarpSuppress.
+                const int dest_world =
+                    kingdom ? smoap::game::worldIdFromKingdomShort(kingdom) : -1;
+                const bool first_visit_shuffled =
+                    remapped && kingdom && dest_world >= 0 &&
+                    !smoap::game::isWorldAlreadyGo(dest_world);
                 // Chain-arrival bookkeeping + normalization MUST run before
                 // reportArrival — it reads last_arrival_kingdom as the chain
                 // ORIGIN, and reportArrival overwrites that with the dest.
                 if (remapped && kingdom) processChainArrival(self, dest, kingdom);
+                if (first_visit_shuffled) armFirstVisitWarpSuppress(dest_world, dest);
+                // First-visit warp-demo VERIFICATION log (door-arrival-first-visit-
+                // demo). The lever is now known — the stored isFirstTimeNextWorld
+                // flag drives the shuffled-door first-arrival Odyssey warp-in, and
+                // armFirstVisitWarpSuppress above suppresses it. This read-only line
+                // stays as the walk check: on a GENUINE first arrival the preceding
+                // [first-visit-warp] ARMED line should fire, then the isFirstTimeNext
+                // true->false suppression, and Mario emerges from the door. (Note:
+                // getCurrentWorldId is still the ORIGIN world at the commit, so the
+                // firstNext/fwdWarpDemo fields here read the wrong world for door
+                // hops; the alreadyGoWorld[] bitmap is the reliable per-world read.)
+                if (kingdom && std::strcmp(dest, currentStageName()) != 0)
+                    smoap::game::logWorldWarpDemoDiagNow("overworld-arrival");
                 if (kingdom) smoap::ap::reportArrival(dest, kingdom);
                 // P5 §1.5 — cross-world routing for remapped commits. B1
                 // (demo-warp) returns true and OWNS the commit: skip orig and
@@ -797,6 +1013,29 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                         smoap::game::forceAcquireOdyssey("changeNextStage->Cap");
                         smoap::game::forceUnlockCascadeDestination(
                             "changeNextStage->Cap");
+                    }
+                }
+
+                // Metro "day city" on a non-flight arrival (see kMetroDayScenario).
+                // A shuffled-door / cross-kingdom subarea exit into CityWorldHomeStage
+                // lands in the NIGHT festival layout; force the DAY city instead.
+                // Odyssey flights (cur == the cabin) are left alone, so the Festival
+                // and its one night-gated Multi-Moon stay reachable via the globe.
+                // Same lever as the Cap floor above: write ChangeStageInfo.mScenarioNo
+                // before orig; never lowers a higher (moon-rock) scenario.
+                {
+                    auto* scp = reinterpret_cast<std::int32_t*>(
+                        reinterpret_cast<std::uint8_t*>(const_cast<ChangeStageInfo*>(info))
+                        + kOffScenarioNo);
+                    const std::int32_t before = *scp;
+                    const int metroSc = metroDayArrivalScenarioOverride(
+                        dest, currentStageName(), before);
+                    if (metroSc >= 0 && before != metroSc) {
+                        *scp = metroSc;
+                        SMOAP_LOG_INFO("[metro-day] changeNextStage force Metro "
+                                       "arrival ChangeStageInfo.scenario %d -> %d "
+                                       "(dest=%s, non-flight -> day city)",
+                                       before, metroSc, dest);
                     }
                 }
             }
@@ -940,6 +1179,49 @@ void installEntranceShuffleHook() {
         "_ZN12GameDataFile15changeNextStageEPK15ChangeStageInfoi">();
     returnPrevStageHook.installAtSym<
         "_ZN12GameDataFile15returnPrevStageEv">();
+
+    // First-visit door-arrival warp suppressor (see the trampoline header). Soft
+    // install — isFirstTimeNextWorld is NOT in the sail .sym DB (OdysseyRescue
+    // resolves it via lookupSymbol), so a miss must degrade, not abort.
+    const ptr ftnwAddr =
+        hk::ro::lookupSymbol(smoap::sym::kGameDataFunctionIsFirstTimeNextWorld);
+    if (ftnwAddr) {
+        isFirstTimeNextWorldHook.installAtPtr(ftnwAddr);
+        SMOAP_LOG_INFO("[first-visit-warp] isFirstTimeNextWorld suppressor @ 0x%lx",
+                       static_cast<unsigned long>(ftnwAddr));
+    } else {
+        SMOAP_LOG_WARN("[first-visit-warp] isFirstTimeNextWorld lookup FAILED — "
+                       "shuffled-door first-arrival Odyssey warp-in NOT suppressed");
+    }
+
+    // Read-through probes (measurement, door-arrival-first-visit-demo): log the
+    // other three first-visit warp getters live during the next first-visit load,
+    // to find which one (if any) the arrival reads TRUE. Soft-install each — a
+    // miss just drops that one probe, never aborts.
+    if (const ptr a =
+            hk::ro::lookupSymbol(smoap::sym::kGameDataFunctionIsForwardWorldWarpDemo)) {
+        isForwardWorldWarpDemoProbe.installAtPtr(a);
+        SMOAP_LOG_INFO("[first-visit-probe] isForwardWorldWarpDemo probe @ 0x%lx",
+                       static_cast<unsigned long>(a));
+    } else {
+        SMOAP_LOG_WARN("[first-visit-probe] isForwardWorldWarpDemo lookup FAILED");
+    }
+    if (const ptr a =
+            hk::ro::lookupSymbol(smoap::sym::kGameDataFunctionIsPlayDemoWorldWarp)) {
+        isPlayDemoWorldWarpProbe.installAtPtr(a);
+        SMOAP_LOG_INFO("[first-visit-probe] isPlayDemoWorldWarp probe @ 0x%lx",
+                       static_cast<unsigned long>(a));
+    } else {
+        SMOAP_LOG_WARN("[first-visit-probe] isPlayDemoWorldWarp lookup FAILED");
+    }
+    if (const ptr a =
+            hk::ro::lookupSymbol(smoap::sym::kGameDataFunctionIsEnterStageFirst)) {
+        isEnterStageFirstProbe.installAtPtr(a);
+        SMOAP_LOG_INFO("[first-visit-probe] isEnterStageFirst probe @ 0x%lx",
+                       static_cast<unsigned long>(a));
+    } else {
+        SMOAP_LOG_WARN("[first-visit-probe] isEnterStageFirst lookup FAILED");
+    }
 
     // P5 §1.6 next-world read spike (soft; see installNextWorldIdSpike).
     installNextWorldIdSpike();
