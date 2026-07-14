@@ -94,6 +94,28 @@ bool cascadeMultiMoonCollected();
 int capArrivalScenarioOverride(const void* gameDataFile, int incomingScenario,
                                const char* destStageName);
 
+// Defined in CloudArrivalScenarioHook.cpp. Returns Cloud's Bowser-encounter
+// scenario (1) when committing ANY arrival into Cloud's home stage (or its
+// 'CurrentWorldHome' cabin-exit alias) — external origins AND Cloud-internal
+// subarea pop-outs — while the encounter hasn't happened yet (GameProgressData
+// HomeStatus < FoundKoopa, vanilla's own one-time interception gate), else -1.
+// Same lever as the Cascade force: written into the ChangeStageInfo scenario
+// field BEFORE orig so the vanilla first-visit Bowser fight is placed and
+// plays on arrival — a direct pre-fight fly-in otherwise loads the recomputed
+// world-peace layout with no encounter trigger, and the globe's story lock
+// softlocks AND grounds the Odyssey (2026-07-14). Releases permanently once
+// the fight's knockdown advances HomeStatus (predicate provenance + the
+// stranded-refight / takeoff-crash walk history: see that file's header).
+int cloudArrivalScenarioOverride(const void* gameDataFile,
+                                 const char* destStageName,
+                                 const char* curStageName);
+
+// Defined in CloudArrivalScenarioHook.cpp — post-orig belt-and-braces
+// mScenarioNoPlacement re-assert under the same predicate (pairs with the
+// pre-orig override above, like forceCascadePlacementScenario).
+void forceCloudPlacementScenario(void* gameDataFile, const char* destStageName,
+                                 const char* curStageName, const char* tag);
+
 namespace {
 
 struct GameDataHolderWriter { void* mData; };
@@ -1173,6 +1195,32 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                                 metroSc, std::memory_order_relaxed);
                     }
                 }
+
+                // Cloud first-visit Bowser encounter: while Cloud's main
+                // scenario is unclear, EVERY arrival into CloudWorldHomeStage
+                // (flights, shuffled doors, AND Cloud-internal subarea
+                // pop-outs — the rescue path for a save stuck in peace-Cloud
+                // with the Odyssey story-grounded) is forced to scenario 1 so
+                // the vanilla Bowser fight is placed and plays on arrival.
+                // Without this a direct pre-fight fly-in loads the recomputed
+                // world-peace layout and the globe's story lock softlocks
+                // (2026-07-14). Same lever as the Cascade/Cap/Metro forces.
+                {
+                    const int cloudSc = cloudArrivalScenarioOverride(
+                        self, dest, currentStageName());
+                    if (cloudSc >= 0) {
+                        auto* scp = reinterpret_cast<std::int32_t*>(
+                            reinterpret_cast<std::uint8_t*>(
+                                const_cast<ChangeStageInfo*>(info))
+                            + kOffScenarioNo);
+                        const std::int32_t before = *scp;
+                        if (before != cloudSc) *scp = cloudSc;
+                        SMOAP_LOG_INFO("[cloud-encounter] changeNextStage force "
+                                       "Cloud arrival ChangeStageInfo.scenario "
+                                       "%d -> %d (dest=%s)",
+                                       before, cloudSc, dest);
+                    }
+                }
             }
             // Snapshot the ORIGIN stage before orig — post-orig currentStageName()
             // may already reflect the new stage, and the belt-and-braces force
@@ -1202,6 +1250,11 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                 if (!postStoryDrop)
                     forceCascadePlacementScenario(self, postDest, originStage,
                                                   "changeNextStage");
+                // Cloud belt-and-braces: re-assert the encounter placement
+                // scenario post-orig (same predicate as the pre-orig force; the
+                // Cascade story-drop exclusion doesn't apply to Cloud).
+                forceCloudPlacementScenario(self, postDest, originStage,
+                                            "changeNextStage");
             }
         });
 

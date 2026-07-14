@@ -662,6 +662,18 @@ inline constexpr const char* kGameDataFunctionIsCrashHome =
     "_ZN16GameDataFunction11isCrashHomeE22GameDataHolderAccessor";
 inline constexpr const char* kGameDataFunctionRepairHome =
     "_ZN16GameDataFunction10repairHomeE20GameDataHolderWriter";
+// HomeStatus story-progress reads (CloudArrivalScenarioHook). GameProgressData
+// keeps ONE monotonic HomeStatus enum (None < ActivatedHome < LaunchedHome <
+// FoundKoopa < CrashedHome < RepairedHome < BossAttackedHome <
+// RepairedHomeByCrashedBoss — decomp GameProgressData.h); these free-function
+// reads are equality/range tests on it: isFindKoopa == FoundKoopa(3),
+// isCrashHome == CrashedHome(4), isRepairHome > CrashedHome(4). The OR of the
+// three is therefore "HomeStatus >= FoundKoopa" = the Bowser interception /
+// Cloud fight beat has been passed. Same mangling pattern as isCrashHome.
+inline constexpr const char* kGameDataFunctionIsFindKoopa =
+    "_ZN16GameDataFunction11isFindKoopaE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionIsRepairHome =
+    "_ZN16GameDataFunction12isRepairHomeE22GameDataHolderAccessor";
 inline constexpr const char* kGameDataFunctionUnlockWorld =
     "_ZN16GameDataFunction11unlockWorldE20GameDataHolderWriteri";
 inline constexpr const char* kGameDataFunctionGetWorldIndexClash =

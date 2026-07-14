@@ -504,7 +504,11 @@
       "Bash(.venv/Scripts/python.exe -m pytest apworld/smo_archipelago/tests -q --basetemp=/tmp/smoap_pytest_tmp)",
       "PowerShell(gh api \"repos/MonsterDruide1/OdysseyDecomp/git/trees/master?recursive=1\" --jq '.tree[].path | select\\(test\\(\\\\\"CoinCollect\\\\\"\\) or test\\(\\\\\"System/GameData\\\\\"\\)\\)')",
       "PowerShell($t = Invoke-RestMethod \"https://api.github.com/repos/MonsterDruide1/OdysseyDecomp/git/trees/master?recursive=1\" -Headers @{ \"User-Agent\"=\"claude\" }; $t.tree | Where-Object { $_.path -match \"CoinCollect\" -or $_.path -match \"System/GameData\" } | Select-Object -ExpandProperty path)",
-      "PowerShell($p = \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main\"; if \\(Test-Path $p\\) { Write-Output \"FOUND $p \\($\\(\\(Get-Item $p\\).Length\\) bytes\\)\" } else { Write-Output \"MISSING $p\"; Get-ChildItem \"E:\\\\smo_archipelago\\\\.romfs-cache\" -ErrorAction SilentlyContinue | Select-Object -First 20 Name })"
+      "PowerShell($p = \"E:\\\\smo_archipelago\\\\.romfs-cache\\\\main\"; if \\(Test-Path $p\\) { Write-Output \"FOUND $p \\($\\(\\(Get-Item $p\\).Length\\) bytes\\)\" } else { Write-Output \"MISSING $p\"; Get-ChildItem \"E:\\\\smo_archipelago\\\\.romfs-cache\" -ErrorAction SilentlyContinue | Select-Object -First 20 Name })",
+      "Read(//c/Users/devon/AppData/Roaming/SMOArchipelago/**)",
+      "PowerShell(Get-ChildItem \"$env:APPDATA\\\\SMOArchipelago\\\\data\" -ErrorAction SilentlyContinue | Select-Object Name; Write-Output '---repo world_scenarios---'; Get-ChildItem E:\\\\smo_archipelago -Recurse -Filter world_scenarios.json -ErrorAction SilentlyContinue | Select-Object FullName)",
+      "PowerShell($j = Get-Content \"$env:APPDATA\\\\SMOArchipelago\\\\data\\\\shine_map.json\" -Raw | ConvertFrom-Json; $names = $j.PSObject.Properties.Name | Select-Object -First 3; $names; Write-Output '---sample value---'; $j.\\($names[0]\\) | ConvertTo-Json -Depth 5)",
+      "PowerShell($j = Get-Content \"$env:APPDATA\\\\SMOArchipelago\\\\data\\\\shine_map.json\" -Raw | ConvertFrom-Json; Write-Output \"type: $\\($j.GetType\\(\\).Name\\) count: $\\($j.Count\\)\"; Write-Output '---first element---'; $j[0] | ConvertTo-Json -Depth 5)"
     ],
     "additionalDirectories": [
       "\\tmp\\dbg",

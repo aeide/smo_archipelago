@@ -106,6 +106,17 @@ void installCascadeBroodeRespawnHook();
 // moons stay gated). Applied from EntranceShuffleHook's changeNextStage commit.
 // See hooks/CapReturnScenarioHook.cpp.
 void installCapReturnScenarioHook();
+
+// Cloud first-arrival Bowser encounter: forces EVERY commit into
+// CloudWorldHomeStage (flights, doors, Cloud-internal subarea pop-outs, the
+// cabin-exit 'CurrentWorldHome' alias) to scenario 1 while GameProgressData
+// HomeStatus < FoundKoopa — vanilla's own one-time interception gate — so the
+// vanilla first-visit Bowser fight plays instead of a recomputed world-peace
+// layout with no encounter trigger (globe softlock + story-grounded Odyssey,
+// 2026-07-14); releases permanently once the fight's knockdown advances
+// HomeStatus. Applied from EntranceShuffleHook's changeNextStage commit.
+// See hooks/CloudArrivalScenarioHook.cpp.
+void installCloudArrivalScenarioHook();
 }  // namespace smoap::hooks
 
 namespace smoap::game {
@@ -444,6 +455,9 @@ extern "C" void hkMain() {
 
     SMOAP_LOG_INFO("installing CapReturnScenarioHook (floor ChangeStageInfo.scenario up to 2 on commit into Cap; moon-rock scenario preserved)");
     smoap::hooks::installCapReturnScenarioHook();
+
+    SMOAP_LOG_INFO("installing CloudArrivalScenarioHook (force ChangeStageInfo.scenario -> 1 on ANY commit into Cloud while HomeStatus < FoundKoopa)");
+    smoap::hooks::installCloudArrivalScenarioHook();
 
 #ifdef SMOAP_HAS_DEBUG_RENDERER
     // Install the Nvn bootstrap trampoline so ImGuiBackendNvn auto-wires
