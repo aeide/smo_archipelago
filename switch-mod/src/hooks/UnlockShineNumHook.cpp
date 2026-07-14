@@ -155,20 +155,37 @@ std::uintptr_t mainOffsetOfRet(void* lr) {
 
 void logGateProbe(const char* tag, std::uint8_t bit, void* lr, int orig) {
     const std::uintptr_t off = mainOffsetOfRet(lr);
-    // Dedup globally by caller offset so the per-frame reads don't flood the
-    // Switch log — we only want to ENUMERATE the distinct call sites. 16 slots is
-    // ample (expect 2-3: gauge display, takeoff-enable gate, maybe a label).
-    static std::uintptr_t s_seen[16] = {0};
+    // Rate-limit PER caller offset (re-log at most once/second) rather than
+    // permanently dedup — the gauge read only fires while the takeoff / world-map
+    // UI is open, so a permanent dedup would suppress it if it reuses an offset
+    // already seen at arrival. With windowed re-logging, opening that UI re-logs
+    // whatever fires during it, timestamped, so Devon can point at the gauge's
+    // caller. Global cap keeps a long session from flooding the Switch tab.
+    constexpr std::int64_t kRelogMs = 1000;
+    constexpr int kMaxLines = 400;
+    struct Slot { std::uintptr_t off; std::int64_t last_ms; };
+    static Slot s_slots[16] = {};
     static int s_n = 0;
+    static int s_lines = 0;
+    const std::int64_t now = smoap::ap::ApState::nowMs();
+    Slot* slot = nullptr;
     for (int i = 0; i < s_n; ++i)
-        if (s_seen[i] == off) return;
-    if (s_n < 16) s_seen[s_n++] = off;
-    SMOAP_LOG_INFO("[gate-probe] NEW caller ret=+0x%lx (BL@+0x%lx) via %s "
-                   "kingdom=%s(bit=%u) origVanilla=%d -- record this offset",
+        if (s_slots[i].off == off) { slot = &s_slots[i]; break; }
+    if (!slot) {
+        if (s_n < 16) slot = &s_slots[s_n++];
+    } else if (now - slot->last_ms < kRelogMs) {
+        return;  // logged this offset recently — stay quiet
+    }
+    if (slot) slot->off = off, slot->last_ms = now;
+    if (s_lines >= kMaxLines) return;
+    ++s_lines;
+    SMOAP_LOG_INFO("[gate-probe] caller ret=+0x%lx (BL@+0x%lx) via %s "
+                   "kingdom=%s(bit=%u) origVanilla=%d t=%ldms -- record offsets "
+                   "seen WHILE the takeoff gauge is on screen",
                    static_cast<unsigned long>(off),
                    static_cast<unsigned long>(off - 4), tag,
                    bit < 17 ? smoap::game::kingdomForBit(bit) : "<unknown>", bit,
-                   orig);
+                   orig, static_cast<long>(now));
 }
 
 // ── Phase 2 apply table (DORMANT until populated) ──────────────────────────
@@ -185,8 +202,54 @@ void logGateProbe(const char* tag, std::uint8_t bit, void* lr, int orig) {
 // returns false for every real caller). Offset 0 is the module base and can
 // never be a genuine return address, so the sentinel matches nothing.
 constexpr std::uintptr_t kDisplayCallerOffsets[] = {
-    0,  // sentinel — append real gauge-caller offset(s) here to activate the fix
+    0,  // sentinel — append real display-caller offset(s) here to activate the fix
+    // Top-left moon-count HUD read (the "collected / required" circles). Pinned by
+    // the 2026-07-14 Sand-vs-Wooded contrast: in a LEGIT-progressed kingdom (Sand,
+    // post-Cascade) the HUD renders correctly and the ONLY free-wrapper caller that
+    // executes is +0x202dcc (returning the rolled required count); in a free-detour
+    // kingdom (Wooded) the same +0x202dcc is forced to 0 and the HUD blanks to
+    // "Full". So +0x202dcc feeds the HUD. Making JUST this caller honest restores
+    // the HUD while the takeoff GATE stays open. DELIBERATELY EXCLUDED:
+    //   +0x30b96c  — the free-wrapper takeoff GATE/readiness caller. It does NOT
+    //                execute in a legit-unlocked kingdom (Sand) — only when the
+    //                world isn't legitimately unlocked (Wooded/chain) — the
+    //                signature of the unlock check, not a per-frame HUD render.
+    //                Stays forced to 0 so takeoff remains open under the allowance.
+    //   +0x1ff308  — transient free-wrapper caller seen alongside the gate; kept 0.
+    //   +0x2c83d88 / +0x52a0f4 / +0x533c10 — MEMBER-seam reads. The +0x2c83d88
+    //                override fired (shown=18) yet the HUD stayed blank, proving the
+    //                HUD does not read the member seam; excluded.
+    0x202dcc,  // top-left moon-count HUD required-count read (free current-world wrapper)
 };
+
+// Decisive confirmation that a Phase-2 DISPLAY override actually FIRED and what
+// value it returned. Distinct tag from [gate-probe] (which logs BEFORE the apply
+// and so looks identical whether or not the fix is deployed). If this line does
+// NOT appear in the log, the Phase-2 build is not deployed. If it appears with
+// shown=<rolled> but the on-screen gauge/bubble still reads "Full on Power
+// Moons", then this caller is NOT what drives that text — the text reads the
+// free-wrapper GATE value (which we must keep at 0), i.e. it is the game's
+// readiness state and cannot show a nonzero count while takeoff is open.
+void logGaugeFix(const char* seam, void* lr, std::uint8_t bit, int orig, int shown) {
+    const std::uintptr_t off = mainOffsetOfRet(lr);
+    constexpr std::int64_t kRelogMs = 1000;
+    struct Slot { std::uintptr_t off; std::int64_t last_ms; };
+    static Slot s_slots[8] = {};
+    static int s_n = 0;
+    const std::int64_t now = smoap::ap::ApState::nowMs();
+    Slot* slot = nullptr;
+    for (int i = 0; i < s_n; ++i)
+        if (s_slots[i].off == off) { slot = &s_slots[i]; break; }
+    if (!slot) { if (s_n < 8) slot = &s_slots[s_n++]; }
+    else if (now - slot->last_ms < kRelogMs) return;
+    if (slot) slot->off = off, slot->last_ms = now;
+    SMOAP_LOG_INFO("[gauge-fix] DISPLAY override FIRED via %s caller=+0x%lx "
+                   "kingdom=%s(bit=%u) orig=%d -> shown=%d (if gauge still 'Full', "
+                   "this caller is not the gauge/bubble driver)",
+                   seam, static_cast<unsigned long>(off),
+                   bit < 17 ? smoap::game::kingdomForBit(bit) : "<unknown>", bit,
+                   orig, shown);
+}
 
 // True when `lr` (a game caller return address) is a known display/gauge read.
 bool isDisplayCaller(void* lr) {
@@ -233,8 +296,11 @@ HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
             // Phase 2: a DISPLAY caller shows the true count; the GATE caller
             // still gets 0 so takeoff stays open. Dormant while the table holds
             // only the sentinel (isDisplayCaller == false → returns 0 as before).
-            if (isDisplayCaller(lr))
-                return displayCountForBit(bit, orig);
+            if (isDisplayCaller(lr)) {
+                const int shown = displayCountForBit(bit, orig);
+                logGaugeFix("free-detour", lr, bit, orig, shown);
+                return shown;
+            }
             logSubstitution("findUnlockShineNum[free-detour]", bit, orig, 0);
             return 0;
         }
@@ -259,8 +325,11 @@ HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
                 // GATE caller still gets 0. Note chain_allowance_bit is stored
                 // ABOVE regardless, so the WorldMapSelectHook bounce keys off the
                 // same allowance whether this read is gate or display.
-                if (isDisplayCaller(lr))
-                    return displayCountForBit(bit, orig);
+                if (isDisplayCaller(lr)) {
+                    const int shown = displayCountForBit(bit, orig);
+                    logGaugeFix("chain-return", lr, bit, orig, shown);
+                    return shown;
+                }
                 logSubstitution("findUnlockShineNum[chain-return]", bit,
                                 orig, 0);
                 return 0;
@@ -343,9 +412,10 @@ HkTrampoline<int, void*, bool*, int> holderFindUnlockShineNumHook =
         // Phase 2 (dormant): if the gauge reads the member seam, a display caller
         // shows the true count while the gate caller keeps getting 0.
         int ret;
-        if (allow && isDisplayCaller(lr))
+        if (allow && isDisplayCaller(lr)) {
             ret = displayCountForBit(bit, orig);
-        else if (allow)
+            logGaugeFix("member", lr, bit, orig, ret);
+        } else if (allow)
             ret = 0;
         else
             ret = orig;

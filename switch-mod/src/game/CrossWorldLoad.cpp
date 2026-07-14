@@ -321,6 +321,12 @@ HkTrampoline<void, HakoniwaSequence*> exeLoadStageHook =
         // resolves to a kingdom OTHER than Metro — the flag is only ever set for
         // a Metro commit, but this guards a diverted/intervening load from being
         // mis-placed.
+        // Post-orig readback probe (see below): carried from the pre-orig write
+        // to after orig, so we can see whether orig clobbers our 0xb60 write and
+        // what placement scenario it computes on its own.
+        void*        metroProbeGdf   = nullptr;
+        std::int32_t metroProbeWrote = -1;
+        int          metroProbeStored = -1;
         {
             auto& st = smoap::ap::ApState::instance();
             const int pending =
@@ -347,6 +353,13 @@ HkTrampoline<void, HakoniwaSequence*> exeLoadStageHook =
                     stageWorld != kMetroWorld;
                 void* gdf =
                     st.game_data_file_cache.load(std::memory_order_relaxed);
+                // PROBE: Metro's PERSISTENT stored scenario. If this reads >=
+                // after_ending (5) the "festival-lit" city is Metro's genuine
+                // post-clear look and no transient-field write can override the
+                // stored-progress recompute — the exit-into-festival "fix" would
+                // then need to intercept the scenario READ during placement, not
+                // poke a field. If it reads <= 3 a later seam can still win.
+                const int storedMetro = scenarioNoForWorld(kMetroWorld);
                 if (wrongKingdom) {
                     st.metro_day_placement_scenario.store(
                         -1, std::memory_order_relaxed);
@@ -362,8 +375,11 @@ HkTrampoline<void, HakoniwaSequence*> exeLoadStageHook =
                     if (before != pending) *p = pending;
                     SMOAP_LOG_INFO("[metro-day] exeLoadStage force Metro "
                                    "mScenarioNoPlacement %d -> %d "
-                                   "(stageWorld=%d)", before, pending,
-                                   stageWorld);
+                                   "(stageWorld=%d storedMetroScenario=%d)",
+                                   before, pending, stageWorld, storedMetro);
+                    metroProbeGdf    = gdf;
+                    metroProbeWrote  = pending;
+                    metroProbeStored = storedMetro;
                     st.metro_day_placement_scenario.store(
                         -1, std::memory_order_relaxed);
                 }
@@ -374,6 +390,21 @@ HkTrampoline<void, HakoniwaSequence*> exeLoadStageHook =
         }
         holdForWorldLoad();
         exeLoadStageHook.orig(self);
+        // PROBE (post-orig): read 0xb60 back. before=0 pre-orig means orig
+        // populates this field AFTER our write — so if `after` != what we wrote,
+        // orig recomputed placement from stored progress and our pre-orig write
+        // is the wrong seam (need a later hook / a scenario-read intercept).
+        if (metroProbeGdf) {
+            constexpr std::size_t kOffScenarioNoPlacement = 0xb60;
+            const std::int32_t after = *reinterpret_cast<std::int32_t*>(
+                reinterpret_cast<std::uint8_t*>(metroProbeGdf)
+                + kOffScenarioNoPlacement);
+            SMOAP_LOG_INFO("[metro-day] POST-orig mScenarioNoPlacement=%d "
+                           "(we wrote %d; storedMetroScenario=%d) — if != %d, "
+                           "orig clobbered our write",
+                           after, metroProbeWrote, metroProbeStored,
+                           metroProbeWrote);
+        }
     });
 
 // ── P5 §7 probe (2026-07-10 walk): the residency-CLOBBER ledger ─────────────
