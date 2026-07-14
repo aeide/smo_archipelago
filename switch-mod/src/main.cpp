@@ -43,6 +43,7 @@ void installUnlockShineNumByWorldIdHook();
 void installAddHackDictionaryHook();
 void installAddPayShineHook();
 void installAddPayShineAllHook();
+void installPurpleCoinAttributionHook();
 void installCaptureStartHook();
 void tickPendingUncapture();
 void installAbilityGateHooks();
@@ -362,6 +363,9 @@ extern "C" void hkMain() {
     SMOAP_LOG_INFO("installing M6-phase-D deposit hooks");
     smoap::hooks::installAddPayShineHook();
     smoap::hooks::installAddPayShineAllHook();
+
+    SMOAP_LOG_INFO("installing PurpleCoinAttributionHook (subarea coin credit)");
+    smoap::hooks::installPurpleCoinAttributionHook();
 
     SMOAP_LOG_INFO("installing CaptureStartHook (capture lock + AP check)");
     smoap::hooks::installCaptureStartHook();

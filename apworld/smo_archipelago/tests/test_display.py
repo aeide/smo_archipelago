@@ -6,7 +6,9 @@ import pytest
 
 from client.datapackage import ClassifiedItem
 from client.display import (
+    MAX_BONUS_CAPPY_BYTES,
     MAX_MOON_LABEL_BYTES,
+    format_bonus_grant_cappy,
     format_moon_label,
     format_shop_moon_label,
     truncate_utf8,
@@ -162,3 +164,44 @@ def test_format_shop_me_slot_none_treats_as_outgoing():
     text = format_shop_moon_label(item, recipient_slot="anyone", me_slot=None)
     # Pre-auth: no past-tense "Sent", but "for <slot>" still applies.
     assert text == "Cap Power Moon for anyone"
+
+
+# --- format_bonus_grant_cappy -------------------------------------------
+# Re-fight/Dark Side Multi-Moon bonus capture/ability announcements —
+# see docs/handoff-refight-multi-moons.md. Rides the Cappy speech-bubble
+# channel (wider budget than the moon-label pane) rather than the
+# MoonLabel cutscene text, which has no room for 3 extra names.
+
+
+def test_bonus_cappy_composes_prefix_and_names():
+    text = format_bonus_grant_cappy(
+        "Bonus captures", ["Paragoomba", "Spark pylon", "Volbonan"]
+    )
+    assert text == "Bonus captures: Paragoomba, Spark pylon, Volbonan"
+
+
+def test_bonus_cappy_empty_names_returns_empty_string():
+    # Caller (context.py) is expected to skip sending a CappyMsg at all when
+    # this returns "" — an empty bubble is never popped.
+    assert format_bonus_grant_cappy("Bonus captures", []) == ""
+
+
+def test_bonus_cappy_default_budget_matches_constant():
+    assert MAX_BONUS_CAPPY_BYTES == 90
+
+
+def test_bonus_cappy_truncates_long_name_list_safely():
+    names = ["Very Long Capture Name Number " + str(i) for i in range(3)]
+    text = format_bonus_grant_cappy("Bonus captures", names)
+    assert len(text.encode("utf-8")) <= MAX_BONUS_CAPPY_BYTES
+    assert text.endswith("-")
+    # Never split a UTF-8 codepoint mid-sequence.
+    assert text == text.encode("utf-8").decode("utf-8")
+
+
+def test_bonus_cappy_respects_custom_max_bytes():
+    text = format_bonus_grant_cappy(
+        "Bonus abilities", ["Wall Slide", "Cap Bounce", "Ground Pound"], max_bytes=20
+    )
+    assert len(text.encode("utf-8")) <= 20
+    assert text.endswith("-")

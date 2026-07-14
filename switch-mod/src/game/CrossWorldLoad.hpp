@@ -56,6 +56,16 @@ void cacheHakoniwaSequence(const void* sequence);
 // -1 when unresolvable (symbol missed / caches cold / unknown stage).
 int resolveWorldIdForStage(const char* stage);
 
+// World id of the stage the player is CURRENTLY standing in (subarea-aware),
+// derived from GameDataFunction::getCurrentStageName() + the stage->world map
+// (WorldList::tryFindWorldIndexByStageName). This is the subarea's HOME world
+// regardless of arrival path — unlike GameDataFile::mCurWorldId, which stays
+// stale on the origin world after a decoupled cross-world door/pipe entry
+// (only flights/demo warps refresh it; see the T-A note in the .cpp). -1 when
+// unresolvable (symbol missed / caches cold / unknown stage). Used by the
+// purple-coin attribution fix (hooks/PurpleCoinAttributionHook.cpp).
+int currentStageWorldId();
+
 // The world whose resident set is CURRENTLY loaded
 // (WorldResourceLoader::getLoadWorldId), falling back to the engine's
 // current world id when the loader isn't reachable. -1 when unknown.

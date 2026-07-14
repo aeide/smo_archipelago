@@ -133,34 +133,91 @@ inline constexpr const char* kCapHomeStage       = "CapWorldHomeStage";
 inline constexpr const char* kMetroHomeStage     = "CityWorldHomeStage";
 // New Donk City renders NIGHT during the Mechawiggler fight (main_scenario_no 1,
 // where its Multi-Moon "New Donk City's Pest Problem" is placed); reaching Metro's
-// overworld via a shuffled door / cross-kingdom subarea exit drops you into that
-// night — wrong for a traversal hub. Force the immediately-post-Mechawiggler DAY
-// city (scenario 3, the band-prep day state) on any arrival into CityWorldHomeStage that is NOT an Odyssey
-// flight. Odyssey flights keep Metro's LIVE scenario, so the night Mechawiggler
-// fight + its Multi-Moon stay reachable via the globe (Devon: reserve night for the
-// Odyssey arrival). We deliberately do NOT jump to the festival (main_scenario_no 7)
-// or the post-peace restored city (after_ending 5) — both too late; scenario 2 is a brief post-boss
-// transition with no placed moons, so we use scenario 3 (the band-prep day city). Scenario numbers from shine_map.json main_scenario_no. Same lever as
-// cascade/cap: ChangeStageInfo.mScenarioNo written before orig — a per-arrival LOAD
-// input, NOT a persisted quest advance (Mechawiggler is never skipped; the stored
-// story scenario is untouched, so a later Odyssey arrival is night again).
+// overworld via a shuffled door / cross-kingdom subarea exit BEFORE the fight drops
+// you into that night — wrong for a traversal hub. Before Mechawiggler, force the
+// band-prep DAY city (scenario 3) on any non-flight arrival into CityWorldHomeStage,
+// while Odyssey flights keep the LIVE scenario so the night fight + its Multi-Moon
+// stay reachable via the globe (Devon: reserve night for the Odyssey arrival).
+// AFTER Mechawiggler, arrivals load the LATEST scenario reached (the stored
+// per-kingdom scenario), for both flight and door, so the visible city matches
+// every other visit (Devon, 2026-07-13) instead of snapping back to day 3.
+// Scenario 2 is a brief post-boss transition with no placed moons; the post-peace
+// restored city (after_ending 5) and festival (7) load only once actually reached.
+// Scenario numbers from shine_map.json main_scenario_no. Full precedence +
+// max(incoming, stored) rationale on metroDayArrivalScenarioOverride below.
+// TWO levers are needed (2026-07-13, after the first in-game test landed in the
+// festival): (1) ChangeStageInfo.mScenarioNo written before orig here — the
+// per-arrival scenario-LOGIC / resource-load input (same as cascade/cap); and
+// (2) GameDataFile::mScenarioNoPlacement (@0xb60), the field the object-placement
+// masker reads for the visible layout, which the load RECOMPUTES from global
+// story progress (an advanced save recomputes Metro to its festival placement 7
+// even at scenario-logic 3 — the exit-into-festival bug). Lever 1 alone left the
+// festival stage/Pauline placed. So this commit ALSO stashes the target in
+// ApState::metro_day_placement_scenario; exeLoadStageHook (CrossWorldLoad.cpp)
+// writes mScenarioNoPlacement PRE-orig — after the recompute, before placement —
+// the seam that holds (a post-orig field write at this commit did NOT take).
+// Neither write is a persisted quest advance (Mechawiggler is never skipped; the
+// stored story scenario is untouched, so a later Odyssey arrival is night again).
 inline constexpr int         kMetroDayScenario   = 3;
+// Metro's moon-rock scenario (world_scenarios.json Metro moon_rock_scenario).
+// Reaching this means the rock is broken = world peace achieved.
+inline constexpr int         kMetroMoonRockScenario = 8;
 
-// Returns kMetroDayScenario when an arrival into Metro's home stage should be forced
-// to the day city (non-flight arrival, and only when RAISING toward day — never
-// lowering a higher explicit scenario such as a moon-rock load at 8). Else -1 = leave
-// the live scenario. curStageName == the Odyssey cabin means a globe flight -> keep
-// night. incomingScenario is the ChangeStageInfo.mScenarioNo (-1/compute or a low
-// night scenario are below kMetroDayScenario and get pulled up).
+// Decides the scenario to force an arrival into Metro's home stage to, else -1
+// (leave the load's own scenario). The "effective" scenario is the HIGHER of the
+// explicit ChangeStageInfo value (>= 0, e.g. a moon-rock scenario JUMP carries 8)
+// and Metro's STORED scenario (getScenarioNoByWorldId — the same signal
+// MoonRockHook uses to detect the moon-rock scenario being active). Taking the max
+// means (a) a rock-open JUMP is honored immediately even before the stored value
+// catches up, and (b) a stale-LOW incoming (e.g. a flight carrying the night
+// scenario) can never regress Mario below the LATEST scenario he has reached on a
+// prior visit — Devon: "the scenario loaded should match the latest scenario I
+// reached during other visits."
+//
+// Precedence (Devon rulings):
+//   1. Moon rock already broken (effective >= moon-rock scenario) = world peace
+//      achieved → PIN that rock/peace layout on EVERY arrival (Devon: "once a
+//      moon rock has been hit, activate it every time you arrive"). Return
+//      effective itself so a post-rock advance (9/10) is preserved.
+//   2. Not yet past the Mechawiggler fight (effective < the band-prep day):
+//        - Odyssey flight (cur == the cabin) → keep the live scenario so the night
+//          Mechawiggler fight + its Multi-Moon load via the globe (reserve night
+//          for the legit Odyssey arrival).
+//        - Door / cross-kingdom subarea exit → floor to the band-prep DAY city so a
+//          door arriver is never dropped into the unfought night city.
+//      A degraded stored read (-1, file/symbol not ready) lands here and fails
+//      toward the hub (day on a door, live on a flight) — the pre-2026-07-13
+//      behavior.
+//   3. Past Mechawiggler, pre-rock → pin the LATEST scenario reached (the stored
+//      per-kingdom scenario), for BOTH flight and door. This matches every other
+//      visit and overrides the placement recompute that would otherwise over-
+//      advance the visible layout to the festival before it is actually reached.
 int metroDayArrivalScenarioOverride(const char* destStageName,
                                     const char* curStageName,
                                     int incomingScenario) {
     if (destStageName == nullptr) return -1;
     if (std::strcmp(destStageName, kMetroHomeStage) != 0) return -1;
-    if (curStageName != nullptr &&
-        std::strcmp(curStageName, kOdysseyInsideStage) == 0) return -1;  // flight
-    if (incomingScenario >= kMetroDayScenario) return -1;  // never lower
-    return kMetroDayScenario;
+
+    // Latest reached = max(what this load asked for, what's persisted for Metro).
+    int effective = incomingScenario;
+    const int stored = smoap::game::scenarioNoForWorld(
+        smoap::game::worldIdFromKingdomShort("Metro"));
+    if (stored > effective) effective = stored;
+
+    const bool flight = curStageName != nullptr &&
+        std::strcmp(curStageName, kOdysseyInsideStage) == 0;
+
+    // (1) Rock broken → pin the rock/peace layout on EVERY arrival (world peace).
+    if (effective >= kMetroMoonRockScenario) return effective;
+
+    // (2) Not yet past Mechawiggler → flight keeps night; door floors to the hub.
+    if (effective < kMetroDayScenario) {
+        if (flight) return -1;
+        return kMetroDayScenario;
+    }
+
+    // (3) Past Mechawiggler, pre-rock → load the latest reached (flight AND door).
+    return effective;
 }
 
 using GetCurrentStageNameFn = const char* (*)(GameDataHolderAccessor);
@@ -1086,12 +1143,34 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                     const std::int32_t before = *scp;
                     const int metroSc = metroDayArrivalScenarioOverride(
                         dest, currentStageName(), before);
-                    if (metroSc >= 0 && before != metroSc) {
-                        *scp = metroSc;
-                        SMOAP_LOG_INFO("[metro-day] changeNextStage force Metro "
-                                       "arrival ChangeStageInfo.scenario %d -> %d "
-                                       "(dest=%s, non-flight -> day city)",
-                                       before, metroSc, dest);
+                    if (metroSc >= 0) {
+                        if (before != metroSc) {
+                            *scp = metroSc;
+                            SMOAP_LOG_INFO("[metro-day] changeNextStage force Metro "
+                                           "arrival ChangeStageInfo.scenario %d -> %d "
+                                           "(dest=%s; %s)",
+                                           before, metroSc, dest,
+                                           metroSc >= kMetroMoonRockScenario
+                                               ? "moon-rock/peace pin (world peace)"
+                                               : metroSc > kMetroDayScenario
+                                                     ? "latest-reached pin"
+                                                     : "day-hub floor");
+                        }
+                        // The ChangeStageInfo write above only moves scenario
+                        // LOGIC; the visible layout is placement-gated on
+                        // GameDataFile::mScenarioNoPlacement, which the load
+                        // recomputes from global story progress (-> festival 7 on
+                        // an advanced save, hiding both the day hub AND a broken
+                        // moon rock). Stash the target so exeLoadStage forces the
+                        // placement field PRE-orig (the seam that holds — a field
+                        // write here post-orig gets recomputed away). One-shot;
+                        // consumed + cleared by the next load. An Odyssey flight
+                        // (pre-peace) returns -1 above, so it never stashes and
+                        // Metro keeps its live (night Mechawiggler) placement via
+                        // the globe.
+                        smoap::ap::ApState::instance()
+                            .metro_day_placement_scenario.store(
+                                metroSc, std::memory_order_relaxed);
                     }
                 }
             }

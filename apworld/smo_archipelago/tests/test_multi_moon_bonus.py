@@ -154,6 +154,33 @@ def test_context_bonus_block_present_and_gated_behind_replay_skip():
         "bonus grant must be gated behind the reconnect-replay skip"
 
 
+def test_context_announces_bonus_via_cappy():
+    """The in-game moon-get cutscene label has no room for the 3 bonus
+    names (MAX_MOON_LABEL_BYTES=30), so the bonus grant must announce via
+    the wider Cappy speech-bubble channel instead — one send_cappy call per
+    branch, using format_bonus_grant_cappy, after the grant loop."""
+    body = _fn_body(_client_src("context.py"), "_process_received_items")
+    assert "format_bonus_grant_cappy" in body
+    assert body.count("send_cappy") == 2
+    # Both bonus branches must guard on having something to grant before
+    # popping a Cappy bubble (format_bonus_grant_cappy("", []) is skippable,
+    # but the guard also avoids an empty-list call in the capture branch,
+    # which iterates a possibly-empty slice unlike the ability branch).
+    mushroom_idx = body.find('"Mushroom Kingdom Multi-Moon"')
+    dark_side_idx = body.find('"Dark Side Multi-Moon"')
+    cappy_idx = body.find("send_cappy")
+    second_cappy_idx = body.find("send_cappy", cappy_idx + 1)
+    assert mushroom_idx != -1 and dark_side_idx != -1
+    assert mushroom_idx < cappy_idx < dark_side_idx < second_cappy_idx, \
+        "each MM branch must send its own Cappy bubble, not a shared one"
+
+
+def test_context_imports_cappy_helpers():
+    src = _client_src("context.py")
+    assert "format_bonus_grant_cappy" in src
+    assert "CappyMsg" in src
+
+
 def test_context_reads_bonus_slot_data():
     src = _client_src("context.py")
     assert 'slot_data.get("mm_bonus_captures")' in src

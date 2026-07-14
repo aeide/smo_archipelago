@@ -741,6 +741,28 @@ public:
     // hygiene as game_data_holder_cache above.
     std::atomic<void*> game_data_file_cache{nullptr};
 
+    // Metro "day city" placement force — pending target scenario.
+    //
+    // The visible Metro layout (festival stage / Pauline vs. band-prep day) is
+    // placement-gated on GameDataFile::mScenarioNoPlacement (@0xb60), which the
+    // load RECOMPUTES from global story progress each transition. Writing
+    // ChangeStageInfo.mScenarioNo at the changeNextStage commit sets the
+    // scenario-LOGIC number (drives resource load) but does NOT move the
+    // placement field, so a globally-advanced save recomputes Metro to its
+    // festival placement (7) even at scenario-logic 3 — the exit-into-festival
+    // bug. Post-orig field writes at the commit "did NOT take" (recompute runs
+    // after); the reliable seam is exeLoadStageHook PRE-orig (same place the
+    // chain-kingdom unlock + cap-peace ship-acquire re-asserts land so placement
+    // reads them). So EntranceShuffleHook's changeNextStage commit STASHES the
+    // target here whenever metroDayArrivalScenarioOverride fires (non-flight
+    // arrival into CityWorldHomeStage), and exeLoadStage consumes it once,
+    // writing mScenarioNoPlacement before placement runs, then clears it (-1).
+    // One-shot per commit: an Odyssey flight commit never sets it, so the night
+    // Mechawiggler layout + its Multi-Moon stay reachable via the globe.
+    //   >= 0 : force Metro's placement scenario to this value on the next load.
+    //   -1   : nothing pending.
+    std::atomic<int> metro_day_placement_scenario{-1};
+
     // AP-classification moon color (M-color milestone).
     // Indexed by SMO ShineInfo::shineId (s32). 0xFF = "no override; let the
     // game's stage color animation pick the default frame". Storage choice:

@@ -305,6 +305,73 @@ HkTrampoline<void, HakoniwaSequence*> exeLoadStageHook =
         if (smoap::ap::ApState::instance().cap_peace_start.load(
                 std::memory_order_relaxed))
             forceAcquireOdyssey("cap-peace-load");
+        // Metro "day city" placement force (exit-into-festival fix). The
+        // changeNextStage commit stashed the target scenario in ApState when
+        // metroDayArrivalScenarioOverride fired (a non-flight arrival into
+        // CityWorldHomeStage). The ChangeStageInfo write it made moves only the
+        // scenario-LOGIC number; the visible layout is placement-gated on
+        // GameDataFile::mScenarioNoPlacement (@0xb60), which the load recomputes
+        // from GLOBAL story progress (-> festival scenario 7 on an advanced
+        // save). We write that field HERE, pre-orig — the recompute has already
+        // run by this seam (a post-orig field write at the commit "did NOT
+        // take"; this is the same seam the chain-unlock + cap-peace re-asserts
+        // use so placement reads them). One-shot: consume + clear the pending
+        // target so it can't linger. mScenarioNoPlacement is a SINGLE shared
+        // field, so we DROP the force (without writing) if the stage now loading
+        // resolves to a kingdom OTHER than Metro — the flag is only ever set for
+        // a Metro commit, but this guards a diverted/intervening load from being
+        // mis-placed.
+        {
+            auto& st = smoap::ap::ApState::instance();
+            const int pending =
+                st.metro_day_placement_scenario.load(std::memory_order_relaxed);
+            if (pending >= 0) {
+                // Recomputed each call (NOT a static): resolveWorldIdForStage
+                // returns -1 until the holder is primed, and a static would
+                // latch that -1 forever.
+                const int kMetroWorld =
+                    resolveWorldIdForStage("CityWorldHomeStage");
+                int stageWorld = -1;
+                if (s_getCurrentStageName) {
+                    void* holder = st.game_data_holder_cache.load(
+                        std::memory_order_relaxed);
+                    if (holder) {
+                        const char* cur = s_getCurrentStageName(
+                            GameDataHolderAccessor{
+                                static_cast<GameDataHolder*>(holder)});
+                        stageWorld = resolveWorldIdForStage(cur);
+                    }
+                }
+                const bool wrongKingdom =
+                    stageWorld >= 0 && kMetroWorld >= 0 &&
+                    stageWorld != kMetroWorld;
+                void* gdf =
+                    st.game_data_file_cache.load(std::memory_order_relaxed);
+                if (wrongKingdom) {
+                    st.metro_day_placement_scenario.store(
+                        -1, std::memory_order_relaxed);
+                    SMOAP_LOG_INFO("[metro-day] exeLoadStage SKIP placement "
+                                   "force (stageWorld=%d != Metro %d) — pending "
+                                   "dropped", stageWorld, kMetroWorld);
+                } else if (gdf) {
+                    constexpr std::size_t kOffScenarioNoPlacement = 0xb60;
+                    auto* p = reinterpret_cast<std::int32_t*>(
+                        reinterpret_cast<std::uint8_t*>(gdf)
+                        + kOffScenarioNoPlacement);
+                    const std::int32_t before = *p;
+                    if (before != pending) *p = pending;
+                    SMOAP_LOG_INFO("[metro-day] exeLoadStage force Metro "
+                                   "mScenarioNoPlacement %d -> %d "
+                                   "(stageWorld=%d)", before, pending,
+                                   stageWorld);
+                    st.metro_day_placement_scenario.store(
+                        -1, std::memory_order_relaxed);
+                }
+                // gdf null (cache not yet primed): leave pending for the next
+                // load tick; it self-corrects (applied on a Metro load, dropped
+                // on a confirmed non-Metro one).
+            }
+        }
         holdForWorldLoad();
         exeLoadStageHook.orig(self);
     });
@@ -539,6 +606,16 @@ int resolveWorldIdForStage(const char* stage) {
         static_cast<const GameDataHolder*>(holder)->getWorldList();
     if (!list) return -1;
     return s_tryFindWorldIndexByStageName(list, stage);
+}
+
+int currentStageWorldId() {
+    if (!s_getCurrentStageName) return -1;
+    void* holder = smoap::ap::ApState::instance().game_data_holder_cache.load(
+        std::memory_order_relaxed);
+    if (!holder) return -1;
+    const char* cur = s_getCurrentStageName(
+        GameDataHolderAccessor{static_cast<GameDataHolder*>(holder)});
+    return resolveWorldIdForStage(cur);
 }
 
 int residentWorldId() {

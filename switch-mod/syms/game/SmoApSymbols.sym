@@ -198,6 +198,18 @@ _ZN2rs17getGrowFlowerTimeEPKN2al9LiveActorEPKNS0_11PlacementIdE
 _ZN16GameDataFunction7addCoinE20GameDataHolderWriteri
 
 //
+// Purple (regional) coin subarea attribution — PurpleCoinAttributionHook.cpp.
+// Under entrance shuffle, credit purples to the subarea's HOME kingdom instead
+// of the stale arrival kingdom (mCurWorldId is not refreshed on decoupled
+// cross-world door/pipe entry). Both are out-of-line (called from >=2 sites in
+// Item/CoinCollect.cpp) and verified present in the retail 1.0.0 dynsym via
+// scripts/check_nso_symbols.py (2026-07-13):
+//   GameDataFunction::addCoinCollect(GameDataHolderWriter, al::PlacementId const*)
+_ZN16GameDataFunction14addCoinCollectE20GameDataHolderWriterPKN2al11PlacementIdE
+//   CoinCollectWatcher::countup(al::LiveActor const*)  — on-collect HUD popup
+_ZN18CoinCollectWatcher7countupEPKN2al9LiveActorE
+
+//
 // P4 — ability enforcement (judge-backed move gates). See
 // hooks/AbilityGateHook.cpp. Each is `bool PlayerJudge*::judge() const`
 // (IJudge override) → mangled _ZNK<len><Class>5judgeEv (no args). Mangling

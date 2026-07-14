@@ -119,9 +119,99 @@ void logSubstitution(const char* which, std::uint8_t bit, int orig, int rolled) 
     }
 }
 
+// ── Gauge-vs-gate caller PROBE (2026-07-13, Devon playtest) ────────────────
+//
+// Symptom: in every allowance kingdom (free-detour + entrance-shuffle chain-
+// reached), the in-Odyssey takeoff gauge reads "full on moons" and never shows
+// the rolled required count. Cause: the current-world findUnlockShineNum we
+// force to 0 to OPEN the takeoff gate is the SAME out-of-line read the gauge
+// DISPLAY consumes (isUnlockedNextWorld inlines its own copy — proven not the
+// in-kingdom seam; the globe labels use the by-world member variant which we
+// leave rolled and which already reads correctly). The gate & gauge call sites
+// both live in StageSceneStateWorldMap.cpp, which is UNDECOMPILED — so the only
+// way to tell the two reads apart is by caller PC.
+//
+// The trampoline redirects the function entry with a plain B (Trampoline.h
+// writeBranch), NOT a BL, so on entry to this handler x30/LR still holds the
+// game caller's return address. __builtin_return_address(0), captured as the
+// FIRST statement of the handler (before orig() runs), yields it. We convert to
+// a main.nso text offset — the same units ShopItemMessageHook documents — and
+// log each distinct caller exactly once. The BL that made the call is at
+// (offset - 4).
+//
+// This probe changes NO behavior (the hooks still return exactly what they did
+// before), so takeoff / free-detour / chain-return all behave identically during
+// the diagnostic walk. Phase 2 (the actual fix) adds a two-line check: for the
+// caller offset(s) identified as the DISPLAY/gauge read, return the rolled value
+// instead of 0, while the GATE caller keeps getting 0. See the walk script in
+// docs/handoff-takeoff-gauge-count.md.
+std::uintptr_t mainOffsetOfRet(void* lr) {
+    auto* main = hk::ro::getMainModule();
+    if (!main) return 0;
+    const std::uintptr_t base = main->range().start();
+    const std::uintptr_t pc = reinterpret_cast<std::uintptr_t>(lr);
+    return pc >= base ? (pc - base) : pc;  // raw fallback if somehow below base
+}
+
+void logGateProbe(const char* tag, std::uint8_t bit, void* lr, int orig) {
+    const std::uintptr_t off = mainOffsetOfRet(lr);
+    // Dedup globally by caller offset so the per-frame reads don't flood the
+    // Switch log — we only want to ENUMERATE the distinct call sites. 16 slots is
+    // ample (expect 2-3: gauge display, takeoff-enable gate, maybe a label).
+    static std::uintptr_t s_seen[16] = {0};
+    static int s_n = 0;
+    for (int i = 0; i < s_n; ++i)
+        if (s_seen[i] == off) return;
+    if (s_n < 16) s_seen[s_n++] = off;
+    SMOAP_LOG_INFO("[gate-probe] NEW caller ret=+0x%lx (BL@+0x%lx) via %s "
+                   "kingdom=%s(bit=%u) origVanilla=%d -- record this offset",
+                   static_cast<unsigned long>(off),
+                   static_cast<unsigned long>(off - 4), tag,
+                   bit < 17 ? smoap::game::kingdomForBit(bit) : "<unknown>", bit,
+                   orig);
+}
+
+// ── Phase 2 apply table (DORMANT until populated) ──────────────────────────
+//
+// After the probe walk (docs/handoff-takeoff-gauge-count.md), fill this with the
+// main.nso RETURN offset(s) — the `+0x…` values the [gate-probe] lines print —
+// of the DISPLAY / gauge read(s), i.e. the caller(s) that feed the on-screen
+// "needs N moons" / "full on moons" text. For a read whose caller is in this
+// set we return the TRUE rolled required count instead of 0, so the gauge shows
+// the real threshold; the takeoff-enable GATE caller is NOT in the set, still
+// gets 0, and takeoff stays open under the allowance.
+//
+// Leave the lone `0` sentinel to keep today's behavior EXACTLY (isDisplayCaller
+// returns false for every real caller). Offset 0 is the module base and can
+// never be a genuine return address, so the sentinel matches nothing.
+constexpr std::uintptr_t kDisplayCallerOffsets[] = {
+    0,  // sentinel — append real gauge-caller offset(s) here to activate the fix
+};
+
+// True when `lr` (a game caller return address) is a known display/gauge read.
+bool isDisplayCaller(void* lr) {
+    const std::uintptr_t off = mainOffsetOfRet(lr);
+    if (off == 0) return false;
+    for (std::uintptr_t d : kDisplayCallerOffsets)
+        if (d != 0 && d == off) return true;
+    return false;
+}
+
+// The value a DISPLAY read should show while an allowance forces the GATE open:
+// the rolled required count if one is set for this kingdom, else the vanilla
+// count. Never 0 (that's the gate-only value).
+int displayCountForBit(std::uint8_t bit, int orig_vanilla) {
+    const int rolled = rolledGateForBit(bit);
+    return rolled >= 0 ? rolled : orig_vanilla;
+}
+
 HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
     hk::hook::trampoline([](bool* is_game_clear,
                             GameDataHolderAccessor accessor) -> int {
+        // MUST be the first statement: the trampoline enters via a plain B so
+        // x30 still holds the game caller's return address here. See the probe
+        // header above.
+        void* const lr = __builtin_return_address(0);
         const int orig = unlockShineNumHook.orig(is_game_clear, accessor);
         const std::uint8_t bit = resolveCurrentKingdomBit();
         // Free-detour kingdoms: force the CURRENT-WORLD leave-threshold to 0 so
@@ -139,6 +229,12 @@ HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
         // world-map GLOBE per-kingdom label reads the by-world variant below and
         // still shows the true rolled threshold (e.g. Snow 10 / Seaside 10).
         if (isFreeDetourBit(bit)) {
+            logGateProbe("free-detour[FORCED-0]", bit, lr, orig);
+            // Phase 2: a DISPLAY caller shows the true count; the GATE caller
+            // still gets 0 so takeoff stays open. Dormant while the table holds
+            // only the sentinel (isDisplayCaller == false → returns 0 as before).
+            if (isDisplayCaller(lr))
+                return displayCountForBit(bit, orig);
             logSubstitution("findUnlockShineNum[free-detour]", bit, orig, 0);
             return 0;
         }
@@ -158,6 +254,13 @@ HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
             auto& st = smoap::ap::ApState::instance();
             if (chainAllowanceActive(bit, orig)) {
                 st.chain_allowance_bit.store(bit, std::memory_order_relaxed);
+                logGateProbe("chain-return[FORCED-0]", bit, lr, orig);
+                // Phase 2 (dormant): DISPLAY caller shows the true count; the
+                // GATE caller still gets 0. Note chain_allowance_bit is stored
+                // ABOVE regardless, so the WorldMapSelectHook bounce keys off the
+                // same allowance whether this read is gate or display.
+                if (isDisplayCaller(lr))
+                    return displayCountForBit(bit, orig);
                 logSubstitution("findUnlockShineNum[chain-return]", bit,
                                 orig, 0);
                 return 0;
@@ -173,6 +276,7 @@ HkTrampoline<int, bool*, GameDataHolderAccessor> unlockShineNumHook =
         // door warps straight to Cap, never reaching the globe/gate), so Cascade can
         // keep its true rolled gate here and display correctly. See
         // [[cap-return-and-cascade-arrival-demo]].
+        logGateProbe("honest-rolled", bit, lr, orig);
         const int rolled = rolledGateForBit(bit);
         if (rolled < 0) return orig;
         logSubstitution("findUnlockShineNum", bit, orig, rolled);
@@ -222,15 +326,29 @@ HkTrampoline<int, bool*, GameDataHolderAccessor, int> unlockShineNumByWorldIdHoo
 HkTrampoline<int, void*, bool*, int> holderFindUnlockShineNumHook =
     hk::hook::trampoline([](void* self, bool* is_count_total,
                             int world_id) -> int {
+        void* const lr = __builtin_return_address(0);  // game caller (see probe hdr)
         const int orig = holderFindUnlockShineNumHook.orig(
             self, is_count_total, world_id);
         const std::uint8_t bit = smoap::game::kingdomBitForWorldId(world_id);
         const std::uint8_t cur = resolveCurrentKingdomBit();
         if (bit >= 17 || bit != cur) return orig;  // current-world reads only
         const bool allow = chainAllowanceActive(bit, orig);
+        // Probe the MEMBER seam too — if the gauge reads the by-world member with
+        // the current world id (rather than the free current-world wrapper), its
+        // caller shows up here instead. Tagged distinctly so Devon can tell the
+        // two families apart in the log.
+        logGateProbe(allow ? "member[FORCED-0]" : "member[honest]", bit, lr, orig);
         static std::uint8_t s_last_bit = 0xff;
         static int s_last_ret = -2;
-        const int ret = allow ? 0 : orig;
+        // Phase 2 (dormant): if the gauge reads the member seam, a display caller
+        // shows the true count while the gate caller keeps getting 0.
+        int ret;
+        if (allow && isDisplayCaller(lr))
+            ret = displayCountForBit(bit, orig);
+        else if (allow)
+            ret = 0;
+        else
+            ret = orig;
         if ((bit != s_last_bit || ret != s_last_ret)) {
             static int s_log = 0;
             if (s_log < 80) {

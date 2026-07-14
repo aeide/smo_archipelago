@@ -17,9 +17,10 @@ from .abilities import newly_unlocked_move
 from .commands import parse_command
 from .config import ColorsConfig
 from .datapackage import DataPackage
-from .display import format_moon_label, format_shop_moon_label
+from .display import format_bonus_grant_cappy, format_moon_label, format_shop_moon_label
 from .maps import CaptureMap, ShineMap
 from .protocol import (
+    CappyMsg,
     ItemKind,
     ItemMsg,
     KillMsg,
@@ -672,7 +673,8 @@ class SMOContext(CommonContext):
                 # includes this one) consumes captures [3*(N-1):3*N] — order-
                 # agnostic across the 6 identically-named items.
                 n = self.state.received_item_count(ref.name)
-                for cap in self.mm_bonus_captures[3 * (n - 1): 3 * n]:
+                granted_caps = self.mm_bonus_captures[3 * (n - 1): 3 * n]
+                for cap in granted_caps:
                     self.state.grant_bonus_capture(cap)
                     if self.switch is not None:
                         await self.switch.send_item(ItemMsg(
@@ -682,6 +684,18 @@ class SMOContext(CommonContext):
                             from_="(self)",
                             hack_name=self.capture_map.cap_to_hack(cap),
                         ))
+                # Surface the 3 names in-game: the moon-get cutscene label
+                # (format_moon_label, MAX_MOON_LABEL_BYTES=30) has no room for
+                # them, so this rides the wider Cappy speech-bubble channel
+                # instead — same channel capturesanity already uses for
+                # check-time announcements (see _dispatch_check in
+                # switch_server.py). Fires right after this item's MoonLabel
+                # cutscene lands (this is the ReceivedItems round-trip for the
+                # same check), reads as one "Got MM! +captures" beat in-game.
+                if self.switch is not None and granted_caps:
+                    await self.switch.send_cappy(CappyMsg(
+                        text=format_bonus_grant_cappy("Bonus captures", granted_caps)
+                    ))
                 coin_relevant_this_batch = True
             elif ref.name == "Dark Side Multi-Moon" and self.mm_bonus_abilities:
                 # Fold the 3 bonus abilities into the snapshot (pushed once at the
@@ -689,6 +703,10 @@ class SMOContext(CommonContext):
                 # converts to coins, exactly like a real ability receipt.
                 for ab in self.mm_bonus_abilities:
                     self.state.grant_bonus_ability(ab)
+                if self.switch is not None:
+                    await self.switch.send_cappy(CappyMsg(
+                        text=format_bonus_grant_cappy("Bonus abilities", self.mm_bonus_abilities)
+                    ))
                 ability_received_this_batch = True
                 coin_relevant_this_batch = True
 

@@ -153,6 +153,40 @@ def format_moon_label(
     return truncate_utf8(text, max_bytes)
 
 
+# Cappy speech-bubble comfortable width. Distinct from MAX_MOON_LABEL_BYTES:
+# that constant is tuned to the TxtScenario *pane's* empirical glyph width
+# (see module docstring), while the Cappy bubble is a wider surface — its
+# wire field is char[kMediumFieldCap] (128 bytes; see ApProtocol.hpp Cappy)
+# and CappyMessenger's own comment calls out "~60-char comfortable width".
+# 90 leaves headroom under the wire cap for the sanitizer's own NUL + any
+# ASCII-fallback substitutions (e.g. an em-dash expanding to "--").
+MAX_BONUS_CAPPY_BYTES = 90
+
+
+def format_bonus_grant_cappy(
+    prefix: str,
+    names: list[str],
+    max_bytes: int = MAX_BONUS_CAPPY_BYTES,
+) -> str:
+    """Cappy bubble text announcing a Multi-Moon's bonus capture/ability
+    side-grant (see docs/handoff-refight-multi-moons.md).
+
+    e.g. format_bonus_grant_cappy(
+             "Bonus captures", ["Paragoomba", "Spark pylon", "Volbonan"])
+         -> "Bonus captures: Paragoomba, Spark pylon, Volbonan"
+
+    Returns "" for an empty `names` list (caller should skip sending the
+    Cappy message in that case rather than pop an empty bubble). Reuses
+    `truncate_utf8` so a pathologically long name list degrades with the
+    same byte-safe "-" marker as the moon-label path instead of overflowing
+    the wire buffer or splitting a UTF-8 codepoint.
+    """
+    if not names:
+        return ""
+    text = f"{prefix}: {', '.join(names)}"
+    return truncate_utf8(text, max_bytes)
+
+
 def format_shop_moon_label(
     item: ClassifiedItem,
     recipient_slot: str,
