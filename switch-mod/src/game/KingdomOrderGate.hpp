@@ -105,4 +105,15 @@ DetourExitGateDecision evaluateDetourExitGate(const char* exit_kingdom_short);
 // unpaid").
 int depositedEffectiveMoons(std::uint8_t bit);
 
+// True when the player has collected AT LEAST this kingdom's rolled leave-gate
+// in lifetime effective moons (outstanding + deposited) — i.e. "enough moons to
+// leave and progress the story." Used by WorldMapSelectHook's chain-return
+// bounce so that a chain-reached kingdom whose leave-gate is MET no longer
+// bounces forward flights (Devon 2026-07-15: enough moons -> progress, no matter
+// the scenario; this intentionally reverses the P5 finding-13 "paying never
+// legitimizes story-forward travel" ruling). Conservative when the rolled gate
+// is unknown (kingdom_gate[bit] == -1, i.e. randomize_kingdom_gates off): returns
+// false so the pre-existing bounce behavior is preserved for those seeds.
+bool leaveGateSatisfied(std::uint8_t bit);
+
 }  // namespace smoap::game

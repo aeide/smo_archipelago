@@ -197,4 +197,15 @@ DetourExitGateDecision evaluateDetourExitGate(const char* exit_kingdom_short) {
     return d;
 }
 
+bool leaveGateSatisfied(std::uint8_t bit) {
+    if (bit >= 17) return false;
+    const int rolled = smoap::ap::ApState::instance()
+        .kingdom_gate[bit].load(std::memory_order_relaxed);
+    // Unknown gate (randomize_kingdom_gates off): we can't confidently say
+    // "enough moons" without the vanilla per-kingdom threshold, so keep the
+    // conservative pre-existing bounce behavior (return false).
+    if (rolled < 0) return false;
+    return collectedEffectiveMoons(bit) >= rolled;
+}
+
 }  // namespace smoap::game

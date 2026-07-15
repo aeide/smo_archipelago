@@ -210,9 +210,20 @@ HkTrampoline<bool, GameDataHolderWriter, const char*> tryChangeDemoWarpHook =
             const bool depart_chain_only =
                 depart_bit < 17 &&
                 smoap::game::isKingdomChainReachedOnly(depart_bit, depart_world);
+            // Devon 2026-07-15: "if I have enough moons for that kingdom I can
+            // leave it and progress the story, no matter what scenario." Once the
+            // departing kingdom's rolled leave-gate is MET (enough lifetime
+            // effective moons collected), forward flights are no longer bounced —
+            // the moon leave-gate becomes the sole gate on progression. This
+            // reverses P5 finding-13 ("paying never legitimizes story-forward
+            // travel") on purpose: the visited-only bounce now applies ONLY while
+            // the leave-gate is still unmet (so an under-fueled chain arrival is
+            // still funneled back to visited kingdoms to go collect / receive
+            // more, rather than stranded forward out of logic).
+            const bool leave_gate_met = smoap::game::leaveGateSatisfied(depart_bit);
             const char* tgt_kingdom =
                 smoap::game::kingdomShortFromHomeStage(final_stage);
-            if (depart_chain_only && tgt_kingdom) {
+            if (depart_chain_only && !leave_gate_met && tgt_kingdom) {
                 const std::uint8_t tgt_bit = smoap::game::kingdomBitFor(tgt_kingdom);
                 const int tgt_world = smoap::game::worldIdFromKingdomShort(tgt_kingdom);
                 const bool allowed =
@@ -245,6 +256,18 @@ HkTrampoline<bool, GameDataHolderWriter, const char*> tryChangeDemoWarpHook =
                                   origin_kingdom);
                     smoap::ui::CappyMessenger::instance().enqueueSystem(bubble);
                     final_stage = bounce_stage;
+                }
+            } else if (depart_chain_only && leave_gate_met && tgt_kingdom) {
+                // Bounce lifted by the leave-gate: enough moons collected in the
+                // departing (chain-reached) kingdom, so forward progression is
+                // allowed (Devon 2026-07-15). Rate-limited on change.
+                static std::uint8_t s_last_depart = 0xff;
+                if (s_last_depart != depart_bit) {
+                    s_last_depart = depart_bit;
+                    SMOAP_LOG_INFO("[chain-return] leave-gate MET for %s(bit=%u) "
+                                   "-> allow forward flight to '%s' (no bounce)",
+                                   smoap::game::kingdomForBit(depart_bit),
+                                   depart_bit, final_stage);
                 }
             }
         }

@@ -152,6 +152,8 @@ inline constexpr const char* kCascadeFlightArrivalId = "";  // empty = home defa
 inline constexpr const char* kCascadeHomeStage   = "WaterfallWorldHomeStage";
 inline constexpr const char* kOdysseyInsideStage = "HomeShipInsideStage";
 inline constexpr const char* kCapHomeStage       = "CapWorldHomeStage";
+inline constexpr const char* kSkyWorldHomeStage  = "SkyWorldHomeStage";   // Bowser's
+inline constexpr const char* kMoonWorldHomeStage = "MoonWorldHomeStage";  // Moon
 inline constexpr const char* kMetroHomeStage     = "CityWorldHomeStage";
 // New Donk City renders NIGHT during the Mechawiggler fight (main_scenario_no 1,
 // where its Multi-Moon "New Donk City's Pest Problem" is placed); reaching Metro's
@@ -810,6 +812,83 @@ void processCascadeOdysseyDivert(const ChangeStageInfo* info) {
                    kOdysseyInsideStage, kCapHomeStage, cur);
 }
 
+// ── Bowser's Odyssey "board -> Moon" moon-gated divert (Devon ruling 2026-07-15) ─
+//
+// Bowser's Kingdom -> Moon is vanilla's SCRIPTED "chase Bowser" story flight
+// (a changeNextStageWithDemoWorldWarp("MoonWorldHomeStage") fired from a BYML
+// event flow after RoboBrood), NOT a world-map globe destination. The apworld
+// gates "Moon Kingdom" on {KingdomMoons(Bowser's,N)} as an Odyssey-FLIGHT edge,
+// expecting a moon-gated flight the game never provides on its own. So a player
+// who reached Bowser's with enough moons but WITHOUT the story (e.g. a chain-
+// reached Bowser's that skipped RoboBrood via a shuffled door) sits at a full
+// takeoff gauge that never lifts off: the globe has no forward destination
+// (getNextWorldId/mNextWorldId never points at Moon; StageSceneStateWorldMap is
+// undecompiled). Confirmed in-game 2026-07-15 ("gauge full, never lifts off") —
+// P5 finding 11, first clean reproduction.
+//
+// Devon ruling 2026-07-15: PURE MOON-GATE — enough Bowser's moons + boarding the
+// Odyssey should reach the Moon, RoboBrood NOT required. Same seam + proven
+// mechanism as processCascadeOdysseyDivert: boarding the Odyssey is a plain door
+// commit into HomeShipInsideStage caught right here, so we rewrite ITS dest to
+// Moon's HomeStage (empty id = default spawn) instead of entering the cabin/globe,
+// and arm the crash-safe cross-world pre-load (B2 path — the B1 flight cinematic
+// stays off per kB1DemoWarpCrossWorld). The downstream [locked-flight] block
+// normalizes Moon's Odyssey on the resulting arrival (forceAlreadyVisitedWorld +
+// forceAcquireOdyssey), so the ship spawns and the first-visit warp-in has a
+// ship (no camera-lock strand — the Bowser's landing failure mode).
+//
+// Scoped: cur == SkyWorldHomeStage (Bowser's home), the leave-gate is MET
+// (leaveGateSatisfied(Bowser) = collected effective moons >= rolled gate), and
+// Moon is NOT yet reached (one-shot first-reach; after Moon is visited, Bowser's
+// boarding opens the normal cabin/globe again). Under-fueled boarding (leave-gate
+// unmet) is untouched -> cabin/globe opens and the allowance lets the player fly
+// BACK to visited kingdoms to collect more. Trade-off (accepted, mirrors
+// Cascade->Cap): while armed, boarding Bowser's Odyssey is a one-way trip to the
+// Moon (no flight map); backward travel from that point routes through the Moon's
+// own globe.
+//
+// WALK UNKNOWN (see the arrival diagnostics in fileChangeNextStageHook): what
+// SCENARIO Moon loads in on a pre-wedding arrival, and whether the 14 arrival
+// moons + the "leave Moon = win" goal are reachable without the Bowser wedding
+// fight. If Moon lands in a wrong/locked scenario, add a Moon arrival scenario
+// force here (mirror CloudArrivalScenarioHook / metroDayArrivalScenarioOverride).
+void processBowserMoonDivert(const ChangeStageInfo* info) {
+    if (!info) return;
+    const char* dest = readCstrAt(info, kOffChangeStageNameCstr);
+    if (!dest || std::strcmp(dest, kOdysseyInsideStage) != 0) return;
+    const char* cur = currentStageName();
+    if (!cur || std::strcmp(cur, kSkyWorldHomeStage) != 0) return;
+
+    const std::uint8_t bowser_bit = smoap::game::kingdomBitFor("Bowser");
+    if (bowser_bit >= 17 || !smoap::game::leaveGateSatisfied(bowser_bit))
+        return;  // not enough moons yet -> vanilla cabin/globe (can still fly back)
+
+    const int moon_world = smoap::game::worldIdFromKingdomShort("Moon");
+    if (moon_world < 0) return;
+    if (smoap::game::isWorldAlreadyGo(moon_world))
+        return;  // already reached Moon once -> restore the normal cabin/globe
+
+    auto* mut       = const_cast<ChangeStageInfo*>(info);
+    char* dst_stage = mutableCstrAt(mut, kOffChangeStageNameCstr);
+    char* dst_id    = mutableCstrAt(mut, kOffChangeStageIdCstr);
+    const std::size_t stage_len = std::strlen(kMoonWorldHomeStage);
+    if (!dst_stage || !dst_id || stage_len + 1 > kFixedStringCap) {
+        SMOAP_LOG_WARN("[bowser->moon] redirect buffer guard tripped — left vanilla "
+                       "(boarding enters the cabin instead)");
+        return;
+    }
+    std::memcpy(dst_stage, kMoonWorldHomeStage, stage_len + 1);
+    dst_id[0] = '\0';
+    // Crash-safe cross-world load (B2): Moon is never resident from Bowser's, and
+    // remapped==false on this boarding commit so routeRemappedCrossWorld's arming
+    // never runs — arm it here, matching the shipping plain-commit path.
+    smoap::game::armCrossWorldPreload(moon_world, kMoonWorldHomeStage);
+    SMOAP_LOG_INFO("[bowser->moon] leave-gate MET in Bowser's -> divert Odyssey "
+                   "boarding to Moon (moon-gated flight, skip RoboBrood): %s -> %s "
+                   "(cur=%s moon_world=%d)",
+                   kOdysseyInsideStage, kMoonWorldHomeStage, cur, moon_world);
+}
+
 // ── First-visit door-arrival warp suppression (door-arrival-first-visit-demo) ─
 //
 // A REMAPPED (shuffled-door) FIRST arrival into a kingdom trips the game's
@@ -985,6 +1064,11 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
             const bool remapped = processEntranceRemap(info);
             processDetourExitGate(info);
             processCascadeOdysseyDivert(info);
+            // Bowser's boarding -> Moon (moon-gated, skip RoboBrood). Rewrites the
+            // HomeShipInsideStage boarding commit to MoonWorldHomeStage in place
+            // when the Bowser leave-gate is met, so the dest read below is Moon and
+            // the [locked-flight] block normalizes Moon's Odyssey on arrival.
+            processBowserMoonDivert(info);
             // Overworld-arrival signal for the PC tracker. processEntranceRemap
             // has already rewritten mChangeStageName in place when shuffled, so
             // the dest read here is the FINAL stage Mario is committing to. If
@@ -1007,6 +1091,51 @@ HkTrampoline<void, GameDataFile*, const ChangeStageInfo*, std::int32_t>
                 // ORIGIN, and reportArrival overwrites that with the dest.
                 if (remapped && kingdom) processChainArrival(self, dest, kingdom);
                 if (first_visit_shuffled) armFirstVisitWarpSuppress(dest_world, dest);
+
+                // Bowser's / Moon: native globe flight into a story kingdom that
+                // was never unlocked (2026-07-14). Beating the Ruined dragon OUT
+                // OF ORDER (shuffled door) advances the global mHomeStatus past
+                // BossAttackedHome, so the vanilla Luncheon->Bowser interception —
+                // which normally routes through Ruined AND unlocks Bowser's — is
+                // skipped. You then fly straight to Bowser's, still LOCKED:
+                // isExistHome derives false, no Odyssey spawns, and the forward-
+                // warp-in demo plays with no ship -> camera-locked strand. (Moon
+                // sits one step further along the same chain and strands the same
+                // way.) The interception cannot be preserved — it and the Ruined
+                // un-ground read the SAME global mHomeStatus.
+                //
+                // Fix: normalize exactly like a shuffled-door chain arrival,
+                // PRE-load, so the Odyssey spawns. forceAlreadyVisitedWorld marks
+                // the save alreadyGo -> OdysseyRescue's chain-listing force sets
+                // mIsUnlockWorld[dest]=true before placement, so isExistHome
+                // derives true and the ship is placed parked + boardable;
+                // forceAcquireOdyssey ensures activate/launch/level. NEITHER
+                // touches mUnlockWorldNum, so no Bowser->Moon counter overshoot.
+                // Hard-scoped to Bowser's + Moon (Devon 2026-07-14) to stay clear
+                // of the Cloud/Cascade/Cap/Metro arrival forces below and the
+                // prologue. Fires only on a cross-stage FIRST-visit commit into a
+                // kingdom the save has NOT legitimately unlocked; a normal legit
+                // flight reads unlocked here and is skipped.
+                if (!remapped && kingdom && dest_world >= 0 &&
+                    (std::strcmp(kingdom, "Bowser") == 0 ||
+                     std::strcmp(kingdom, "Moon") == 0) &&
+                    std::strcmp(dest, currentStageName()) != 0 &&
+                    !smoap::game::isWorldAlreadyGo(dest_world)) {
+                    bool unlock_known = false;
+                    const bool legit_unlocked =
+                        smoap::game::isWorldUnlockedHonest(dest_world,
+                                                           &unlock_known) &&
+                        unlock_known;
+                    if (unlock_known && !legit_unlocked) {
+                        SMOAP_LOG_INFO("[locked-flight] native flight into locked "
+                                       "kingdom=%s (dest=%s worldId=%d) -> "
+                                       "normalize Odyssey pre-load (un-strand)",
+                                       kingdom, dest, dest_world);
+                        smoap::game::forceAlreadyVisitedWorld(self, dest_world,
+                                                              "locked-flight");
+                        smoap::game::forceAcquireOdyssey("locked-flight");
+                    }
+                }
                 // First-visit warp-demo VERIFICATION log (door-arrival-first-visit-
                 // demo). The lever is now known — the stored isFirstTimeNextWorld
                 // flag drives the shuffled-door first-arrival Odyssey warp-in, and
