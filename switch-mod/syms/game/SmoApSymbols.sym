@@ -133,13 +133,17 @@ _ZNK12GameDataFile9findShineEii
 // per-frame sweep that calls repairHome / unlockWorld whenever isCrashHome
 // holds.
 //
-// Ruined Kingdom is NOT handled here (boss-attack repair/backtrack path
-// removed 2026-06-04): beating the dragon releases the Odyssey in vanilla, and
-// AP fill pins the Ruined Multi-Moon to the dragon's vanilla location, so it
-// always frees. The old path pre-unlocked "Sky" (Bowser internally) and risked
-// a mUnlockWorldNum overshoot that skipped Bowser → Moon. With it gone,
-// crashHome / isBossAttackedHome / repairHomeByCrashedBoss are no longer
-// resolved — only the 5 manglings the Lost repair path uses remain.
+// Ruined Kingdom: the old boss-attack BACKTRACK path (pre-unlock "Sky" via
+// unlockWorld) was removed 2026-06-04 because it risked a mUnlockWorldNum
+// overshoot that skipped Bowser → Moon. For a normal STORY (Odyssey-flight)
+// arrival, beating the dragon releases the Odyssey in vanilla and AP fill pins
+// the Ruined Multi-Moon to the dragon, so nothing more is needed. But a CHAIN /
+// shuffled-door arrival runs the parked-arrival path (setAlreadyGoWorld) which
+// suppresses the boss-defeat repair demo, so mHomeStatus stays stuck at
+// BossAttackedHome(6) and the ship never un-grounds — softlock. OdysseyRescue's
+// sweep now re-runs repairHomeByCrashedBoss (mHomeStatus-only; NO unlockWorld,
+// so no overshoot) once the pinned Ruined Multi-Moon is collected — see the two
+// manglings added in the acquire-mutators block below.
 //
 // All manglings produced via aarch64-none-elf-g++ on forward-decls matching
 // MonsterDruide1/OdysseyDecomp src/System/GameDataFunction.h. The unlockWorld
@@ -171,6 +175,26 @@ _ZN16GameDataFunction12getHomeLevelE22GameDataHolderAccessor
 _ZN16GameDataFunction12activateHomeE20GameDataHolderWriter
 _ZN16GameDataFunction11upHomeLevelE20GameDataHolderWriter
 _ZN16GameDataFunction10launchHomeE20GameDataHolderWriter
+
+// Ruined boss-attack repair (2026-07-14). Ruined grounds the Odyssey via
+// mHomeStatus == BossAttackedHome(6); the dragon-defeat demo normally advances
+// it to RepairedHomeByCrashedBoss(7) via repairHomeByCrashedBoss. A chain/
+// shuffled-door arrival suppresses that demo (parked-arrival path), so after the
+// dragon the ship stays stuck grounded. OdysseyRescue's sweep re-runs
+// repairHomeByCrashedBoss once the pinned Ruined Multi-Moon is collected. NO
+// unlockWorld here — only mHomeStatus moves, so the old mUnlockWorldNum overshoot
+// (skipping Bowser -> Moon) cannot recur.
+//
+// These two are resolved by OdysseyRescue via hk::ro::lookupSymbol (raw main.nso
+// dynsym, soft-degrade on miss), NOT installAtSym — so they are deliberately NOT
+// registered in this sail DB yet (a bad/inlined entry here can fail the sail
+// build; lookupSymbol just returns 0 and the repair self-disables). Manglings are
+// Itanium-verified (same _ZN16GameDataFunction…E<arg> shape as isCrashHome/
+// repairHome, only the strlen-prefixed name differs) and declared beside them in
+// OdysseyDecomp GameDataFunction.h. If a future symbol-discovery pass confirms
+// they're exported, promote them here:
+//   _ZN16GameDataFunction18isBossAttackedHomeE22GameDataHolderAccessor
+//   _ZN16GameDataFunction23repairHomeByCrashedBossE20GameDataHolderWriter
 
 // GrowSeedInstantHook: rs::getGrowFlowerTime(const al::LiveActor*,
 // const al::PlacementId*). The public rs:: wrapper around

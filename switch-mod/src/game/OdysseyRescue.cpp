@@ -60,6 +60,9 @@ struct ResolvedFns {
     HomeWriteFn                 activateHome              = nullptr;
     HomeWriteFn                 upHomeLevel               = nullptr;
     HomeWriteFn                 launchHome                = nullptr;
+    // Ruined boss-attack repair (chain-arrival un-ground; see the sweep branch).
+    HomeFlagFn                  isBossAttackedHome        = nullptr;  // read
+    HomeWriteFn                 repairHomeByCrashedBoss   = nullptr;  // WRITE
     // First-visit / world-warp-demo getters (logger spike) — read-only.
     GetCurrentWorldIdFn         getCurrentWorldId         = nullptr;
     IsAlreadyGoWorldFn          isAlreadyGoWorld          = nullptr;
@@ -92,6 +95,7 @@ bool        g_ready = false;        // repair path (the 5 Lost-softlock fns)
 bool        g_diag_ready = false;   // diagnostic getters (4 *Home flag reads)
 bool        g_acquire_ready = false;  // force-acquire mutators (3 *Home writes)
 bool        g_warpdemo_ready = false; // first-visit / world-warp-demo getters
+bool        g_ruined_ready = false;   // Ruined boss-attack repair (2 fns resolved)
 
 template <typename Fn>
 bool resolveOne(Fn& slot, const char* mangled, const char* tag) {
@@ -197,6 +201,20 @@ void installOdysseyRescueSymbols() {
     g_acquire_ready = acq;
     SMOAP_LOG_INFO("OdysseyRescue: force-acquire mutators %s",
                    g_acquire_ready ? "COMPLETE" : "PARTIAL (acquire disabled)");
+
+    // Ruined boss-attack repair (2026-07-14). Needs both home-status fns; a miss
+    // disables only this repair (fail-safe — never force an un-ground) and leaves
+    // the rest of OdysseyRescue intact.
+    bool ruined = true;
+    ruined &= resolveOne(g_fns.isBossAttackedHome,
+        smoap::sym::kGameDataFunctionIsBossAttackedHome, "isBossAttackedHome");
+    ruined &= resolveOne(g_fns.repairHomeByCrashedBoss,
+        smoap::sym::kGameDataFunctionRepairHomeByCrashedBoss,
+        "repairHomeByCrashedBoss");
+    g_ruined_ready = ruined;
+    SMOAP_LOG_INFO("OdysseyRescue: Ruined boss-attack repair %s",
+                   g_ruined_ready ? "COMPLETE"
+                                  : "PARTIAL (Ruined un-ground disabled)");
 
     // First-visit / world-warp-demo getters (logger spike, 2026-06-27).
     // Independent readiness — these only feed logWorldWarpDemoDiag and never
@@ -626,6 +644,52 @@ void runOdysseySoftlockSweep() {
         }
     }
 
+    // --- Ruined boss-attack repair (chain-arrival un-ground, 2026-07-14) ---
+    // Ruined grounds the Odyssey via the Lord-of-Lightning boss-attack state:
+    // GameProgressData::mHomeStatus == BossAttackedHome(6). A STORY (Odyssey-
+    // flight) arrival plays the vanilla dragon-defeat demo, which calls
+    // repairHomeByCrashedBoss (mHomeStatus 6 -> RepairedHomeByCrashedBoss(7))
+    // and un-grounds + auto-launches the ship. But a CHAIN / shuffled-door
+    // arrival runs the PARKED-arrival path (processChainArrival's
+    // setAlreadyGoWorld — needed so the ship EXISTS at all, see
+    // EntranceShuffleHook), which suppresses that boss-defeat demo, so mHomeStatus
+    // stays stuck at 6, the ship stays "destroyed", and the player can't take off.
+    // checkAndChangeCorrectStatus only auto-repairs (6 -> RepairedHome) when
+    // LOADING a NON-Ruined world — which you can't reach while grounded. Softlock.
+    //
+    // Repair UNCONDITIONALLY while boss-attacked, NOT gated on beating the dragon
+    // (Devon 2026-07-14): the dragon requires Ground Pound AND Spark pylon to
+    // beat, so a chain arrival WITHOUT those items must still be able to fly back
+    // out to go get them — otherwise it's a hard softlock. So the moment the ship
+    // is boss-attacked in Ruined, advance mHomeStatus 6 -> 7 (repairHomeByCrashedBoss
+    // is monotonic, no-op once >= 7 → idempotent, self-silences) to make the ship
+    // boardable. The dragon is placed by SCENARIO 1, independent of mHomeStatus, so
+    // it stays present and fightable (mHomeStatus == 7 has NO side effect on world
+    // unlock / scenario — decomp-checked). The pinned progression Multi-Moon is not
+    // "skipped": it stays uncollected until the player returns with the items. We
+    // touch ONLY mHomeStatus — NOT unlockWorld — so the mUnlockWorldNum overshoot
+    // that retired the old Ruined path (post-boss autopilot skipping Bowser -> Moon)
+    // cannot recur. Gated on isBossAttackedHome so it never fires outside Ruined
+    // (that state is Ruined-specific); the kingdom check is belt-and-braces.
+    // Validated in-game 2026-07-14: ship un-grounds + boardable pre- and
+    // post-dragon, and the dragon stays fightable.
+    if (g_ruined_ready && g_diag_ready && g_fns.isBossAttackedHome &&
+        g_fns.repairHomeByCrashedBoss) {
+        const char* stage   = g_fns.getCurrentStageName(acc);
+        const char* kingdom = stage ? kingdomShortFromHomeStage(stage) : nullptr;
+        if (kingdom && std::strcmp(kingdom, "Ruined") == 0 &&
+            g_fns.isBossAttackedHome(acc)) {
+            g_fns.repairHomeByCrashedBoss(wr);
+            static int s_log = 0;
+            if (s_log < 8) {
+                ++s_log;
+                SMOAP_LOG_INFO("[ruined-repair] boss-attacked in Ruined -> "
+                               "repairHomeByCrashedBoss (Odyssey un-grounded) #%d",
+                               s_log);
+            }
+        }
+    }
+
     // --- Cascade free-travel rescue (Lost-style, 2026-06-29) ---
     // Devon's request: make Cascade's Odyssey boardable the same way the Lost
     // sweep below repairs Lost, so a free-travel player who flew in from Cap can
@@ -692,15 +756,17 @@ void runOdysseySoftlockSweep() {
     // (OdysseyRescue::isKingdomChainReachedOnly). Legit story arrivals have
     // Lost already unlocked, so the unlock call there is a harmless no-op.
     //
-    // Ruined Kingdom is deliberately NOT handled here. Ruined grounds the
-    // Odyssey via the Lord of Lightning's boss-attack state, which vanilla
-    // clears the moment the player beats the dragon and collects the Ruined
-    // Multi-Moon. We keep that Multi-Moon pinned to its vanilla location (the
-    // dragon) in AP fill — see apworld locations.json "place_item" on
-    // "Ruined: Battle with the Lord of Lightning!" — so beating the dragon
-    // always repairs the Odyssey and lets the player leave. No sweep needed,
-    // and crucially no risk of the counter-overshoot bug that the old Ruined
-    // backtrack path triggered (post-boss autopilot skipping Bowser → Moon).
+    // Ruined Kingdom is NOT handled in THIS (isCrashHome) branch — it grounds
+    // the Odyssey via the Lord of Lightning's boss-attack state (mHomeStatus ==
+    // BossAttackedHome), not the crashHome flag (crash reads 0 in Ruined). A
+    // normal STORY (Odyssey-flight) arrival needs nothing: vanilla's dragon-
+    // defeat demo repairs the ship, and AP fill pins the Ruined Multi-Moon to
+    // the dragon (locations.json "place_item" on "Ruined: Battle with the Lord
+    // of Lightning!"). A CHAIN / shuffled-door arrival suppresses that demo, so
+    // it IS handled — by the dedicated boss-attack repair branch ABOVE
+    // (repairHomeByCrashedBoss once the dragon is beaten). That branch touches
+    // only mHomeStatus, NOT unlockWorld, so it can't recur the counter-overshoot
+    // bug (post-boss autopilot skipping Bowser → Moon) the old backtrack path had.
     if (g_fns.isCrashHome(acc)) {
         const char* stage = g_fns.getCurrentStageName(acc);
         if (stage && std::strcmp(stage, "ClashWorldHomeStage") == 0) {

@@ -644,14 +644,16 @@ inline constexpr const char* kGameDataFunctionAddCoin =
 // frames) that detects the broken state and force-repairs via SMO's own
 // named GameDataFunction:: entry points.
 //
-// Ruined Kingdom is NOT swept (the boss-attack repair/backtrack path was
-// removed 2026-06-04). Ruined's Odyssey grounding is released by beating the
-// dragon, and AP fill pins the Ruined Multi-Moon to the dragon's vanilla
-// location, so beating it always frees the Odyssey. The old backtrack path
-// pre-unlocked "Sky" (Bowser internally) and risked a mUnlockWorldNum overshoot
-// that skipped Bowser → Moon. With it gone, getWorldIndexSky /
-// isBossAttackedHome / repairHomeByCrashedBoss / crashHome are no longer
-// resolved — only the 5 manglings the Lost repair path uses remain.
+// Ruined Kingdom: the old boss-attack BACKTRACK path (pre-unlock "Sky" via
+// unlockWorld) was removed 2026-06-04 — it risked a mUnlockWorldNum overshoot
+// that skipped Bowser → Moon. A normal STORY (Odyssey-flight) arrival needs
+// nothing extra: beating the dragon releases the Odyssey in vanilla and AP fill
+// pins the Ruined Multi-Moon to the dragon. But a CHAIN / shuffled-door arrival
+// runs the parked-arrival path (setAlreadyGoWorld) that suppresses the boss-
+// defeat repair demo, so mHomeStatus stays stuck at BossAttackedHome(6) and the
+// ship never un-grounds — softlock. The sweep now re-runs repairHomeByCrashedBoss
+// (mHomeStatus-only, NO unlockWorld → no overshoot) once the pinned Ruined
+// Multi-Moon is collected — see kGameDataFunctionRepairHomeByCrashedBoss below.
 //
 // All manglings verified via aarch64-none-elf-g++ -c on forward-decls
 // matching MonsterDruide1/OdysseyDecomp src/System/GameDataFunction.h, and
@@ -706,6 +708,24 @@ inline constexpr const char* kGameDataFunctionUpHomeLevel =
     "_ZN16GameDataFunction11upHomeLevelE20GameDataHolderWriter";
 inline constexpr const char* kGameDataFunctionLaunchHome =
     "_ZN16GameDataFunction10launchHomeE20GameDataHolderWriter";
+
+// Ruined-Kingdom boss-attack repair (2026-07-14). Ruined grounds the Odyssey
+// via the Lord-of-Lightning boss-attack state: mHomeStatus == BossAttackedHome
+// (6). In vanilla the dragon-defeat demo calls repairHomeByCrashedBoss
+// (mHomeStatus 6 -> RepairedHomeByCrashedBoss(7), which un-grounds the ship).
+// A chain/shuffled-door arrival into Ruined runs the PARKED-arrival path
+// (setAlreadyGoWorld, needed so the ship EXISTS) which suppresses that boss-
+// defeat demo, so after beating the dragon mHomeStatus stays stuck at 6 and the
+// ship never un-grounds — the player can't take off. OdysseyRescue's sweep
+// re-runs repairHomeByCrashedBoss once the pinned Ruined Multi-Moon is collected
+// (dragon beaten), exactly what vanilla does — no unlockWorld, so no
+// mUnlockWorldNum overshoot (the reason the OLD Ruined path was removed).
+// isBossAttackedHome == BossAttackedHome(6); repairHomeByCrashedBoss advances
+// past it. Same GameDataFunction free-fn shape as isCrashHome/repairHome above.
+inline constexpr const char* kGameDataFunctionIsBossAttackedHome =
+    "_ZN16GameDataFunction18isBossAttackedHomeE22GameDataHolderAccessor";
+inline constexpr const char* kGameDataFunctionRepairHomeByCrashedBoss =
+    "_ZN16GameDataFunction23repairHomeByCrashedBossE20GameDataHolderWriter";
 
 // First-visit / world-warp-demo getters — logger spike (2026-06-27) to decide
 // what gates the BURIED Cascade arrival pose + the Cap->Cascade wire cutscene.
