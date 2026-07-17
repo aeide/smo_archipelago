@@ -12,17 +12,27 @@ Subclasses CommonClient's GameManager, which provides:
   - "Hints" tab (built-in)
   - bottom bar: Command: button + command prompt
 
-We add ONE custom tab ("Odyssey") split 50/50 horizontally:
-  * left  — at-a-glance SMO state (moons by kingdom, captures, DeathLink)
-  * right — UILog tailing logger "SMO", which catches PC-side SMO
-            diagnostics AND Switch-forwarded log lines (routed by
-            switch_server.py for the "log" wire message type)
+Tab inventory after our build():
+  * "Archipelago" — 50/50 horizontal split. LEFT is the at-a-glance SMO
+    tracker (moons by kingdom, captures, abilities, DeathLink), refreshed
+    every 1.5 s. RIGHT is the built-in Archipelago AP log — the "most
+    recent finds" UILog on logger "Client" that GameManager.build()
+    already created for this tab. We reparent that existing UILog into the
+    split rather than making our own, so AP's own message routing
+    (print_json → log_panels, per-frame fix_heights) keeps working
+    untouched.
+  * "Odyssey" — a single full-width UILog tailing logger "SMO", which
+    catches PC-side SMO diagnostics AND Switch-forwarded log lines
+    (routed by switch_server.py for the "log" wire message type). This
+    tab used to also hold the tracker on its left half; the tracker moved
+    to the Archipelago tab so state and AP finds sit in one eye-line.
+  * "Hints" — built-in, untouched.
 
 …plus ONE top-bar widget (a Switch status pill next to the AP Connect
 button). Earlier iterations shipped a "Connections" tab and a fatter
 "Tracker" tab; those were dropped because they duplicated info the
 baseline UI already shows. A separate "Switch" log tab was also
-dropped — its content lives in the right half of the Odyssey tab now.
+dropped — its content lives in the Odyssey tab now.
 """
 
 from __future__ import annotations
@@ -181,22 +191,50 @@ def _bind_switch_pill_layout(pill: Label) -> None:
     )
 
 
+def _build_ap_split(tracker_scroll: ScrollView, ap_log: UILog) -> BoxLayout:
+    """Horizontal 50/50 split for the merged "Archipelago" tab.
+
+    LEFT is the SMO progress tracker (moons/captures/abilities/DeathLink)
+    in a ScrollView; RIGHT is the built-in Archipelago AP-log UILog that
+    GameManager.build() already created for this tab.
+
+    Kept a module-level helper so the widget-tree shape (order + 50/50
+    size hints) can be asserted headlessly — see test_ap_tab_merge.py —
+    without standing up a full GameManager + SMOContext, mirroring how
+    _bind_switch_pill_layout is unit-tested in isolation.
+
+    The caller detaches ap_log from its original MDScreen before calling
+    this and re-attaches the returned box to that same screen. It must
+    NOT reassign the tab's `.content` attribute: kvui's per-frame
+    update_texts() calls fix_heights() on the active tab's `.content`,
+    which only the UILog implements, so `.content` has to keep pointing
+    at ap_log even though the screen now displays this box.
+    """
+    split = BoxLayout(orientation="horizontal", spacing=dp(4))
+    tracker_scroll.size_hint_x = 0.5
+    split.add_widget(tracker_scroll)
+    ap_log.size_hint_x = 0.5
+    split.add_widget(ap_log)
+    return split
+
+
 class SmoManager(GameManager):
     """Window for the SMOClient.
 
-    One AP-side log tab ("Archipelago") plus one custom tab ("Odyssey")
-    that's a 50/50 horizontal split: at-a-glance SMO state on the left,
-    live SMO + Switch-forwarded log tail on the right. The Switch-side
-    log used to be its own tab but the left half of Odyssey was sparse
-    and tab-hopping while debugging was annoying — co-locating them
-    keeps state and diagnostics in one eye-line. One top-bar
-    Switch-status pill next to the AP Connect button.
+    The "Archipelago" tab is a 50/50 horizontal split: the at-a-glance
+    SMO tracker (moons by kingdom, captures, abilities, DeathLink) on the
+    left, and the built-in AP "most recent finds" log on the right — so a
+    player watches their AP finds land right next to their SMO progress.
+    The "Odyssey" tab is the live SMO + Switch-forwarded log tail (logger
+    "SMO"). One top-bar Switch-status pill sits next to the AP Connect
+    button. See the module docstring for the full tab inventory and why
+    the tracker was merged out of Odyssey.
     """
 
     logging_pairs = [
         ("Client", "Archipelago"),
         # SMO logger ("SMO") is intentionally NOT a logging_pairs entry.
-        # It's rendered in the right half of the Odyssey tab via a
+        # It's rendered as the full-width Odyssey tab via a
         # manually-managed UILog (see build()). switch_server.py routes
         # every "log" wire message from the Switch into this same logger
         # with a "[switch:LEVEL] " prefix, so PC-side and device-side
@@ -214,28 +252,39 @@ class SmoManager(GameManager):
 
     def build(self):
         container = super().build()
-        # Odyssey tab: horizontal 50/50 split.
-        #   Left  — at-a-glance SMO state (per-kingdom moon progress,
-        #           captures, DeathLink). Refreshed every 1.5s.
-        #   Right — UILog tailing logger "SMO". Catches BOTH PC-side SMO
-        #           diagnostics AND Switch-forwarded log lines (routed by
-        #           switch_server.py for the "log" wire message type).
-        #           UILog instantiation attaches a LogtoUI handler to the
-        #           passed logger; records auto-tail and are capped at the
-        #           kvui `messages` count (default 1000, client.kv).
-        odyssey_split = BoxLayout(orientation="horizontal", spacing=dp(4))
 
-        left_scroll = ScrollView(do_scroll_x=False, do_scroll_y=True,
-                                 size_hint_x=0.5)
+        # --- Merge the SMO tracker INTO the built-in "Archipelago" tab. ---
+        # super().build() created that tab holding a single UILog on logger
+        # "Client" (the AP "most recent finds"). log_panels["All"] is that
+        # exact widget (kvui build(): log_panels["All"] = current_tab.content
+        # for the single-logging_pair case). We detach it from its MDScreen
+        # and re-add it as the RIGHT half of a 50/50 split whose LEFT half is
+        # the at-a-glance SMO tracker (refreshed every 1.5s).
+        #
+        # We deliberately DO NOT touch the tab's `.content` attribute: kvui's
+        # update_texts() calls fix_heights() on the active tab's `.content`
+        # every frame, and only UILog implements it — so `.content` must keep
+        # pointing at ap_log even though the screen now shows the split box.
+        # Reparenting the widget doesn't change `.content`, so the AP log's
+        # per-frame height fix and print_json routing keep working untouched.
+        ap_log = self.log_panels["All"]
+        ap_screen = self.screens.get_screen("Archipelago")
+        ap_screen.remove_widget(ap_log)
+
+        left_scroll = ScrollView(do_scroll_x=False, do_scroll_y=True)
         self._odyssey_label = _LiveLabel(text="(connecting…)")
         left_scroll.add_widget(self._odyssey_label)
-        odyssey_split.add_widget(left_scroll)
 
+        ap_screen.add_widget(_build_ap_split(left_scroll, ap_log))
+
+        # --- Odyssey tab: SMO + Switch-forwarded log tail, full width. ---
+        # UILog tailing logger "SMO": catches BOTH PC-side SMO diagnostics
+        # AND Switch-forwarded log lines (routed by switch_server.py for the
+        # "log" wire message type). UILog instantiation attaches a LogtoUI
+        # handler to the passed logger; records auto-tail and are capped at
+        # the kvui `messages` count (default 1000, client.kv).
         self._smo_log = UILog(logging.getLogger("SMO"))
-        self._smo_log.size_hint_x = 0.5
-        odyssey_split.add_widget(self._smo_log)
-
-        self.add_client_tab("Odyssey", odyssey_split)
+        self.add_client_tab("Odyssey", self._smo_log)
 
         # Switch status pill, appended to the top connect_layout (which
         # already contains the AP server-address input + Connect button).
