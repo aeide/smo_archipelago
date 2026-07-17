@@ -675,14 +675,21 @@ class SMOContext(CommonContext):
                 n = self.state.received_item_count(ref.name)
                 granted_caps = self.mm_bonus_captures[3 * (n - 1): 3 * n]
                 for cap in granted_caps:
-                    self.state.grant_bonus_capture(cap)
+                    # Record the hack_name alongside the unlock: this live
+                    # send_item is not the durable delivery. The Switch wipes
+                    # captures_unlocked on every save load and rebuilds from the
+                    # HELLO replay, which walks received_items — where a bonus
+                    # grant has no entry. push_bonus_captures re-ships from the
+                    # state store instead.
+                    hack_name = self.capture_map.cap_to_hack(cap)
+                    self.state.grant_bonus_capture(cap, hack_name)
                     if self.switch is not None:
                         await self.switch.send_item(ItemMsg(
                             kind=ItemKind.CAPTURE.value,
                             cap=cap,
                             name=cap,
                             from_="(self)",
-                            hack_name=self.capture_map.cap_to_hack(cap),
+                            hack_name=hack_name,
                         ))
                 # Surface the 3 names in-game: the moon-get cutscene label
                 # (format_moon_label, MAX_MOON_LABEL_BYTES=30) has no room for
@@ -701,11 +708,33 @@ class SMOContext(CommonContext):
                 # Fold the 3 bonus abilities into the snapshot (pushed once at the
                 # end of the batch). A duplicate levels a progressive chain or
                 # converts to coins, exactly like a real ability receipt.
+                #
+                # Toast text shows the concrete MOVE unlocked (e.g. "Roll Boost"),
+                # not the raw pool item name ("Progressive Crouch") — mirrors the
+                # same before/after -> newly_unlocked_move idiom the real ability
+                # receipt's moon-label rewrite uses just above (~line 1681). Read
+                # `prior` BEFORE granting, same reason as there: grant_bonus_ability
+                # mutates abilities_received in place. A grant past the end of a
+                # chain (the item was already fully owned) unlocks no new move —
+                # newly_unlocked_move returns None — so that entry falls back to
+                # the item name, exactly like the moon-label rewrite falls back to
+                # the pool name.
+                granted_moves = []
                 for ab in self.mm_bonus_abilities:
+                    prior = self.state.abilities_received.get(ab, 0)
+                    move = newly_unlocked_move(ab, prior + 1)
+                    granted_moves.append(move or ab)
                     self.state.grant_bonus_ability(ab)
+                # Edge cases mirror the Mushroom capture branch exactly (same
+                # guard shape): Switch offline at grant time -> no toast, only
+                # the silent state accrual (abilities_received / ability_state
+                # snapshot); a duplicate MM arrival never reaches this branch at
+                # all (the pos < initial_mirror_len skip above already dropped
+                # it); a festival-goal seed without a Dark Side Multi-Moon in
+                # the pool means this elif's ref.name never matches -> no-op.
                 if self.switch is not None:
                     await self.switch.send_cappy(CappyMsg(
-                        text=format_bonus_grant_cappy("Bonus abilities", self.mm_bonus_abilities)
+                        text=format_bonus_grant_cappy("Bonus abilities", granted_moves)
                     ))
                 ability_received_this_batch = True
                 coin_relevant_this_batch = True

@@ -1,0 +1,103 @@
+00:01:57.851 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [entrance:file] stage='SandWorldPressExStage' id='arijigoku' isReturn=0 scenario=-1 cur='SandWorldHomeStage'
+
+00:01:57.857 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [entrance:remap-APPLIED] dest='CapAppearLavaLiftExStage'/'arijigoku' cur='SandWorldHomeStage' -> stage='CapAppearLavaLiftExStage' id='LavaLiftExdokan'
+
+00:01:57.861 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-prearm] ARMED world=10 dest='CapAppearLavaLiftExStage' (resident=2) ??? fires at the next destroySceneHeap/exeLoadStage
+
+00:01:57.866 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport:
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: stage_in_out_event
+ Report: {
+    "stage_name": 512560049,
+    "x": -8887.0693359375,
+    "y": -3902.16943359375,
+    "z": -21247.00390625,
+    "in_out_type": 1,
+    "play_time": 567276,
+    "across_play_time": 1293929,
+    "save_data_id": 1783967527,
+    "app_version": 1
+}
+
+00:01:58.486 |S| HLE.OsThread.47 ServiceAm SetScreenShotImageOrientation: Stubbed. {screenShotImageOrientation: 0}
+00:01:58.486 |S| HLE.OsThread.47 ServiceAm SetScreenShotImageOrientation: Stubbed. {screenShotImageOrientation: 0}
+00:01:58.592 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [cappy] scene changed last=0x213358a050 new=0 ??? resetting settle gates
+
+00:01:58.719 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-worldreq] DESTROY resident_was=2 -> -1 #1
+
+00:01:58.719 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-worldreq] request world=10 scenario=1 (resident_was=2) -> LOAD STARTED #4
+
+00:01:58.720 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-prearm] fire@exeLoadStage world=10 scenario=1 dest='CapAppearLavaLiftExStage' resident_was=2 -> LOAD STARTED
+
+00:02:00.211 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-hold] exeLoadStage held 1490 ms for world 10 -> done
+
+00:02:00.211 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-worldreq] request world=10 scenario=1 (resident_was=10) -> refused/no-op #5
+
+00:02:00.213 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [cappy] scene changed last=0 new=0x213358a050 ??? resetting settle gates
+
+00:02:00.335 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport:
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: cloth_change_event
+ Report: {
+    "category": 1,
+    "item_name": 604021751,
+    "play_time": 567277,
+    "across_play_time": 1293930,
+    "save_data_id": 1783967527,
+    "app_version": 1
+}
+
+00:02:00.336 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport:
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: cloth_change_event
+ Report: {
+    "category": 0,
+    "item_name": 604021751,
+    "play_time": 567277,
+    "across_play_time": 1293930,
+    "save_data_id": 1783967527,
+    "app_version": 1
+}
+
+00:02:00.523 |W| HLE.GuestThread.90 KernelSvc OutputDebugString: [smoap inf] [gate-probe] caller ret=+0x2c83d88 (BL@+0x2c83d84) via member[honest] kingdom=Sand(bit=2) origVanilla=16 t=120422ms -- record offsets seen WHILE the takeoff gauge is on screen
+
+00:02:00.523 |W| HLE.GuestThread.90 KernelSvc OutputDebugString: [smoap inf] [gate-probe] caller ret=+0x202dcc (BL@+0x202dc8) via honest-rolled kingdom=Sand(bit=2) origVanilla=16 t=120422ms -- record offsets seen WHILE the takeoff gauge is on screen
+
+00:02:00.727 |I| HLE.OsThread.22 ServicePrepo ProcessPlayReport:
+PlayReport log:
+ Kind: Normal
+ Pid: 127
+ ApplicationVersion: 0
+ UserId: 00000000000000010000000000000000
+ Room: stage_in_out_event
+ Report: {
+    "stage_name": 3163690649,
+    "x": -200,
+    "y": 1500,
+    "z": 750,
+    "in_out_type": 0,
+    "play_time": 567277,
+    "across_play_time": 1293930,
+    "save_data_id": 1783967527,
+    "app_version": 1
+}
+
+00:02:00.755 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-worldreq] request(plain) REDIRECTED stale=2 -> 10 (resident_was=10, stage_world=10) -> LOAD STARTED #3
+
+00:02:00.777 |W| HLE.GuestThread.46 KernelSvc OutputDebugString: [smoap inf] [p5-reswatch] resident=10 engineCurWorld=2 #3
+
+00:02:00.978 |W| HLE.OsThread.4 ServiceNv Wait: GPU processing thread is too slow, waiting on CPU...
+00:02:12.892 |I| Ptc.DiskWriter Ptc Save: Saved Profiling Info (size: 107725 bytes, profiled functions: 23431).
+00:02:42.892 |I| Ptc.DiskWriter Ptc Save: Saved Profiling Info (size: 107716 bytes, profiled functions: 23431).

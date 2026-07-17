@@ -61,6 +61,16 @@ class BridgeState:
         self.received_items: list[ItemEvent] = []
         self.checked_locations: list[CheckEvent] = []
         self.captures_unlocked: set[str] = set()
+        # Multi-moon BONUS capture side-grants: {cap_name: hack_name}, insertion
+        # ordered. These have no ItemEvent in `received_items` (they are a
+        # side-effect of a Multi-Moon, not a real AP item), so the HELLO replay
+        # — which rebuilds the Switch's capture bitset by re-sending an ItemMsg
+        # per non-Moon entry in the mirror — cannot see them. The Switch WIPES
+        # captures_unlocked on every save load (SaveLoadHook.cpp) and rebuilds
+        # from that replay, so without this store a bonus capture survives only
+        # until the next save load. push_bonus_captures() re-ships from here on
+        # every HELLO. See docs/handoff-mm-bonus-capture-enforcement.md.
+        self.bonus_captures: dict[str, str] = {}
         # Per-name received COUNTS (P3 duplicate->coins). captures_unlocked is a
         # set (presence only); these track multiplicity so a clone copy of an
         # already-owned capture/ability converts to coins via the coin total.
@@ -203,6 +213,10 @@ class BridgeState:
         with self._lock:
             self.received_items = []
             self.captures_unlocked = set()
+            # Bonus side-grants are per-slot too: the new slot rolls its own
+            # mm_bonus_captures. Leaving these would keep re-shipping the prior
+            # slot's picks on every HELLO replay.
+            self.bonus_captures = {}
             self.moons_received_by_kingdom = {}
             self.moons_checked_by_kingdom = {}
             # checked_locations is per-slot too: the new slot's AP
@@ -349,7 +363,7 @@ class BridgeState:
         with self._lock:
             return sum(1 for e in self.received_items if e.item.name == name)
 
-    def grant_bonus_capture(self, cap: str) -> None:
+    def grant_bonus_capture(self, cap: str, hack_name: str = "") -> None:
         """Register a synthetic capture unlock (multi-moon bonus side-grant).
 
         Bumps the same counters a real capture receipt does (captures_unlocked +
@@ -359,12 +373,29 @@ class BridgeState:
         received item. Idempotency is the caller's contract — invoke only when
         the triggering Multi-Moon is newly processed (never on a same-slot
         replay), mirroring how the Multi-Moon's own +3 moon weight is applied.
+
+        `hack_name` is retained in `bonus_captures` so push_bonus_captures() can
+        rebuild the Switch's capture bitset on every HELLO. It is what the
+        Switch's CaptureGate matches on, so a grant recorded without one cannot
+        be enforced — callers resolve it via capture_map.cap_to_hack(). The
+        count bump stays outside that store: it is keyed per lifetime receipt,
+        while bonus_captures is a presence set for replay.
         """
         with self._lock:
             self.captures_unlocked.add(cap)
             self.captures_received_count[cap] = (
                 self.captures_received_count.get(cap, 0) + 1
             )
+            self.bonus_captures[cap] = hack_name
+
+    def all_bonus_captures(self) -> list[tuple[str, str]]:
+        """Defensive copy of the (cap_name, hack_name) bonus side-grants.
+
+        Read by push_bonus_captures() on every HELLO replay. Mirrors the shape
+        of the AllCapturesProvider the capturesanity-off replay consumes.
+        """
+        with self._lock:
+            return list(self.bonus_captures.items())
 
     def grant_bonus_ability(self, name: str) -> None:
         """Register a synthetic ability unlock (multi-moon bonus side-grant).

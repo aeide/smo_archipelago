@@ -497,6 +497,34 @@ class SwitchServer:
                 from_="",
             ))
 
+    async def push_bonus_captures(self) -> None:
+        """Re-ship the multi-moon BONUS capture side-grants to the active Switch.
+
+        The Switch resets `captures_unlocked` on every save load
+        (SaveLoadHook.cpp) and rebuilds it from the HELLO replay. That replay
+        walks `received_items` — where bonus captures have no entry (they hang
+        off a Multi-Moon, and Moon items are skipped in replay by M6 phase D).
+        So without this the live send_item at grant time is the ONLY delivery,
+        and the first save load silently re-locks the capture. Derived from
+        BridgeState.bonus_captures, which the context repopulates from
+        slot_data + the received-MM count whenever AP replays item history.
+
+        Unconditional: when capturesanity is off push_capturesanity_replay has
+        already unlocked everything and this is a harmless re-set of the same
+        bits; when it's on this is the only path that restores them.
+        """
+        for cap_name, hack_name in self._state.all_bonus_captures():
+            await self._send(ItemMsg(
+                kind="capture",
+                cap=cap_name,
+                name=cap_name,
+                hack_name=hack_name,
+                # Empty from_ suppresses the Cappy bubble — the player already
+                # saw the bonus announced when the Multi-Moon landed; a save
+                # load must not re-announce all 18.
+                from_="",
+            ))
+
     def set_on_switches_changed(self, cb: SwitchesChangedHandler | None) -> None:
         """Register a callback fired when the Switches set / active
         selection changes. Used by the GUI to refresh the selector
@@ -1348,6 +1376,14 @@ class SwitchServer:
             ))
 
         await self.push_capturesanity_replay()
+
+        # Re-fight / Dark Side multi-moon bonus captures. These have no entry in
+        # the item mirror above, so they must be re-derived here or the Switch
+        # loses them on every save load (it wipes captures_unlocked and rebuilds
+        # from this replay). The bonus ABILITIES need no equivalent — they ride
+        # push_ability_state's full-count snapshot below, which is derived from
+        # abilities_received and so already includes them.
+        await self.push_bonus_captures()
 
         # Talkatoo% mode: ship the per-kingdom AP-pool (or Phase 5 cursor
         # window) to the Switch so the speech-bubble hook can pick from
