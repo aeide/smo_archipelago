@@ -19,6 +19,26 @@ undirected edge A.stage <-> B.stage (both ends are ingest, hence walkable
 both ways); fixed points contribute no edge — and require every node to be
 connected to some root.
 
+Mushroom erratum (2026-07-17, Devon ruling — exit-portals are the MK route)
+---------------------------------------------------------------------------
+The "every kingdom overworld is flight-reachable" premise is FALSE for the
+Mushroom Kingdom — it is post-game, fly-in only after the credits, i.e. after
+the AP goal under goal=mushroom_kingdom. Its D9-promoted overworld checks can
+hold progression, so a decoupled seed needs a real pre-goal route into
+PeachWorldHomeStage: some matched pair whose overworld mouth is an MK door
+and whose partner sits in root-connected territory (walk in elsewhere, exit
+through the partner mouth, portal-land at the MK door — the exit-portal
+semantics compile_port_remaps ships and the switch-mod applies). Kingdoms in
+NON_ROOT_KINGDOMS therefore contribute NO roots: their stages are ordinary
+nodes phase 1 must connect, and unconnected_stages fails a matching that
+leaves the MK cluster rooted only through itself (e.g. every MK door paired
+with a sole-mouth interior — under the involution that interior's only way in
+is FROM Mushroom, a dead end). Note the VANILLA matching genuinely strands the
+MK cluster under this model (vanilla MK access IS the credits warp) — that is
+correct, asserted by the baseline test, and why the roller never leaves all
+MK doors on their vanilla partners. Evidence seed 91455467025183402260 +
+docs/handoff-decoupled-mushroom-overworld-reachability.md.
+
 Nested subareas resolve naturally: an "overworld" mouth living in a parent
 INTERIOR stage puts that parent stage in the node set, and the BFS demands
 the whole chain be linked to a root.
@@ -99,9 +119,11 @@ try:  # package import (bundled .apworld / generation)
     from .port_graph import (
         INTERIOR,
         OVERWORLD,
+        Mouth,
         PortGraph,
         ROW_HEADROOM,
         ROW_TABLE_CAP,
+        entry_capable_interior_mouths,
         estimate_remap_rows,
         is_involution,
         pinned_one_way_entry_mouths,
@@ -110,9 +132,11 @@ except ImportError:  # loose import (test suite, sys.path = package dir)
     from port_graph import (  # type: ignore
         INTERIOR,
         OVERWORLD,
+        Mouth,
         PortGraph,
         ROW_HEADROOM,
         ROW_TABLE_CAP,
+        entry_capable_interior_mouths,
         estimate_remap_rows,
         is_involution,
         pinned_one_way_entry_mouths,
@@ -137,15 +161,31 @@ def interior_stages(graph: PortGraph) -> frozenset[str]:
                      if m.side == INTERIOR)
 
 
+# Kingdoms whose overworld is NOT flight-reachable before the AP goal, so
+# their stages must never anchor connectivity (module docstring, Mushroom
+# erratum). Matched against Mouth.kingdom (the subarea record's display name)
+# so placement zones and any future MK-hosted door stage are caught without a
+# stage-name list. Moon/Dark/Darker never pool (DECOUPLED_EXCLUDED_KINGDOMS),
+# so Mushroom is the only pooled post-game overworld.
+NON_ROOT_KINGDOMS: frozenset[str] = frozenset({"Mushroom Kingdom"})
+
+
 def root_stages(graph: PortGraph) -> frozenset[str]:
     """Always-reachable connectivity anchors (D1): every stage hosting a
     pooled OVERWORLD mouth that is not itself a pooled interior — kingdom
     HomeStages, their placement zones, and vanilla-kept parent interiors
-    (see module docstring). HomeStages root unconditionally."""
+    (see module docstring). HomeStages root unconditionally — EXCEPT stages
+    of NON_ROOT_KINGDOMS (post-game overworlds, not flight-reachable
+    pre-goal), which are never roots and must earn their connectivity
+    through the matching like any interior."""
     inner = interior_stages(graph)
+    non_root = frozenset(
+        m.stage for m in graph.mouths.values()
+        if m.side == OVERWORLD and m.kingdom in NON_ROOT_KINGDOMS)
     return frozenset(
         m.stage for m in graph.mouths.values()
         if m.side == OVERWORLD
+        and m.stage not in non_root
         and (m.stage.endswith("HomeStage") or m.stage not in inner))
 
 
@@ -194,6 +234,106 @@ def unconnected_stages(matching: dict[str, str],
     return set(nodes) - seen
 
 
+_ROOT = "<root>"
+
+
+def _directed_model(graph: PortGraph):
+    """Shared directed-reachability vocabulary (checker + roller phase 1).
+
+    Returns (node_fn, capable, interior_stage_to_sub, subs):
+      * node_fn(Mouth) -> the node an arrival AT that mouth grants:
+        _ROOT (flight-reachable overworld territory), ("ow", K) for a
+        NON_ROOT kingdom's overworld, ("full", sub) for an entry-capable
+        interior mouth or a nested door inside a pooled interior stage,
+        ("far", sub) for an exit-only interior mouth;
+      * capable — entry_capable_interior_mouths(graph);
+      * interior_stage_to_sub — pooled interior stage -> owning subarea;
+      * subs — every pooled subarea with interior mouths."""
+    capable = entry_capable_interior_mouths(graph)
+    interior_stage_to_sub = {m.stage: m.subarea
+                             for m in graph.mouths.values()
+                             if m.side == INTERIOR}
+    subs = {m.subarea for m in graph.mouths.values() if m.side == INTERIOR}
+
+    def node(m: Mouth):
+        if m.side == INTERIOR:
+            return (("full" if m.mouth_id in capable else "far"), m.subarea)
+        parent = interior_stage_to_sub.get(m.stage)
+        if parent is not None:
+            return ("full", parent)  # nested door: lives in a pooled interior
+        if m.kingdom in NON_ROOT_KINGDOMS:
+            return ("ow", m.kingdom)
+        return _ROOT
+
+    return node, capable, interior_stage_to_sub, subs
+
+
+def directed_full_interior_strands(matching: dict[str, str],
+                                   graph: PortGraph) -> set[str]:
+    """Directed reachability holes the undirected checker cannot see
+    (2026-07-17, found by the Mushroom-erratum roll perturbation).
+
+    unconnected_stages treats every matched pair as an undirected edge, but
+    the P3d wiring is DIRECTED at two points: (a) an edge into an exit-only
+    interior mouth lands in the subarea's far-side region, which never flows
+    back to the full interior (one-way course rule), and (b) a NON_ROOT
+    kingdom's overworld (Mushroom) is only enterable through a portal, not by
+    flight. So two subareas whose ONLY entry-capable mouths are paired with
+    EACH OTHER read "connected" undirected (via their exit mouths' pairs) yet
+    both full interiors — and every moon in them — deadlock: each is
+    enterable only from the other. Seen live: seed-11 pairs
+    (bike02@interior <-> ClashWorldMoonEX2@interior) and
+    (EX_SkyBonus@interior <-> CostumeEventWorldLava@interior).
+
+    Model (the abstract mirror of _wire_decoupled_entrances._mouth_region):
+    nodes are <root> (all flight-reachable overworld territory, god-state
+    view), ("ow", K) for each NON_ROOT kingdom's overworld, ("full", sub) and
+    ("far", sub) per pooled subarea. A mouth maps to the node an arrival AT
+    it grants (entry-capable interior -> full, exit-only -> far, nested door
+    -> parent's full, overworld -> <root> or its NON_ROOT kingdom). Each pair
+    contributes both directed edges, full -> far is free (course completion),
+    and a lone vanilla-fixed overworld mouth credits its own subarea's full
+    interior (vanilla passthrough). Returns the display names of stranded
+    targets: subareas whose FULL interior is unreachable from <root>, plus
+    any NON_ROOT kingdom whose overworld never gets a portal route. Empty ==
+    the matching is directionally sound; roll_port_matching re-rolls until
+    it is."""
+    node, capable, interior_stage_to_sub, subs = _directed_model(graph)
+    ROOT = _ROOT
+
+    adj: dict[object, set] = defaultdict(set)
+    for sub in subs:
+        adj[("full", sub)].add(("far", sub))
+    for a, b in matching.items():
+        ma, mb = graph.mouths.get(a), graph.mouths.get(b)
+        if ma is None or mb is None:
+            continue
+        if a == b:
+            if (ma.side == OVERWORLD
+                    and graph.vanilla_matching.get(a) == a
+                    and ma.subarea in subs):
+                adj[node(ma)].add(("full", ma.subarea))  # vanilla credit
+            continue
+        adj[node(ma)].add(node(mb))
+        adj[node(mb)].add(node(ma))
+
+    seen: set = {ROOT}
+    stack: list = [ROOT]
+    while stack:
+        for nxt in adj[stack.pop()]:
+            if nxt not in seen:
+                seen.add(nxt)
+                stack.append(nxt)
+
+    strands = {sub for sub in subs if ("full", sub) not in seen}
+    non_root_kingdoms_pooled = {
+        m.kingdom for m in graph.mouths.values()
+        if m.side == OVERWORLD and m.kingdom in NON_ROOT_KINGDOMS
+        and interior_stage_to_sub.get(m.stage) is None}
+    strands |= {k for k in non_root_kingdoms_pooled if ("ow", k) not in seen}
+    return strands
+
+
 # ---------------------------------------------------------------------------
 # The roll
 # ---------------------------------------------------------------------------
@@ -216,10 +356,34 @@ def _reserve_fixed_point(graph: PortGraph, unmatched: set[str],
     by_stage: dict[str, int] = defaultdict(int)
     for m in graph.mouths.values():
         by_stage[m.stage] += 1
+    # Directed-model guard (2026-07-17): never reserve an INTERIOR lone mouth
+    # that is its subarea's only full-interior grant channel — the directed
+    # phase 1 needs that mouth as a connection target (an interior fixed
+    # point earns no vanilla credit, so reserving it would strand the
+    # subarea's moons). Overworld lone mouths always stay eligible: their
+    # vanilla credit still walks into their own subarea.
+    node, _capable, _ists, _subs = _directed_model(graph)
+    grant_channels: dict[str, int] = defaultdict(int)
+    for m in graph.mouths.values():
+        n = node(m)
+        if n != _ROOT and n[0] == "full":
+            grant_channels[n[1]] += 1
+
+    def _grant_safe(mid: str) -> bool:
+        m = graph.mouths[mid]
+        if m.side == OVERWORLD:
+            return True
+        n = node(m)
+        if n != _ROOT and n[0] == "full":
+            return grant_channels[n[1]] > 1
+        return True
+
     safe = [m for m in lone
-            if graph.mouths[m].stage in roots
-            or by_stage[graph.mouths[m].stage] > 1]
-    return rng.choice(safe or lone)
+            if (graph.mouths[m].stage in roots
+                or by_stage[graph.mouths[m].stage] > 1)
+            and _grant_safe(m)]
+    fallback = [m for m in lone if _grant_safe(m)]
+    return rng.choice(safe or fallback or lone)
 
 
 def _interior_slack(graph: PortGraph, unmatched: set[str]) -> int:
@@ -231,13 +395,42 @@ def _interior_slack(graph: PortGraph, unmatched: set[str]) -> int:
     return slack
 
 
-def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
+def roll_port_matching(graph: PortGraph, rng: Random,
+                       max_attempts: int = 25) -> dict[str, str]:
     """Roll a random total involution over `graph.mouths` such that every
-    pooled stage is root-connected (see module docstring) and no pair is
+    pooled stage is root-connected (see module docstring), no pair is
     OVERWORLD↔OVERWORLD (matching-topology constraint, Devon ruling
-    2026-07-08). Deterministic in `rng`; raises RuntimeError (loudly, at
-    generation time) rather than ever returning an unsolvable or over-budget
-    matching."""
+    2026-07-08), and the matching is DIRECTIONALLY sound — no full-interior
+    deadlock and a real portal route into every NON_ROOT kingdom
+    (directed_full_interior_strands). The frontier construction only
+    guarantees undirected connectivity, so a completed roll is validated
+    against the directed model and re-rolled from the still-advancing `rng`
+    until clean (observed ~1-in-2 rolls need a retry on real data).
+    Deterministic in `rng`; raises RuntimeError (loudly, at generation time)
+    rather than ever returning an unsolvable or over-budget matching."""
+    last_strands: set[str] = set()
+    for attempt in range(1, max_attempts + 1):
+        matching = _roll_port_matching_once(graph, rng)
+        last_strands = directed_full_interior_strands(matching, graph)
+        if not last_strands:
+            if attempt > 1:
+                logger.info(
+                    "port_matching: directionally sound roll on attempt %d",
+                    attempt)
+            return matching
+        logger.info(
+            "port_matching: attempt %d directionally strands %s — re-rolling",
+            attempt, sorted(last_strands))
+    raise RuntimeError(
+        f"port_matching: {max_attempts} rolls all directionally stranded "
+        f"content (last: {sorted(last_strands)}) — pool shape changed under "
+        "us; see directed_full_interior_strands")
+
+
+def _roll_port_matching_once(graph: PortGraph, rng: Random) -> dict[str, str]:
+    """One roll attempt: the undirected frontier construction + loud
+    structural postconditions. Directed validation lives in the public
+    wrapper above."""
     matching: dict[str, str] = {}
     if not graph.mouths:
         return matching
@@ -273,51 +466,78 @@ def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
             "the pool — the no-overworld↔overworld constraint cannot be "
             "satisfied (pool shape changed under us; see module docstring)")
 
-    nodes = stage_nodes(graph)
-    connected = set(root_stages(graph))
+    # Phase 1 — DIRECTED frontier growing (2026-07-17 rewrite; the earlier
+    # undirected stage-frontier let phase 2 pair two subareas' only
+    # entry-capable mouths with each other, a full-interior deadlock the
+    # undirected checker can't see — directed_full_interior_strands has the
+    # full story). Track the directed-model nodes actually REACHED and only
+    # pair a frontier mouth usable FROM reached territory with a target
+    # mouth whose ARRIVAL grant closes a need (a needed subarea's
+    # entry-capable interior mouth / nested door, or a NON_ROOT kingdom's own
+    # door). Each pairing full-connects one new subarea (or kingdom), so the
+    # certificate is monotone and phase 2 can pair the remainder freely.
+    node, capable, interior_stage_to_sub, all_subs = _directed_model(graph)
 
-    # Pin vanilla-credit: a pinned entrance walks into its course's interior
-    # stage (the same directed overworld→interior edge unconnected_stages
-    # credits), so phase 1 must count that stage connected once the pin's own
-    # stage is — otherwise the course's exit-only mouth looks like the stage's
-    # last hope and e.g. reserving it as the parity fixed point strands the
-    # stage spuriously. Closure form because a pin can itself sit in a
-    # not-yet-connected stage (nested course entrance).
-    sub_stage = _subarea_interior_stage(graph)
-    pin_credit = [(graph.mouths[m].stage, sub_stage[graph.mouths[m].subarea])
-                  for m in pinned if graph.mouths[m].subarea in sub_stage]
+    reached: set = {_ROOT}
 
-    def _apply_pin_credit() -> None:
+    def _mark_full(sub: str) -> None:
+        reached.add(("full", sub))
+        reached.add(("far", sub))  # course completion is free (full -> far)
+
+    # Vanilla-credit closure: pins and the reserved parity fixed point are
+    # vanilla passthroughs whose overworld mouth still walks into its own
+    # subarea. Closure form because a pin can itself sit in a not-yet-reached
+    # nested stage (nested course entrance).
+    fixed_vanilla = list(pinned)
+    if fixed_point is not None:
+        fixed_vanilla.append(fixed_point)
+
+    def _apply_fixed_credit() -> None:
         changed = True
         while changed:
             changed = False
-            for src, dst in pin_credit:
-                if src in connected and dst not in connected:
-                    connected.add(dst)
+            for mid in fixed_vanilla:
+                m = graph.mouths[mid]
+                if (m.side == OVERWORLD
+                        and graph.vanilla_matching.get(mid) == mid
+                        and m.subarea in all_subs
+                        and ("full", m.subarea) not in reached
+                        and node(m) in reached):
+                    _mark_full(m.subarea)
                     changed = True
 
-    _apply_pin_credit()
+    _apply_fixed_credit()
 
-    # Phase 1 — frontier growing: every pairing lands one new stage. The
-    # connecting mouth `b` (in a not-yet-connected stage) is picked first;
-    # its frontier partner is then drawn from the side-compatible subset:
-    # an OVERWORLD b needs an INTERIOR a, and an INTERIOR b may take any a
-    # only while the slack invariant survives an I–I pair.
-    while nodes - connected:
-        frontier = sorted(m for m in unmatched
-                          if graph.mouths[m].stage in connected)
-        targets = sorted(m for m in unmatched
-                         if graph.mouths[m].stage not in connected)
+    def _grant(mid: str):
+        """The need a pairing ARRIVING at `mid` would close, else None."""
+        n = node(graph.mouths[mid])
+        if n == _ROOT or n[0] == "far":
+            return None
+        return n  # ("full", sub) or ("ow", kingdom)
+
+    non_root_kingdom_nodes = {
+        ("ow", m.kingdom) for m in graph.mouths.values()
+        if m.side == OVERWORLD and m.kingdom in NON_ROOT_KINGDOMS
+        and interior_stage_to_sub.get(m.stage) is None}
+
+    while True:
+        need = {("full", s) for s in all_subs} | non_root_kingdom_nodes
+        need -= reached
+        if not need:
+            break
+        targets = sorted(mid for mid in unmatched if _grant(mid) in need)
         if not targets:
             raise RuntimeError(
-                "port_matching: stages "
-                f"{sorted(nodes - connected)} have no unmatched mouths left "
+                "port_matching: needs "
+                f"{sorted(need)} have no unmatched granting mouths left "
                 "— cannot be root-connected by any completion of this roll")
+        frontier = sorted(mid for mid in unmatched
+                          if node(graph.mouths[mid]) in reached)
         if not frontier:
             raise RuntimeError(
-                "port_matching: no unmatched mouths left in root-connected "
-                f"territory while {sorted(nodes - connected)} remain "
-                "unconnected (root-side mouth supply exhausted)")
+                "port_matching: no unmatched mouths left in reached "
+                f"territory while {sorted(need)} cannot be root-connected "
+                "(root-side mouth supply exhausted)")
         slack = _interior_slack(graph, unmatched)
         rng.shuffle(targets)
         a = b = None
@@ -339,14 +559,18 @@ def roll_port_matching(graph: PortGraph, rng: Random) -> dict[str, str]:
         if a is None or b is None:
             raise RuntimeError(
                 "port_matching: no side-compatible frontier pairing under "
-                "the no-overworld↔overworld constraint while stages "
-                f"{sorted(nodes - connected)} remain unconnected")
+                "the no-overworld↔overworld constraint while "
+                f"{sorted(need)} remain unconnected")
         matching[a] = b
         matching[b] = a
         unmatched.discard(a)
         unmatched.discard(b)
-        connected.add(graph.mouths[b].stage)
-        _apply_pin_credit()
+        got = _grant(b)
+        if got[0] == "full":
+            _mark_full(got[1])
+        else:
+            reached.add(got)
+        _apply_fixed_credit()
 
     # Phase 2 — everything is connected; pair the rest uniformly under the
     # constraint: every remaining overworld mouth takes an interior partner

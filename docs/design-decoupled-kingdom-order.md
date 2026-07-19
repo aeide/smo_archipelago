@@ -240,6 +240,46 @@ checks are PROMOTED from junk-only to full checks **iff
   (D6); Mushroom holding progression under decoupled is exactly the intended
   widening of the fill surface.
 
+## D10 — Mushroom arrival route: exit-portals, guaranteed at roll time (Devon, 2026-07-17)
+
+Spun out of the evidence-seed investigation
+([handoff-decoupled-mushroom-overworld-reachability.md](handoff-decoupled-mushroom-overworld-reachability.md),
+seed 91455467025183402260). Devon's rulings, in an AskUserQuestion round:
+
+- **Mechanism: exit-portals ARE the MK route** (over tower post-boss return and
+  a game-clear gate). Every matched pair is a two-way portal — walking into
+  either mouth lands at the other mouth's marker (`compile_port_remaps`
+  semantics, applied in-game by the P2 compound exit key; Devon: "they can all
+  chain", confirmed by his moonpipe → red flower room → Sand shop chain). A
+  pair (MK door ↔ interior exit mouth) therefore delivers Mario INTO the MK
+  overworld when the interior is exited through that mouth.
+- **Early MK moons are fine**: once the route is real, MK overworld checks in
+  early spheres are the mode's intended chain widening (same as any kingdom).
+  Victory is untouched — it lives in Moon Kingdom (D6) behind the D1-erratum
+  flight economy.
+- **The roll must GUARANTEE the route.** Two connectivity-model errata in
+  `port_matching.py` (both 2026-07-17):
+  1. **Mushroom erratum** — kingdom HomeStages rooted the connectivity model
+     "because every kingdom is flight-reachable", which is false for
+     post-game Mushroom. `NON_ROOT_KINGDOMS` stages are no longer roots: the
+     roller must wire ≥1 MK door to rooted territory, and a matching whose MK
+     cluster is only self-rooted (every MK door on a sole-mouth dead-end
+     partner) fails the checker.
+  2. **Directed erratum** — the undirected stage-connectivity model could not
+     see full-interior deadlocks (two subareas' only entry-capable mouths
+     paired with each other — seen live in probe seeds) or the far-side
+     one-way rule. Phase 1 now grows a DIRECTED frontier over the
+     `_directed_model` nodes (full/far per subarea, per-NON_ROOT-kingdom
+     overworld, rooted territory), so every subarea's FULL interior and the
+     MK overworld get a monotone reachability certificate at roll time;
+     `directed_full_interior_strands` re-validates every roll (retry backstop).
+- **Sphere-1 in the evidence seed was NOT a false-reachability bug**: logic
+  faithfully mirrored the portal pairs; the seed's routes ran through
+  Wintery Flower Road / Push Block Peril exits into MK doors. The failures
+  were legibility (the spoiler read as one-directional — now carries a
+  two-way legend) and the unvalidated in-game landing (D9's pre-clear
+  moon-spawn probe, still owed a walk).
+
 ## Sign-off record (Devon, 2026-07-07)
 
 1. **D3** — ACCEPTED: reload evicts to last unlocked kingdom; no

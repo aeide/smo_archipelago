@@ -129,6 +129,26 @@ def pick_primary_entry(entries: list[dict]) -> tuple[dict | None, bool]:
     return sorted(cands, key=lambda e: e["entry_id"])[0], ambiguous
 
 
+# Subarea interior-stage overrides, keyed by subarea display name. Normally a
+# subarea's stage is derived from its moons' stage_name (subarea_stage), but the
+# 6 Mushroom boss re-fight subareas are POOLED AT THE TOWER, not the arena
+# (Devon ruling 2026-07-18): the shuffleable unit is the tower room
+# (PeachWorldPicture*Stage — a REAL standalone stage with a two-way
+# ChangeStageArea/Dokan connection to PeachWorldHomeStage, romfs-verified),
+# while the painting -> RevengeBoss*Stage arena -> Multi-Moon
+# return-to-tower loop inside stays fully vanilla. The moons live in the arena,
+# so the derived stage would be the arena — this table re-points the record at
+# the tower. (The paintings themselves are kept out of the records by the
+# PictureStageChange exit filter below, so they can never be pooled/remapped.)
+SUBAREA_STAGE_OVERRIDE: dict[str, str] = {
+    "Knucklotec Boss Re-fight": "PeachWorldPictureBossKnuckleStage",
+    "Torkdrift Boss Re-fight": "PeachWorldPictureBossForestStage",
+    "Mechawiggler Boss Re-fight": "PeachWorldPictureMofumofuStage",
+    "Mollusque-Lanceur Boss Re-fight": "PeachWorldPictureGiantWanderBossStage",
+    "Cookatiel Boss Re-fight": "PeachWorldPictureBossMagmaStage",
+    "Lord of Lightning Boss Re-fight": "PeachWorldPictureBossRaidStage",
+}
+
 # Manual primary_exit overrides, keyed by subarea display name. Used when the
 # geometrically-correct "exit pipe" the player expects to emerge from is NOT one of
 # the interior's own return pipes — so pick_primary_exit (which only ranks the
@@ -316,14 +336,27 @@ def main() -> None:
 
     for name, info in subareas.items():
         stage, diag = subarea_stage(info, shine_lookup)
+        override_stage = SUBAREA_STAGE_OVERRIDE.get(name)
+        if override_stage is not None:
+            stage = override_stage
         if stage is None:
             report["no_stage"].append({"subarea": name, "diag": diag})
             continue
-        if len(diag["stages"]) > 1:
+        if override_stage is None and len(diag["stages"]) > 1:
             report["ambiguous_stage"].append({"subarea": name, "stages": diag["stages"]})
 
         entries = by_dest.get(stage, [])
         exits = by_source.get(stage, [])
+        if override_stage is not None:
+            # Tower records only: a PictureStageChange OUT of the tower is the
+            # PAINTING — it leads DEEPER (into the vanilla-kept boss arena),
+            # never back to the overworld. Emitting it as an exit port would
+            # pool the painting as an interior ingest mouth and let the shuffle
+            # remap the painting warp — breaking the vanilla painting -> boss ->
+            # Multi-Moon-return-to-tower loop. Scoped to the override records:
+            # elsewhere (Moon's Wedding Room) PictureStageChange exits are real
+            # record data.
+            exits = [e for e in exits if e["unit"] != "PictureStageChange"]
         parents = sorted({e["source"] for e in entries})
         if not entries:
             report["no_entry_door"].append({"subarea": name, "stage": stage})

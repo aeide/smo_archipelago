@@ -1880,6 +1880,15 @@ def _write_decoupled_spoiler(world: World, multiworld: MultiWorld, spoiler_handl
                       if graph.vanilla_matching.get(a) == b)
 
     spoiler_handle.write(f"\n\nEntrance Shuffle - decoupled ({slot_name}):\n")
+    # Two-way legend (2026-07-17): the evidence-seed investigation misread
+    # these rows as one-directional ("MK doors all lead OUT — no way in"),
+    # concluding the Mushroom overworld was unreachable when the reverse
+    # traversal of the same pairs was the route. Say it explicitly.
+    spoiler_handle.write(
+        "  Each pair is a TWO-WAY portal: walking into either mouth lands "
+        "you at the other.\n  (A kingdom's own doors listed here are also "
+        "the ARRIVAL points into that kingdom\n  when the paired "
+        "subarea-exit is used from the other side.)\n")
     if not pairs:
         spoiler_handle.write("  (every mouth rolled to its vanilla partner)\n")
         return

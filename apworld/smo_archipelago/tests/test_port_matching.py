@@ -158,6 +158,18 @@ def test_roots_include_homestages_and_zones(graph):
     assert "LakeWorldTownZone" in roots
 
 
+def test_mushroom_stages_never_root(graph):
+    # Mushroom erratum (module docstring): the MK overworld is post-game and
+    # NOT flight-reachable pre-goal, so no stage hosting a Mushroom mouth may
+    # anchor connectivity — the matching must earn MK a real route.
+    roots = root_stages(graph)
+    assert "PeachWorldHomeStage" not in roots
+    mk_stages = {m.stage for m in graph.mouths.values()
+                 if m.kingdom == "Mushroom Kingdom"}
+    assert mk_stages, "Mushroom mouths vanished from the pool (D9 regression?)"
+    assert not (roots & mk_stages), sorted(roots & mk_stages)
+
+
 def test_no_root_is_a_pooled_interior(graph):
     interiors = {m.stage for m in graph.mouths.values()
                  if m.side == INTERIOR}
@@ -174,10 +186,17 @@ def test_no_interior_stage_is_a_homestage(graph):
             assert not m.stage.endswith("HomeStage"), m.mouth_id
 
 
-def test_vanilla_matching_is_fully_connected(graph):
+def test_vanilla_matching_strands_exactly_the_mushroom_cluster(graph):
     # The physical layout must satisfy our own checker — validates both the
     # checker and the HomeStage root convention against real extracted data.
-    assert unconnected_stages(graph.vanilla_matching, graph) == set()
+    # EXCEPT the Mushroom cluster: vanilla MK access is the credits warp, not
+    # a walkable route, so under the Mushroom erratum the vanilla matching
+    # genuinely strands PeachWorldHomeStage + its subarea interiors — and
+    # nothing else. (The roller never leaves MK on vanilla: phase 1 wires it
+    # to rooted territory, asserted by the roll tests below.)
+    mk_stages = {m.stage for m in graph.mouths.values()
+                 if m.kingdom == "Mushroom Kingdom"}
+    assert unconnected_stages(graph.vanilla_matching, graph) == mk_stages
 
 
 def test_checker_flags_hand_built_strand():
@@ -219,6 +238,57 @@ def test_checker_credits_vanilla_fixed_overworld_lone():
     bad = {ow: e_int, e_int: ow, f_int: f_int}
     assert is_involution(bad, g.mouths)
     assert unconnected_stages(bad, g) == {"FExStage"}
+
+
+def mushroom_graph() -> PortGraph:
+    """Adversarial graph + a Mushroom door to a sole-mouth shop interior —
+    the dead-end shape from evidence seed 91455467025183402260 (an MK door
+    paired with a sole-mouth partner gives that interior no way in except
+    FROM Mushroom, so it can't be Mushroom's route)."""
+    g = adversarial_graph()
+    ow = _mouth("PeachWorldHomeStage#MkShopDoor", OVERWORLD,
+                "PeachWorldHomeStage", "MK Shop", kingdom="Mushroom Kingdom")
+    inn = _mouth("PeachWorldHomeStage#MkShopDoor", INTERIOR,
+                 "MkShopStage", "MK Shop", kingdom="Mushroom Kingdom")
+    g.mouths[ow.mouth_id] = ow
+    g.mouths[inn.mouth_id] = inn
+    g.vanilla_matching[ow.mouth_id] = inn.mouth_id
+    g.vanilla_matching[inn.mouth_id] = ow.mouth_id
+    return g
+
+
+def test_checker_flags_mushroom_dead_end():
+    # All-vanilla completion: the MK door <-> its own shop is a closed loop
+    # with no root, so exactly the MK cluster must read unconnected.
+    g = mushroom_graph()
+    m = dict(g.vanilla_matching)
+    assert is_involution(m, g.mouths)
+    assert unconnected_stages(m, g) == {"PeachWorldHomeStage", "MkShopStage"}
+
+
+def test_roller_always_routes_mushroom(graph):
+    # Real pool: every roll must give Mushroom a route witness — at least one
+    # MK door whose partner mouth lives in territory that is root-connected
+    # WITHOUT any MK-door pair (i.e. the route into PeachWorldHomeStage never
+    # bootstraps through Mushroom itself). Walk that partner's stage, use the
+    # partner mouth, portal-land at the MK door: the pre-goal MK arrival.
+    mk_doors = {m.mouth_id for m in graph.mouths.values()
+                if m.side == OVERWORLD and m.kingdom == "Mushroom Kingdom"}
+    assert mk_doors, "no pooled MK doors (D9 regression?)"
+    nodes = stage_nodes(graph)
+    for seed in range(50):
+        m = roll_port_matching(graph, Random(seed))
+        assert unconnected_stages(m, graph) == set(), f"seed {seed}"
+        reduced = {a: b for a, b in m.items()
+                   if a not in mk_doors and b not in mk_doors}
+        connected_sans_mk = nodes - unconnected_stages(reduced, graph)
+        witnesses = [
+            a for a in mk_doors
+            if m.get(a) is not None and m[a] != a
+            and graph.mouths[m[a]].stage in connected_sans_mk]
+        assert witnesses, (
+            f"seed {seed}: no MK door partnered into rooted territory — "
+            "Mushroom has no pre-goal route")
 
 
 # ---------------------------------------------------------------------------
@@ -357,16 +427,56 @@ def test_rootless_pool_raises_loudly():
         roll_port_matching(g, Random(0))
 
 
-def test_refight_painting_arenas_stay_vanilla(graph):
-    # The 6 Mushroom boss re-fight arenas have NO walkable interior exit
-    # (scripted return) — shuffling their painting entry would orphan the
-    # arena and its Multi-Moon. port_graph must keep them out of the pool
-    # entirely (one-way-ENTRY rule, P3c erratum in its docstring).
-    refight = {m.subarea for m in graph.mouths.values()
-               if "Re-fight" in m.subarea}
-    assert refight == set(), f"re-fight arenas leaked into pool: {refight}"
-    assert any("PictureBoss" in d for d in graph.dropped_doors), (
-        "re-fight painting doors should be recorded in dropped_doors")
+REFIGHT_SUBAREAS = {
+    "Knucklotec Boss Re-fight", "Torkdrift Boss Re-fight",
+    "Mechawiggler Boss Re-fight", "Mollusque-Lanceur Boss Re-fight",
+    "Cookatiel Boss Re-fight", "Lord of Lightning Boss Re-fight",
+}
+
+
+def test_refight_towers_pooled_arena_loop_vanilla(graph):
+    # MK tower pooling (Devon ruling 2026-07-18): the 6 "… Boss Re-fight"
+    # records are re-pointed at the TOWER rooms (PeachWorldPicture*Stage) —
+    # real two-way subareas — so the re-fight Multi-Moon checks key on
+    # shuffled tower access. The painting -> RevengeBoss*Stage arena ->
+    # Multi-Moon return-to-tower loop INSIDE the tower stays fully vanilla:
+    # no mouth may ever reference an arena stage or a PictureBoss* painting
+    # id, else the shuffle could remap the painting or the post-boss return.
+    pooled = {m.subarea for m in graph.mouths.values()
+              if m.subarea in REFIGHT_SUBAREAS}
+    assert pooled == REFIGHT_SUBAREAS, (
+        f"re-fight towers missing from pool: {REFIGHT_SUBAREAS - pooled}")
+    for m in graph.mouths.values():
+        assert "Revenge" not in m.stage, f"arena stage pooled: {m}"
+        assert not m.entry_id.startswith("Picture"), f"painting id pooled: {m}"
+    # Every tower is two-way: interior ingest mouths exist (the one-way-ENTRY
+    # rule must NOT fire for them anymore).
+    for sub in REFIGHT_SUBAREAS:
+        assert any(m.side == INTERIOR for m in graph.mouths.values()
+                   if m.subarea == sub), f"{sub}: no interior ingest mouth"
+
+
+def test_refight_towers_drop_under_festival(festival_graph):
+    # Mushroom is festival-excluded (FESTIVAL_EXCLUDED_KINGDOMS), so tower
+    # pooling must be inert under goal=festival — the Rematch locations do
+    # not even exist there.
+    pooled = {m.subarea for m in festival_graph.mouths.values()
+              if m.subarea in REFIGHT_SUBAREAS}
+    assert pooled == set(), f"towers pooled under festival: {pooled}"
+
+
+def test_zone_alias_never_covers_a_pooled_interior_stage(graph):
+    # ZONE_STAGE_ALIAS rewrites OVERWORLD-mouth targets to a parent
+    # HomeStage. If an alias key were also a pooled subarea's INTERIOR
+    # stage, a portal targeting that interior could be rewritten to the
+    # overworld instead — exactly the bug the 2026-07-18 tower erratum
+    # removed (the six PeachWorldPicture*Stage entries were mis-classified
+    # as zones; they are real pooled tower interiors).
+    from port_graph import ZONE_STAGE_ALIAS
+    interior_stages = {m.stage for m in graph.mouths.values()
+                       if m.side == INTERIOR}
+    overlap = interior_stages & set(ZONE_STAGE_ALIAS)
+    assert overlap == set(), f"alias shadows pooled interior stage(s): {overlap}"
 
 
 def test_every_pooled_subarea_has_interior_ingest(graph):

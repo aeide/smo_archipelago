@@ -509,8 +509,19 @@ def compile_stage_remaps(
     which key to match on:
 
         # ENTRY — fires when you walk through the door that vanilla leads to D;
-        #         matched against the inbound dest stage (D.stage is unique).
-        {"kind": "entry", "from": D.stage,
+        #         matched against the inbound dest stage (D.stage is unique)
+        #         AND the transition's own id ("from_id", one row per physical
+        #         entry port of D — SMO convention: walking into a door fires
+        #         the pair-shared ChangeStageId, so this discriminates real
+        #         door entries from OTHER transitions targeting D.stage. The
+        #         load-bearing case (2026-07-18): the MK boss towers — the
+        #         boss Multi-Moon's ShineGrand return and the arena's
+        #         MissRestartArea both target the tower stage with the
+        #         PictureBoss* id; a dest-wildcard row would hijack that
+        #         return and warp the player post-boss to the tower's
+        #         shuffled interior. A port lacking an id falls back to ONE
+        #         wildcard row for the pair, the pre-2026-07-18 shape.)
+        {"kind": "entry", "from": D.stage, "from_id": port.entry_id,
          "to_stage": I.stage,            "to_id": I.primary_entry.entry_id}
 
         # EXIT  — fires when you LEAVE interior I; matched against the CURRENT
@@ -554,11 +565,28 @@ def compile_stage_remaps(
         int_stage = int_rec.get("stage")
         primary_entry = int_rec.get("primary_entry") or {}
         entry_id = primary_entry.get("entry_id")
-        # ENTRY row — needs the door's stage (match key) + the interior's stage
-        # and arrival id (rewrite target).
+        # ENTRY row(s) — need the door's stage (match key) + the interior's
+        # stage and arrival id (rewrite target). One row per physical entry
+        # port of D, keyed by that port's own pair-shared ChangeStageId via
+        # "from_id" (the Switch's compound entry tier, ApState.cpp), so a
+        # non-door transition that happens to target D.stage — the MK boss
+        # towers' Multi-Moon return / MissRestartArea, id PictureBoss* — is
+        # never hijacked. Ports without an id (thin test fixtures) fall back
+        # to ONE dest-wildcard row for the pair, the pre-2026-07-18 shape.
         if door_stage and int_stage and entry_id:
-            rows.append({"kind": "entry", "from": door_stage,
-                         "to_stage": int_stage, "to_id": entry_id})
+            entry_port_ids: list[str] = []
+            for port in door_rec.get("entries") or []:
+                pid = port.get("entry_id")
+                if pid and pid not in entry_port_ids:
+                    entry_port_ids.append(pid)
+            if entry_port_ids:
+                for pid in entry_port_ids:
+                    rows.append({"kind": "entry", "from": door_stage,
+                                 "from_id": pid,
+                                 "to_stage": int_stage, "to_id": entry_id})
+            else:
+                rows.append({"kind": "entry", "from": door_stage,
+                             "to_stage": int_stage, "to_id": entry_id})
         # EXIT row(s) — keyed on the interior's stage (cur at exit time);
         # rewrite to the ORIGIN door's exterior. Independent of the entry row
         # landing.

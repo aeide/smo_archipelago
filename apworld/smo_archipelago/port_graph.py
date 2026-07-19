@@ -58,11 +58,16 @@ marker unused — nothing strands). The MIRROR shape — a subarea with ingest
 entry doors but NO walkable interior exit (`exits[] == []`, scripted return) —
 is NOT safe to shuffle: its interior can only ever be entered through its own
 entry marker, so re-matching the entry door orphans the whole interior and
-every check in it. Real data: the SIX Mushroom boss re-fight painting arenas
-(RevengeBoss*Stage — they hold the re-fight Multi-Moons). Rule: a subarea
-that would contribute pooled mouths but zero INTERIOR ingest mouths has ALL
-its doors dropped from the pool (vanilla passthrough), same door-wise shape
-as the D5 exclusions. (One-way *split* doors — Jaxi Driving's `aaa` entry +
+every check in it. Rule: a subarea that would contribute pooled mouths but
+zero INTERIOR ingest mouths has ALL its doors dropped from the pool (vanilla
+passthrough), same door-wise shape as the D5 exclusions. (Historical real
+data: the SIX Mushroom boss re-fight PAINTING arenas, RevengeBoss*Stage —
+until 2026-07-18 their records' only door was the painting, and this rule
+kept them vanilla. The records are now re-pointed at the TOWER rooms
+(PeachWorldPicture*Stage, two-way doors — see extract_entrance_stages.py
+SUBAREA_STAGE_OVERRIDE), which pool normally; the painting -> arena ->
+Multi-Moon-return-to-tower loop inside stays vanilla and no record contains
+the painting ports anymore. The rule remains as a structural guard.) (One-way *split* doors — Jaxi Driving's `aaa` entry +
 `run00return` exit, zone-split doors like `LakeWorldTownZone#CapTrampolineA`
 whose two halves carry different port_ids — are fine: each lone half is
 independently matchable and the interior stays enterable via its own ingest
@@ -228,13 +233,18 @@ ROW_HEADROOM = 32
 # SandWorldUnderground00*Stage, MoonWorld{Koopa2,WeddingRoom2}Stage,
 # TestOkamoto027Stage) — so it needs no alias. No zone name appears as a
 # vanilla dest anywhere, independently confirming vanilla never
-# standalone-loads these zones. The six PeachWorldPicture*Stage entries are
-# the same never-vanilla-loaded class but are currently INERT: their
-# subareas (the 6 Mushroom re-fight arenas, exits=[]) have all doors dropped
-# from the pool by build_port_graph's zero-interior-ingest rule, so the
-# mouths can't be matched today. Kept as defense-in-depth — if a future pool
-# rule re-admits them, the alias is already correct (the picture markers
-# live in PeachWorldHomeStage's composite).
+# standalone-loads these zones.
+# ERRATUM 2026-07-18 (MK tower pooling): the six PeachWorldPicture*Stage
+# names were listed here 2026-07-13 as the same never-vanilla-loaded class —
+# that classification was WRONG. Romfs-verified: each is a REAL standalone
+# stage (own Map.szs with PlayerStartObj + painting in all 15 scenario
+# slots, a two-way ChangeStageArea/Dokan connection to PeachWorldHomeStage,
+# and WorldList membership under Mushroom), and vanilla itself stage-loads
+# them — the boss Multi-Moon's own ShineGrand actor carries
+# ChangeStageName=PeachWorldPicture*Stage as its post-boss return. They are
+# now the 6 pooled "… Boss Re-fight" subarea interiors (Devon ruling
+# 2026-07-18) and must NEVER be aliased: an alias would land a
+# tower-targeting portal in MK overworld instead of inside the tower.
 ZONE_STAGE_ALIAS: dict[str, str] = {
     "SkyWorldCastleZone": "SkyWorldHomeStage",
     "LakeWorldTownZone": "LakeWorldHomeStage",
@@ -242,14 +252,59 @@ ZONE_STAGE_ALIAS: dict[str, str] = {
     "SeaWorldLavaZone": "SeaWorldHomeStage",
     "SeaWorldLighthouseZone": "SeaWorldHomeStage",
     "SeaWorldSphinxQuizZone": "SeaWorldHomeStage",
-    # Pool-excluded today (see audit note above) — inert defense-in-depth:
-    "PeachWorldPictureBossForestStage": "PeachWorldHomeStage",
-    "PeachWorldPictureBossKnuckleStage": "PeachWorldHomeStage",
-    "PeachWorldPictureBossMagmaStage": "PeachWorldHomeStage",
-    "PeachWorldPictureBossRaidStage": "PeachWorldHomeStage",
-    "PeachWorldPictureGiantWanderBossStage": "PeachWorldHomeStage",
-    "PeachWorldPictureMofumofuStage": "PeachWorldHomeStage",
 }
+
+
+# ── Unspawnable interior arrival markers (softlock guard) ───────────────────
+#
+# (interior_stage, ChangeStageId) pairs whose arrival marker NEVER spawns Mario
+# on a fresh cross-world arrival: the id resolves ONLY to a switch-gated
+# (SwitchAppear-linked) or entirely absent PlayerStartInfo in that interior
+# stage's placement. On arrival SMO places Mario at the Home/Dokan object whose
+# ChangeStageId matches the arrival id (see extract_entrance_stages.py
+# PRIMARY_EXIT_OVERRIDE note); when that object is switch-gated it isn't placed
+# until the in-stage switch is flipped (i.e. AFTER completing the course), so a
+# decoupled matching that routes an INBOUND entrance to this mouth loads the
+# interior with NO player and NO entry pipe — a hard softlock (Devon 2026-07-17:
+# Sand `arijigoku` door shuffled to Luncheon's `LavaLiftExdokan`, the switch-
+# gated GOAL pipe of Volcano Cave Cruising; the stage loaded but neither Mario
+# nor the pipe ever spawned). These are the EXIT/goal-pipe mouths of multi-exit
+# subareas: valid to walk OUT of once the course is done, never valid to arrive
+# AT. `entrance_stages.json` mislabels them entry-capable because
+# extract_entrance_stages.collect_doors ignores `IsExitOnly` (parent side) and
+# SwitchAppear (interior side); until that extractor is taught the flag, this
+# set drops the affected DOORS from the shuffle pool (they stay vanilla).
+#
+# The overworld sibling of each of these doors is ALSO unsafe (its parent-side
+# object is `IsExitOnly`, so it can't be walked into), so dropping the whole
+# door — not just the interior mouth — is correct. A subarea's OTHER, ungated
+# doors keep shuffling: only these specific goal-pipe ports drop (e.g. Volcano
+# Cave keeps `LavaLiftEx`, drops only `LavaLiftExdokan`).
+#
+# CONNECTIVITY CAVEAT (build_port_graph enforces this, not the set): a gated
+# door is dropped only while its subarea keeps at least one OTHER entry-capable
+# door, so the interior stays reachable through the pool. A subarea whose SOLE
+# entrance is a gated marker (Shards Under Siege's `taxi`, Shiveria's
+# `SnowUGExit` if it were pooled) is NOT dropped — that would strand the
+# interior (and fails test_port_matching's connectivity invariant). Such a
+# subarea is kept pooled with a loud warning: its arrival mechanic (e.g. the
+# on-rails taxi ride is not a plain pipe warp) needs its own in-game walk before
+# we know whether it truly softlocks. Only Volcano Cave's `LavaLiftExdokan` — the
+# reproduced case, with a safe sibling — is actually removed today.
+#
+# IP-safe (functional stage/id identifiers only). Regenerate against a romfs
+# dump with scripts/detect_gated_arrival_markers.py — the authoritative
+# cross-scenario detector (a marker is unsafe only if EVERY scenario that has it
+# gates it). Adding the missing `IsExitOnly`/SwitchAppear awareness to
+# extract_entrance_stages.py would let this be derived from the emitted data
+# instead of hardcoded; tracked as the follow-up in
+# docs/handoff-entrance-subarea-no-mario.md.
+GATED_INTERIOR_ARRIVAL: frozenset[tuple[str, str]] = frozenset({
+    ("CapAppearLavaLiftExStage", "LavaLiftExdokan"),  # Volcano Cave Cruising (Luncheon) — switch-gated
+    ("ShootingCityExStage", "taxi"),                  # Shards Under Siege (Metro) — switch-gated
+    ("SnowWorldTownStage", "SnowUGExit"),             # Shiveria Town (Snow) — no interior marker
+    ("MoonWorldWeddingRoomZone", "ppp"),              # Wedding Room (Moon) — switch-gated
+})
 
 
 @dataclass(frozen=True)
@@ -370,6 +425,40 @@ def build_port_graph(
                     port_id, name)
                 continue
             rec_pairs.append((ow, inn))
+
+        # Unspawnable interior arrival marker (softlock guard): a decoupled
+        # arrival routed to a door whose interior marker is switch-gated/absent
+        # loads the interior with no player / no entry pipe (see
+        # GATED_INTERIOR_ARRIVAL). Drop those doors so they stay vanilla — BUT
+        # only while the subarea keeps at least one other entry-capable door,
+        # so the interior stays reachable through the pool. A subarea whose SOLE
+        # entrance is gated (e.g. Shards Under Siege's `taxi`) can't be dropped
+        # without stranding it; keep it and warn (its arrival mechanic needs its
+        # own investigation — dropping it also fails the connectivity invariant
+        # in test_port_matching). The confirmed softlock (Volcano Cave's
+        # `LavaLiftExdokan`) has a safe sibling (`LavaLiftEx`), so it drops.
+        gated_ports = [ow.door_port_id for ow, inn in rec_pairs
+                       if (inn.stage, inn.entry_id) in GATED_INTERIOR_ARRIVAL]
+        if gated_ports:
+            keeps_other_entry = any(
+                ow.ingest and ow.door_port_id not in gated_ports
+                for ow, inn in rec_pairs)
+            if keeps_other_entry:
+                rec_pairs = [p for p in rec_pairs
+                             if p[0].door_port_id not in gated_ports]
+                dropped.extend(gated_ports)
+                for pid in gated_ports:
+                    logger.warning(
+                        "port_graph: dropping door %s (subarea '%s') — interior "
+                        "arrival marker is switch-gated/absent (would softlock); "
+                        "subarea stays reachable via its other door(s)",
+                        pid, name)
+            else:
+                logger.warning(
+                    "port_graph: subarea '%s' has a gated interior arrival "
+                    "marker on its SOLE entry (%s) — keeping it pooled to avoid "
+                    "stranding the interior; arrival mechanic needs a walk "
+                    "(see GATED_INTERIOR_ARRIVAL)", name, ", ".join(gated_ports))
 
         # One-way-ENTRY subarea rule (see module docstring): no walkable
         # interior exit => every door stays vanilla or the interior strands.

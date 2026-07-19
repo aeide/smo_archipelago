@@ -6894,192 +6894,310 @@
   },
   "Knucklotec Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
-    "stage": "RevengeBossKnuckleStage",
+    "stage": "PeachWorldPictureBossKnuckleStage",
     "parents": [
-      "PeachWorldPictureBossKnuckleStage"
+      "PeachWorldHomeStage"
     ],
     "primary_entry": {
-      "parent": "PeachWorldPictureBossKnuckleStage",
-      "entry_id": "PictureBossKnuckle",
-      "unit": "PictureStageChange",
-      "port_id": "PeachWorldPictureBossKnuckleStage#PictureBossKnuckle"
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "BossKnuckleA",
+      "unit": "ChangeStageArea",
+      "port_id": "PeachWorldHomeStage#BossKnuckleA"
     },
-    "primary_exit": null,
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "BossKnuckleA",
+      "unit": "ChangeStageArea",
+      "port_id": "PeachWorldHomeStage#BossKnuckleA"
+    },
     "entries": [
       {
-        "parent": "PeachWorldPictureBossKnuckleStage",
-        "entry_id": "PictureBossKnuckle",
-        "unit": "PictureStageChange",
-        "port_id": "PeachWorldPictureBossKnuckleStage#PictureBossKnuckle"
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "BossKnuckleA",
+        "unit": "ChangeStageArea",
+        "port_id": "PeachWorldHomeStage#BossKnuckleA"
       }
     ],
-    "exits": [],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "BossKnuckleA",
+        "unit": "ChangeStageArea",
+        "port_id": "PeachWorldHomeStage#BossKnuckleA"
+      }
+    ],
     "door_mouths": {
-      "PeachWorldPictureBossKnuckleStage#PictureBossKnuckle": {
-        "stage": "PeachWorldPictureBossKnuckleStage",
-        "entry_id": "PictureBossKnuckle",
+      "PeachWorldHomeStage#BossKnuckleA": {
+        "stage": "PeachWorldHomeStage",
+        "entry_id": "BossKnuckleA",
         "roles": [
-          "entry"
+          "entry",
+          "exit"
         ]
       }
     }
   },
   "Torkdrift Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
-    "stage": "RevengeForestBossStage",
+    "stage": "PeachWorldPictureBossForestStage",
     "parents": [
-      "PeachWorldPictureBossForestStage"
+      "PeachWorldHomeStage"
     ],
     "primary_entry": {
-      "parent": "PeachWorldPictureBossForestStage",
-      "entry_id": "PictureBossForest",
-      "unit": "PictureStageChange",
-      "port_id": "PeachWorldPictureBossForestStage#PictureBossForest"
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "BossForestA",
+      "unit": "ChangeStageArea",
+      "port_id": "PeachWorldHomeStage#BossForestA"
     },
-    "primary_exit": null,
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "BossForestA",
+      "unit": "ChangeStageArea",
+      "port_id": "PeachWorldHomeStage#BossForestA"
+    },
     "entries": [
       {
-        "parent": "PeachWorldPictureBossForestStage",
-        "entry_id": "PictureBossForest",
-        "unit": "PictureStageChange",
-        "port_id": "PeachWorldPictureBossForestStage#PictureBossForest"
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "BossForestA",
+        "unit": "ChangeStageArea",
+        "port_id": "PeachWorldHomeStage#BossForestA"
       }
     ],
-    "exits": [],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "BossForestA",
+        "unit": "ChangeStageArea",
+        "port_id": "PeachWorldHomeStage#BossForestA"
+      }
+    ],
     "door_mouths": {
-      "PeachWorldPictureBossForestStage#PictureBossForest": {
-        "stage": "PeachWorldPictureBossForestStage",
-        "entry_id": "PictureBossForest",
+      "PeachWorldHomeStage#BossForestA": {
+        "stage": "PeachWorldHomeStage",
+        "entry_id": "BossForestA",
         "roles": [
-          "entry"
+          "entry",
+          "exit"
         ]
       }
     }
   },
   "Mechawiggler Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
-    "stage": "RevengeMofumofuStage",
+    "stage": "PeachWorldPictureMofumofuStage",
     "parents": [
-      "PeachWorldPictureMofumofuStage"
+      "PeachWorldHomeStage"
     ],
     "primary_entry": {
-      "parent": "PeachWorldPictureMofumofuStage",
-      "entry_id": "PictureMofumofu",
-      "unit": "PictureStageChange",
-      "port_id": "PeachWorldPictureMofumofuStage#PictureMofumofu"
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "MofumofuA",
+      "unit": "ChangeStageArea",
+      "port_id": "PeachWorldHomeStage#MofumofuA"
     },
-    "primary_exit": null,
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "MofumofuA",
+      "unit": "ChangeStageArea",
+      "port_id": "PeachWorldHomeStage#MofumofuA"
+    },
     "entries": [
       {
-        "parent": "PeachWorldPictureMofumofuStage",
-        "entry_id": "PictureMofumofu",
-        "unit": "PictureStageChange",
-        "port_id": "PeachWorldPictureMofumofuStage#PictureMofumofu"
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "MofumofuA",
+        "unit": "ChangeStageArea",
+        "port_id": "PeachWorldHomeStage#MofumofuA"
       }
     ],
-    "exits": [],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "MofumofuA",
+        "unit": "ChangeStageArea",
+        "port_id": "PeachWorldHomeStage#MofumofuA"
+      }
+    ],
     "door_mouths": {
-      "PeachWorldPictureMofumofuStage#PictureMofumofu": {
-        "stage": "PeachWorldPictureMofumofuStage",
-        "entry_id": "PictureMofumofu",
+      "PeachWorldHomeStage#MofumofuA": {
+        "stage": "PeachWorldHomeStage",
+        "entry_id": "MofumofuA",
         "roles": [
-          "entry"
+          "entry",
+          "exit"
         ]
       }
     }
   },
   "Mollusque-Lanceur Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
-    "stage": "RevengeGiantWanderBossStage",
+    "stage": "PeachWorldPictureGiantWanderBossStage",
     "parents": [
-      "PeachWorldPictureGiantWanderBossStage"
+      "PeachWorldHomeStage"
     ],
     "primary_entry": {
-      "parent": "PeachWorldPictureGiantWanderBossStage",
-      "entry_id": "PictureGiantWanderBoss",
-      "unit": "PictureStageChange",
-      "port_id": "PeachWorldPictureGiantWanderBossStage#PictureGiantWanderBoss"
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "GiantWanderBossA",
+      "unit": "DokanStageChange",
+      "port_id": "PeachWorldHomeStage#GiantWanderBossA"
     },
-    "primary_exit": null,
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "GiantWanderBossA",
+      "unit": "DokanStageChange",
+      "port_id": "PeachWorldHomeStage#GiantWanderBossA"
+    },
     "entries": [
       {
-        "parent": "PeachWorldPictureGiantWanderBossStage",
-        "entry_id": "PictureGiantWanderBoss",
-        "unit": "PictureStageChange",
-        "port_id": "PeachWorldPictureGiantWanderBossStage#PictureGiantWanderBoss"
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "GiantWanderBossA",
+        "unit": "DokanStageChange",
+        "port_id": "PeachWorldHomeStage#GiantWanderBossA"
+      },
+      {
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "GiantWanderBossB",
+        "unit": "DokanStageChange",
+        "port_id": "PeachWorldHomeStage#GiantWanderBossB"
       }
     ],
-    "exits": [],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "GiantWanderBossB",
+        "unit": "DokanStageChange",
+        "port_id": "PeachWorldHomeStage#GiantWanderBossB"
+      },
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "GiantWanderBossA",
+        "unit": "DokanStageChange",
+        "port_id": "PeachWorldHomeStage#GiantWanderBossA"
+      }
+    ],
     "door_mouths": {
-      "PeachWorldPictureGiantWanderBossStage#PictureGiantWanderBoss": {
-        "stage": "PeachWorldPictureGiantWanderBossStage",
-        "entry_id": "PictureGiantWanderBoss",
+      "PeachWorldHomeStage#GiantWanderBossA": {
+        "stage": "PeachWorldHomeStage",
+        "entry_id": "GiantWanderBossA",
         "roles": [
-          "entry"
+          "entry",
+          "exit"
+        ]
+      },
+      "PeachWorldHomeStage#GiantWanderBossB": {
+        "stage": "PeachWorldHomeStage",
+        "entry_id": "GiantWanderBossB",
+        "roles": [
+          "entry",
+          "exit"
         ]
       }
     }
   },
   "Cookatiel Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
-    "stage": "RevengeBossMagmaStage",
+    "stage": "PeachWorldPictureBossMagmaStage",
     "parents": [
-      "PeachWorldPictureBossMagmaStage"
+      "PeachWorldHomeStage"
     ],
     "primary_entry": {
-      "parent": "PeachWorldPictureBossMagmaStage",
-      "entry_id": "PictureBossMagma",
-      "unit": "PictureStageChange",
-      "port_id": "PeachWorldPictureBossMagmaStage#PictureBossMagma"
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "BossMagmaA",
+      "unit": "ChangeStageArea",
+      "port_id": "PeachWorldHomeStage#BossMagmaA"
     },
-    "primary_exit": null,
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "BossMagmaA",
+      "unit": "ChangeStageArea",
+      "port_id": "PeachWorldHomeStage#BossMagmaA"
+    },
     "entries": [
       {
-        "parent": "PeachWorldPictureBossMagmaStage",
-        "entry_id": "PictureBossMagma",
-        "unit": "PictureStageChange",
-        "port_id": "PeachWorldPictureBossMagmaStage#PictureBossMagma"
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "BossMagmaA",
+        "unit": "ChangeStageArea",
+        "port_id": "PeachWorldHomeStage#BossMagmaA"
       }
     ],
-    "exits": [],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "BossMagmaA",
+        "unit": "ChangeStageArea",
+        "port_id": "PeachWorldHomeStage#BossMagmaA"
+      }
+    ],
     "door_mouths": {
-      "PeachWorldPictureBossMagmaStage#PictureBossMagma": {
-        "stage": "PeachWorldPictureBossMagmaStage",
-        "entry_id": "PictureBossMagma",
+      "PeachWorldHomeStage#BossMagmaA": {
+        "stage": "PeachWorldHomeStage",
+        "entry_id": "BossMagmaA",
         "roles": [
-          "entry"
+          "entry",
+          "exit"
         ]
       }
     }
   },
   "Lord of Lightning Boss Re-fight": {
     "kingdom": "Mushroom Kingdom",
-    "stage": "RevengeBossRaidStage",
+    "stage": "PeachWorldPictureBossRaidStage",
     "parents": [
-      "PeachWorldPictureBossRaidStage"
+      "PeachWorldHomeStage"
     ],
     "primary_entry": {
-      "parent": "PeachWorldPictureBossRaidStage",
-      "entry_id": "PictureBossRaid",
-      "unit": "PictureStageChange",
-      "port_id": "PeachWorldPictureBossRaidStage#PictureBossRaid"
+      "parent": "PeachWorldHomeStage",
+      "entry_id": "BossRaidA",
+      "unit": "DokanStageChange",
+      "port_id": "PeachWorldHomeStage#BossRaidA"
     },
-    "primary_exit": null,
+    "primary_exit": {
+      "dest": "PeachWorldHomeStage",
+      "entry_id": "BossRaidA",
+      "unit": "DokanStageChange",
+      "port_id": "PeachWorldHomeStage#BossRaidA"
+    },
     "entries": [
       {
-        "parent": "PeachWorldPictureBossRaidStage",
-        "entry_id": "PictureBossRaid",
-        "unit": "PictureStageChange",
-        "port_id": "PeachWorldPictureBossRaidStage#PictureBossRaid"
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "BossRaidA",
+        "unit": "DokanStageChange",
+        "port_id": "PeachWorldHomeStage#BossRaidA"
+      },
+      {
+        "parent": "PeachWorldHomeStage",
+        "entry_id": "BossRaidB",
+        "unit": "DokanStageChange",
+        "port_id": "PeachWorldHomeStage#BossRaidB"
       }
     ],
-    "exits": [],
+    "exits": [
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "BossRaidB",
+        "unit": "DokanStageChange",
+        "port_id": "PeachWorldHomeStage#BossRaidB"
+      },
+      {
+        "dest": "PeachWorldHomeStage",
+        "entry_id": "BossRaidA",
+        "unit": "DokanStageChange",
+        "port_id": "PeachWorldHomeStage#BossRaidA"
+      }
+    ],
     "door_mouths": {
-      "PeachWorldPictureBossRaidStage#PictureBossRaid": {
-        "stage": "PeachWorldPictureBossRaidStage",
-        "entry_id": "PictureBossRaid",
+      "PeachWorldHomeStage#BossRaidA": {
+        "stage": "PeachWorldHomeStage",
+        "entry_id": "BossRaidA",
         "roles": [
-          "entry"
+          "entry",
+          "exit"
+        ]
+      },
+      "PeachWorldHomeStage#BossRaidB": {
+        "stage": "PeachWorldHomeStage",
+        "entry_id": "BossRaidB",
+        "roles": [
+          "entry",
+          "exit"
         ]
       }
     }

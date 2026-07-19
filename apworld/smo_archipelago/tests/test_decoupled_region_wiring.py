@@ -346,6 +346,89 @@ if drop_reachable:
     print("DROP " + "|".join(drop_reachable))
 """
 
+# Mushroom route + Arrival-channel purity (2026-07-17, Devon ruling:
+# exit-portals are the MK route — docs/handoff-decoupled-mushroom-overworld-
+# reachability.md). Two invariants per seed:
+#   * ROUTE: "Mushroom Kingdom Arrival" (and hence the MK region) is reachable
+#     under god state WITHOUT ever traversing an exit of the Moon Kingdom
+#     region — i.e. a real pre-goal chain/portal route exists, never the
+#     beat-the-game Moon -> Mushroom win edge (port_matching Mushroom erratum:
+#     PeachWorldHomeStage is no longer a connectivity root).
+#   * PURITY (the regression the evidence seed's mis-diagnosis feared): every
+#     edge into ANY "K Arrival" region is either the single "K -> K Arrival"
+#     flight-verification edge or a matched-pair portal edge whose TARGET
+#     mouth is an OVERWORLD mouth of K — reaching a subarea interior never
+#     grants its home kingdom's overworld through some other edge class. Same
+#     check for the Mushroom Kingdom region itself: inbound = its Arrival
+#     presence edge + the Moon -> Mushroom flight edge, nothing else.
+_PROBE_MUSHROOM = _PRELUDE + r"""
+from collections import deque
+
+for seed in (1, 11, 22):
+    mw, world = build(seed)
+    p = 1
+    graph, matching = world._port_graph, world._port_matching
+    god = god_state(mw)
+
+    def flood(banned_src_region: str):
+        seen = set()
+        start = mw.get_region("Menu", p)
+        seen.add(start)
+        dq = deque([start])
+        while dq:
+            reg = dq.popleft()
+            if reg.name == banned_src_region:
+                continue  # never traverse OUT of the banned region
+            for e in reg.exits:
+                if e.connected_region is None or e.connected_region in seen:
+                    continue
+                try:
+                    ok = e.access_rule(god)
+                except Exception:
+                    ok = False
+                if ok:
+                    seen.add(e.connected_region)
+                    dq.append(e.connected_region)
+        return {r.name for r in seen}
+
+    sans_clear = flood("Moon Kingdom")
+    mk_arrival_sans_clear = int("Mushroom Kingdom Arrival" in sans_clear)
+    mk_region_sans_clear = int("Mushroom Kingdom" in sans_clear)
+
+    # Arrival-channel purity: classify every inbound edge of every Arrival
+    # region (and of the Mushroom Kingdom region itself).
+    ow_by_kingdom = {}
+    for m in graph.mouths.values():
+        if m.side == OVERWORLD:
+            ow_by_kingdom.setdefault(m.kingdom, set()).add(m.mouth_id)
+    bad_arrival_inbound = 0
+    for reg in mw.get_regions(p):
+        if not reg.name.endswith(" Arrival"):
+            continue
+        kingdom = reg.name[: -len(" Arrival")]
+        for e in reg.entrances:
+            if e.name == f"{kingdom} -> {kingdom} Arrival":
+                continue  # flight-verification channel
+            if " => " in e.name:
+                target_id = e.name.split(" => ")[1]
+                if target_id in ow_by_kingdom.get(kingdom, set()):
+                    continue  # matched-pair portal onto one of K's own doors
+            bad_arrival_inbound += 1
+            print(f"BADEDGE seed={seed} arrival={reg.name!r} edge={e.name!r}")
+    mk_reg = mw.get_region("Mushroom Kingdom", p)
+    mk_inbound = sorted(e.name for e in mk_reg.entrances)
+    mk_inbound_ok = int(mk_inbound == sorted([
+        "Mushroom Kingdom Arrival -> Mushroom Kingdom",
+        "Moon KingdomToMushroom Kingdom"]))
+    if not mk_inbound_ok:
+        print(f"MKINBOUND seed={seed} edges={mk_inbound}")
+
+    print(f"RESULT seed={seed} mk_arrival_sans_clear={mk_arrival_sans_clear} "
+          f"mk_region_sans_clear={mk_region_sans_clear} "
+          f"bad_arrival_inbound={bad_arrival_inbound} "
+          f"mk_inbound_ok={mk_inbound_ok}")
+"""
+
 
 def _run_probe(probe: str, prefix: str = "RESULT") -> list[dict]:
     res = subprocess.run(
@@ -538,3 +621,42 @@ def test_decoupled_flight_economy_restores_moon_gate():
         f"omitting one chain kingdom's moons still left Moon reachable "
         f"({r['drop_reachable']}/{r['chain']} kingdom(s)) — that kingdom's gate "
         f"is being discounted (the flight chain is not fully required)")
+
+
+@pytest.fixture(scope="module")
+def mushroom_results() -> list[dict]:
+    return _run_probe(_PROBE_MUSHROOM)
+
+
+def test_mushroom_route_exists_without_game_clear(mushroom_results):
+    """Devon ruling 2026-07-17 (exit-portals are the MK route): every decoupled
+    seed must reach 'Mushroom Kingdom Arrival' — and through it the MK region —
+    under god state WITHOUT traversing any exit of the Moon Kingdom region.
+    The route is a chain of matched-pair portals ending in an 'interior exit
+    mouth => MK door' hop; the port_matching Mushroom erratum (PeachWorld
+    stages are not connectivity roots) makes the roller guarantee one."""
+    for r in mushroom_results:
+        assert int(r["mk_arrival_sans_clear"]) == 1, (
+            f"seed {r['seed']}: no route to Mushroom Kingdom Arrival without "
+            f"the beat-the-game Moon->Mushroom edge — the roller's Mushroom "
+            f"connectivity guarantee regressed")
+        assert int(r["mk_region_sans_clear"]) == 1, (
+            f"seed {r['seed']}: MK Arrival reachable but the Mushroom Kingdom "
+            f"region is not — the free presence edge is missing/gated")
+
+
+def test_arrival_inbound_edges_are_portal_or_flight_only(mushroom_results):
+    """Regression pinned from the evidence-seed investigation: a kingdom's
+    Arrival region may ONLY be entered by (a) its own 'K -> K Arrival'
+    flight-verification edge or (b) a matched-pair portal edge targeting one
+    of K's own OVERWORLD door mouths. Reaching a subarea interior must never
+    grant the home kingdom's overworld by any other edge class (no vanilla
+    subarea->home egress edges survive the decoupled rewrite). Ditto the
+    Mushroom Kingdom region itself: presence edge + Moon flight edge only."""
+    for r in mushroom_results:
+        assert int(r["bad_arrival_inbound"]) == 0, (
+            f"seed {r['seed']}: {r['bad_arrival_inbound']} non-portal, "
+            f"non-flight edge(s) into an Arrival region (see BADEDGE lines)")
+        assert int(r["mk_inbound_ok"]) == 1, (
+            f"seed {r['seed']}: unexpected inbound edge set on the Mushroom "
+            f"Kingdom region (see MKINBOUND line)")

@@ -439,16 +439,20 @@ def test_compile_stage_remaps_cross_pair():
 
     entries = [r for r in rows if r["kind"] == "entry"]
     exits = [r for r in rows if r["kind"] == "exit"]
-    assert len(entries) == 1
+    door_entry_ids = {p["entry_id"] for p in stages[door]["entries"]}
+    assert len(entries) == len(door_entry_ids)
     int_exit_ports = stages[interior]["exits"]
     assert len(exits) == len(int_exit_ports)
 
-    # ENTRY: walk through the door that vanilla-leads-to `door`; matched on the
-    # door's own stage, rewritten to the interior's primary entrance.
-    e = entries[0]
-    assert e["from"] == stages[door]["stage"]
-    assert e["to_stage"] == stages[interior]["stage"]
-    assert e["to_id"] == stages[interior]["primary_entry"]["entry_id"]
+    # ENTRY: walk through a door that vanilla-leads-to `door`; matched on the
+    # door's own stage + the port's own id (2026-07-18: from_id keeps non-door
+    # transitions targeting the same stage — the MK tower Multi-Moon return —
+    # vanilla), rewritten to the interior's primary entrance.
+    assert {e["from_id"] for e in entries} == door_entry_ids
+    for e in entries:
+        assert e["from"] == stages[door]["stage"]
+        assert e["to_stage"] == stages[interior]["stage"]
+        assert e["to_id"] == stages[interior]["primary_entry"]["entry_id"]
 
     # EXIT: leave the interior via ANY of its physical exit ports; each row is
     # matched on the interior's OWN stage (cur) + that port's own entry_id
@@ -527,7 +531,15 @@ def test_compile_stage_remaps_full_pool_entries_resolve():
     assert not missing, f"pool doors with no resolved entry row: {missing}"
     n_entry = sum(1 for r in rows if r["kind"] == "entry")
     n_exit = sum(1 for r in rows if r["kind"] == "exit")
-    assert n_entry == len(pool)
+    # 2026-07-18: one entry row per physical entry PORT of each door (compound
+    # from_id key), so n_entry is bounded below by the pool and equals the
+    # per-door distinct-entry-id total.
+    expected_entry = sum(
+        len({p["entry_id"] for p in stages[name]["entries"]}) or 1
+        for name in pool if stages.get(name, {}).get("stage")
+    )
+    assert n_entry == expected_entry
+    assert n_entry >= len(pool)
     assert n_exit > 0
     # Every exit row from a multi-exit interior must carry a distinct from_id
     # (no duplicate compound keys within the same `from` stage).
@@ -574,6 +586,80 @@ def test_jaxi_driving_exit_lands_on_mesa_top():
     exits = [r for r in rows if r["kind"] == "exit"]
     assert exits and exits[0]["to_id"] == "arijigoku2", (
         "compiled Jaxi Driving exit row must rewrite to arijigoku2")
+
+
+# ---------------------------------------------------------------------------
+# MK boss-refight towers (Devon ruling 2026-07-18) — the 6 "… Boss Re-fight"
+# records are pooled AT THE TOWER (PeachWorldPicture*Stage, real two-way
+# stages); the painting -> RevengeBoss*Stage arena -> Multi-Moon
+# return-to-tower loop inside stays fully vanilla in BOTH shuffle modes.
+# ---------------------------------------------------------------------------
+
+_REFIGHT_TOWERS = {
+    "Knucklotec Boss Re-fight": "PeachWorldPictureBossKnuckleStage",
+    "Torkdrift Boss Re-fight": "PeachWorldPictureBossForestStage",
+    "Mechawiggler Boss Re-fight": "PeachWorldPictureMofumofuStage",
+    "Mollusque-Lanceur Boss Re-fight": "PeachWorldPictureGiantWanderBossStage",
+    "Cookatiel Boss Re-fight": "PeachWorldPictureBossMagmaStage",
+    "Lord of Lightning Boss Re-fight": "PeachWorldPictureBossRaidStage",
+}
+
+
+def test_refight_records_point_at_towers_not_arenas():
+    """Each Boss Re-fight record's shuffleable unit is the TOWER room: stage =
+    PeachWorldPicture*Stage, two-way door(s) to PeachWorldHomeStage, and NO
+    port referencing the arena (Revenge*) or the painting (Picture* ids) —
+    pooling the painting would let the shuffle remap it or the post-boss
+    Multi-Moon return (the ShineGrand actor targets tower#PictureBoss*)."""
+    stages = _entrance_stages()
+    for name, tower_stage in _REFIGHT_TOWERS.items():
+        rec = stages[name]
+        assert rec["stage"] == tower_stage, f"{name}: stage != tower"
+        assert rec["parents"] == ["PeachWorldHomeStage"], name
+        assert rec["primary_exit"]["dest"] == "PeachWorldHomeStage", name
+        ports = list(rec["entries"]) + list(rec["exits"]) \
+            + list(rec["door_mouths"].values())
+        for p in ports:
+            pid = p["entry_id"]
+            assert not pid.startswith("Picture"), f"{name}: painting port {pid}"
+            assert "Revenge" not in (p.get("parent") or p.get("dest")
+                                     or p.get("stage") or ""), f"{name}: {p}"
+        # Round-trippable = pool-eligible in both modes.
+        from entrance_logic import is_round_trippable
+        assert is_round_trippable(name, stages), name
+
+
+def test_refight_tower_rows_never_touch_the_arena_loop():
+    """Simple-mode guard: with a tower as DOOR and as INTERIOR of shuffled
+    pairs, no compiled row may catch the intra-tower vanilla transitions —
+    the painting jump (dest=RevengeBoss*, cur=tower) and the post-boss
+    Multi-Moon return (dest=tower, id=PictureBoss*). Entry rows carry the
+    tower door's own from_id (BossKnuckleA-style) so the compound entry tier
+    on the Switch can never match the PictureBoss* return id, and no
+    dest-wildcard entry rows exist for stages whose doors have ids."""
+    from entrance_logic import compile_stage_remaps
+    stages = _entrance_stages()
+    door, interior = "Knucklotec Boss Re-fight", "Frog Pond"
+    if interior not in stages:
+        pytest.skip("Frog Pond absent from table")
+    # Tower as door AND as interior in one bijection.
+    rows = compile_stage_remaps(
+        {door: interior, "Poison Tides": "Lord of Lightning Boss Re-fight"},
+        stages)
+    for r in rows:
+        # Nothing keys on an arena stage (painting jump / ShineGrand cur).
+        assert "Revenge" not in r["from"], r
+        assert "Revenge" not in r["to_stage"], r
+        # Any row keyed on a tower stage must be id-discriminated with the
+        # tower's own door id — never a Picture* id, never a wildcard.
+        if r["from"] in _REFIGHT_TOWERS.values():
+            assert r.get("from_id"), f"wildcard row on tower stage: {r}"
+            assert not r["from_id"].startswith("Picture"), r
+    # The tower-as-interior pair must land Mario at the tower's own door
+    # marker (BossRaidA — the primary entry), not the painting.
+    entry_to_tower = [r for r in rows if r["kind"] == "entry"
+                      and r["to_stage"] == _REFIGHT_TOWERS["Lord of Lightning Boss Re-fight"]]
+    assert entry_to_tower and all(r["to_id"] == "BossRaidA" for r in entry_to_tower)
 
 
 # ---------------------------------------------------------------------------
